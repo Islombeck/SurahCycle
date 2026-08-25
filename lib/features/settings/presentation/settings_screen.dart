@@ -17,11 +17,14 @@ final class SettingsScreen extends ConsumerStatefulWidget {
 final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String? _selectedSurahId;
   bool _adjusting = false;
+  bool _savingTranslation = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(themePreferenceProvider);
     final snapshot = ref.watch(rotationSnapshotProvider);
+    final translations = ref.watch(russianQuranTranslationsProvider);
+    final selectedTranslation = ref.watch(selectedQuranTranslationProvider);
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -72,6 +75,29 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Text(
+                            context.l10n.quranTranslation,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(context.l10n.translationCachedOffline),
+                          const SizedBox(height: 12),
+                          _buildTranslationChooser(
+                            translations,
+                            selectedTranslation.valueOrNull,
+                            selectionInvalid: selectedTranslation.hasError,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
                     child: Column(
                       children: <Widget>[
                         ListTile(
@@ -100,9 +126,8 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       leading: const Icon(Icons.verified_outlined),
                       title: Text(context.l10n.sourceMetadata),
                       subtitle: Text(
-                        '${TanzilMetadataProvider.attribution} · '
-                        'v${TanzilMetadataProvider.version} · '
-                        '${TanzilMetadataProvider.license}\n'
+                        '${context.l10n.tanzilTextMetadata}\n'
+                        '${TanzilUthmaniTextRepository.sourceUrl}\n'
                         '${context.l10n.contentIntegrityNotice}',
                       ),
                       trailing: const Icon(Icons.offline_pin_outlined),
@@ -142,10 +167,196 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Widget _buildTranslationChooser(
+    AsyncValue<QuranContentState<List<QuranTranslation>>> catalog,
+    QuranTranslationSelection? selected, {
+    required bool selectionInvalid,
+  }) {
+    final catalogChooser = catalog.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) => _translationError(),
+      data: (state) => switch (state) {
+        UnavailableQuranContent<List<QuranTranslation>>() =>
+          _translationError(),
+        AvailableQuranContent<List<QuranTranslation>>(:final value) =>
+          _translationCatalog(value, selected),
+      },
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        catalogChooser,
+        if (selectionInvalid) ...<Widget>[
+          const SizedBox(height: 12),
+          Text(context.l10n.translationSelectionInvalid),
+        ],
+        if (selected != null) ...<Widget>[
+          const SizedBox(height: 12),
+          _selectedTranslationMetadata(selected),
+        ],
+        if (selected != null || selectionInvalid)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton(
+              key: const ValueKey<String>('quran-translation-clear'),
+              onPressed: _savingTranslation ? null : _clearTranslation,
+              child: Text(context.l10n.clearTranslation),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _translationCatalog(
+    List<QuranTranslation> translations,
+    QuranTranslationSelection? selected,
+  ) {
+    if (translations.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(context.l10n.noRussianTranslations),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => ref.invalidate(russianQuranTranslationsProvider),
+            icon: const Icon(Icons.refresh),
+            label: Text(context.l10n.retry),
+          ),
+        ],
+      );
+    }
+    final byIdentity = <String, QuranTranslation>{
+      for (final translation in translations)
+        _translationIdentity(translation): translation,
+    };
+    final selectedIdentity = selected == null
+        ? null
+        : _selectionIdentity(selected);
+    QuranTranslation? availableUpdate;
+    if (selected != null) {
+      for (final translation in translations) {
+        if (translation.source == selected.source &&
+            translation.key == selected.key &&
+            translation.languageCode == selected.languageCode &&
+            translation.version != selected.version) {
+          availableUpdate = translation;
+          break;
+        }
+      }
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        DropdownButtonFormField<String>(
+          key: const ValueKey<String>('quran-translation-selector'),
+          initialValue: byIdentity.containsKey(selectedIdentity)
+              ? selectedIdentity
+              : null,
+          decoration: InputDecoration(
+            labelText: context.l10n.translationNotSelected,
+          ),
+          items: <DropdownMenuItem<String>>[
+            for (final entry in byIdentity.entries)
+              DropdownMenuItem<String>(
+                value: entry.key,
+                child: Text('${entry.value.title} · v${entry.value.version}'),
+              ),
+          ],
+          onChanged: _savingTranslation
+              ? null
+              : (identity) {
+                  final translation = byIdentity[identity];
+                  if (translation != null) {
+                    _selectTranslation(translation);
+                  }
+                },
+        ),
+        if (_savingTranslation) ...<Widget>[
+          const SizedBox(height: 8),
+          const LinearProgressIndicator(),
+        ],
+        if (availableUpdate != null) ...<Widget>[
+          const SizedBox(height: 12),
+          Text(
+            context.l10n.translationUpdateAvailable(availableUpdate.version),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            key: const ValueKey<String>('quran-translation-update'),
+            onPressed: _savingTranslation
+                ? null
+                : () => _selectTranslation(availableUpdate!),
+            icon: const Icon(Icons.system_update_alt),
+            label: Text(
+              context.l10n.useTranslationVersion(availableUpdate.version),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _selectedTranslationMetadata(QuranTranslationSelection selected) {
+    return Text(
+      '${selected.title}\n'
+      '${selected.source} · v${selected.version}\n'
+      '${selected.attribution} · ${selected.fetchedAtUtc.toIso8601String()}',
+      style: Theme.of(context).textTheme.bodySmall,
+    );
+  }
+
+  Widget _translationError() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: <Widget>[
+      Text(context.l10n.translationCatalogError),
+      const SizedBox(height: 8),
+      OutlinedButton.icon(
+        onPressed: () => ref.invalidate(russianQuranTranslationsProvider),
+        icon: const Icon(Icons.refresh),
+        label: Text(context.l10n.retry),
+      ),
+    ],
+  );
+
+  String _translationIdentity(QuranTranslation value) =>
+      '${value.source}|${value.key}|${value.version}';
+
+  String _selectionIdentity(QuranTranslationSelection value) =>
+      '${value.source}|${value.key}|${value.version}';
+
+  Future<void> _selectTranslation(QuranTranslation translation) async {
+    setState(() => _savingTranslation = true);
+    try {
+      await ref
+          .read(quranTranslationSelectionControllerProvider)
+          .select(translation);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.errorGeneric)));
+      }
+    } finally {
+      if (mounted) setState(() => _savingTranslation = false);
+    }
+  }
+
+  Future<void> _clearTranslation() async {
+    setState(() => _savingTranslation = true);
+    try {
+      await ref.read(quranTranslationSelectionControllerProvider).clear();
+    } finally {
+      if (mounted) setState(() => _savingTranslation = false);
+    }
+  }
+
   Widget _buildBalanceControls(RotationSnapshot snapshot) {
     final candidates =
         snapshot.surahs
-            .where((surah) => surah.hasEnteredRotation)
+            .where(
+              (surah) =>
+                  surah.hasEnteredRotation && surah.surah.isRotationEligible,
+            )
             .toList(growable: false)
           ..sort(
             (left, right) =>

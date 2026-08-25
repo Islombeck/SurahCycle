@@ -361,4 +361,79 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get widgetOpenAppToLoadText => 'Open Murajaah to load verified text';
+
+  @override
+  String get customParts => 'Custom';
+
+  @override
+  String get customPartCount => 'Number of parts';
+
+  @override
+  String customPartCountRange(int max) {
+    return 'From 1 to $max';
+  }
+
+  @override
+  String get customPartCountInvalid => 'Enter a valid number of parts';
+
+  @override
+  String get fatihaRotationExcluded =>
+      'Al-Fatiha remains mastered but is excluded from the regular rotation.';
+
+  @override
+  String get completeLearningOnly => 'Complete learning';
+
+  @override
+  String get arabicTextOfflineReady =>
+      'Verified Tanzil Arabic text is available offline.';
+
+  @override
+  String get quranTranslation => 'Quran translation';
+
+  @override
+  String get chooseTranslation => 'Choose a translation in Settings';
+
+  @override
+  String get noRussianTranslations =>
+      'QuranEnc currently returns no Russian translations in its official API catalog. Arabic remains available offline.';
+
+  @override
+  String get translationCatalogError =>
+      'The official QuranEnc translation list could not be loaded.';
+
+  @override
+  String get translationNotSelected => 'No translation selected';
+
+  @override
+  String get translationCachedOffline =>
+      'The selected translation is cached for offline reading as surahs are opened.';
+
+  @override
+  String get translationUnavailableOffline =>
+      'The translation for this ayah is not stored yet. Arabic remains available while it downloads in the background.';
+
+  @override
+  String get clearTranslation => 'Clear translation selection';
+
+  @override
+  String get translationSelectionInvalid =>
+      'The saved translation selection is invalid or no longer supported. Arabic remains available.';
+
+  @override
+  String get translationVersionChanged =>
+      'The selected translation version has changed. Confirm the new version in Settings; Arabic remains available.';
+
+  @override
+  String translationUpdateAvailable(String version) {
+    return 'A new version of the selected translation is available: v$version. It will update only if you choose it.';
+  }
+
+  @override
+  String useTranslationVersion(String version) {
+    return 'Use v$version';
+  }
+
+  @override
+  String get tanzilTextMetadata =>
+      'Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0';
 }

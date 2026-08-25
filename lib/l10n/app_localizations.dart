@@ -741,6 +741,126 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Откройте Murajaah, чтобы загрузить проверенный текст'**
   String get widgetOpenAppToLoadText;
+
+  /// No description provided for @customParts.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свой'**
+  String get customParts;
+
+  /// No description provided for @customPartCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'Количество частей'**
+  String get customPartCount;
+
+  /// No description provided for @customPartCountRange.
+  ///
+  /// In ru, this message translates to:
+  /// **'От 1 до {max}'**
+  String customPartCountRange(int max);
+
+  /// No description provided for @customPartCountInvalid.
+  ///
+  /// In ru, this message translates to:
+  /// **'Введите допустимое количество частей'**
+  String get customPartCountInvalid;
+
+  /// No description provided for @fatihaRotationExcluded.
+  ///
+  /// In ru, this message translates to:
+  /// **'Аль-Фатиха сохраняется в выученных, но не участвует в обычной ротации.'**
+  String get fatihaRotationExcluded;
+
+  /// No description provided for @completeLearningOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Завершить обучение'**
+  String get completeLearningOnly;
+
+  /// No description provided for @arabicTextOfflineReady.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверенный арабский текст Tanzil доступен офлайн.'**
+  String get arabicTextOfflineReady;
+
+  /// No description provided for @quranTranslation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перевод Корана'**
+  String get quranTranslation;
+
+  /// No description provided for @chooseTranslation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выберите перевод в настройках'**
+  String get chooseTranslation;
+
+  /// No description provided for @noRussianTranslations.
+  ///
+  /// In ru, this message translates to:
+  /// **'QuranEnc сейчас не возвращает русские переводы в официальном каталоге API. Арабский текст остаётся доступен офлайн.'**
+  String get noRussianTranslations;
+
+  /// No description provided for @translationCatalogError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось получить официальный список переводов QuranEnc.'**
+  String get translationCatalogError;
+
+  /// No description provided for @translationNotSelected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перевод не выбран'**
+  String get translationNotSelected;
+
+  /// No description provided for @translationCachedOffline.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбранный перевод сохраняется для офлайн-чтения по мере открытия сур.'**
+  String get translationCachedOffline;
+
+  /// No description provided for @translationUnavailableOffline.
+  ///
+  /// In ru, this message translates to:
+  /// **'Для этого аята перевод ещё не сохранён. Арабский текст доступен, пока перевод загружается в фоне.'**
+  String get translationUnavailableOffline;
+
+  /// No description provided for @clearTranslation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить выбор перевода'**
+  String get clearTranslation;
+
+  /// No description provided for @translationSelectionInvalid.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранённый выбор перевода повреждён или больше не поддерживается. Арабский текст остаётся доступен.'**
+  String get translationSelectionInvalid;
+
+  /// No description provided for @translationVersionChanged.
+  ///
+  /// In ru, this message translates to:
+  /// **'Версия выбранного перевода изменилась. Подтвердите новую версию в настройках; арабский текст остаётся доступен.'**
+  String get translationVersionChanged;
+
+  /// No description provided for @translationUpdateAvailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступна новая версия выбранного перевода: v{version}. Обновление выполняется только по вашему выбору.'**
+  String translationUpdateAvailable(String version);
+
+  /// No description provided for @useTranslationVersion.
+  ///
+  /// In ru, this message translates to:
+  /// **'Использовать v{version}'**
+  String useTranslationVersion(String version);
+
+  /// No description provided for @tanzilTextMetadata.
+  ///
+  /// In ru, this message translates to:
+  /// **'Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0'**
+  String get tanzilTextMetadata;
 }
 
 class _AppLocalizationsDelegate

@@ -34,11 +34,26 @@ import es.antonborri.home_widget.HomeWidgetGlanceStateDefinition
 import es.antonborri.home_widget.HomeWidgetGlanceWidgetReceiver
 import es.antonborri.home_widget.actionStartActivity
 
-class LearningWidget : GlanceAppWidget() {
+class LearningWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
     override val stateDefinition = HomeWidgetGlanceStateDefinition()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent { Content(context, currentState()) }
+    }
+
+    override fun onCompositionError(
+        context: Context,
+        glanceId: GlanceId,
+        appWidgetId: Int,
+        throwable: Throwable,
+    ) {
+        logWidgetCompositionError(
+            widgetType = "LearningWidget",
+            appWidgetId = appWidgetId,
+            throwable = throwable,
+        )
+        super.onCompositionError(context, glanceId, appWidgetId, throwable)
+        installWidgetErrorClick(context, appWidgetId)
     }
 
     @Composable
@@ -58,7 +73,7 @@ class LearningWidget : GlanceAppWidget() {
                     .cornerRadius(22.dp)
                     .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
-            item(itemId = HEADER_ID) {
+            item {
                 Text(
                     context.getString(R.string.learning_widget_title),
                     modifier =
@@ -72,23 +87,23 @@ class LearningWidget : GlanceAppWidget() {
 
             when {
                 snapshot == null ->
-                    item(itemId = FALLBACK_ID) {
+                    item {
                         FallbackRow(
                             text = context.getString(R.string.widget_open_murajaah),
                             onClick = homeAction,
                         )
                     }
                 learningItem == null ->
-                    item(itemId = EMPTY_ID) {
+                    item {
                         FallbackRow(
                             text = context.getString(R.string.learning_widget_empty),
                             onClick = homeAction,
                         )
                     }
                 else -> {
-                    item(itemId = METADATA_ID) { LearningMetadata(context, learningItem) }
+                    item { LearningMetadata(context, learningItem) }
                     if (learningItem.verifiedTextLines.isEmpty()) {
-                        item(itemId = UNAVAILABLE_ID) {
+                        item {
                             Text(
                                 learningItem.unavailableTextLabel,
                                 modifier =
@@ -128,7 +143,7 @@ class LearningWidget : GlanceAppWidget() {
                 }
             }
 
-            item(itemId = FOOTER_ID) {
+            item {
                 Text(
                     context.getString(R.string.widget_open_app),
                     modifier =
@@ -176,15 +191,6 @@ class LearningWidget : GlanceAppWidget() {
             style = TextStyle(fontSize = 14.sp),
             maxLines = 3,
         )
-    }
-
-    private companion object {
-        const val HEADER_ID = Long.MIN_VALUE + 11
-        const val FALLBACK_ID = Long.MIN_VALUE + 12
-        const val EMPTY_ID = Long.MIN_VALUE + 13
-        const val METADATA_ID = Long.MIN_VALUE + 14
-        const val UNAVAILABLE_ID = Long.MIN_VALUE + 15
-        const val FOOTER_ID = Long.MIN_VALUE + 16
     }
 }
 

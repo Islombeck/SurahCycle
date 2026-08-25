@@ -193,7 +193,7 @@ final class RotationSnapshot {
   final List<MasteredSurah> surahs;
 
   Iterable<MasteredSurah> get activeSurahs =>
-      surahs.where((surah) => surah.isActive);
+      surahs.where((surah) => surah.isActive && surah.surah.isRotationEligible);
 
   MasteredSurah surahById(String id) {
     for (final surah in surahs) {
@@ -245,17 +245,18 @@ final class RotationEngine {
       throw StateError('Surah "${surah.id}" is already mastered.');
     }
 
+    final shouldActivate = activate && surah.isRotationEligible;
     final mastered = MasteredSurah(
       surah: surah,
-      isActive: activate,
-      hasEnteredRotation: activate,
+      isActive: shouldActivate,
+      hasEnteredRotation: shouldActivate,
       displayOrder: displayOrder,
       rotationScheme: SurahRotationScheme.unsplit(
         id: rotationSchemeId ?? '${surah.id}:scheme:1',
         surahId: surah.id,
         version: 1,
         ayahCount: surah.ayahCount,
-        baselineRotationScore: activate ? snapshot.rotationTarget - 1 : 0,
+        baselineRotationScore: shouldActivate ? snapshot.rotationTarget - 1 : 0,
       ),
     );
     return snapshot.copyWith(
@@ -271,9 +272,10 @@ final class RotationEngine {
     required bool isActive,
   }) {
     final existing = snapshot.surahById(surahId);
-    if (existing.isActive == isActive) return snapshot;
+    final shouldBeActive = isActive && existing.surah.isRotationEligible;
+    if (existing.isActive == shouldBeActive) return snapshot;
 
-    final firstActivation = isActive && !existing.hasEnteredRotation;
+    final firstActivation = shouldBeActive && !existing.hasEnteredRotation;
     final activatedScheme = firstActivation
         ? existing.rotationScheme.rebase(
             rotationScore: snapshot.rotationTarget - 1,
@@ -282,8 +284,8 @@ final class RotationEngine {
           )
         : existing.rotationScheme;
     final updated = existing.copyWith(
-      isActive: isActive,
-      hasEnteredRotation: existing.hasEnteredRotation || isActive,
+      isActive: shouldBeActive,
+      hasEnteredRotation: existing.hasEnteredRotation || shouldBeActive,
       rotationScheme: activatedScheme,
     );
     return _replace(snapshot, updated);
@@ -295,7 +297,10 @@ final class RotationEngine {
     MasteredSurah updated,
   ) {
     snapshot.surahById(updated.id);
-    return _replace(snapshot, updated);
+    final normalized = updated.surah.isRotationEligible || !updated.isActive
+        ? updated
+        : updated.copyWith(isActive: false);
+    return _replace(snapshot, normalized);
   }
 
   RotationSnapshot registerRecitation(
@@ -304,7 +309,7 @@ final class RotationEngine {
   ) {
     final resolvedEvent = resolveRecitation(snapshot, event);
     final current = snapshot.surahById(resolvedEvent.surahId);
-    if (!current.isActive) {
+    if (!current.isActive || !current.surah.isRotationEligible) {
       throw StateError(
         'Cannot register a rotation recitation for inactive surah '
         '"${resolvedEvent.surahId}".',

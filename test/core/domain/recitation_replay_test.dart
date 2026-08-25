@@ -160,7 +160,7 @@ void main() {
     final baseline = RotationSnapshot(
       surahs: <MasteredSurah>[
         MasteredSurah(
-          surah: testSurah(id: 'split', number: 1, ayahCount: 4),
+          surah: testSurah(id: 'split', number: 2, ayahCount: 4),
           isActive: true,
           hasEnteredRotation: true,
           rotationScheme: splitScheme,

@@ -5,6 +5,7 @@ import '../../../app/app_providers.dart';
 import '../../../app/localization_extensions.dart';
 import '../../../core/data/data.dart';
 import '../../../core/domain/domain.dart';
+import '../../quran/quran.dart';
 
 final class LearningScreen extends ConsumerStatefulWidget {
   const LearningScreen({super.key, this.initialSurahId});
@@ -74,7 +75,7 @@ final class _LearningScreenState extends ConsumerState<LearningScreen> {
                           const Icon(Icons.info_outline),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(context.l10n.contentUnavailableBody),
+                            child: Text(context.l10n.arabicTextOfflineReady),
                           ),
                         ],
                       ),
@@ -225,7 +226,11 @@ final class _LearningScreenState extends ConsumerState<LearningScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: Text(context.l10n.learningCompletedTitle),
-          content: Text(context.l10n.learningCompletedBody),
+          content: Text(
+            descriptor.isRotationEligible
+                ? context.l10n.learningCompletedBody
+                : context.l10n.fatihaRotationExcluded,
+          ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -233,7 +238,11 @@ final class _LearningScreenState extends ConsumerState<LearningScreen> {
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text(context.l10n.completeAndAdd),
+              child: Text(
+                descriptor.isRotationEligible
+                    ? context.l10n.completeAndAdd
+                    : context.l10n.completeLearningOnly,
+              ),
             ),
           ],
         ),
@@ -264,7 +273,7 @@ final class _LearningScreenState extends ConsumerState<LearningScreen> {
   }
 }
 
-final class _LearningCard extends StatelessWidget {
+final class _LearningCard extends ConsumerWidget {
   const _LearningCard({
     required this.state,
     required this.descriptor,
@@ -284,10 +293,19 @@ final class _LearningCard extends StatelessWidget {
   final VoidCallback onLearned;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final stage = state.stage.kind == LearningStageKind.newAyah
         ? context.l10n.newAyah(state.stage.ayahNumber)
         : context.l10n.cumulativeRange(state.stage.endAyah);
+    final reading = descriptor == null
+        ? null
+        : ref.watch(
+            quranReadingSurahProvider((
+              surahNumber: descriptor!.surahNumber,
+              ayahCount: descriptor!.ayahCount,
+              warmTranslation: isSelected,
+            )),
+          );
     return Card(
       key: ValueKey<String>('learning-surah-${state.surahId}'),
       child: Padding(
@@ -331,25 +349,38 @@ final class _LearningCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+            if (reading == null)
+              Text(context.l10n.errorGeneric)
+            else
+              reading.when(
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                error: (error, stackTrace) => Text(
+                  context.l10n.errorGeneric,
+                  textAlign: TextAlign.center,
+                ),
+                data: (content) => Column(
                   children: <Widget>[
-                    const Icon(Icons.text_snippet_outlined),
-                    const SizedBox(height: 8),
-                    Text(
-                      context.l10n.contentUnavailableTitle,
-                      textAlign: TextAlign.center,
-                    ),
+                    for (final ayah in content.range(
+                      startAyah: state.stage.startAyah,
+                      endAyah: state.stage.endAyah,
+                    ))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _LearningAyahCard(
+                          ayah: ayah,
+                          hasSelectedTranslation:
+                              content.translationSelection != null,
+                          translationIssue: content.translationIssue,
+                        ),
+                      ),
                   ],
                 ),
               ),
-            ),
             const SizedBox(height: 16),
             Row(
               children: <Widget>[
@@ -368,6 +399,72 @@ final class _LearningCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+final class _LearningAyahCard extends StatelessWidget {
+  const _LearningAyahCard({
+    required this.ayah,
+    required this.hasSelectedTranslation,
+    required this.translationIssue,
+  });
+
+  final QuranReadingAyah ayah;
+  final bool hasSelectedTranslation;
+  final QuranContentIssue? translationIssue;
+
+  @override
+  Widget build(BuildContext context) {
+    final translation = ayah.translation;
+    final fallback = switch (translationIssue) {
+      QuranContentIssue(
+        reason: QuranContentUnavailableReason.versionMismatch,
+      ) =>
+        context.l10n.translationVersionChanged,
+      QuranContentIssue(code: 'quran_translation_selection_invalid') =>
+        context.l10n.translationSelectionInvalid,
+      _ =>
+        hasSelectedTranslation
+            ? context.l10n.translationUnavailableOffline
+            : context.l10n.chooseTranslation,
+    };
+    return DecoratedBox(
+      key: ValueKey<String>(
+        'learning-ayah-${ayah.surahNumber}-${ayah.ayahNumber}',
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              '${ayah.ayahNumber}',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            Directionality(
+              textDirection: TextDirection.rtl,
+              child: Text(
+                ayah.arabicText,
+                textAlign: TextAlign.right,
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineSmall?.copyWith(height: 1.8),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              translation ?? fallback,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
         ),

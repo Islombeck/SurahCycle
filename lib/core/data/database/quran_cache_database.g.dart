@@ -720,6 +720,17 @@ class $QuranAyahCacheTable extends QuranAyahCache
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _translationFootnotesMeta =
+      const VerificationMeta('translationFootnotes');
+  @override
+  late final GeneratedColumn<String> translationFootnotes =
+      GeneratedColumn<String>(
+        'translation_footnotes',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     sourceId,
@@ -728,6 +739,7 @@ class $QuranAyahCacheTable extends QuranAyahCache
     providerAyahId,
     arabicText,
     translation,
+    translationFootnotes,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -792,6 +804,15 @@ class $QuranAyahCacheTable extends QuranAyahCache
         ),
       );
     }
+    if (data.containsKey('translation_footnotes')) {
+      context.handle(
+        _translationFootnotesMeta,
+        translationFootnotes.isAcceptableOrUnknown(
+          data['translation_footnotes']!,
+          _translationFootnotesMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -825,6 +846,10 @@ class $QuranAyahCacheTable extends QuranAyahCache
         DriftSqlType.string,
         data['${effectivePrefix}translation'],
       ),
+      translationFootnotes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}translation_footnotes'],
+      ),
     );
   }
 
@@ -842,6 +867,7 @@ class QuranAyahCacheRow extends DataClass
   final String? providerAyahId;
   final String? arabicText;
   final String? translation;
+  final String? translationFootnotes;
   const QuranAyahCacheRow({
     required this.sourceId,
     required this.surahNumber,
@@ -849,6 +875,7 @@ class QuranAyahCacheRow extends DataClass
     this.providerAyahId,
     this.arabicText,
     this.translation,
+    this.translationFootnotes,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -864,6 +891,9 @@ class QuranAyahCacheRow extends DataClass
     }
     if (!nullToAbsent || translation != null) {
       map['translation'] = Variable<String>(translation);
+    }
+    if (!nullToAbsent || translationFootnotes != null) {
+      map['translation_footnotes'] = Variable<String>(translationFootnotes);
     }
     return map;
   }
@@ -882,6 +912,9 @@ class QuranAyahCacheRow extends DataClass
       translation: translation == null && nullToAbsent
           ? const Value.absent()
           : Value(translation),
+      translationFootnotes: translationFootnotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(translationFootnotes),
     );
   }
 
@@ -897,6 +930,9 @@ class QuranAyahCacheRow extends DataClass
       providerAyahId: serializer.fromJson<String?>(json['providerAyahId']),
       arabicText: serializer.fromJson<String?>(json['arabicText']),
       translation: serializer.fromJson<String?>(json['translation']),
+      translationFootnotes: serializer.fromJson<String?>(
+        json['translationFootnotes'],
+      ),
     );
   }
   @override
@@ -909,6 +945,7 @@ class QuranAyahCacheRow extends DataClass
       'providerAyahId': serializer.toJson<String?>(providerAyahId),
       'arabicText': serializer.toJson<String?>(arabicText),
       'translation': serializer.toJson<String?>(translation),
+      'translationFootnotes': serializer.toJson<String?>(translationFootnotes),
     };
   }
 
@@ -919,6 +956,7 @@ class QuranAyahCacheRow extends DataClass
     Value<String?> providerAyahId = const Value.absent(),
     Value<String?> arabicText = const Value.absent(),
     Value<String?> translation = const Value.absent(),
+    Value<String?> translationFootnotes = const Value.absent(),
   }) => QuranAyahCacheRow(
     sourceId: sourceId ?? this.sourceId,
     surahNumber: surahNumber ?? this.surahNumber,
@@ -928,6 +966,9 @@ class QuranAyahCacheRow extends DataClass
         : this.providerAyahId,
     arabicText: arabicText.present ? arabicText.value : this.arabicText,
     translation: translation.present ? translation.value : this.translation,
+    translationFootnotes: translationFootnotes.present
+        ? translationFootnotes.value
+        : this.translationFootnotes,
   );
   QuranAyahCacheRow copyWithCompanion(QuranAyahCacheCompanion data) {
     return QuranAyahCacheRow(
@@ -947,6 +988,9 @@ class QuranAyahCacheRow extends DataClass
       translation: data.translation.present
           ? data.translation.value
           : this.translation,
+      translationFootnotes: data.translationFootnotes.present
+          ? data.translationFootnotes.value
+          : this.translationFootnotes,
     );
   }
 
@@ -958,7 +1002,8 @@ class QuranAyahCacheRow extends DataClass
           ..write('ayahNumber: $ayahNumber, ')
           ..write('providerAyahId: $providerAyahId, ')
           ..write('arabicText: $arabicText, ')
-          ..write('translation: $translation')
+          ..write('translation: $translation, ')
+          ..write('translationFootnotes: $translationFootnotes')
           ..write(')'))
         .toString();
   }
@@ -971,6 +1016,7 @@ class QuranAyahCacheRow extends DataClass
     providerAyahId,
     arabicText,
     translation,
+    translationFootnotes,
   );
   @override
   bool operator ==(Object other) =>
@@ -981,7 +1027,8 @@ class QuranAyahCacheRow extends DataClass
           other.ayahNumber == this.ayahNumber &&
           other.providerAyahId == this.providerAyahId &&
           other.arabicText == this.arabicText &&
-          other.translation == this.translation);
+          other.translation == this.translation &&
+          other.translationFootnotes == this.translationFootnotes);
 }
 
 class QuranAyahCacheCompanion extends UpdateCompanion<QuranAyahCacheRow> {
@@ -991,6 +1038,7 @@ class QuranAyahCacheCompanion extends UpdateCompanion<QuranAyahCacheRow> {
   final Value<String?> providerAyahId;
   final Value<String?> arabicText;
   final Value<String?> translation;
+  final Value<String?> translationFootnotes;
   final Value<int> rowid;
   const QuranAyahCacheCompanion({
     this.sourceId = const Value.absent(),
@@ -999,6 +1047,7 @@ class QuranAyahCacheCompanion extends UpdateCompanion<QuranAyahCacheRow> {
     this.providerAyahId = const Value.absent(),
     this.arabicText = const Value.absent(),
     this.translation = const Value.absent(),
+    this.translationFootnotes = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   QuranAyahCacheCompanion.insert({
@@ -1008,6 +1057,7 @@ class QuranAyahCacheCompanion extends UpdateCompanion<QuranAyahCacheRow> {
     this.providerAyahId = const Value.absent(),
     this.arabicText = const Value.absent(),
     this.translation = const Value.absent(),
+    this.translationFootnotes = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : sourceId = Value(sourceId),
        surahNumber = Value(surahNumber),
@@ -1019,6 +1069,7 @@ class QuranAyahCacheCompanion extends UpdateCompanion<QuranAyahCacheRow> {
     Expression<String>? providerAyahId,
     Expression<String>? arabicText,
     Expression<String>? translation,
+    Expression<String>? translationFootnotes,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1028,6 +1079,8 @@ class QuranAyahCacheCompanion extends UpdateCompanion<QuranAyahCacheRow> {
       if (providerAyahId != null) 'provider_ayah_id': providerAyahId,
       if (arabicText != null) 'arabic_text': arabicText,
       if (translation != null) 'translation': translation,
+      if (translationFootnotes != null)
+        'translation_footnotes': translationFootnotes,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1039,6 +1092,7 @@ class QuranAyahCacheCompanion extends UpdateCompanion<QuranAyahCacheRow> {
     Value<String?>? providerAyahId,
     Value<String?>? arabicText,
     Value<String?>? translation,
+    Value<String?>? translationFootnotes,
     Value<int>? rowid,
   }) {
     return QuranAyahCacheCompanion(
@@ -1048,6 +1102,7 @@ class QuranAyahCacheCompanion extends UpdateCompanion<QuranAyahCacheRow> {
       providerAyahId: providerAyahId ?? this.providerAyahId,
       arabicText: arabicText ?? this.arabicText,
       translation: translation ?? this.translation,
+      translationFootnotes: translationFootnotes ?? this.translationFootnotes,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1073,6 +1128,11 @@ class QuranAyahCacheCompanion extends UpdateCompanion<QuranAyahCacheRow> {
     if (translation.present) {
       map['translation'] = Variable<String>(translation.value);
     }
+    if (translationFootnotes.present) {
+      map['translation_footnotes'] = Variable<String>(
+        translationFootnotes.value,
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1088,6 +1148,7 @@ class QuranAyahCacheCompanion extends UpdateCompanion<QuranAyahCacheRow> {
           ..write('providerAyahId: $providerAyahId, ')
           ..write('arabicText: $arabicText, ')
           ..write('translation: $translation, ')
+          ..write('translationFootnotes: $translationFootnotes, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2162,6 +2223,7 @@ typedef $$QuranAyahCacheTableCreateCompanionBuilder =
       Value<String?> providerAyahId,
       Value<String?> arabicText,
       Value<String?> translation,
+      Value<String?> translationFootnotes,
       Value<int> rowid,
     });
 typedef $$QuranAyahCacheTableUpdateCompanionBuilder =
@@ -2172,6 +2234,7 @@ typedef $$QuranAyahCacheTableUpdateCompanionBuilder =
       Value<String?> providerAyahId,
       Value<String?> arabicText,
       Value<String?> translation,
+      Value<String?> translationFootnotes,
       Value<int> rowid,
     });
 
@@ -2241,6 +2304,11 @@ class $$QuranAyahCacheTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get translationFootnotes => $composableBuilder(
+    column: $table.translationFootnotes,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$QuranSourceMetadataTableFilterComposer get sourceId {
     final $$QuranSourceMetadataTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -2296,6 +2364,11 @@ class $$QuranAyahCacheTableOrderingComposer
 
   ColumnOrderings<String> get translation => $composableBuilder(
     column: $table.translation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get translationFootnotes => $composableBuilder(
+    column: $table.translationFootnotes,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2355,6 +2428,11 @@ class $$QuranAyahCacheTableAnnotationComposer
 
   GeneratedColumn<String> get translation => $composableBuilder(
     column: $table.translation,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get translationFootnotes => $composableBuilder(
+    column: $table.translationFootnotes,
     builder: (column) => column,
   );
 
@@ -2419,6 +2497,7 @@ class $$QuranAyahCacheTableTableManager
                 Value<String?> providerAyahId = const Value.absent(),
                 Value<String?> arabicText = const Value.absent(),
                 Value<String?> translation = const Value.absent(),
+                Value<String?> translationFootnotes = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => QuranAyahCacheCompanion(
                 sourceId: sourceId,
@@ -2427,6 +2506,7 @@ class $$QuranAyahCacheTableTableManager
                 providerAyahId: providerAyahId,
                 arabicText: arabicText,
                 translation: translation,
+                translationFootnotes: translationFootnotes,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2437,6 +2517,7 @@ class $$QuranAyahCacheTableTableManager
                 Value<String?> providerAyahId = const Value.absent(),
                 Value<String?> arabicText = const Value.absent(),
                 Value<String?> translation = const Value.absent(),
+                Value<String?> translationFootnotes = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => QuranAyahCacheCompanion.insert(
                 sourceId: sourceId,
@@ -2445,6 +2526,7 @@ class $$QuranAyahCacheTableTableManager
                 providerAyahId: providerAyahId,
                 arabicText: arabicText,
                 translation: translation,
+                translationFootnotes: translationFootnotes,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

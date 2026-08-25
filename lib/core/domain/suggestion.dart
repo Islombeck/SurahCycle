@@ -2,18 +2,37 @@ import 'rotation.dart';
 import 'rotation_scheme.dart';
 import 'surah.dart';
 
-/// Explainable recommendation for a mastered surah.
+/// Product-level ceiling shared by Home and widget recommendation projections.
+const int maxRecommendationCount = 8;
+
+/// Explainable, ranked recommendation for a mastered surah.
 final class SurahSuggestion {
   SurahSuggestion({
     required this.surah,
     required this.remaining,
+    required this.recommendationRank,
     Iterable<SurahRotationPart> recommendedParts = const <SurahRotationPart>[],
   }) : recommendedParts = List<SurahRotationPart>.unmodifiable(
          recommendedParts,
-       );
+       ) {
+    if (remaining <= 0) {
+      throw ArgumentError.value(remaining, 'remaining', 'Must be positive.');
+    }
+    if (recommendationRank < 0 ||
+        recommendationRank >= maxRecommendationCount) {
+      throw ArgumentError.value(
+        recommendationRank,
+        'recommendationRank',
+        'Must be between zero and ${maxRecommendationCount - 1}.',
+      );
+    }
+  }
 
   final MasteredSurah surah;
   final int remaining;
+
+  /// Zero-based stable rank within the current recommendation projection.
+  final int recommendationRank;
   final List<SurahRotationPart> recommendedParts;
 
   SurahRotationPart? get recommendedPart =>
@@ -25,18 +44,26 @@ final class SurahSuggestion {
       other is SurahSuggestion &&
           surah == other.surah &&
           remaining == other.remaining &&
+          recommendationRank == other.recommendationRank &&
           _sameParts(recommendedParts, other.recommendedParts);
 
   @override
-  int get hashCode =>
-      Object.hash(surah, remaining, Object.hashAll(recommendedParts));
+  int get hashCode => Object.hash(
+    surah,
+    remaining,
+    recommendationRank,
+    Object.hashAll(recommendedParts),
+  );
 }
 
-/// Orders active surahs using deterministic, user-explainable rules.
+/// Orders due, rotation-eligible surahs using deterministic product rules.
 final class SurahSuggestionService {
   const SurahSuggestionService();
 
-  List<SurahSuggestion> suggest(RotationSnapshot snapshot, {int limit = 3}) {
+  List<SurahSuggestion> suggest(
+    RotationSnapshot snapshot, {
+    int limit = maxRecommendationCount,
+  }) {
     if (limit < 0) {
       throw ArgumentError.value(limit, 'limit', 'Must not be negative.');
     }
@@ -51,51 +78,162 @@ final class SurahSuggestionService {
                 snapshot.rotationTarget - part.rotationScore == remaining,
           );
           final sortedParts = parts.toList()..sort(_compareParts);
-          return SurahSuggestion(
+          return _SuggestionCandidate(
             surah: surah,
             remaining: remaining,
             recommendedParts: sortedParts,
           );
         })
-        .whereType<SurahSuggestion>()
+        .whereType<_SuggestionCandidate>()
         .toList();
     candidates.sort(_compare);
-    return List<SurahSuggestion>.unmodifiable(candidates.take(limit));
+
+    final effectiveLimit = limit < maxRecommendationCount
+        ? limit
+        : maxRecommendationCount;
+    final selected = candidates.take(effectiveLimit).toList(growable: false);
+    return List<SurahSuggestion>.unmodifiable(<SurahSuggestion>[
+      for (var index = 0; index < selected.length; index += 1)
+        SurahSuggestion(
+          surah: selected[index].surah,
+          remaining: selected[index].remaining,
+          recommendationRank: index,
+          recommendedParts: selected[index].recommendedParts,
+        ),
+    ]);
   }
 
-  int _compare(SurahSuggestion left, SurahSuggestion right) {
-    // Greater debt is more urgent.
+  int _compare(_SuggestionCandidate left, _SuggestionCandidate right) {
     final remainingComparison = right.remaining.compareTo(left.remaining);
     if (remainingComparison != 0) return remainingComparison;
 
-    // Never-recited surahs precede every timestamped surah.
-    final leftUsed = left.recommendedPart?.lastUsedAtUtc;
-    final rightUsed = right.recommendedPart?.lastUsedAtUtc;
-    if (leftUsed == null && rightUsed != null) return -1;
-    if (leftUsed != null && rightUsed == null) return 1;
-    if (leftUsed != null && rightUsed != null) {
-      final lastUsedComparison = leftUsed.compareTo(rightUsed);
-      if (lastUsedComparison != 0) return lastUsedComparison;
-    }
+    final usedComparison = compareNullableLastUsed(
+      left.recommendedPart?.lastUsedAtUtc,
+      right.recommendedPart?.lastUsedAtUtc,
+    );
+    if (usedComparison != 0) return usedComparison;
 
     final orderComparison = left.surah.displayOrder.compareTo(
       right.surah.displayOrder,
     );
     if (orderComparison != 0) return orderComparison;
+    final numberComparison = left.surah.surah.surahNumber.compareTo(
+      right.surah.surah.surahNumber,
+    );
+    if (numberComparison != 0) return numberComparison;
     return left.surah.id.compareTo(right.surah.id);
   }
 
   int _compareParts(SurahRotationPart left, SurahRotationPart right) {
-    final leftUsed = left.lastUsedAtUtc;
-    final rightUsed = right.lastUsedAtUtc;
-    if (leftUsed == null && rightUsed != null) return -1;
-    if (leftUsed != null && rightUsed == null) return 1;
-    if (leftUsed != null && rightUsed != null) {
-      final timeOrder = leftUsed.compareTo(rightUsed);
-      if (timeOrder != 0) return timeOrder;
-    }
+    final usedComparison = compareNullableLastUsed(
+      left.lastUsedAtUtc,
+      right.lastUsedAtUtc,
+    );
+    if (usedComparison != 0) return usedComparison;
     return left.partNumber.compareTo(right.partNumber);
   }
+}
+
+/// Produces the dynamic Home ordering without mutating persisted display order.
+///
+/// Recommendations are first in rank order. Every other active surah follows
+/// by descending remaining balance (due, exact, then increasingly ahead),
+/// oldest use, display order, surah number, and stable identifier.
+final class SurahOperationalOrderService {
+  const SurahOperationalOrderService({
+    this.suggestionService = const SurahSuggestionService(),
+  });
+
+  final SurahSuggestionService suggestionService;
+
+  List<MasteredSurah> order(
+    RotationSnapshot snapshot, {
+    Iterable<SurahSuggestion>? recommendations,
+  }) {
+    final resolvedRecommendations = List<SurahSuggestion>.unmodifiable(
+      recommendations ?? suggestionService.suggest(snapshot),
+    );
+    final ranks = <String, int>{};
+    for (final suggestion in resolvedRecommendations) {
+      if (!ranks.containsKey(suggestion.surah.id)) {
+        ranks[suggestion.surah.id] = suggestion.recommendationRank;
+      } else {
+        throw ArgumentError.value(
+          resolvedRecommendations,
+          'recommendations',
+          'A surah may have only one recommendation rank.',
+        );
+      }
+    }
+
+    final active = snapshot.activeSurahs.toList(growable: false);
+    active.sort(
+      (MasteredSurah left, MasteredSurah right) =>
+          compare(snapshot, left, right, recommendationRanks: ranks),
+    );
+    return List<MasteredSurah>.unmodifiable(active);
+  }
+
+  int compare(
+    RotationSnapshot snapshot,
+    MasteredSurah left,
+    MasteredSurah right, {
+    required Map<String, int> recommendationRanks,
+  }) {
+    final leftRank = recommendationRanks[left.id];
+    final rightRank = recommendationRanks[right.id];
+    if (leftRank != null && rightRank == null) return -1;
+    if (leftRank == null && rightRank != null) return 1;
+    if (leftRank != null && rightRank != null) {
+      final rankComparison = leftRank.compareTo(rightRank);
+      if (rankComparison != 0) return rankComparison;
+    }
+
+    final remainingComparison = snapshot
+        .remainingFor(right.id)
+        .compareTo(snapshot.remainingFor(left.id));
+    if (remainingComparison != 0) return remainingComparison;
+
+    final usedComparison = compareNullableLastUsed(
+      left.lastUsedAtUtc,
+      right.lastUsedAtUtc,
+    );
+    if (usedComparison != 0) return usedComparison;
+
+    final displayOrderComparison = left.displayOrder.compareTo(
+      right.displayOrder,
+    );
+    if (displayOrderComparison != 0) return displayOrderComparison;
+
+    final surahNumberComparison = left.surah.surahNumber.compareTo(
+      right.surah.surahNumber,
+    );
+    if (surahNumberComparison != 0) return surahNumberComparison;
+    return left.id.compareTo(right.id);
+  }
+}
+
+/// Null means never used and therefore sorts before every recorded timestamp.
+int compareNullableLastUsed(DateTime? left, DateTime? right) {
+  if (left == null && right != null) return -1;
+  if (left != null && right == null) return 1;
+  if (left != null && right != null) return left.compareTo(right);
+  return 0;
+}
+
+final class _SuggestionCandidate {
+  const _SuggestionCandidate({
+    required this.surah,
+    required this.remaining,
+    required this.recommendedParts,
+  });
+
+  final MasteredSurah surah;
+  final int remaining;
+  final List<SurahRotationPart> recommendedParts;
+
+  SurahRotationPart? get recommendedPart =>
+      recommendedParts.isEmpty ? null : recommendedParts.first;
 }
 
 bool _sameParts(List<SurahRotationPart> left, List<SurahRotationPart> right) {

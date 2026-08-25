@@ -15,6 +15,8 @@ void main() {
         title: 'Synthetic test translation',
       ),
       surahNumber: 9,
+      expectedAyahCount: 1,
+      allowNetwork: false,
     );
 
     expect(catalog, isA<UnavailableQuranContent<List<QuranTranslation>>>());

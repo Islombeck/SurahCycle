@@ -68,8 +68,11 @@ final class _SurahDetailScreenState extends ConsumerState<SurahDetailScreen> {
                             ? context.l10n.activeRotation
                             : context.l10n.inactiveRotation,
                       ),
+                      subtitle: surah.surah.isRotationEligible
+                          ? null
+                          : Text(context.l10n.fatihaRotationExcluded),
                       value: surah.isActive,
-                      onChanged: _busy
+                      onChanged: _busy || !surah.surah.isRotationEligible
                           ? null
                           : (value) => _run(
                               () => ref
@@ -217,15 +220,21 @@ final class _SegmentationSheet extends StatefulWidget {
 }
 
 final class _SegmentationSheetState extends State<_SegmentationSheet> {
+  static const int _customSelection = 0;
+
   late int _partCount;
+  late bool _customMode;
   late bool _manual;
+  late final TextEditingController _partCountController;
   List<TextEditingController> _endControllers = <TextEditingController>[];
 
   @override
   void initState() {
     super.initState();
     _partCount = widget.surah.rotationScheme.parts.length;
+    _customMode = _partCount > 4;
     _manual = false;
+    _partCountController = TextEditingController(text: '$_partCount');
     _setRanges(
       widget.surah.rotationScheme.parts.map((part) => part.ayahRange).toList(),
     );
@@ -233,6 +242,7 @@ final class _SegmentationSheetState extends State<_SegmentationSheet> {
 
   @override
   void dispose() {
+    _partCountController.dispose();
     for (final controller in _endControllers) {
       controller.dispose();
     }
@@ -250,6 +260,9 @@ final class _SegmentationSheetState extends State<_SegmentationSheet> {
   }
 
   List<AyahRange>? get _ranges {
+    if (_customMode && !_isValidPartCountText(_partCountController.text)) {
+      return null;
+    }
     if (_partCount == 1) {
       return <AyahRange>[
         AyahRange(startAyah: 1, endAyah: widget.surah.surah.ayahCount),
@@ -279,7 +292,42 @@ final class _SegmentationSheetState extends State<_SegmentationSheet> {
     return ranges;
   }
 
-  void _selectPartCount(int value) {
+  bool _isValidPartCountText(String raw) {
+    final value = int.tryParse(raw.trim());
+    return value != null && value >= 1 && value <= widget.surah.surah.ayahCount;
+  }
+
+  void _selectPartCount(int value, {required bool customMode}) {
+    final ranges = suggestEvenRanges(
+      ayahCount: widget.surah.surah.ayahCount,
+      partCount: value,
+    );
+    setState(() {
+      _partCount = value;
+      _customMode = customMode;
+      _manual = false;
+      _partCountController.text = '$value';
+      _setRanges(ranges);
+    });
+  }
+
+  void _selectMode(int value) {
+    if (value != _customSelection) {
+      _selectPartCount(value, customMode: false);
+      return;
+    }
+    final proposed = widget.surah.surah.ayahCount > 4 && _partCount <= 4
+        ? 5
+        : _partCount;
+    _selectPartCount(proposed, customMode: true);
+  }
+
+  void _updateCustomPartCount(String raw) {
+    if (!_isValidPartCountText(raw)) {
+      setState(() {});
+      return;
+    }
+    final value = int.parse(raw.trim());
     final ranges = suggestEvenRanges(
       ayahCount: widget.surah.surah.ayahCount,
       partCount: value,
@@ -294,7 +342,7 @@ final class _SegmentationSheetState extends State<_SegmentationSheet> {
   @override
   Widget build(BuildContext context) {
     final ranges = _ranges;
-    final maxParts = widget.surah.surah.ayahCount < 4
+    final maxPreset = widget.surah.surah.ayahCount < 4
         ? widget.surah.surah.ayahCount
         : 4;
     return SafeArea(
@@ -316,14 +364,37 @@ final class _SegmentationSheetState extends State<_SegmentationSheet> {
               ),
               const SizedBox(height: 12),
               SegmentedButton<int>(
+                key: const ValueKey<String>('segmentation-preset-selector'),
                 segments: <ButtonSegment<int>>[
-                  for (var count = 1; count <= maxParts; count += 1)
+                  for (var count = 1; count <= maxPreset; count += 1)
                     ButtonSegment<int>(value: count, label: Text('$count')),
+                  ButtonSegment<int>(
+                    value: _customSelection,
+                    label: Text(context.l10n.customParts),
+                  ),
                 ],
-                selected: <int>{_partCount},
+                selected: <int>{_customMode ? _customSelection : _partCount},
                 onSelectionChanged: (selection) =>
-                    _selectPartCount(selection.single),
+                    _selectMode(selection.single),
               ),
+              if (_customMode) ...<Widget>[
+                const SizedBox(height: 12),
+                TextField(
+                  key: const ValueKey<String>('custom-part-count'),
+                  controller: _partCountController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.customPartCount,
+                    helperText: context.l10n.customPartCountRange(
+                      widget.surah.surah.ayahCount,
+                    ),
+                    errorText: _isValidPartCountText(_partCountController.text)
+                        ? null
+                        : context.l10n.customPartCountInvalid,
+                  ),
+                  onChanged: _updateCustomPartCount,
+                ),
+              ],
               const SizedBox(height: 12),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,

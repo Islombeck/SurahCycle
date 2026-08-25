@@ -1,9 +1,14 @@
 import 'dart:convert';
 
+import '../domain/suggestion.dart';
 import 'widget_deep_link.dart';
 
 /// Shared storage key used by Flutter and the native widget implementations.
 const String widgetSnapshotStorageKey = 'murajaah_widget_snapshot';
+
+/// Shared protocol ceilings mirrored by the native Android decoder.
+const int maxRotationWidgetItems = 64;
+const int maxLearningWidgetTextLines = 3;
 
 /// A fully denormalized, display-ready projection for home-screen widgets.
 ///
@@ -39,7 +44,7 @@ final class WidgetSnapshot {
     required this.learning,
   });
 
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
 
   final DateTime generatedAtUtc;
   final String locale;
@@ -78,23 +83,57 @@ final class WidgetSnapshot {
 final class RotationWidgetProjection {
   factory RotationWidgetProjection({
     required Iterable<RotationWidgetItem> items,
+    int omittedCount = 0,
   }) {
+    if (omittedCount < 0) {
+      throw ArgumentError.value(
+        omittedCount,
+        'omittedCount',
+        'Must not be negative.',
+      );
+    }
     final result = List<RotationWidgetItem>.unmodifiable(items);
+    if (result.length > maxRotationWidgetItems) {
+      throw ArgumentError.value(
+        result.length,
+        'items',
+        'Must contain at most $maxRotationWidgetItems rows.',
+      );
+    }
     final ids = <String>{};
+    final stableIds = <int>{};
+    final recommendationRanks = <int>{};
     for (final item in result) {
       if (!ids.add(item.id)) {
         throw ArgumentError.value(item.id, 'items', 'IDs must be unique.');
       }
+      if (!stableIds.add(stableWidgetItemId(item.id))) {
+        throw ArgumentError.value(
+          item.id,
+          'items',
+          'IDs must not collide after native stable hashing.',
+        );
+      }
+      final rank = item.recommendationRank;
+      if (rank != null && !recommendationRanks.add(rank)) {
+        throw ArgumentError.value(
+          rank,
+          'items',
+          'Recommendation ranks must be unique.',
+        );
+      }
     }
-    return RotationWidgetProjection._(result);
+    return RotationWidgetProjection._(result, omittedCount);
   }
 
-  const RotationWidgetProjection._(this.items);
+  const RotationWidgetProjection._(this.items, this.omittedCount);
 
   final List<RotationWidgetItem> items;
+  final int omittedCount;
 
   Map<String, Object?> toJson() => <String, Object?>{
     'items': items.map((item) => item.toJson()).toList(growable: false),
+    'omittedCount': omittedCount,
   };
 
   static RotationWidgetProjection _fromJson(Map<String, Object?> json) =>
@@ -103,15 +142,18 @@ final class RotationWidgetProjection {
           json,
           'items',
         ).map((item) => RotationWidgetItem._fromJson(_asMap(item, 'item'))),
+        omittedCount: _integer(json, 'omittedCount'),
       );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is RotationWidgetProjection && _listEquals(items, other.items);
+      other is RotationWidgetProjection &&
+          _listEquals(items, other.items) &&
+          omittedCount == other.omittedCount;
 
   @override
-  int get hashCode => Object.hashAll(items);
+  int get hashCode => Object.hash(Object.hashAll(items), omittedCount);
 }
 
 final class RotationWidgetItem {
@@ -122,7 +164,7 @@ final class RotationWidgetItem {
     required String title,
     String? subtitle,
     required int remaining,
-    required bool isRecommended,
+    int? recommendationRank,
     required Uri deepLink,
   }) {
     _requireText(id, 'id', maxLength: 256);
@@ -132,6 +174,16 @@ final class RotationWidgetItem {
     if (subtitle != null) _requireText(subtitle, 'subtitle', maxLength: 512);
     if (remaining <= 0) {
       throw ArgumentError.value(remaining, 'remaining', 'Must be positive.');
+    }
+    if (recommendationRank != null &&
+        (recommendationRank < 0 ||
+            recommendationRank >= maxRecommendationCount)) {
+      throw ArgumentError.value(
+        recommendationRank,
+        'recommendationRank',
+        'Must be in the product range '
+            '0–${maxRecommendationCount - 1}.',
+      );
     }
     final parsedLink = WidgetDeepLink.parse(deepLink);
     if (parsedLink is! WidgetSurahDeepLink ||
@@ -150,7 +202,7 @@ final class RotationWidgetItem {
       title: title,
       subtitle: subtitle,
       remaining: remaining,
-      isRecommended: isRecommended,
+      recommendationRank: recommendationRank,
       deepLink: deepLink,
     );
   }
@@ -162,7 +214,7 @@ final class RotationWidgetItem {
     required this.title,
     required this.subtitle,
     required this.remaining,
-    required this.isRecommended,
+    required this.recommendationRank,
     required this.deepLink,
   });
 
@@ -172,8 +224,10 @@ final class RotationWidgetItem {
   final String title;
   final String? subtitle;
   final int remaining;
-  final bool isRecommended;
+  final int? recommendationRank;
   final Uri deepLink;
+
+  bool get isRecommended => recommendationRank != null;
 
   /// Debt text is deliberately derived in Dart, never in Kotlin.
   String get debtLabel => remaining > 1 ? '$remaining×' : '';
@@ -186,7 +240,7 @@ final class RotationWidgetItem {
     if (subtitle != null) 'subtitle': subtitle,
     'remaining': remaining,
     'debtLabel': debtLabel,
-    'isRecommended': isRecommended,
+    if (recommendationRank != null) 'recommendationRank': recommendationRank,
     'deepLink': deepLink.toString(),
   };
 
@@ -198,7 +252,9 @@ final class RotationWidgetItem {
       title: _string(json, 'title'),
       subtitle: _nullableString(json, 'subtitle'),
       remaining: _integer(json, 'remaining'),
-      isRecommended: _boolean(json, 'isRecommended'),
+      recommendationRank: json.containsKey('recommendationRank')
+          ? _integer(json, 'recommendationRank')
+          : null,
       deepLink: Uri.parse(_string(json, 'deepLink')),
     );
     if (_string(json, 'debtLabel') != item.debtLabel) {
@@ -217,7 +273,7 @@ final class RotationWidgetItem {
           title == other.title &&
           subtitle == other.subtitle &&
           remaining == other.remaining &&
-          isRecommended == other.isRecommended &&
+          recommendationRank == other.recommendationRank &&
           deepLink == other.deepLink;
 
   @override
@@ -228,7 +284,7 @@ final class RotationWidgetItem {
     title,
     subtitle,
     remaining,
-    isRecommended,
+    recommendationRank,
     deepLink,
   );
 }
@@ -279,6 +335,13 @@ final class LearningWidgetItem {
     _requireText(rangeLabel, 'rangeLabel', maxLength: 256);
     _requireText(unavailableTextLabel, 'unavailableTextLabel', maxLength: 512);
     final textLines = List<String>.unmodifiable(verifiedTextLines);
+    if (textLines.length > maxLearningWidgetTextLines) {
+      throw ArgumentError.value(
+        textLines.length,
+        'verifiedTextLines',
+        'Must contain at most $maxLearningWidgetTextLines lines.',
+      );
+    }
     for (final line in textLines) {
       // Validate without trimming or otherwise changing verified Quran text.
       _requireText(line, 'verifiedTextLines', maxLength: 8192);
@@ -472,12 +535,6 @@ int _integer(Map<String, Object?> json, String key) {
   return value;
 }
 
-bool _boolean(Map<String, Object?> json, String key) {
-  final value = json[key];
-  if (value is! bool) throw FormatException('$key is not a boolean.');
-  return value;
-}
-
 bool _listEquals<T>(List<T> left, List<T> right) {
   if (identical(left, right)) return true;
   if (left.length != right.length) return false;
@@ -485,4 +542,16 @@ bool _listEquals<T>(List<T> left, List<T> right) {
     if (left[index] != right[index]) return false;
   }
   return true;
+}
+
+/// Mirrors Kotlin's overflowing 64-bit polynomial hash followed by
+/// `and Long.MAX_VALUE`. Dart integers do not overflow, so retaining the low
+/// 63 bits after every step produces the same final non-negative identifier.
+int stableWidgetItemId(String value) {
+  const mask = 0x7FFFFFFFFFFFFFFF;
+  var hash = 1125899906842597;
+  for (final codeUnit in value.codeUnits) {
+    hash = (31 * hash + codeUnit) & mask;
+  }
+  return hash;
 }

@@ -154,8 +154,9 @@ final class SurahRotationPart {
 
 /// A versioned, immutable partition definition with rebuildable part state.
 ///
-/// Every scheme contains one to four contiguous parts that exactly cover the
-/// verified [ayahCount]. An unsplit surah is represented by one part.
+/// Every scheme contains one or more contiguous parts that exactly cover the
+/// verified [ayahCount]. A part always contains at least one ayah, so the
+/// verified ayah count is the natural maximum. An unsplit surah has one part.
 final class SurahRotationScheme {
   factory SurahRotationScheme({
     required String id,
@@ -439,12 +440,8 @@ List<AyahRange> suggestEvenRanges({
   if (ayahCount <= 0) {
     throw ArgumentError.value(ayahCount, 'ayahCount', 'Must be positive.');
   }
-  if (partCount < 1 || partCount > 4) {
-    throw ArgumentError.value(
-      partCount,
-      'partCount',
-      'Must be between one and four.',
-    );
+  if (partCount < 1) {
+    throw ArgumentError.value(partCount, 'partCount', 'Must be at least one.');
   }
   if (partCount > ayahCount) {
     throw ArgumentError.value(
@@ -473,11 +470,11 @@ void _validateParts({
   required int ayahCount,
   required List<SurahRotationPart> parts,
 }) {
-  if (parts.isEmpty || parts.length > 4) {
+  if (parts.isEmpty || parts.length > ayahCount) {
     throw ArgumentError.value(
       parts.length,
       'parts',
-      'A scheme must contain between one and four parts.',
+      'A scheme must contain between one and ayahCount parts.',
     );
   }
   final ids = <String>{};

@@ -35,11 +35,26 @@ import es.antonborri.home_widget.HomeWidgetGlanceStateDefinition
 import es.antonborri.home_widget.HomeWidgetGlanceWidgetReceiver
 import es.antonborri.home_widget.actionStartActivity
 
-class RotationWidget : GlanceAppWidget() {
+class RotationWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
     override val stateDefinition = HomeWidgetGlanceStateDefinition()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent { Content(context, currentState()) }
+    }
+
+    override fun onCompositionError(
+        context: Context,
+        glanceId: GlanceId,
+        appWidgetId: Int,
+        throwable: Throwable,
+    ) {
+        logWidgetCompositionError(
+            widgetType = "RotationWidget",
+            appWidgetId = appWidgetId,
+            throwable = throwable,
+        )
+        super.onCompositionError(context, glanceId, appWidgetId, throwable)
+        installWidgetErrorClick(context, appWidgetId)
     }
 
     @Composable
@@ -50,6 +65,7 @@ class RotationWidget : GlanceAppWidget() {
             )
         val homeAction =
             actionStartActivity<MainActivity>(context, Uri.parse("murajaah://app/home"))
+        val omittedCount = snapshot?.rotation?.omittedCount ?: 0
 
         LazyColumn(
             modifier =
@@ -58,7 +74,7 @@ class RotationWidget : GlanceAppWidget() {
                     .cornerRadius(22.dp)
                     .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
-            item(itemId = HEADER_ID) {
+            item {
                 Column(
                     modifier =
                         GlanceModifier.fillMaxWidth()
@@ -79,14 +95,14 @@ class RotationWidget : GlanceAppWidget() {
             }
 
             if (snapshot == null) {
-                item(itemId = FALLBACK_ID) {
+                item {
                     FallbackRow(
                         text = context.getString(R.string.widget_open_murajaah),
                         onClick = homeAction,
                     )
                 }
             } else if (snapshot.rotation.items.isEmpty()) {
-                item(itemId = EMPTY_ID) {
+                item {
                     FallbackRow(
                         text = context.getString(R.string.rotation_widget_empty),
                         onClick = homeAction,
@@ -101,9 +117,13 @@ class RotationWidget : GlanceAppWidget() {
                 }
             }
 
-            item(itemId = FOOTER_ID) {
+            item {
                 Text(
-                    context.getString(R.string.widget_open_app),
+                    if (omittedCount > 0) {
+                        context.getString(R.string.rotation_widget_more, omittedCount)
+                    } else {
+                        context.getString(R.string.widget_open_app)
+                    },
                     modifier =
                         GlanceModifier.fillMaxWidth()
                             .clickable(homeAction)
@@ -122,7 +142,11 @@ class RotationWidget : GlanceAppWidget() {
             modifier =
                 GlanceModifier.fillMaxWidth()
                     .background(
-                        if (item.isRecommended) Color(0xFFECE7D8) else Color.Transparent
+                        if (item.recommendationRank != null) {
+                            Color(0xFFECE7D8)
+                        } else {
+                            Color.Transparent
+                        }
                     )
                     .cornerRadius(14.dp)
                     .clickable(rowAction)
@@ -132,9 +156,12 @@ class RotationWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Vertical.CenterVertically,
             ) {
-                if (item.isRecommended) {
+                item.recommendationRank?.let { recommendationRank ->
                     Text(
-                        context.getString(R.string.widget_recommended_marker),
+                        context.getString(
+                            R.string.widget_recommendation_rank,
+                            recommendationRank + 1,
+                        ),
                         style = TextStyle(fontSize = 12.sp),
                         maxLines = 1,
                     )
@@ -174,13 +201,6 @@ class RotationWidget : GlanceAppWidget() {
             style = TextStyle(fontSize = 14.sp),
             maxLines = 3,
         )
-    }
-
-    private companion object {
-        const val HEADER_ID = Long.MIN_VALUE + 1
-        const val FALLBACK_ID = Long.MIN_VALUE + 2
-        const val EMPTY_ID = Long.MIN_VALUE + 3
-        const val FOOTER_ID = Long.MIN_VALUE + 4
     }
 }
 

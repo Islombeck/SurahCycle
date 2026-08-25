@@ -48,6 +48,13 @@ final class QuranEncProvider implements QuranContentProvider {
 
   static const String sourceId = 'quranenc.com';
   static const String attribution = 'QuranEnc.com';
+  static const String termsUrl = 'https://quranenc.com/en/home/api';
+  static const String licenseUsageInformation =
+      'QuranEnc content must be reproduced without modification, with the '
+      'publisher, QuranEnc.com source, version, and transcript information '
+      'retained; notes must be reported to QuranEnc.com, updates must use the '
+      'latest reviewed version, and inappropriate advertising is prohibited. '
+      'Terms: $termsUrl';
 
   final http.Client _client;
   final Uri _baseUri;
@@ -115,15 +122,22 @@ final class QuranEncProvider implements QuranContentProvider {
           code: 'quranenc_translation_key_duplicate',
         );
       }
+      final entryLanguageCode = _requiredString(
+        item,
+        'language_iso_code',
+        code: 'quranenc_translation_language_invalid',
+      );
+      if (languageCode != null && entryLanguageCode != languageCode) {
+        throw const QuranProviderException(
+          failure: QuranProviderFailure.invalidResponse,
+          code: 'quranenc_translation_language_mismatch',
+        );
+      }
       translations.add(
         QuranTranslation(
           source: sourceId,
           key: key,
-          languageCode: _requiredString(
-            item,
-            'language_iso_code',
-            code: 'quranenc_translation_language_invalid',
-          ),
+          languageCode: entryLanguageCode,
           version: _requiredString(
             item,
             'version',
@@ -255,6 +269,7 @@ final class QuranEncProvider implements QuranContentProvider {
         language: translation.languageCode,
         fetchedAtUtc: fetchedAt,
         attribution: attribution,
+        licenseUsageInformation: licenseUsageInformation,
         sourceUri: uri,
       ),
       capabilities: capabilities,

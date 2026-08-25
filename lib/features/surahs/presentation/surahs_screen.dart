@@ -263,7 +263,8 @@ final class _MasteredTile extends StatelessWidget {
       title: Text(item.surah.displayName),
       subtitle: Text(
         '${context.l10n.surahNumber(item.surah.surahNumber)} · '
-        '${context.l10n.ayahCount(item.surah.ayahCount)}',
+        '${context.l10n.ayahCount(item.surah.ayahCount)}'
+        '${item.surah.isRotationEligible ? '' : '\n${context.l10n.fatihaRotationExcluded}'}',
       ),
       onTap: onOpen,
       trailing: busy
@@ -271,7 +272,10 @@ final class _MasteredTile extends StatelessWidget {
               dimension: 24,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : Switch(value: item.isActive, onChanged: onToggle),
+          : Switch(
+              value: item.isActive,
+              onChanged: item.surah.isRotationEligible ? onToggle : null,
+            ),
     );
   }
 }

@@ -46,6 +46,7 @@ class QuranAyahCache extends Table {
   TextColumn get providerAyahId => text().nullable()();
   TextColumn get arabicText => text().nullable()();
   TextColumn get translation => text().nullable()();
+  TextColumn get translationFootnotes => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{
@@ -104,7 +105,7 @@ class QuranCacheDatabase extends _$QuranCacheDatabase {
     : super(executor ?? driftDatabase(name: 'murajaah_quran_cache'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -114,6 +115,14 @@ class QuranCacheDatabase extends _$QuranCacheDatabase {
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
       if (from == to) return;
+      if (from == 1 && to == 2) {
+        await migrator.addColumn(
+          quranAyahCache,
+          quranAyahCache.translationFootnotes,
+        );
+        await _createVersionOneIndexes();
+        return;
+      }
       throw StateError('Unsupported Quran cache migration from $from to $to.');
     },
     beforeOpen: (OpeningDetails details) async {

@@ -7,6 +7,8 @@ const Object _notProvided = Object();
 /// Values are supplied by a content repository. This type never fabricates or
 /// normalizes Quran content.
 final class SurahDescriptor {
+  static const int alFatihaSurahNumber = 1;
+
   factory SurahDescriptor({
     required String id,
     required int surahNumber,
@@ -56,6 +58,12 @@ final class SurahDescriptor {
   final String officialName;
   final int ayahCount;
   final String? alias;
+
+  bool get isAlFatiha => surahNumber == alFatihaSurahNumber;
+
+  /// Al-Fatiha remains available to catalog, content, history, and learning,
+  /// but it is deliberately excluded from the ordinary rotation pool.
+  bool get isRotationEligible => !isAlFatiha;
 
   String get displayName =>
       alias == null || alias!.isEmpty ? officialName : alias!;

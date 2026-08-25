@@ -108,4 +108,27 @@
   ,"widgetAyah": "Oyat"
   ,"widgetAyahs": "Oyatlar"
   ,"widgetOpenAppToLoadText": "Tasdiqlangan matnni yuklash uchun Murajaah’ni oching"
+  ,"customParts": "Maxsus"
+  ,"customPartCount": "Qismlar soni"
+  ,"customPartCountRange": "1 dan {max} gacha"
+  ,"@customPartCountRange": {"placeholders": {"max": {"type": "int"}}}
+  ,"customPartCountInvalid": "To‘g‘ri qismlar sonini kiriting"
+  ,"fatihaRotationExcluded": "Fotiha yodlangan holda saqlanadi, ammo odatiy aylanishda qatnashmaydi."
+  ,"completeLearningOnly": "O‘rganishni tugatish"
+  ,"arabicTextOfflineReady": "Tasdiqlangan Tanzil arabcha matni oflayn mavjud."
+  ,"quranTranslation": "Qur’on tarjimasi"
+  ,"chooseTranslation": "Sozlamalarda tarjimani tanlang"
+  ,"noRussianTranslations": "QuranEnc rasmiy API katalogida hozir ruscha tarjimalar qaytarilmayapti. Arabcha matn oflayn mavjud."
+  ,"translationCatalogError": "QuranEnc rasmiy tarjimalar ro‘yxatini yuklab bo‘lmadi."
+  ,"translationNotSelected": "Tarjima tanlanmagan"
+  ,"translationCachedOffline": "Tanlangan tarjima suralar ochilganda oflayn o‘qish uchun saqlanadi."
+  ,"translationUnavailableOffline": "Bu oyat tarjimasi hali saqlanmagan. Tarjima fonda yuklanayotganda arabcha matn mavjud bo‘lib qoladi."
+  ,"clearTranslation": "Tarjima tanlovini tozalash"
+  ,"translationSelectionInvalid": "Saqlangan tarjima tanlovi noto‘g‘ri yoki endi qo‘llab-quvvatlanmaydi. Arabcha matn mavjud bo‘lib qoladi."
+  ,"translationVersionChanged": "Tanlangan tarjima versiyasi o‘zgargan. Yangi versiyani Sozlamalarda tasdiqlang; arabcha matn mavjud bo‘lib qoladi."
+  ,"translationUpdateAvailable": "Tanlangan tarjimaning yangi versiyasi mavjud: v{version}. U faqat siz tanlasangiz yangilanadi."
+  ,"@translationUpdateAvailable": {"placeholders": {"version": {"type": "String"}}}
+  ,"useTranslationVersion": "v{version} dan foydalanish"
+  ,"@useTranslationVersion": {"placeholders": {"version": {"type": "String"}}}
+  ,"tanzilTextMetadata": "Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0"
 }

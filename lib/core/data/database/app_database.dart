@@ -152,7 +152,7 @@ class RotationParts extends Table {
   @override
   List<String> get customConstraints => <String>[
     'CHECK (length(id) > 0)',
-    'CHECK (ordinal BETWEEN 1 AND 4)',
+    'CHECK (ordinal >= 1)',
     'CHECK (start_ayah > 0)',
     'CHECK (end_ayah >= start_ayah)',
     'CHECK (cached_score >= 0)',
@@ -386,7 +386,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'murajaah_user'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -397,11 +397,15 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
       if (from == to) return;
-      if (from == 1 && to == 2) {
-        await _migrateVersionOneToTwo(migrator);
-        return;
+      if (from < 1 || from > 2 || to != 3) {
+        throw StateError('Unsupported database migration from $from to $to.');
       }
-      throw StateError('Unsupported database migration from $from to $to.');
+      if (from < 2) {
+        await _migrateVersionOneToTwo(migrator);
+      }
+      if (from < 3) {
+        await _migrateVersionTwoToThree(migrator);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -600,6 +604,24 @@ class AppDatabase extends _$AppDatabase {
     if (foreignKeyViolations.isNotEmpty) {
       throw StateError(
         'Foreign-key violations after v1 to v2 migration: '
+        '${foreignKeyViolations.length}.',
+      );
+    }
+  }
+
+  Future<void> _migrateVersionTwoToThree(Migrator migrator) async {
+    // SQLite cannot alter a CHECK constraint in place. Drift performs the
+    // recommended table-rebuild procedure and copies every existing column,
+    // while retaining ids, cached state, and child coverage references.
+    await migrator.alterTable(TableMigration(rotationParts));
+    await _createVersionTwoIndexes();
+
+    final foreignKeyViolations = await customSelect(
+      'PRAGMA foreign_key_check',
+    ).get();
+    if (foreignKeyViolations.isNotEmpty) {
+      throw StateError(
+        'Foreign-key violations after v2 to v3 migration: '
         '${foreignKeyViolations.length}.',
       );
     }

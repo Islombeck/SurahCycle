@@ -25,6 +25,8 @@ final class UnavailableQuranContentRepository
   Future<QuranContentState<QuranSurahContent>> getSurahTranslation({
     required QuranTranslation translation,
     required int surahNumber,
+    required int expectedAyahCount,
+    required bool allowNetwork,
     bool refresh = false,
   }) async => UnavailableQuranContent<QuranSurahContent>(issue: issue);
 }

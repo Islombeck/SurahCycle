@@ -15,13 +15,15 @@ SurahDescriptor testSurah({
 MasteredSurah mastered({
   required String id,
   required int score,
+  int? number,
   int total = 0,
   bool active = true,
   bool entered = true,
   int order = 0,
   DateTime? lastUsedAtUtc,
 }) => MasteredSurah(
-  surah: testSurah(id: id, number: order + 1),
+  // Generic rotation fixtures deliberately skip Al-Fatiha (surah #1).
+  surah: testSurah(id: id, number: number ?? order + 2),
   isActive: active,
   hasEnteredRotation: entered,
   totalRecitations: total,

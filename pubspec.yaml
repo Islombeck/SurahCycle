@@ -16,6 +16,7 @@ dependencies:
   home_widget: 0.9.3
   drift: ^2.34.3
   drift_flutter: ^0.3.1
+  crypto: ^3.0.7
   http: ^1.6.0
   # Flutter 3.44.7 pins this through flutter_localizations.
   intl: 0.20.2
@@ -35,3 +36,5 @@ flutter:
   generate: true
   assets:
     - assets/quran/quran-data.xml
+    - assets/quran/quran-uthmani.txt
+    - assets/quran/TANZIL_TEXT_LICENSE.txt

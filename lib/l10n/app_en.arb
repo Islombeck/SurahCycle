@@ -108,4 +108,27 @@
   ,"widgetAyah": "Ayah"
   ,"widgetAyahs": "Ayahs"
   ,"widgetOpenAppToLoadText": "Open Murajaah to load verified text"
+  ,"customParts": "Custom"
+  ,"customPartCount": "Number of parts"
+  ,"customPartCountRange": "From 1 to {max}"
+  ,"@customPartCountRange": {"placeholders": {"max": {"type": "int"}}}
+  ,"customPartCountInvalid": "Enter a valid number of parts"
+  ,"fatihaRotationExcluded": "Al-Fatiha remains mastered but is excluded from the regular rotation."
+  ,"completeLearningOnly": "Complete learning"
+  ,"arabicTextOfflineReady": "Verified Tanzil Arabic text is available offline."
+  ,"quranTranslation": "Quran translation"
+  ,"chooseTranslation": "Choose a translation in Settings"
+  ,"noRussianTranslations": "QuranEnc currently returns no Russian translations in its official API catalog. Arabic remains available offline."
+  ,"translationCatalogError": "The official QuranEnc translation list could not be loaded."
+  ,"translationNotSelected": "No translation selected"
+  ,"translationCachedOffline": "The selected translation is cached for offline reading as surahs are opened."
+  ,"translationUnavailableOffline": "The translation for this ayah is not stored yet. Arabic remains available while it downloads in the background."
+  ,"clearTranslation": "Clear translation selection"
+  ,"translationSelectionInvalid": "The saved translation selection is invalid or no longer supported. Arabic remains available."
+  ,"translationVersionChanged": "The selected translation version has changed. Confirm the new version in Settings; Arabic remains available."
+  ,"translationUpdateAvailable": "A new version of the selected translation is available: v{version}. It will update only if you choose it."
+  ,"@translationUpdateAvailable": {"placeholders": {"version": {"type": "String"}}}
+  ,"useTranslationVersion": "Use v{version}"
+  ,"@useTranslationVersion": {"placeholders": {"version": {"type": "String"}}}
+  ,"tanzilTextMetadata": "Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0"
 }

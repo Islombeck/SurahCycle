@@ -266,13 +266,13 @@ Future<void> _seedCatalog(SurahRepository repository) =>
       <SurahDescriptor>[
         SurahDescriptor(
           id: 'test-a',
-          surahNumber: 1,
+          surahNumber: 2,
           officialName: 'Test Surah A',
           ayahCount: 3,
         ),
         SurahDescriptor(
           id: 'test-b',
-          surahNumber: 2,
+          surahNumber: 3,
           officialName: 'Test Surah B',
           ayahCount: 4,
         ),

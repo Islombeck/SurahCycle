@@ -362,4 +362,79 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get widgetOpenAppToLoadText =>
       'Откройте Murajaah, чтобы загрузить проверенный текст';
+
+  @override
+  String get customParts => 'Свой';
+
+  @override
+  String get customPartCount => 'Количество частей';
+
+  @override
+  String customPartCountRange(int max) {
+    return 'От 1 до $max';
+  }
+
+  @override
+  String get customPartCountInvalid => 'Введите допустимое количество частей';
+
+  @override
+  String get fatihaRotationExcluded =>
+      'Аль-Фатиха сохраняется в выученных, но не участвует в обычной ротации.';
+
+  @override
+  String get completeLearningOnly => 'Завершить обучение';
+
+  @override
+  String get arabicTextOfflineReady =>
+      'Проверенный арабский текст Tanzil доступен офлайн.';
+
+  @override
+  String get quranTranslation => 'Перевод Корана';
+
+  @override
+  String get chooseTranslation => 'Выберите перевод в настройках';
+
+  @override
+  String get noRussianTranslations =>
+      'QuranEnc сейчас не возвращает русские переводы в официальном каталоге API. Арабский текст остаётся доступен офлайн.';
+
+  @override
+  String get translationCatalogError =>
+      'Не удалось получить официальный список переводов QuranEnc.';
+
+  @override
+  String get translationNotSelected => 'Перевод не выбран';
+
+  @override
+  String get translationCachedOffline =>
+      'Выбранный перевод сохраняется для офлайн-чтения по мере открытия сур.';
+
+  @override
+  String get translationUnavailableOffline =>
+      'Для этого аята перевод ещё не сохранён. Арабский текст доступен, пока перевод загружается в фоне.';
+
+  @override
+  String get clearTranslation => 'Очистить выбор перевода';
+
+  @override
+  String get translationSelectionInvalid =>
+      'Сохранённый выбор перевода повреждён или больше не поддерживается. Арабский текст остаётся доступен.';
+
+  @override
+  String get translationVersionChanged =>
+      'Версия выбранного перевода изменилась. Подтвердите новую версию в настройках; арабский текст остаётся доступен.';
+
+  @override
+  String translationUpdateAvailable(String version) {
+    return 'Доступна новая версия выбранного перевода: v$version. Обновление выполняется только по вашему выбору.';
+  }
+
+  @override
+  String useTranslationVersion(String version) {
+    return 'Использовать v$version';
+  }
+
+  @override
+  String get tanzilTextMetadata =>
+      'Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0';
 }

@@ -11,7 +11,7 @@ No WidgetKit extension or Xcode project edit is made on Windows. The platform-ne
 1. In Xcode, create a Widget Extension with SwiftUI/WidgetKit and the same minimum iOS version as Runner.
 2. Add one App Group, for example `group.dev.murajaah.murajaah.widgets`, to Runner and the extension. Never reuse standard per-process `UserDefaults`.
 3. Configure `HomeWidget.setAppGroupId` in the Flutter iOS startup path after the entitlement exists.
-4. Persist the same `murajaah_widget_snapshot` schema 1 JSON into the App Group. Do not create an iOS-specific domain projection.
+4. Persist the same `murajaah_widget_snapshot` schema 2 JSON into the App Group. Do not create an iOS-specific domain projection.
 5. Decode `schemaVersion` strictly in Swift. Missing, malformed, or unknown data renders a localized **Open Murajaah** fallback.
 6. Implement separate Rotation and Learning widget kinds. WidgetKit families determine how many due rows or Quran lines fit; the logical snapshot remains complete.
 7. After a successful shared write, reload only those widget timelines whose projection changed. Timeline entries may reuse the latest persisted snapshot because domain streams, not periodic prediction, own freshness.
@@ -30,7 +30,7 @@ Runner should feed cold and warm URLs into the shared `WidgetDeepLink.parse` con
 
 ## Quran content rule
 
-Swift must render only `verifiedTextLines` already placed into the snapshot by the verified Quran cache boundary. Preserve every string exactly: no generation, translation, transliteration, whitespace trimming, or Unicode normalization. If the list is empty, render `rangeLabel` plus `unavailableTextLabel`.
+Swift must render only `verifiedTextLines` already placed into the snapshot from the fully validated bundled Tanzil repository. Preserve every string exactly: no generation, translation, transliteration, whitespace trimming, or Unicode normalization. If the list is empty, render `rangeLabel` plus `unavailableTextLabel`.
 
 ## Mac validation checklist
 

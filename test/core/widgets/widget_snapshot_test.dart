@@ -4,7 +4,7 @@ import 'package:murajaah/core/widgets/widget_snapshot.dart';
 void main() {
   const codec = WidgetSnapshotCodec();
 
-  test('schema 1 snapshot round-trips without changing verified text', () {
+  test('schema 2 snapshot round-trips without changing verified text', () {
     const exactText = '  بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ  ';
     final original = _snapshot(exactText: exactText);
 
@@ -25,7 +25,7 @@ void main() {
     for (final source in <String>[
       '{',
       '[]',
-      '{"schemaVersion":1}',
+      '{"schemaVersion":2}',
       '{"schemaVersion":"1"}',
     ]) {
       expect(
@@ -42,6 +42,15 @@ void main() {
     final rejected = result as WidgetSnapshotRejected;
     expect(rejected.error, WidgetSnapshotDecodeError.unsupportedVersion);
     expect(rejected.actualVersion, 99);
+  });
+
+  test('schema 1 snapshot is rejected safely after the rank upgrade', () {
+    final result = codec.decode('{"schemaVersion":1}');
+
+    expect(result, isA<WidgetSnapshotRejected>());
+    final rejected = result as WidgetSnapshotRejected;
+    expect(rejected.error, WidgetSnapshotDecodeError.unsupportedVersion);
+    expect(rejected.actualVersion, 1);
   });
 
   test('tampered derived debt label rejects the entire snapshot', () {
@@ -63,6 +72,89 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('snapshot rejects duplicate recommendation ranks', () {
+    final first = _snapshot().rotation.items.single;
+    final second = RotationWidgetItem(
+      id: 'second',
+      surahId: '3',
+      title: '3. Fixture',
+      remaining: 1,
+      recommendationRank: 0,
+      deepLink: Uri.parse('murajaah://app/surah/3'),
+    );
+
+    expect(
+      () =>
+          RotationWidgetProjection(items: <RotationWidgetItem>[first, second]),
+      throwsArgumentError,
+    );
+  });
+
+  test('snapshot mirrors native collection limits', () {
+    expect(
+      () => RotationWidgetProjection(
+        items: <RotationWidgetItem>[
+          for (var index = 0; index <= maxRotationWidgetItems; index += 1)
+            RotationWidgetItem(
+              id: 'item-$index',
+              surahId: '$index',
+              title: 'Fixture $index',
+              remaining: 1,
+              deepLink: Uri.parse('murajaah://app/surah/$index'),
+            ),
+        ],
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => LearningWidgetItem(
+        surahId: '2',
+        title: 'Fixture',
+        stageLabel: 'Fixture',
+        rangeLabel: 'Fixture',
+        unavailableTextLabel: 'Fixture',
+        verifiedTextLines: const <String>['1', '2', '3', '4'],
+        deepLink: Uri.parse('murajaah://app/learning/2'),
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('snapshot rejects native stable-id collisions', () {
+    expect(stableWidgetItemId('Aa'), stableWidgetItemId('BB'));
+    final first = RotationWidgetItem(
+      id: 'Aa',
+      surahId: '2',
+      title: 'First',
+      remaining: 1,
+      deepLink: Uri.parse('murajaah://app/surah/2'),
+    );
+    final second = RotationWidgetItem(
+      id: 'BB',
+      surahId: '3',
+      title: 'Second',
+      remaining: 1,
+      deepLink: Uri.parse('murajaah://app/surah/3'),
+    );
+
+    expect(
+      () =>
+          RotationWidgetProjection(items: <RotationWidgetItem>[first, second]),
+      throwsArgumentError,
+    );
+  });
+
+  test('explicit null recommendation rank is malformed', () {
+    final encoded = codec
+        .encode(_snapshot())
+        .replaceFirst('"recommendationRank":0', '"recommendationRank":null');
+
+    expect(
+      (codec.decode(encoded) as WidgetSnapshotRejected).error,
+      WidgetSnapshotDecodeError.malformed,
+    );
+  });
 }
 
 WidgetSnapshot _snapshot({String exactText = 'قُلْ هُوَ ٱللَّهُ أَحَدٌ'}) =>
@@ -78,7 +170,7 @@ WidgetSnapshot _snapshot({String exactText = 'قُلْ هُوَ ٱللَّهُ �
             title: '2. Бакара',
             subtitle: 'Часть 2/4 · аяты 72–141',
             remaining: 2,
-            isRecommended: true,
+            recommendationRank: 0,
             deepLink: Uri.parse('murajaah://app/surah/2?part=part-2'),
           ),
         ],

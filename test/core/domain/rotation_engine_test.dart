@@ -128,7 +128,7 @@ void main() {
       () {
         final withInactive = engine.addMasteredSurah(
           RotationSnapshot(rotationTarget: 20),
-          testSurah(id: 'a', number: 1),
+          testSurah(id: 'a', number: 2),
           activate: false,
         );
 
@@ -200,6 +200,64 @@ void main() {
 
       expect(
         () => engine.registerRecitation(snapshot, recitation('e1', 'a')),
+        throwsStateError,
+      );
+    });
+
+    test('Al-Fatiha is mastered but cannot enter active rotation', () {
+      final descriptor = testSurah(id: 'fatiha', number: 1, ayahCount: 7);
+      expect(descriptor.isAlFatiha, isTrue);
+      expect(descriptor.isRotationEligible, isFalse);
+
+      final added = engine.addMasteredSurah(
+        RotationSnapshot(rotationTarget: 20),
+        descriptor,
+      );
+      expect(added.surahById('fatiha').isActive, isFalse);
+      expect(added.surahById('fatiha').hasEnteredRotation, isFalse);
+      expect(added.activeSurahs, isEmpty);
+
+      final activationAttempt = engine.setSurahActive(
+        added,
+        'fatiha',
+        isActive: true,
+      );
+      expect(activationAttempt.surahById('fatiha').isActive, isFalse);
+      expect(
+        () => engine.registerRecitation(
+          activationAttempt,
+          recitation('fatiha-event', 'fatiha'),
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('snapshot excludes legacy-active Al-Fatiha defensively', () {
+      final legacyFatiha = MasteredSurah(
+        surah: testSurah(id: 'fatiha', number: 1, ayahCount: 7),
+        isActive: true,
+        hasEnteredRotation: true,
+        rotationScore: 50,
+      );
+      final eligible = mastered(id: 'eligible', score: 4, number: 2);
+      final snapshot = RotationSnapshot(
+        rotationTarget: 5,
+        surahs: <MasteredSurah>[legacyFatiha, eligible],
+      );
+
+      expect(snapshot.activeSurahs.map((surah) => surah.id), <String>[
+        'eligible',
+      ]);
+      final after = engine.registerRecitation(
+        snapshot,
+        recitation('eligible-event', 'eligible'),
+      );
+      expect(after.rotationTarget, 6);
+      expect(
+        () => engine.registerRecitation(
+          snapshot,
+          recitation('legacy-fatiha-event', 'fatiha'),
+        ),
         throwsStateError,
       );
     });
@@ -471,7 +529,7 @@ MasteredSurah _splitMastered({required List<int> scores, List<int>? counts}) {
     ],
   );
   return MasteredSurah(
-    surah: testSurah(id: 'split', number: 1, ayahCount: 20),
+    surah: testSurah(id: 'split', number: 2, ayahCount: 20),
     isActive: true,
     hasEnteredRotation: true,
     rotationScheme: scheme,

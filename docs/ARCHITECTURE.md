@@ -5,7 +5,7 @@
 Sprint 2 сохраняет local-first архитектуру Sprint 1 и расширяет её тремя независимыми слоями:
 
 - домен ротации использует версионируемые `SurahRotationScheme` и `SurahRotationPart`; эффективное состояние суры выводится из минимального состояния её частей;
-- Drift v2 хранит неизменяемую схему, части и coverage каждого события отдельно от текущей проекции;
+- Drift v3 хранит неизменяемую схему, части и coverage каждого события отдельно от текущей проекции;
 - Android-виджеты получают только готовый versioned JSON snapshot через `home_widget`; Kotlin/Glance не открывает Drift и не повторяет доменные алгоритмы.
 
 Одна пользовательская отметка создаёт один `RecitationEvent`, а выбранные части записываются отношением `recitation_event_parts` в той же транзакции. `rakaatSpanCount` описывает, на сколько ракаатов распространялось это действие, но не моделирует каждый ракаат отдельно. Смена разбиения создаёт новую схему; прежняя схема и coverage истории не переписываются.
@@ -110,11 +110,11 @@ Baseline первого включения хранится в `MasteredSurah.ac
 | Сущность | Основные поля | Назначение |
 |---|---|---|
 | `SurahMetadataCache` | provider id, surah id/number, names, `ayahCount`, source version | только проверенные метаданные поставщика |
-| `QuranAyahCache` | surah/ayah, exact Arabic text, exact translation, source/version | offline-кеш без автоматического изменения текста |
+| `QuranAyahCache` | surah/ayah, exact Arabic text или translation, source/version | versioned offline-кеш без автоматического изменения текста |
 | `QuranWordCache` | surah/ayah/position, exact Arabic word, exact translation, source/version | будущий пословный режим |
 | `QuranSourceMetadata` | provider, translation key, version, language, fetchedAt, attribution, license/usage data | происхождение каждого набора контента |
 
-Контентные таблицы не имеют каскадного удаления пользовательских событий. Bundled Tanzil metadata v1.0 заполняет только каталог сур; таблицы Arabic/translation content остаются пустыми до явной загрузки проверенного набора.
+Контентные таблицы не имеют каскадного удаления пользовательских событий. Bundled Tanzil metadata v1.0 заполняет каталог, а pinned Tanzil Uthmani v1.1 читается напрямую из проверяемого asset и доступен offline без записи в cache. QuranEnc cache хранит только явно выбранный пользователем version-pinned перевод.
 
 ## Инварианты домена
 
@@ -125,7 +125,7 @@ Baseline первого включения хранится в `MasteredSurah.ac
 - Отключение и повторное включение сохраняют score и сами по себе не меняют target.
 - Ручная корректировка score не создаёт `RecitationEvent`.
 - Возможность каза задаётся нейтральным capability `supportsQada`: пять обязательных типов и Витр поддерживают её, Нафль — нет.
-- В активной схеме от одной до четырёх частей, которые без пробелов и пересечений покрывают `1..ayahCount`.
+- В активной схеме от одной до `ayahCount` частей, которые без пробелов и пересечений покрывают `1..ayahCount`.
 - Coverage всегда относится к той же суре и той же версии схемы, что и событие.
 - Пользовательское удаление требует подтверждения; Undo последней регистрации восстанавливает полный pre-action snapshot.
 - Quran text, перевод и `ayahCount` принимаются только от проверенного provider без «улучшений».
@@ -146,9 +146,9 @@ Baseline первого включения хранится в `MasteredSurah.ac
 
 ## Quran provider boundary
 
-`QuranContentRepository` возвращает типизированные результаты и provenance metadata. Конкретные `QuranEncProvider`, `QuranAcademyProvider` или будущие adapters не видны UI и домену. Слой cache решает, когда использовать локальную проверенную версию, а provider занимается только получением и валидацией структуры ответа. Сетевой сбой возвращается как явное состояние и никогда не подменяется тестовыми данными.
+`QuranContentRepository` возвращает типизированные результаты и provenance metadata. Конкретные `QuranEncProvider`, `QuranAcademyProvider` или будущие adapters не видны UI и домену. Arabic/cache-first presentation не ждёт сеть; отдельный background warmup касается только выбранной Learning-карточки. При cache miss repository разрешает versionless QuranEnc sura endpoint только между двумя exact catalog checks и записывает результат лишь после проверки полного диапазона `1..ayahCount`. Сетевой сбой возвращается как явное состояние и никогда не подменяется тестовыми данными.
 
-## Расширения вне Sprint 2
+## Расширения вне Sprint 3
 
 - `RecitationRuleService` — точка подключения будущих подтверждённых правил; сейчас разрешает любой выбор.
 - интерфейс export/sync отделён от Drift DAO, чтобы позже передавать пользовательские события серверу;
@@ -160,7 +160,7 @@ Baseline первого включения хранится в `MasteredSurah.ac
 - секреты поставщиков, keystore, Apple certificates и credential-файлы не входят в репозиторий или APK/IPA;
 - API, требующий client secret, в будущем вызывается только через backend proxy;
 - запрещены scraping HTML и неофициальные private endpoints;
-- пользовательские события не отправляются наружу в Sprint 2;
+- пользовательские события не отправляются наружу в Sprint 3;
 - в логах не должны появляться полная история пользователя, токены или полный payload Quran API;
 - входящие данные provider валидируются по типам, номерам сур/аятов и версии до помещения в cache, но сам религиозный текст не нормализуется;
 - экспорт/backup в будущем является явным действием пользователя и не включает Quran cache по умолчанию;

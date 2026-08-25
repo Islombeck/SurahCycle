@@ -50,6 +50,8 @@ final class CachingQuranContentRepository implements QuranContentRepository {
   Future<QuranContentState<QuranSurahContent>> getSurahTranslation({
     required QuranTranslation translation,
     required int surahNumber,
+    required int expectedAyahCount,
+    required bool allowNetwork,
     bool refresh = false,
   }) async {
     if (translation.source != provider.providerId) {
@@ -68,6 +70,14 @@ final class CachingQuranContentRepository implements QuranContentRepository {
         ),
       );
     }
+    if (expectedAyahCount <= 0) {
+      return const UnavailableQuranContent<QuranSurahContent>(
+        issue: QuranContentIssue(
+          reason: QuranContentUnavailableReason.providerRejectedRequest,
+          code: 'invalid_expected_ayah_count',
+        ),
+      );
+    }
 
     final key = QuranContentCacheKey(
       providerId: provider.providerId,
@@ -81,7 +91,7 @@ final class CachingQuranContentRepository implements QuranContentRepository {
     try {
       cached = await cache.readSurah(key);
       if (cached != null) {
-        _validateBundle(cached, translation, surahNumber);
+        _validateBundle(cached, translation, surahNumber, expectedAyahCount);
       }
     } on Object {
       cached = null;
@@ -91,11 +101,26 @@ final class CachingQuranContentRepository implements QuranContentRepository {
       );
     }
 
-    if (cached != null && !refresh) {
+    if (cached != null && (!refresh || !allowNetwork)) {
       return AvailableQuranContent<QuranSurahContent>(
         value: cached,
         fromCache: true,
       );
+    }
+    if (!allowNetwork) {
+      return UnavailableQuranContent<QuranSurahContent>(
+        issue:
+            cacheIssue ??
+            const QuranContentIssue(
+              reason: QuranContentUnavailableReason.notDownloaded,
+              code: 'quran_translation_not_cached',
+            ),
+      );
+    }
+
+    final preflightIssue = await _catalogIssueFor(translation);
+    if (preflightIssue != null) {
+      return _fallbackOrUnavailable(cached, preflightIssue);
     }
 
     try {
@@ -103,7 +128,16 @@ final class CachingQuranContentRepository implements QuranContentRepository {
         translation: translation,
         surahNumber: surahNumber,
       );
-      _validateBundle(fetched, translation, surahNumber);
+      _validateBundle(fetched, translation, surahNumber, expectedAyahCount);
+
+      // QuranEnc's surah endpoint is versionless. Revalidate the catalog after
+      // fetching and before committing so a version change during the request
+      // cannot be persisted under the previously selected version.
+      final postflightIssue = await _catalogIssueFor(translation);
+      if (postflightIssue != null) {
+        return _fallbackOrUnavailable(cached, postflightIssue);
+      }
+
       try {
         await cache.writeSurah(key, fetched);
       } on Object {
@@ -123,49 +157,81 @@ final class CachingQuranContentRepository implements QuranContentRepository {
       );
     } on QuranProviderException catch (error) {
       final issue = _issueForProvider(error);
-      if (cached != null) {
-        return AvailableQuranContent<QuranSurahContent>(
-          value: cached,
-          fromCache: true,
-          issue: issue,
-        );
-      }
-      return UnavailableQuranContent<QuranSurahContent>(issue: issue);
+      return _fallbackOrUnavailable(cached, issue);
     } on ArgumentError {
       const issue = QuranContentIssue(
         reason: QuranContentUnavailableReason.invalidProviderResponse,
-        code: 'provider_bundle_identity_mismatch',
+        code: 'provider_bundle_identity_or_coordinates_invalid',
       );
-      if (cached != null) {
-        return AvailableQuranContent<QuranSurahContent>(
-          value: cached,
-          fromCache: true,
-          issue: issue,
-        );
-      }
-      return const UnavailableQuranContent<QuranSurahContent>(issue: issue);
+      return _fallbackOrUnavailable(cached, issue);
     }
+  }
+
+  Future<QuranContentIssue?> _catalogIssueFor(
+    QuranTranslation translation,
+  ) async {
+    final state = await listTranslations(
+      languageCode: translation.languageCode,
+      localizationLanguageCode: translation.languageCode,
+    );
+    return switch (state) {
+      AvailableQuranContent<List<QuranTranslation>>(:final value)
+          when value.any(
+            (candidate) =>
+                candidate.source == translation.source &&
+                candidate.key == translation.key &&
+                candidate.languageCode == translation.languageCode &&
+                candidate.version == translation.version,
+          ) =>
+        null,
+      AvailableQuranContent<List<QuranTranslation>>() =>
+        const QuranContentIssue(
+          reason: QuranContentUnavailableReason.versionMismatch,
+          code: 'translation_version_not_current',
+        ),
+      UnavailableQuranContent<List<QuranTranslation>>(:final issue) => issue,
+    };
+  }
+
+  QuranContentState<QuranSurahContent> _fallbackOrUnavailable(
+    QuranSurahContent? cached,
+    QuranContentIssue issue,
+  ) {
+    if (cached != null) {
+      return AvailableQuranContent<QuranSurahContent>(
+        value: cached,
+        fromCache: true,
+        issue: issue,
+      );
+    }
+    return UnavailableQuranContent<QuranSurahContent>(issue: issue);
   }
 
   void _validateBundle(
     QuranSurahContent content,
     QuranTranslation translation,
     int surahNumber,
+    int expectedAyahCount,
   ) {
     final source = content.sourceMetadata;
     if (content.surahNumber != surahNumber ||
         source.source != provider.providerId ||
         source.translationKey != translation.key ||
         source.version != translation.version ||
-        source.language != translation.languageCode) {
+        source.language != translation.languageCode ||
+        !content.capabilities.hasFullTranslation ||
+        content.ayahs.length != expectedAyahCount) {
       throw ArgumentError('Provider bundle identity does not match request.');
     }
-    for (final ayah in content.ayahs) {
-      if (ayah.fullTranslation != null &&
-          (ayah.translationSource != provider.providerId ||
-              ayah.translationVersion != translation.version)) {
+    for (var index = 0; index < content.ayahs.length; index += 1) {
+      final ayah = content.ayahs[index];
+      if (ayah.surahNumber != surahNumber ||
+          ayah.ayahNumber != index + 1 ||
+          ayah.fullTranslation == null ||
+          ayah.translationSource != provider.providerId ||
+          ayah.translationVersion != translation.version) {
         throw ArgumentError(
-          'Ayah translation provenance does not match its bundle.',
+          'Ayah translation coordinates or provenance do not match its bundle.',
         );
       }
     }

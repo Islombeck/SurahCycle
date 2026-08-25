@@ -5,6 +5,7 @@
     <string name="rotation_widget_title">Ротация</string>
     <string name="rotation_widget_subtitle">Нужно повторить</string>
     <string name="rotation_widget_empty">Всё закрыто. Откройте Murajaah, чтобы проверить ротацию.</string>
+    <string name="rotation_widget_more">Ещё %1$d</string>
     <string name="rotation_widget_preview_sample">102. Такасур · 8 · 2×</string>
     <string name="learning_widget_name">Заучивание Murajaah</string>
     <string name="learning_widget_description">Выбранная сура и текущий этап заучивания</string>
@@ -13,5 +14,8 @@
     <string name="learning_widget_preview_sample">112. Ихляс · 1–3</string>
     <string name="widget_open_murajaah">Откройте Murajaah</string>
     <string name="widget_open_app">Открыть приложение</string>
-    <string name="widget_recommended_marker">&#9733;</string>
+    <string name="widget_recommendation_rank">&#9733; %1$d</string>
+    <string name="widget_error_title">Murajaah</string>
+    <string name="widget_error_message">Не удалось обновить виджет.</string>
+    <string name="widget_error_open_app">Откройте приложение</string>
 </resources>

@@ -272,4 +272,57 @@ void main() {
       expect(outcome.masteredSurah.totalRecitations, 0);
     },
   );
+
+  test('completing Al-Fatiha masters it without activating rotation', () {
+    final completionService = LearningCompletionService(
+      learningStateMachine: machine,
+    );
+    final outcome = completionService.completeAndAddToRotation(
+      learningState: atStage(LearningStage.cumulative(3)),
+      surah: testSurah(id: 'a', number: 1, ayahCount: 3),
+      rotationSnapshot: RotationSnapshot(rotationTarget: 41),
+      completionEventId: 'complete-fatiha',
+    );
+
+    expect(outcome.learning.state.status, LearningStatus.completed);
+    expect(outcome.masteredSurah.isActive, isFalse);
+    expect(outcome.masteredSurah.hasEnteredRotation, isFalse);
+    expect(outcome.rotationSnapshot.activeSurahs, isEmpty);
+    expect(outcome.rotationSnapshot.rotationTarget, 41);
+  });
+
+  test(
+    'existing mastered Al-Fatiha can complete learning without duplication',
+    () {
+      final completionService = LearningCompletionService(
+        learningStateMachine: machine,
+      );
+      final existing = MasteredSurah(
+        surah: testSurah(id: 'a', number: 1, ayahCount: 3),
+        isActive: true,
+        hasEnteredRotation: true,
+        rotationScore: 7,
+        totalRecitations: 5,
+      );
+      final rotation = RotationSnapshot(
+        rotationTarget: 41,
+        surahs: <MasteredSurah>[existing],
+      );
+
+      final outcome = completionService.completeAndAddToRotation(
+        learningState: atStage(LearningStage.cumulative(3)),
+        surah: existing.surah,
+        rotationSnapshot: rotation,
+        completionEventId: 'complete-existing-fatiha',
+      );
+
+      expect(outcome.learning.state.status, LearningStatus.completed);
+      expect(outcome.rotationSnapshot.surahs, hasLength(1));
+      expect(outcome.masteredSurah.isActive, isFalse);
+      expect(outcome.masteredSurah.hasEnteredRotation, isTrue);
+      expect(outcome.masteredSurah.rotationScore, 7);
+      expect(outcome.masteredSurah.totalRecitations, 5);
+      expect(outcome.rotationSnapshot.rotationTarget, 41);
+    },
+  );
 }

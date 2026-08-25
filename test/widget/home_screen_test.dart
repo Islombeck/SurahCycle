@@ -26,7 +26,7 @@ void main() {
     final fixture = await _WidgetFixture.create();
     addTearDown(fixture.close);
     await fixture.addActiveSurah(
-      _descriptor(id: 'surah-a', number: 1, name: 'Test Surah A'),
+      _descriptor(id: 'surah-a', number: 101, name: 'Test Surah A'),
     );
     await fixture.addActiveSurah(
       _descriptor(id: 'surah-b', number: 2, name: 'Test Surah B'),
@@ -82,7 +82,7 @@ void main() {
       await fixture.addActiveSplitSurah(
         _descriptor(
           id: 'split-surah',
-          number: 1,
+          number: 101,
           name: 'Split Surah',
           ayahCount: 12,
         ),
@@ -123,7 +123,7 @@ void main() {
     await fixture.addActiveSurah(
       _descriptor(
         id: 'unsplit-surah',
-        number: 1,
+        number: 101,
         name: 'Unsplit Surah',
         ayahCount: 12,
       ),
@@ -191,7 +191,7 @@ void main() {
         final scheme = await fixture.addActiveSplitSurah(
           _descriptor(
             id: 'split-surah',
-            number: 1,
+            number: 101,
             name: 'Split Surah',
             ayahCount: 12,
           ),
@@ -259,7 +259,7 @@ void main() {
       final scheme = await fixture.addActiveSplitSurah(
         _descriptor(
           id: 'split-surah',
-          number: 1,
+          number: 101,
           name: 'Split Surah',
           ayahCount: 12,
         ),
@@ -296,7 +296,7 @@ void main() {
     await fixture.addActiveSplitSurah(
       _descriptor(
         id: 'split-surah',
-        number: 1,
+        number: 101,
         name: 'Split Surah',
         ayahCount: 12,
       ),
@@ -327,14 +327,14 @@ void main() {
   });
 
   testWidgets(
-    'scheme editor previews 1-4 automatic and valid or invalid manual ranges',
+    'scheme editor previews presets, custom count, and manual ranges',
     (tester) async {
       final fixture = await _WidgetFixture.create();
       addTearDown(fixture.close);
       await fixture.addActiveSurah(
         _descriptor(
           id: 'scheme-surah',
-          number: 1,
+          number: 101,
           name: 'Scheme Surah',
           ayahCount: 10,
         ),
@@ -402,6 +402,29 @@ void main() {
         }
       }
 
+      await tester.tap(
+        find.descendant(of: selector, matching: find.text('Custom')),
+      );
+      await tester.pump();
+      final customCount = find.byKey(
+        const ValueKey<String>('custom-part-count'),
+      );
+      expect(customCount, findsOneWidget);
+      await tester.enterText(customCount, '5');
+      await tester.pump();
+      final customRanges = suggestEvenRanges(ayahCount: 10, partCount: 5);
+      for (final range in customRanges) {
+        expect(
+          find.descendant(
+            of: sheet,
+            matching: find.textContaining(
+              '${range.startAyah}\u2013${range.endAyah}',
+            ),
+          ),
+          findsOneWidget,
+        );
+      }
+
       await tester.tap(find.descendant(of: selector, matching: find.text('3')));
       await tester.pump();
       await tester.tap(
@@ -447,7 +470,7 @@ void main() {
     final fixture = await _WidgetFixture.create();
     addTearDown(fixture.close);
     await fixture.addActiveSurah(
-      _descriptor(id: 'surah-a', number: 1, name: 'Test Surah A'),
+      _descriptor(id: 'surah-a', number: 101, name: 'Test Surah A'),
     );
     await fixture.pumpApp(tester);
 
@@ -513,7 +536,7 @@ void main() {
     final fixture = await _WidgetFixture.create();
     addTearDown(fixture.close);
     await fixture.addActiveSurah(
-      _descriptor(id: 'surah-a', number: 1, name: 'Test Surah A'),
+      _descriptor(id: 'surah-a', number: 101, name: 'Test Surah A'),
     );
     await fixture.pumpApp(tester);
     await _waitForMarkControl(tester, 'surah-a');
@@ -550,7 +573,7 @@ void main() {
     final fixture = await _WidgetFixture.create();
     addTearDown(fixture.close);
     await fixture.addActiveSurah(
-      _descriptor(id: 'surah-a', number: 1, name: 'Test Surah A'),
+      _descriptor(id: 'surah-a', number: 101, name: 'Test Surah A'),
     );
     await fixture.pumpApp(tester);
     await _waitForMarkControl(tester, 'surah-a');
@@ -573,7 +596,7 @@ void main() {
     final fixture = await _WidgetFixture.create();
     addTearDown(fixture.close);
     await fixture.addActiveSurah(
-      _descriptor(id: 'surah-a', number: 1, name: 'Test Surah A'),
+      _descriptor(id: 'surah-a', number: 101, name: 'Test Surah A'),
     );
     await fixture.addActiveSurah(
       _descriptor(id: 'surah-b', number: 2, name: 'Test Surah B'),
@@ -645,7 +668,7 @@ void main() {
     final fixture = await _WidgetFixture.create();
     addTearDown(fixture.close);
     await fixture.addActiveSurah(
-      _descriptor(id: 'surah-a', number: 1, name: 'Test Surah A'),
+      _descriptor(id: 'surah-a', number: 101, name: 'Test Surah A'),
     );
     await fixture.pumpApp(tester);
     await _waitForMarkControl(tester, 'surah-a');
@@ -674,7 +697,7 @@ void main() {
     final fixture = await _WidgetFixture.create();
     addTearDown(fixture.close);
     await fixture.addActiveSurah(
-      _descriptor(id: 'surah-a', number: 1, name: 'Test Surah A'),
+      _descriptor(id: 'surah-a', number: 101, name: 'Test Surah A'),
     );
     await fixture.pumpApp(tester);
     await _waitForMarkControl(tester, 'surah-a');
@@ -699,7 +722,7 @@ void main() {
       final fixture = await _WidgetFixture.create();
       addTearDown(fixture.close);
       await fixture.addActiveSurah(
-        _descriptor(id: 'surah-a', number: 1, name: 'Test Surah A'),
+        _descriptor(id: 'surah-a', number: 101, name: 'Test Surah A'),
       );
       await fixture.pumpApp(tester);
       await _waitForMarkControl(tester, 'surah-a');
@@ -743,7 +766,7 @@ void main() {
     final fixture = await _WidgetFixture.create();
     addTearDown(fixture.close);
     await fixture.addActiveSurah(
-      _descriptor(id: 'surah-a', number: 1, name: 'Test Surah A'),
+      _descriptor(id: 'surah-a', number: 101, name: 'Test Surah A'),
     );
     await fixture.addActiveSurah(
       _descriptor(id: 'surah-b', number: 2, name: 'Test Surah B'),
@@ -797,7 +820,7 @@ void main() {
     final fixture = await _WidgetFixture.create();
     addTearDown(fixture.close);
     await fixture.addActiveSurah(
-      _descriptor(id: 'surah-a', number: 1, name: 'Test Surah A'),
+      _descriptor(id: 'surah-a', number: 101, name: 'Test Surah A'),
     );
     await fixture.pumpApp(tester);
     await _waitForMarkControl(tester, 'surah-a');
@@ -910,6 +933,8 @@ Future<void> _tapMarkAndWait(
     tester.widget<IconButton>(control).onPressed!();
     await tester.pump();
   } else {
+    await tester.ensureVisible(control);
+    await tester.pump();
     await tester.tap(control);
   }
   await _pumpUntil(

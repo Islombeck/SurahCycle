@@ -10,14 +10,17 @@ internal data class NativeWidgetSnapshot(
     val learning: NativeLearningProjection,
 )
 
-internal data class NativeRotationProjection(val items: List<NativeRotationItem>)
+internal data class NativeRotationProjection(
+    val items: List<NativeRotationItem>,
+    val omittedCount: Int,
+)
 
 internal data class NativeRotationItem(
     val id: String,
     val title: String,
     val subtitle: String?,
     val debtLabel: String,
-    val isRecommended: Boolean,
+    val recommendationRank: Int?,
     val deepLink: Uri,
 )
 
@@ -40,9 +43,11 @@ internal data class NativeLearningItem(
  * fallback instead of throwing from a launcher process.
  */
 internal object NativeWidgetSnapshotParser {
-    private const val SCHEMA_VERSION = 1
-    private const val MAX_ROTATION_ITEMS = 512
-    private const val MAX_TEXT_LINES = 286
+    private const val SCHEMA_VERSION = 2
+    private const val MAX_ROTATION_ITEMS = 64
+    private const val MAX_TEXT_LINES = 3
+    // Mirrors Dart's domain-level maxRecommendationCount.
+    private const val MAX_RECOMMENDATION_COUNT = 8
 
     fun parse(raw: String?): NativeWidgetSnapshot? {
         if (raw.isNullOrEmpty() || raw.length > 2_000_000) return null
@@ -61,18 +66,33 @@ internal object NativeWidgetSnapshotParser {
     private fun parseRotation(json: JSONObject): NativeRotationProjection {
         val itemsJson = json.getJSONArray("items")
         require(itemsJson.length() <= MAX_ROTATION_ITEMS)
+        val omittedCount = json.getInt("omittedCount")
+        require(omittedCount >= 0)
         val ids = HashSet<String>(itemsJson.length())
+        val stableIds = HashSet<Long>(itemsJson.length())
+        val recommendationRanks = HashSet<Int>(MAX_RECOMMENDATION_COUNT)
         val items = ArrayList<NativeRotationItem>(itemsJson.length())
         for (index in 0 until itemsJson.length()) {
             val item = itemsJson.getJSONObject(index)
             val id = requireText(item.getString("id"), 256)
             require(ids.add(id))
+            require(stableIds.add(stableWidgetItemId(id)))
             val surahId = requireSafeId(item.getString("surahId"))
             val partId = item.optionalString("partId")?.let(::requireSafeId)
             val remaining = item.getInt("remaining")
             require(remaining > 0)
             val debtLabel = item.getString("debtLabel")
             require(debtLabel.length <= 32)
+            val recommendationRank =
+                if (item.has("recommendationRank")) {
+                    require(!item.isNull("recommendationRank"))
+                    item.getInt("recommendationRank").also { rank ->
+                        require(rank in 0 until MAX_RECOMMENDATION_COUNT)
+                        require(recommendationRanks.add(rank))
+                    }
+                } else {
+                    null
+                }
             val deepLink = Uri.parse(item.getString("deepLink"))
             require(isSafeRotationLink(deepLink, surahId, partId))
             items +=
@@ -81,11 +101,11 @@ internal object NativeWidgetSnapshotParser {
                     title = requireText(item.getString("title"), 512),
                     subtitle = item.optionalString("subtitle")?.let { requireText(it, 512) },
                     debtLabel = debtLabel,
-                    isRecommended = item.getBoolean("isRecommended"),
+                    recommendationRank = recommendationRank,
                     deepLink = deepLink,
                 )
         }
-        return NativeRotationProjection(items)
+        return NativeRotationProjection(items = items, omittedCount = omittedCount)
     }
 
     private fun parseLearning(json: JSONObject): NativeLearningProjection {
@@ -158,5 +178,8 @@ internal object NativeWidgetSnapshotParser {
 internal fun stableWidgetItemId(value: String): Long {
     var hash = 1_125_899_906_842_597L
     for (character in value) hash = 31L * hash + character.code
-    return hash
+    // Glance reserves the lowest quarter of Long values for generated lazy-list
+    // IDs. Keep application-owned IDs non-negative so overflow can never enter
+    // that reserved range.
+    return hash and Long.MAX_VALUE
 }

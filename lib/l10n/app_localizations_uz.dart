@@ -362,4 +362,79 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get widgetOpenAppToLoadText =>
       'Tasdiqlangan matnni yuklash uchun Murajaah’ni oching';
+
+  @override
+  String get customParts => 'Maxsus';
+
+  @override
+  String get customPartCount => 'Qismlar soni';
+
+  @override
+  String customPartCountRange(int max) {
+    return '1 dan $max gacha';
+  }
+
+  @override
+  String get customPartCountInvalid => 'To‘g‘ri qismlar sonini kiriting';
+
+  @override
+  String get fatihaRotationExcluded =>
+      'Fotiha yodlangan holda saqlanadi, ammo odatiy aylanishda qatnashmaydi.';
+
+  @override
+  String get completeLearningOnly => 'O‘rganishni tugatish';
+
+  @override
+  String get arabicTextOfflineReady =>
+      'Tasdiqlangan Tanzil arabcha matni oflayn mavjud.';
+
+  @override
+  String get quranTranslation => 'Qur’on tarjimasi';
+
+  @override
+  String get chooseTranslation => 'Sozlamalarda tarjimani tanlang';
+
+  @override
+  String get noRussianTranslations =>
+      'QuranEnc rasmiy API katalogida hozir ruscha tarjimalar qaytarilmayapti. Arabcha matn oflayn mavjud.';
+
+  @override
+  String get translationCatalogError =>
+      'QuranEnc rasmiy tarjimalar ro‘yxatini yuklab bo‘lmadi.';
+
+  @override
+  String get translationNotSelected => 'Tarjima tanlanmagan';
+
+  @override
+  String get translationCachedOffline =>
+      'Tanlangan tarjima suralar ochilganda oflayn o‘qish uchun saqlanadi.';
+
+  @override
+  String get translationUnavailableOffline =>
+      'Bu oyat tarjimasi hali saqlanmagan. Tarjima fonda yuklanayotganda arabcha matn mavjud bo‘lib qoladi.';
+
+  @override
+  String get clearTranslation => 'Tarjima tanlovini tozalash';
+
+  @override
+  String get translationSelectionInvalid =>
+      'Saqlangan tarjima tanlovi noto‘g‘ri yoki endi qo‘llab-quvvatlanmaydi. Arabcha matn mavjud bo‘lib qoladi.';
+
+  @override
+  String get translationVersionChanged =>
+      'Tanlangan tarjima versiyasi o‘zgargan. Yangi versiyani Sozlamalarda tasdiqlang; arabcha matn mavjud bo‘lib qoladi.';
+
+  @override
+  String translationUpdateAvailable(String version) {
+    return 'Tanlangan tarjimaning yangi versiyasi mavjud: v$version. U faqat siz tanlasangiz yangilanadi.';
+  }
+
+  @override
+  String useTranslationVersion(String version) {
+    return 'v$version dan foydalanish';
+  }
+
+  @override
+  String get tanzilTextMetadata =>
+      'Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0';
 }

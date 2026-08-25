@@ -7,7 +7,7 @@ import '../../generated_migrations/schema.dart';
 
 void main() {
   test(
-    'v1 to v2 preserves every legacy table and backfills rotation history',
+    'v1 to v3 preserves every legacy table and backfills rotation history',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(1);
@@ -18,19 +18,19 @@ void main() {
       final migrationDatabase = AppDatabase(schema.newConnection());
       await verifier.migrateAndValidate(
         migrationDatabase,
-        2,
+        3,
         // Runtime-only performance indexes are intentionally absent from the
         // generated Drift schema. Old tables are checked explicitly below.
         options: const ValidationOptions(),
       );
 
-      expect(migrationDatabase.schemaVersion, 2);
+      expect(migrationDatabase.schemaVersion, 3);
       expect(
         await migrationDatabase
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        2,
+        3,
       );
       expect(
         await migrationDatabase.customSelect('PRAGMA foreign_key_check').get(),
@@ -54,8 +54,8 @@ void main() {
             )
             .toList(),
         <List<Object?>>[
-          <Object?>['test-a', 1, 'Test A', 12, 'legacy-source', 'v1'],
-          <Object?>['test-b', 2, 'Test B', 4, null, null],
+          <Object?>['test-a', 2, 'Test A', 12, 'legacy-source', 'v1'],
+          <Object?>['test-b', 3, 'Test B', 4, null, null],
         ],
       );
 
@@ -360,13 +360,19 @@ void main() {
           surahId: 'test-a',
           version: 2,
           ayahCount: 12,
-          partCount: 3,
+          partCount: 5,
         ),
         createdAtUtc: _utc(11),
       );
       final split = snapshot.surahById('test-a').rotationScheme;
-      expect(split.parts, hasLength(3));
-      expect(split.parts.map((part) => part.rotationScore), <int>[8, 8, 8]);
+      expect(split.parts, hasLength(5));
+      expect(split.parts.map((part) => part.rotationScore), <int>[
+        8,
+        8,
+        8,
+        8,
+        8,
+      ]);
 
       final witrContext = PrayerContext(
         prayerType: PrayerType.witr,
@@ -406,7 +412,7 @@ void main() {
             .rotationScheme
             .parts
             .map((part) => part.rotationScore),
-        <int>[9, 8, 9],
+        <int>[9, 8, 9, 8, 8],
       );
       final storedPostMigration = await (reopened.select(
         reopened.recitationEvents,
@@ -482,6 +488,221 @@ void main() {
       );
     },
   );
+
+  test('v2 to v3 preserves four-part state and accepts a fifth part', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(2);
+    final raw = schema.rawDatabase;
+    raw.execute('PRAGMA foreign_keys = ON');
+    _seedVersionTwo(raw);
+
+    final database = AppDatabase(schema.newConnection());
+    addTearDown(() async {
+      await database.close();
+      schema.close();
+    });
+    await verifier.migrateAndValidate(
+      database,
+      3,
+      options: const ValidationOptions(),
+    );
+
+    expect(database.schemaVersion, 3);
+    expect(
+      await database
+          .customSelect('PRAGMA user_version')
+          .map((row) => row.read<int>('user_version'))
+          .getSingle(),
+      3,
+    );
+    expect(
+      await database.customSelect('PRAGMA foreign_key_check').get(),
+      isEmpty,
+    );
+
+    final tableSql = await database
+        .customSelect(
+          "SELECT sql FROM sqlite_schema "
+          "WHERE type = 'table' AND name = 'rotation_parts'",
+        )
+        .map((row) => row.read<String>('sql'))
+        .getSingle();
+    expect(tableSql, contains('CHECK (ordinal >= 1)'));
+    expect(tableSql, isNot(contains('BETWEEN 1 AND 4')));
+
+    final schemes = await database.select(database.rotationSchemes).get();
+    expect(
+      schemes
+          .map(
+            (row) => <Object?>[
+              row.id,
+              row.surahId,
+              row.version,
+              row.ayahCountSnapshot,
+              row.baselineScore,
+              row.baselineTotalRecitations,
+              row.baselineLastUsedAtUtc?.toUtc(),
+              row.activatedJournalSequence,
+              row.supersededJournalSequence,
+            ],
+          )
+          .toList(),
+      <List<Object?>>[
+        <Object?>[
+          'v2-surah:scheme:1',
+          'v2-surah',
+          1,
+          12,
+          5,
+          2,
+          _utc(0),
+          0,
+          null,
+        ],
+      ],
+    );
+
+    final parts = await database.select(database.rotationParts).get()
+      ..sort((left, right) => left.ordinal.compareTo(right.ordinal));
+    expect(
+      parts
+          .map(
+            (row) => <Object?>[
+              row.id,
+              row.schemeId,
+              row.ordinal,
+              row.startAyah,
+              row.endAyah,
+              row.cachedScore,
+              row.cachedRecitationCount,
+              row.cachedLastUsedAtUtc?.toUtc(),
+            ],
+          )
+          .toList(),
+      <List<Object?>>[
+        <Object?>['v2-p1', 'v2-surah:scheme:1', 1, 1, 3, 8, 4, _utc(1)],
+        <Object?>['v2-p2', 'v2-surah:scheme:1', 2, 4, 6, 7, 3, _utc(2)],
+        <Object?>['v2-p3', 'v2-surah:scheme:1', 3, 7, 9, 9, 5, _utc(3)],
+        <Object?>['v2-p4', 'v2-surah:scheme:1', 4, 10, 12, 7, 3, _utc(4)],
+      ],
+    );
+
+    final eventRows = await database.select(database.recitationEvents).get()
+      ..sort(
+        (left, right) => left.journalSequence.compareTo(right.journalSequence),
+      );
+    expect(
+      eventRows
+          .map(
+            (row) => <Object?>[
+              row.id,
+              row.journalSequence,
+              row.rotationSchemeId,
+              row.rakaatSpanCount,
+              row.deletedAtUtc?.toUtc(),
+            ],
+          )
+          .toList(),
+      <List<Object?>>[
+        <Object?>['v2-live', 1, 'v2-surah:scheme:1', 2, null],
+        <Object?>['v2-deleted', 2, 'v2-surah:scheme:1', 1, _utc(9)],
+      ],
+    );
+    final coverage = await database.select(database.recitationEventParts).get()
+      ..sort((left, right) {
+        final event = left.eventId.compareTo(right.eventId);
+        return event != 0 ? event : left.partId.compareTo(right.partId);
+      });
+    expect(
+      coverage.map((row) => <String>[row.eventId, row.schemeId, row.partId]),
+      <List<String>>[
+        <String>['v2-deleted', 'v2-surah:scheme:1', 'v2-p1'],
+        <String>['v2-deleted', 'v2-surah:scheme:1', 'v2-p2'],
+        <String>['v2-deleted', 'v2-surah:scheme:1', 'v2-p3'],
+        <String>['v2-deleted', 'v2-surah:scheme:1', 'v2-p4'],
+        <String>['v2-live', 'v2-surah:scheme:1', 'v2-p2'],
+        <String>['v2-live', 'v2-surah:scheme:1', 'v2-p4'],
+      ],
+    );
+
+    await _expectConstraint(database, '''
+      INSERT INTO rotation_parts
+        (id, scheme_id, ordinal, start_ayah, end_ayah, cached_score,
+         cached_recitation_count)
+      VALUES ('invalid-zero', 'v2-surah:scheme:1', 0, 1, 1, 0, 0)
+    ''');
+
+    final surahs = SurahRepository(database);
+    final recitations = RecitationRepository(database);
+    final beforeChange = await surahs.getRotationSnapshot();
+    expect(beforeChange.surahById('v2-surah').rotationScore, 7);
+    expect(beforeChange.surahById('v2-surah').totalRecitations, 3);
+
+    final proposed = SurahRotationScheme.evenlySplit(
+      id: 'v2-surah:scheme:2',
+      surahId: 'v2-surah',
+      version: 2,
+      ayahCount: 12,
+      partCount: 5,
+    );
+    final afterChange = await surahs.changeRotationScheme(
+      surahId: 'v2-surah',
+      proposedScheme: proposed,
+      createdAtUtc: _utc(11),
+    );
+    final fivePartScheme = afterChange.surahById('v2-surah').rotationScheme;
+    expect(fivePartScheme.parts, hasLength(5));
+    expect(fivePartScheme.parts.map((part) => part.rotationScore), <int>[
+      7,
+      7,
+      7,
+      7,
+      7,
+    ]);
+    expect(fivePartScheme.parts.map((part) => part.recitationCount), <int>[
+      3,
+      3,
+      3,
+      3,
+      3,
+    ]);
+
+    await recitations.register(
+      SurahRecitationEvent(
+        id: 'v3-fifth-part',
+        surahId: 'v2-surah',
+        prayerContext: PrayerContext(prayerType: PrayerType.asr),
+        createdAtUtc: _utc(12),
+        localDate: LocalDate(2026, 8, 24),
+        rotationSchemeId: fivePartScheme.id,
+        coveredPartIds: <String>[fivePartScheme.parts[4].id],
+        // Part count and rakaat count are intentionally independent.
+        rakaatSpanCount: 1,
+      ),
+    );
+    final storedFifthCoverage = await (database.select(
+      database.recitationEventParts,
+    )..where((row) => row.eventId.equals('v3-fifth-part'))).getSingle();
+    expect(storedFifthCoverage.partId, fivePartScheme.parts[4].id);
+
+    final oldParts = await (database.select(
+      database.rotationParts,
+    )..where((row) => row.schemeId.equals('v2-surah:scheme:1'))).get();
+    expect(oldParts, hasLength(4));
+    final history = await recitations.getHistory();
+    final legacyHistory = history.singleWhere(
+      (entry) => entry.event.id == 'v2-live',
+    );
+    expect(legacyHistory.event.rakaatSpanCount, 2);
+    expect(legacyHistory.coveredParts.map((part) => part.id).toSet(), <String>{
+      'v2-p2',
+      'v2-p4',
+    });
+    expect(
+      await database.customSelect('PRAGMA foreign_key_check').get(),
+      isEmpty,
+    );
+  });
 }
 
 DateTime _utc(int minute) => DateTime.utc(2026, 8, 24, 10, minute);
@@ -492,8 +713,8 @@ void _seedVersionOne(dynamic raw) {
   raw.execute(
     'INSERT INTO surah_metadata '
     '(id, surah_number, official_name, ayah_count, source_id, source_version) '
-    "VALUES ('test-a', 1, 'Test A', 12, 'legacy-source', 'v1'), "
-    "('test-b', 2, 'Test B', 4, NULL, NULL)",
+    "VALUES ('test-a', 2, 'Test A', 12, 'legacy-source', 'v1'), "
+    "('test-b', 3, 'Test B', 4, NULL, NULL)",
   );
   raw.execute(
     'INSERT INTO mastered_surahs '
@@ -648,6 +869,118 @@ void _seedVersionOne(dynamic raw) {
       _encoded(_utc(8)),
     ],
   );
+}
+
+void _seedVersionTwo(dynamic raw) {
+  raw.execute(
+    'INSERT INTO surah_metadata '
+    '(id, surah_number, official_name, ayah_count, source_id, source_version) '
+    "VALUES ('v2-surah', 2, 'V2 Surah', 12, 'v2-source', 'v2')",
+  );
+  raw.execute(
+    'INSERT INTO mastered_surahs '
+    '(surah_id, is_active, has_entered_rotation, activation_baseline_score, '
+    'cached_rotation_score, cached_total_recitations, '
+    'cached_last_used_at_utc, alias, display_order) VALUES (?, ?, ?, ?, ?, ?, '
+    '?, ?, ?)',
+    <Object?>['v2-surah', 1, 1, 5, 7, 3, _encoded(_utc(4)), 'V2 alias', 6],
+  );
+  raw.execute(
+    'INSERT INTO rotation_states '
+    '(singleton_id, rotation_target, last_journal_sequence, '
+    'projection_version) VALUES (1, 10, 2, 2)',
+  );
+  raw.execute(
+    'INSERT INTO rotation_schemes '
+    '(id, surah_id, version, ayah_count_snapshot, baseline_score, '
+    'baseline_total_recitations, baseline_last_used_at_utc, '
+    'activated_journal_sequence, superseded_journal_sequence) '
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>[
+      'v2-surah:scheme:1',
+      'v2-surah',
+      1,
+      12,
+      5,
+      2,
+      _encoded(_utc(0)),
+      0,
+      null,
+    ],
+  );
+  for (final part in <(String, int, int, int, int, int, DateTime)>[
+    ('v2-p1', 1, 1, 3, 8, 4, _utc(1)),
+    ('v2-p2', 2, 4, 6, 7, 3, _utc(2)),
+    ('v2-p3', 3, 7, 9, 9, 5, _utc(3)),
+    ('v2-p4', 4, 10, 12, 7, 3, _utc(4)),
+  ]) {
+    raw.execute(
+      'INSERT INTO rotation_parts '
+      '(id, scheme_id, ordinal, start_ayah, end_ayah, cached_score, '
+      'cached_recitation_count, cached_last_used_at_utc) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      <Object?>[
+        part.$1,
+        'v2-surah:scheme:1',
+        part.$2,
+        part.$3,
+        part.$4,
+        part.$5,
+        part.$6,
+        _encoded(part.$7),
+      ],
+    );
+  }
+  raw.execute(
+    'INSERT INTO recitation_events '
+    '(id, journal_sequence, surah_id, rotation_scheme_id, rakaat_span_count, '
+    'created_at_utc, local_date, prayer_type, is_qada, deleted_at_utc) '
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>[
+      'v2-live',
+      1,
+      'v2-surah',
+      'v2-surah:scheme:1',
+      2,
+      _encoded(_utc(5)),
+      '2026-08-24',
+      'asr',
+      0,
+      null,
+    ],
+  );
+  raw.execute(
+    'INSERT INTO recitation_events '
+    '(id, journal_sequence, surah_id, rotation_scheme_id, rakaat_span_count, '
+    'created_at_utc, local_date, prayer_type, is_qada, deleted_at_utc) '
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>[
+      'v2-deleted',
+      2,
+      'v2-surah',
+      'v2-surah:scheme:1',
+      1,
+      _encoded(_utc(6)),
+      '2026-08-24',
+      'maghrib',
+      0,
+      _encoded(_utc(9)),
+    ],
+  );
+  for (final partId in <String>['v2-p2', 'v2-p4']) {
+    raw.execute(
+      'INSERT INTO recitation_event_parts (event_id, scheme_id, part_id) '
+      "VALUES ('v2-live', 'v2-surah:scheme:1', ?)",
+      <Object?>[partId],
+    );
+  }
+  for (final partId in <String>['v2-p1', 'v2-p2', 'v2-p3', 'v2-p4']) {
+    raw.execute(
+      'INSERT INTO recitation_event_parts (event_id, scheme_id, part_id) '
+      "VALUES ('v2-deleted', 'v2-surah:scheme:1', ?)",
+      <Object?>[partId],
+    );
+  }
 }
 
 Future<void> _expectConstraint(AppDatabase database, String sql) async {

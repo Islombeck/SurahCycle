@@ -20,13 +20,13 @@ void main() {
       <SurahDescriptor>[
         SurahDescriptor(
           id: 'test-a',
-          surahNumber: 1,
+          surahNumber: 2,
           officialName: 'Test A',
           ayahCount: 12,
         ),
         SurahDescriptor(
           id: 'test-b',
-          surahNumber: 2,
+          surahNumber: 3,
           officialName: 'Test B',
           ayahCount: 8,
         ),
@@ -40,7 +40,7 @@ void main() {
 
   tearDown(() => database.close());
 
-  for (final partCount in <int>[1, 2, 3, 4]) {
+  for (final partCount in <int>[1, 2, 3, 4, 5, 8, 10, 12]) {
     test(
       'whole-surah registration credits every part in a $partCount-part scheme',
       () async {
@@ -54,7 +54,8 @@ void main() {
             id: _nextId(++idSequence),
             surahId: 'test-a',
             atMinute: partCount,
-            rakaatSpanCount: partCount,
+            // Segmentation size and rakaat span are independent concepts.
+            rakaatSpanCount: 1,
           ),
         );
 
@@ -63,7 +64,7 @@ void main() {
           result.event.coveredPartIds,
           scheme.parts.map((part) => part.id).toList(),
         );
-        expect(result.event.rakaatSpanCount, partCount);
+        expect(result.event.rakaatSpanCount, 1);
         final persistedCoverage = await (database.select(
           database.recitationEventParts,
         )..where((row) => row.eventId.equals(result.event.id))).get();
@@ -173,7 +174,7 @@ void main() {
     final scheme = await _schemeWithParts(
       surahs,
       surahId: 'test-a',
-      partCount: 3,
+      partCount: 10,
     );
     final before = await surahs.getRotationSnapshot();
     final multi = await recitations.register(
@@ -215,7 +216,7 @@ void main() {
       await (database.select(
         database.recitationEventParts,
       )..where((row) => row.eventId.equals(whole.event.id))).get(),
-      hasLength(3),
+      hasLength(10),
     );
     final deletion = await recitations.deleteRecitation(
       whole.event.id,
@@ -233,26 +234,38 @@ void main() {
       await (database.select(
         database.recitationEventParts,
       )..where((row) => row.eventId.equals(whole.event.id))).get(),
-      hasLength(3),
+      hasLength(10),
     );
   });
 
   test(
     'scheme change preserves old coverage and deleting an old event rebases its successor',
     () async {
+      final initialScheme = await _schemeWithParts(
+        surahs,
+        surahId: 'test-a',
+        partCount: 4,
+      );
       final oldRegistration = await recitations.register(
         _event(id: _nextId(++idSequence), surahId: 'test-a', atMinute: 1),
       );
       final oldScheme = oldRegistration.snapshot
           .surahById('test-a')
           .rotationScheme;
+      expect(oldScheme.id, initialScheme.id);
       final newScheme = await _schemeWithParts(
         surahs,
         surahId: 'test-a',
-        partCount: 2,
+        partCount: 10,
       );
-      expect(newScheme.parts.map((part) => part.rotationScore), <int>[1, 1]);
-      expect(newScheme.parts.map((part) => part.recitationCount), <int>[1, 1]);
+      expect(
+        newScheme.parts.map((part) => part.rotationScore),
+        everyElement(1),
+      );
+      expect(
+        newScheme.parts.map((part) => part.recitationCount),
+        everyElement(1),
+      );
       final newRegistration = await recitations.register(
         _event(
           id: _nextId(++idSequence),
@@ -268,7 +281,7 @@ void main() {
             .rotationScheme
             .parts
             .map((part) => part.rotationScore),
-        <int>[2, 1],
+        <int>[2, 1, 1, 1, 1, 1, 1, 1, 1, 1],
       );
 
       final deletion = await recitations.deleteRecitation(
@@ -279,11 +292,11 @@ void main() {
       expect(current.rotationScheme.id, newScheme.id);
       expect(
         current.rotationScheme.parts.map((part) => part.rotationScore),
-        <int>[1, 0],
+        <int>[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       );
       expect(
         current.rotationScheme.parts.map((part) => part.recitationCount),
-        <int>[1, 0],
+        <int>[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       );
       expect(current.rotationScore, 0);
       expect(current.totalRecitations, 0);
@@ -294,17 +307,20 @@ void main() {
         database.rotationSchemes,
       )..where((row) => row.surahId.equals('test-a'))).get();
       schemes.sort((left, right) => left.version.compareTo(right.version));
-      expect(schemes, hasLength(2));
-      expect(schemes.first.id, oldScheme.id);
-      expect(schemes.first.supersededJournalSequence, isNotNull);
+      expect(schemes, hasLength(3));
+      expect(schemes[1].id, oldScheme.id);
+      expect(schemes[1].supersededJournalSequence, isNotNull);
       expect(schemes.last.id, newScheme.id);
       expect(schemes.last.supersededJournalSequence, isNull);
       final oldCoverage = await (database.select(
         database.recitationEventParts,
       )..where((row) => row.eventId.equals(oldRegistration.event.id))).get();
-      expect(oldCoverage, hasLength(1));
-      expect(oldCoverage.single.schemeId, oldScheme.id);
-      expect(oldCoverage.single.partId, oldScheme.parts.single.id);
+      expect(oldCoverage, hasLength(4));
+      expect(oldCoverage.every((row) => row.schemeId == oldScheme.id), isTrue);
+      expect(
+        oldCoverage.map((row) => row.partId).toSet(),
+        oldScheme.parts.map((part) => part.id).toSet(),
+      );
       final history = await recitations.getHistory();
       expect(history.map((entry) => entry.event.id), <String>[
         newRegistration.event.id,

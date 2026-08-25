@@ -92,8 +92,39 @@ void main() {
         expect(content.sourceMetadata.translationKey, selected.key);
         expect(content.sourceMetadata.version, selected.version);
         expect(content.sourceMetadata.fetchedAtUtc, fetchedAt);
+        expect(
+          content.sourceMetadata.licenseUsageInformation,
+          contains(QuranEncProvider.termsUrl),
+        );
       },
     );
+
+    test('rejects a catalog entry outside the requested language', () async {
+      final client = MockClient(
+        (request) async => _jsonResponse(<String, Object?>{
+          'translations': <Object?>[
+            <String, Object?>{
+              'key': 'wrong-language-key',
+              'language_iso_code': 'en',
+              'version': 'test-v1',
+              'title': 'Wrong language fixture',
+            },
+          ],
+        }),
+      );
+      final provider = QuranEncProvider(client: client);
+
+      await expectLater(
+        provider.listTranslations(languageCode: 'ru'),
+        throwsA(
+          isA<QuranProviderException>().having(
+            (error) => error.code,
+            'code',
+            'quranenc_translation_language_mismatch',
+          ),
+        ),
+      );
+    });
 
     test(
       'rejects malformed coordinates without exposing response content',

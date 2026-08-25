@@ -1,6 +1,24 @@
 # Источники Quran content
 
-## Решение Sprint 1
+## Реализация Sprint 3
+
+В APK включён официальный downloadable dataset Tanzil Quran Text, Uthmani, Version 1.1. Файл `assets/quran/quran-uthmani.txt` сохранён verbatim из официального endpoint с опциями `uthmani`, `txt-2`, pause marks, sajdah signs и tatweel. Его зафиксированные характеристики:
+
+- source: `https://tanzil.net/download/`;
+- exact download endpoint записан в `TanzilUthmaniTextRepository.sourceUrl`;
+- размер: `1 396 087` bytes;
+- SHA-256: `6933e133dd56db778c801bf738848454e43648105a151e8d84d86a7cae39ec5f`;
+- 114 сур и 6236 coordinate rows;
+- license: Creative Commons Attribution 3.0;
+- attribution: Tanzil Project.
+
+`TanzilUthmaniTextRepository` перед выдачей данных проверяет raw byte length и SHA-256, строгий UTF-8, официальный footer/version/license, последовательность каждой координаты и точное совпадение per-surah counts с проверенным metadata asset. Пропуски, дубликаты, extra rows и пустой текст отклоняют corpus целиком. Подстрока после второго `|` не trim-ится, не нормализуется и не переписывается. Полный notice сохранён в `assets/quran/TANZIL_TEXT_LICENSE.txt`.
+
+`QuranEncProvider` подключён к application repository только как источник перевода. Settings получает официальный каталог с `languageCode=ru`; перевод по умолчанию отсутствует. На 2026-08-25 официальный endpoint возвращает пустой русский каталог, поэтому UI честно показывает empty state и не hardcode-ит найденные вне catalog ключи. Если официальный каталог начнёт возвращать варианты, пользователь сам выбирает entry; сохраняются key, title, version, source, fetchedAt и attribution. Каждая открытая сура кэшируется отдельно по provider/key/version, а новая server version не заменяет выбранную молча.
+
+Presentation всегда возвращает bundled Arabic и exact cache выбранной версии первым, не ожидая сеть. Только выбранная Learning-карточка запускает отдельный background warmup перевода. При cache miss repository допускает versionless QuranEnc sura endpoint лишь после точного совпадения `source + key + language + version` с официальным каталогом, проверяет полный упорядоченный диапазон `1..ayahCount`, затем повторяет catalog check перед cache commit. Если каталог недоступен, версия изменилась или ответ неполон, Arabic остаётся доступным, а новый ответ не попадает в cache. Это исключает смешивание версий и cache poisoning; обновление выбора остаётся явным действием пользователя.
+
+## Исходная metadata-граница Sprint 1
 
 В Sprint 1 в приложение включён только проверенный metadata-файл Tanzil.info. Он содержит каталог 114 сур: номер, имена и количество аятов. Арабский текст аятов, полный и пословный переводы **не встраиваются** и не подменяются данными из памяти разработчика.
 
@@ -48,7 +66,8 @@ Bundled dataset:
 ```text
 QuranContentRepository
   listTranslations(languageCode?, localizationLanguageCode?)
-  getSurahTranslation(translation, surahNumber, refresh?)
+  getSurahTranslation(translation, surahNumber, expectedAyahCount,
+                      allowNetwork, refresh?)
 ```
 
 Каждая операция возвращает типизированный результат: `available`, `notDownloaded`, `updateAvailable`, `unavailable` либо `failed`, а также `QuranSourceMetadata` для доступного dataset. Ошибка сети не стирает последний проверенный cache.
@@ -165,7 +184,7 @@ Provider допускается в production только после докум
 - `QuranWordCache`;
 - `QuranSourceMetadata`.
 
-Cache version привязывает записи к provider/dataset/version/language. При смене перевода старая и новая версии не смешиваются. Очистка cache не имеет foreign-key cascade на `MasteredSurah`, `RecitationEvent` или `LearningEvent`.
+Cache version привязывает записи к provider/dataset/version/language; provenance source row также разделён по суре, чтобы `fetchedAt/sourceUri` одной суры не переписывали другую. При смене перевода старая и новая версии не смешиваются. Очистка cache не имеет foreign-key cascade на `MasteredSurah`, `RecitationEvent` или `LearningEvent`.
 
 Quran cache не обязан входить в пользовательский export: его безопаснее повторно получить из того же проверенного источника. История пользователя хранит стабильный `surahId/number` и при необходимости ссылку на использованную metadata version.
 
@@ -173,12 +192,12 @@ Quran cache не обязан входить в пользовательский
 
 Допустимые состояния:
 
-- «Каталог сур доступен; текст аятов и переводы ещё не загружены»;
+- «Arabic доступен offline; перевод не выбран»;
 - «Источник пока не настроен»;
 - «Нет сети; используется ранее загруженная версия»;
 - «Обновление не удалось; сохранённая версия не изменена».
 
-Недопустимо показывать выдуманный арабский текст, перевод или `ayahCount`. Проверенный `ayahCount` берётся из Tanzil metadata. Элементы, которым нужен текст аята, показывают явное unloaded-состояние; ротация и learning state machine продолжают работать по сохранённым метаданным.
+Недопустимо показывать выдуманный арабский текст, перевод или `ayahCount`. Проверенный `ayahCount` берётся из Tanzil metadata, а exact Arabic — из pinned Tanzil Uthmani asset. Если corpus не проходит integrity validation, запуск завершается явной ошибкой; отсутствие перевода не блокирует Arabic, ротацию или learning state machine.
 
 ## Секреты и транспорт
 

@@ -484,7 +484,8 @@ final class LearningCompletionOutcome {
       rotationSnapshot.surahById(learning.state.surahId);
 }
 
-/// Coordinates completion with first activation in the mastered rotation.
+/// Coordinates completion with a mastered record and, when eligible, first
+/// activation in the rotation. Al-Fatiha is mastered without activation.
 final class LearningCompletionService {
   const LearningCompletionService({
     required this.learningStateMachine,
@@ -515,12 +516,24 @@ final class LearningCompletionService {
       learningState,
       eventId: completionEventId,
     );
-    final rotation = rotationEngine.addMasteredSurah(
-      rotationSnapshot,
-      surah,
-      activate: true,
-      displayOrder: displayOrder,
-    );
+    MasteredSurah? existingMastered;
+    for (final mastered in rotationSnapshot.surahs) {
+      if (mastered.id == surah.id) {
+        existingMastered = mastered;
+        break;
+      }
+    }
+    if (existingMastered != null && !surah.isAlFatiha) {
+      throw StateError('Surah "${surah.id}" is already mastered.');
+    }
+    final rotation = existingMastered != null
+        ? rotationEngine.updateMasteredSurah(rotationSnapshot, existingMastered)
+        : rotationEngine.addMasteredSurah(
+            rotationSnapshot,
+            surah,
+            activate: surah.isRotationEligible,
+            displayOrder: displayOrder,
+          );
     return LearningCompletionOutcome(
       learning: learning,
       rotationSnapshot: rotation,

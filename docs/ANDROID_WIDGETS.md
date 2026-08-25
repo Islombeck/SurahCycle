@@ -4,8 +4,8 @@
 
 Sprint 2 ships two real Android widgets:
 
-- **Rotation**: the complete scrollable list of due whole surahs and parts. Recommended rows are first; completed and ahead rows are absent.
-- **Learning**: the selected surah, stage, cumulative ayah range, and exact verified cached Quran text when the application explicitly supplies it.
+- **Rotation**: a bounded scrollable projection of due whole surahs and parts. Up to eight ranked recommendations are first, followed by other due rows and an `Ещё N` footer when needed; completed and ahead rows are absent.
+- **Learning**: the selected surah, stage, cumulative ayah range, and exact verified bundled Arabic text supplied by Dart.
 
 The bridge is pinned to `home_widget: 0.9.3`. That release supports AGP 9 and requires Flutter 3.38.1+/Dart 3.10+; Murajaah uses Flutter 3.44.7/Dart 3.12. Android UI uses the current stable Glance line, `androidx.glance:glance-appwidget:1.1.1`, pinned directly in the app. Glance 1.2 is only a release-candidate line, while the 1.3 alpha line raises the SDK/tooling closure, so neither is appropriate for the current compileSdk 36/AGP 9.0.1 build.
 
@@ -22,7 +22,7 @@ Drift/domain streams
 WidgetProjectionBuilder (Dart: all calculations and display labels)
         |
         v
-WidgetSnapshot schemaVersion 1 JSON
+WidgetSnapshot schemaVersion 2 JSON
         |
         v
 home_widget SharedPreferences bridge
@@ -40,9 +40,9 @@ The shared key is `murajaah_widget_snapshot`. Missing JSON, malformed JSON, dupl
 Import `package:murajaah/core/widgets/widgets.dart`.
 
 1. Adapt the latest repository projections into `RotationWidgetCandidate.whole(...)` and `.part(...)`. `remaining` may be negative, but `WidgetProjectionBuilder` emits only `remaining > 0`.
-2. Mark the recommendation set with `isRecommended`. The builder orders recommendation first, then greater debt, never/oldest use, `displayOrder`, surah number, and part index.
+2. Supply zero-based `recommendationRank` for at most eight recommended items. The builder preserves exact rank, then orders other due rows by greater debt, never/oldest use, `displayOrder`, surah number, and part index.
 3. Adapt the selected learning state into `LearningWidgetCandidate`. Pass the already localized `stageLabel` and cumulative `startAyah`/`endAyah`.
-4. Pass Quran strings through `verifiedTextLines` only after the Quran cache repository has verified the source. An empty list displays `openAppToLoadText`; no layer generates substitute Arabic.
+4. Pass Quran strings through `verifiedTextLines` only from the fully validated bundled `TanzilUthmaniTextRepository`. An empty list displays `openAppToLoadText`; no layer generates substitute Arabic.
 5. Create one root-lifetime `WidgetSyncCoordinator(bridge: const HomeWidgetBridge())`. Feed it recomputed snapshots with `schedule`; use `syncNow` for an explicit startup flush. Call `dispose` from the owner.
 
 `WidgetSyncCoordinator` debounces rapid stream emissions for 150 ms, serializes native writes, collapses pending work to the newest projection, and skips an unchanged projection even if `generatedAtUtc` changed. A bridge error is reported through `onError` and does not participate in a domain transaction.
@@ -53,18 +53,18 @@ The application owner must recompute after startup and after every mutation affe
 - mastered-surah add, activation/deactivation, alias, reorder;
 - split scheme or part progress changes;
 - learning selection, repeat/learn action, inactivity rollback, Undo rollback, completion;
-- verified Quran cache load/update;
+- verified bundled Quran corpus load and learning-stage changes;
 - locale change.
 
 The coordinator deliberately accepts application-layer DTOs rather than importing provider or Drift types. This keeps the snapshot stable while DB/domain models evolve.
 
 ## Snapshot contract
 
-Schema 1 contains display-ready data:
+Schema 2 contains display-ready data:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedAtUtc": "2026-08-25T10:00:00.000Z",
   "locale": "ru",
   "rotation": {
@@ -76,9 +76,10 @@ Schema 1 contains display-ready data:
       "subtitle": "Часть 2/4 · аяты 72–141",
       "remaining": 2,
       "debtLabel": "2×",
-      "isRecommended": true,
+      "recommendationRank": 0,
       "deepLink": "murajaah://app/surah/2?part=scheme-uuid%3Apart%3A2"
-    }]
+    }],
+    "omittedCount": 0
   },
   "learning": {
     "item": {
@@ -94,7 +95,13 @@ Schema 1 contains display-ready data:
 }
 ```
 
-An empty learning projection is `{}`. `verifiedTextLines` is serialized and rendered without trimming or Unicode normalization. The native parser caps the overall payload and collection sizes above the Quran domain maximum to guard the launcher process; it does not arbitrarily truncate a valid due list.
+An empty learning projection is `{}`. `verifiedTextLines` is serialized and rendered without trimming or Unicode normalization. Dart caps rotation projection at 64 rows, always keeping the at-most-eight ranked recommendations first, and supplies `omittedCount` for the localized `Ещё N` footer. Learning supplies at most the latest three exact Arabic lines. Kotlin enforces the same limits.
+
+## Sprint 3 runtime failure and repair
+
+The physical-device `Невозможно показать контент` state came from an uncaught Glance `IllegalArgumentException`: both `LazyColumn`s assigned static IDs such as `Long.MIN_VALUE + 1`, while Glance reserves every ID below `-4611686018427387904` except the exact `Long.MIN_VALUE` sentinel. The rolling dynamic hash could overflow into the same reserved range.
+
+Static items now use Glance-generated IDs and dynamic IDs are masked with `Long.MAX_VALUE`; the native decoder also rejects hash collisions. Both widgets override the four-argument `onCompositionError`, log widget type, appWidgetId, Throwable class/message and full stack under `MurajaahWidget`, then render a local RemoteViews-compatible `widget_error.xml` whose tap opens the app. Glance remains the primary renderer.
 
 ## Widgets and interaction
 

@@ -40,8 +40,23 @@ void main() {
         () => suggestEvenRanges(ayahCount: 3, partCount: 4),
         throwsArgumentError,
       );
+      expect(suggestEvenRanges(ayahCount: 20, partCount: 5), hasLength(5));
+      expect(suggestEvenRanges(ayahCount: 20, partCount: 8), hasLength(8));
+      expect(suggestEvenRanges(ayahCount: 20, partCount: 10), hasLength(10));
+      expect(suggestEvenRanges(ayahCount: 20, partCount: 20), hasLength(20));
       expect(
-        () => suggestEvenRanges(ayahCount: 20, partCount: 5),
+        suggestEvenRanges(
+          ayahCount: 20,
+          partCount: 20,
+        ).every((range) => range.ayahCount == 1),
+        isTrue,
+      );
+      expect(
+        () => suggestEvenRanges(ayahCount: 20, partCount: 0),
+        throwsArgumentError,
+      );
+      expect(
+        () => suggestEvenRanges(ayahCount: 20, partCount: 21),
         throwsArgumentError,
       );
     });
@@ -170,6 +185,17 @@ void main() {
     expect(scheme.fullEquivalentRecitations, 7);
     expect(scheme.remainingForPart('scheme:part:2', 30), 1);
     expect(scheme.remainingForPart('scheme:part:1', 30), 0);
+  });
+
+  test('ten-part effective state still uses independent minima', () {
+    final scheme = _statefulScheme(
+      scores: const <int>[30, 30, 29, 30, 31, 30, 30, 30, 30, 30],
+      counts: const <int>[8, 8, 8, 8, 8, 7, 8, 9, 8, 8],
+    );
+
+    expect(scheme.parts, hasLength(10));
+    expect(scheme.effectiveRotationScore, 29);
+    expect(scheme.fullEquivalentRecitations, 7);
   });
 
   test('scheme collections are immutable', () {

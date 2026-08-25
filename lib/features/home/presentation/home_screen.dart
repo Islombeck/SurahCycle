@@ -499,8 +499,11 @@ final class _RotationContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = snapshot.activeSurahs.toList(growable: false)
-      ..sort((left, right) => left.displayOrder.compareTo(right.displayOrder));
+    final suggestions = const SurahSuggestionService().suggest(snapshot);
+    final active = const SurahOperationalOrderService().order(
+      snapshot,
+      recommendations: suggestions,
+    );
     if (active.isEmpty) {
       return Card(
         child: Padding(
@@ -515,11 +518,6 @@ final class _RotationContent extends StatelessWidget {
         ),
       );
     }
-    final suggestions = const SurahSuggestionService()
-        .suggest(snapshot, limit: active.length)
-        .where((suggestion) => suggestion.remaining > 0)
-        .take(3)
-        .toList(growable: false);
     final dueSurahCount = active
         .where((surah) => snapshot.remainingFor(surah.id) > 0)
         .length;
@@ -541,7 +539,9 @@ final class _RotationContent extends StatelessWidget {
                 children: <Widget>[
                   for (final suggestion in suggestions)
                     Chip(
-                      avatar: const Icon(Icons.auto_awesome, size: 18),
+                      avatar: CircleAvatar(
+                        child: Text('${suggestion.recommendationRank + 1}'),
+                      ),
                       label: Text(
                         suggestion.recommendedPart == null ||
                                 !suggestion.surah.rotationScheme.isSplit
@@ -725,7 +725,7 @@ final class _RemainingIndicator extends StatelessWidget {
   }
 }
 
-final class _CurrentLearningCard extends StatelessWidget {
+final class _CurrentLearningCard extends ConsumerWidget {
   const _CurrentLearningCard({
     required this.learning,
     required this.catalog,
@@ -739,7 +739,7 @@ final class _CurrentLearningCard extends StatelessWidget {
   final VoidCallback onOpen;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (learning.isEmpty) return const SizedBox.shrink();
     final selected = learning.where((item) => item.surahId == selectedSurahId);
     final state = selected.isEmpty ? learning.first : selected.first;
@@ -751,14 +751,77 @@ final class _CurrentLearningCard extends StatelessWidget {
     final stage = state.stage.kind == LearningStageKind.newAyah
         ? context.l10n.newAyah(state.stage.ayahNumber)
         : context.l10n.cumulativeRange(state.stage.endAyah);
+    final reading = descriptor == null
+        ? null
+        : ref
+              .watch(
+                quranReadingSurahProvider((
+                  surahNumber: descriptor.surahNumber,
+                  ayahCount: descriptor.ayahCount,
+                  warmTranslation: true,
+                )),
+              )
+              .valueOrNull;
+    final currentAyah = reading?.ayah(state.stage.endAyah);
     return Card(
       key: const ValueKey<String>('learning-card'),
-      child: ListTile(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: onOpen,
-        leading: const CircleAvatar(child: Icon(Icons.school_outlined)),
-        title: Text(name),
-        subtitle: Text(stage),
-        trailing: const Icon(Icons.chevron_right),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  const CircleAvatar(child: Icon(Icons.school_outlined)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          name,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(stage),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+              if (currentAyah != null) ...<Widget>[
+                const SizedBox(height: 12),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: Text(
+                        currentAyah.arabicText,
+                        key: ValueKey<String>(
+                          'home-learning-ayah-${currentAyah.surahNumber}-${currentAyah.ayahNumber}',
+                        ),
+                        textAlign: TextAlign.right,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleLarge?.copyWith(height: 1.7),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

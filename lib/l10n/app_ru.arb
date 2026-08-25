@@ -114,4 +114,27 @@
   ,"widgetAyah": "Аят"
   ,"widgetAyahs": "Аяты"
   ,"widgetOpenAppToLoadText": "Откройте Murajaah, чтобы загрузить проверенный текст"
+  ,"customParts": "Свой"
+  ,"customPartCount": "Количество частей"
+  ,"customPartCountRange": "От 1 до {max}"
+  ,"@customPartCountRange": {"placeholders": {"max": {"type": "int"}}}
+  ,"customPartCountInvalid": "Введите допустимое количество частей"
+  ,"fatihaRotationExcluded": "Аль-Фатиха сохраняется в выученных, но не участвует в обычной ротации."
+  ,"completeLearningOnly": "Завершить обучение"
+  ,"arabicTextOfflineReady": "Проверенный арабский текст Tanzil доступен офлайн."
+  ,"quranTranslation": "Перевод Корана"
+  ,"chooseTranslation": "Выберите перевод в настройках"
+  ,"noRussianTranslations": "QuranEnc сейчас не возвращает русские переводы в официальном каталоге API. Арабский текст остаётся доступен офлайн."
+  ,"translationCatalogError": "Не удалось получить официальный список переводов QuranEnc."
+  ,"translationNotSelected": "Перевод не выбран"
+  ,"translationCachedOffline": "Выбранный перевод сохраняется для офлайн-чтения по мере открытия сур."
+  ,"translationUnavailableOffline": "Для этого аята перевод ещё не сохранён. Арабский текст доступен, пока перевод загружается в фоне."
+  ,"clearTranslation": "Очистить выбор перевода"
+  ,"translationSelectionInvalid": "Сохранённый выбор перевода повреждён или больше не поддерживается. Арабский текст остаётся доступен."
+  ,"translationVersionChanged": "Версия выбранного перевода изменилась. Подтвердите новую версию в настройках; арабский текст остаётся доступен."
+  ,"translationUpdateAvailable": "Доступна новая версия выбранного перевода: v{version}. Обновление выполняется только по вашему выбору."
+  ,"@translationUpdateAvailable": {"placeholders": {"version": {"type": "String"}}}
+  ,"useTranslationVersion": "Использовать v{version}"
+  ,"@useTranslationVersion": {"placeholders": {"version": {"type": "String"}}}
+  ,"tanzilTextMetadata": "Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0"
 }

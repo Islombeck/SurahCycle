@@ -1,11 +1,16 @@
 export 'data/caching_quran_content_repository.dart';
+export 'data/drift_quran_content_cache.dart';
 export 'data/providers/quran_academy_provider.dart';
 export 'data/providers/quran_enc_provider.dart';
 export 'data/providers/tanzil_metadata_provider.dart';
+export 'data/providers/tanzil_uthmani_text_repository.dart';
 export 'data/quran_content_cache.dart';
 export 'data/quran_content_provider.dart';
 export 'data/quran_content_repository.dart';
 export 'data/quran_content_state.dart';
+export 'data/quran_translation_selection_repository.dart';
 export 'data/unavailable_quran_content_repository.dart';
 export 'domain/quran_models.dart';
+export 'domain/quran_translation_selection.dart';
 export 'domain/recitation_rule_service.dart';
+export 'application/quran_reading_repository.dart';

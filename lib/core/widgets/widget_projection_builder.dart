@@ -1,3 +1,4 @@
+import '../domain/suggestion.dart';
 import 'widget_deep_link.dart';
 import 'widget_snapshot.dart';
 
@@ -24,7 +25,7 @@ final class RotationWidgetCandidate {
     required String displayName,
     required int ayahCount,
     required int remaining,
-    required bool isRecommended,
+    int? recommendationRank,
     required int displayOrder,
     DateTime? lastUsedAtUtc,
   }) => RotationWidgetCandidate._validated(
@@ -39,7 +40,7 @@ final class RotationWidgetCandidate {
     startAyah: null,
     endAyah: null,
     remaining: remaining,
-    isRecommended: isRecommended,
+    recommendationRank: recommendationRank,
     displayOrder: displayOrder,
     lastUsedAtUtc: lastUsedAtUtc,
   );
@@ -55,7 +56,7 @@ final class RotationWidgetCandidate {
     required int startAyah,
     required int endAyah,
     required int remaining,
-    required bool isRecommended,
+    int? recommendationRank,
     required int displayOrder,
     DateTime? lastUsedAtUtc,
   }) => RotationWidgetCandidate._validated(
@@ -70,7 +71,7 @@ final class RotationWidgetCandidate {
     startAyah: startAyah,
     endAyah: endAyah,
     remaining: remaining,
-    isRecommended: isRecommended,
+    recommendationRank: recommendationRank,
     displayOrder: displayOrder,
     lastUsedAtUtc: lastUsedAtUtc,
   );
@@ -87,7 +88,7 @@ final class RotationWidgetCandidate {
     required int? startAyah,
     required int? endAyah,
     required int remaining,
-    required bool isRecommended,
+    required int? recommendationRank,
     required int displayOrder,
     required DateTime? lastUsedAtUtc,
   }) {
@@ -101,6 +102,16 @@ final class RotationWidgetCandidate {
     }
     if (lastUsedAtUtc != null && !lastUsedAtUtc.isUtc) {
       throw ArgumentError.value(lastUsedAtUtc, 'lastUsedAtUtc', 'Must be UTC.');
+    }
+    if (recommendationRank != null &&
+        (recommendationRank < 0 ||
+            recommendationRank >= maxRecommendationCount)) {
+      throw ArgumentError.value(
+        recommendationRank,
+        'recommendationRank',
+        'Must be in the product range '
+            '0–${maxRecommendationCount - 1}.',
+      );
     }
     if (partId == null) {
       if (ayahCount == null || ayahCount <= 0) {
@@ -129,7 +140,7 @@ final class RotationWidgetCandidate {
       startAyah: startAyah,
       endAyah: endAyah,
       remaining: remaining,
-      isRecommended: isRecommended,
+      recommendationRank: recommendationRank,
       displayOrder: displayOrder,
       lastUsedAtUtc: lastUsedAtUtc,
     );
@@ -147,7 +158,7 @@ final class RotationWidgetCandidate {
     required this.startAyah,
     required this.endAyah,
     required this.remaining,
-    required this.isRecommended,
+    required this.recommendationRank,
     required this.displayOrder,
     required this.lastUsedAtUtc,
   });
@@ -163,7 +174,7 @@ final class RotationWidgetCandidate {
   final int? startAyah;
   final int? endAyah;
   final int remaining;
-  final bool isRecommended;
+  final int? recommendationRank;
   final int displayOrder;
   final DateTime? lastUsedAtUtc;
 }
@@ -242,11 +253,25 @@ final class WidgetProjectionBuilder {
             .where((candidate) => candidate.remaining > 0)
             .toList(growable: false)
           ..sort(_compareRotation);
-    return RotationWidgetProjection(items: due.map(_rotationItem));
+    final visible = due.take(maxRotationWidgetItems);
+    return RotationWidgetProjection(
+      items: visible.map(_rotationItem),
+      omittedCount: due.length > maxRotationWidgetItems
+          ? due.length - maxRotationWidgetItems
+          : 0,
+    );
   }
 
   LearningWidgetProjection buildLearning(LearningWidgetCandidate? candidate) {
     if (candidate == null) return const LearningWidgetProjection.empty();
+    final verifiedLines =
+        candidate.verifiedTextLines.length <= maxLearningWidgetTextLines
+        ? candidate.verifiedTextLines
+        : candidate.verifiedTextLines
+              .skip(
+                candidate.verifiedTextLines.length - maxLearningWidgetTextLines,
+              )
+              .toList(growable: false);
     final rangeLabel = candidate.startAyah == candidate.endAyah
         ? '${labels.ayah} ${candidate.startAyah}'
         : '${labels.ayahs} ${candidate.startAyah}–${candidate.endAyah}';
@@ -257,7 +282,7 @@ final class WidgetProjectionBuilder {
         stageLabel: candidate.stageLabel,
         rangeLabel: rangeLabel,
         unavailableTextLabel: labels.openAppToLoadText,
-        verifiedTextLines: candidate.verifiedTextLines,
+        verifiedTextLines: verifiedLines,
         deepLink: WidgetLearningDeepLink(candidate.surahId).uri,
       ),
     );
@@ -278,7 +303,7 @@ final class WidgetProjectionBuilder {
                 '${labels.ayahs} ${candidate.startAyah}–${candidate.endAyah}'
           : null,
       remaining: candidate.remaining,
-      isRecommended: candidate.isRecommended,
+      recommendationRank: candidate.recommendationRank,
       deepLink: WidgetSurahDeepLink(
         surahId: candidate.surahId,
         partId: candidate.partId,
@@ -290,9 +315,9 @@ final class WidgetProjectionBuilder {
     RotationWidgetCandidate left,
     RotationWidgetCandidate right,
   ) {
-    final recommendation = _descendingBool(
-      left.isRecommended,
-      right.isRecommended,
+    final recommendation = _compareRecommendationRank(
+      left.recommendationRank,
+      right.recommendationRank,
     );
     if (recommendation != 0) return recommendation;
 
@@ -318,7 +343,9 @@ final class WidgetProjectionBuilder {
   }
 }
 
-int _descendingBool(bool left, bool right) {
-  if (left == right) return 0;
-  return left ? -1 : 1;
+int _compareRecommendationRank(int? left, int? right) {
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  return left.compareTo(right);
 }

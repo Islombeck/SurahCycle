@@ -10,6 +10,8 @@ abstract interface class QuranContentRepository {
   Future<QuranContentState<QuranSurahContent>> getSurahTranslation({
     required QuranTranslation translation,
     required int surahNumber,
+    required int expectedAyahCount,
+    required bool allowNetwork,
     bool refresh = false,
   });
 }

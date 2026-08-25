@@ -36,6 +36,7 @@ final class CachedQuranAyah {
     this.providerAyahId,
     this.arabicText,
     this.translation,
+    this.translationFootnotes,
   });
 
   final String sourceId;
@@ -44,6 +45,7 @@ final class CachedQuranAyah {
   final String? providerAyahId;
   final String? arabicText;
   final String? translation;
+  final String? translationFootnotes;
 }
 
 final class CachedQuranWord {
@@ -118,6 +120,7 @@ final class QuranCacheRepository {
               providerAyahId: Value<String?>(ayah.providerAyahId),
               arabicText: Value<String?>(ayah.arabicText),
               translation: Value<String?>(ayah.translation),
+              translationFootnotes: Value<String?>(ayah.translationFootnotes),
             ),
           );
     }
@@ -137,6 +140,87 @@ final class QuranCacheRepository {
           );
     }
   });
+
+  /// Atomically replaces one surah while retaining every other cached surah
+  /// belonging to the same immutable source/version.
+  Future<void> replaceSurah({
+    required QuranSourceRecord source,
+    required int surahNumber,
+    required Iterable<CachedQuranAyah> ayahs,
+  }) => database.transaction(() async {
+    _validateSource(source);
+    if (surahNumber <= 0) {
+      throw ArgumentError.value(
+        surahNumber,
+        'surahNumber',
+        'Must be positive.',
+      );
+    }
+    final ayahList = ayahs.toList(growable: false);
+    if (ayahList.isEmpty) {
+      throw ArgumentError.value(ayahs, 'ayahs', 'Must not be empty.');
+    }
+    final coordinates = <int>{};
+    for (final ayah in ayahList) {
+      _validateAyah(ayah, source.id);
+      if (ayah.surahNumber != surahNumber ||
+          !coordinates.add(ayah.ayahNumber)) {
+        throw ArgumentError(
+          'Every ayah must have a unique coordinate in the replaced surah.',
+        );
+      }
+    }
+
+    final existing = await getSource(source.id);
+    if (existing != null) _validateCompatibleSource(existing, source);
+    await database
+        .into(database.quranSourceMetadata)
+        .insertOnConflictUpdate(
+          QuranSourceMetadataCompanion.insert(
+            id: source.id,
+            provider: source.provider,
+            datasetType: source.datasetType,
+            version: source.version,
+            languageCode: Value<String?>(source.languageCode),
+            translationKey: Value<String?>(source.translationKey),
+            sourceUri: Value<String?>(source.sourceUri),
+            attribution: Value<String?>(source.attribution),
+            license: Value<String?>(source.license),
+            fetchedAtUtc: source.fetchedAtUtc,
+          ),
+        );
+    await (database.delete(database.quranAyahCache)..where(
+          (QuranAyahCache row) =>
+              row.sourceId.equals(source.id) &
+              row.surahNumber.equals(surahNumber),
+        ))
+        .go();
+    await database.batch((batch) {
+      batch.insertAll(database.quranAyahCache, <QuranAyahCacheCompanion>[
+        for (final ayah in ayahList)
+          QuranAyahCacheCompanion.insert(
+            sourceId: ayah.sourceId,
+            surahNumber: ayah.surahNumber,
+            ayahNumber: ayah.ayahNumber,
+            providerAyahId: Value<String?>(ayah.providerAyahId),
+            arabicText: Value<String?>(ayah.arabicText),
+            translation: Value<String?>(ayah.translation),
+            translationFootnotes: Value<String?>(ayah.translationFootnotes),
+          ),
+      ]);
+    });
+  });
+
+  Future<QuranSourceRecord?> getSource(String sourceId) async {
+    if (sourceId.isEmpty) {
+      throw ArgumentError.value(sourceId, 'sourceId', 'Must not be empty.');
+    }
+    final row =
+        await (database.select(database.quranSourceMetadata)
+              ..where((QuranSourceMetadata table) => table.id.equals(sourceId)))
+            .getSingleOrNull();
+    return row == null ? null : _sourceFromRow(row);
+  }
 
   Future<List<QuranSourceRecord>> getSources() async {
     final query = database.select(database.quranSourceMetadata)
@@ -174,6 +258,26 @@ final class QuranCacheRepository {
             ))
             .getSingleOrNull();
     return row == null ? null : _ayahFromRow(row);
+  }
+
+  Future<List<CachedQuranAyah>> getAyahs({
+    required String sourceId,
+    required int surahNumber,
+  }) async {
+    if (sourceId.isEmpty || surahNumber <= 0) {
+      throw ArgumentError('Quran source and surah coordinates are invalid.');
+    }
+    final query = database.select(database.quranAyahCache)
+      ..where(
+        (QuranAyahCache table) =>
+            table.sourceId.equals(sourceId) &
+            table.surahNumber.equals(surahNumber),
+      )
+      ..orderBy(<OrderingTerm Function(QuranAyahCache)>[
+        (QuranAyahCache row) => OrderingTerm.asc(row.ayahNumber),
+      ]);
+    final rows = await query.get();
+    return rows.map(_ayahFromRow).toList(growable: false);
   }
 
   Future<List<CachedQuranWord>> getWords({
@@ -227,6 +331,7 @@ final class QuranCacheRepository {
     providerAyahId: row.providerAyahId,
     arabicText: row.arabicText,
     translation: row.translation,
+    translationFootnotes: row.translationFootnotes,
   );
 
   CachedQuranWord _wordFromRow(QuranWordCacheRow row) => CachedQuranWord(
@@ -255,12 +360,32 @@ final class QuranCacheRepository {
     }
   }
 
+  void _validateCompatibleSource(
+    QuranSourceRecord existing,
+    QuranSourceRecord replacement,
+  ) {
+    if (existing.provider != replacement.provider ||
+        existing.datasetType != replacement.datasetType ||
+        existing.version != replacement.version ||
+        existing.languageCode != replacement.languageCode ||
+        existing.translationKey != replacement.translationKey) {
+      throw StateError(
+        'A Quran source id cannot be reused for another dataset identity.',
+      );
+    }
+  }
+
   void _validateAyah(CachedQuranAyah ayah, String sourceId) {
     if (ayah.sourceId != sourceId) {
       throw ArgumentError('Every ayah must reference the replaced source.');
     }
     if (ayah.surahNumber <= 0 || ayah.ayahNumber <= 0) {
       throw ArgumentError('Quran coordinates must be positive.');
+    }
+    if (ayah.translationFootnotes != null && ayah.translation == null) {
+      throw ArgumentError(
+        'Translation footnotes require a translation from the same source.',
+      );
     }
     if (!_hasContent(ayah.arabicText, ayah.translation)) {
       throw ArgumentError('An ayah cache row must contain provider content.');

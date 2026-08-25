@@ -89,7 +89,10 @@ final class _StartupGate extends ConsumerWidget {
                   Text(error.toString(), textAlign: TextAlign.center),
                   const SizedBox(height: 16),
                   FilledButton.icon(
-                    onPressed: () => ref.invalidate(startupProvider),
+                    onPressed: () {
+                      ref.invalidate(catalogBootstrapProvider);
+                      ref.invalidate(startupProvider);
+                    },
                     icon: const Icon(Icons.refresh),
                     label: Text(AppLocalizations.of(context).retry),
                   ),

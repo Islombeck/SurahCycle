@@ -4,6 +4,7 @@ enum QuranContentUnavailableReason {
   networkFailure,
   invalidProviderResponse,
   providerRejectedRequest,
+  versionMismatch,
   credentialsRequireBackend,
   cacheFailure,
 }

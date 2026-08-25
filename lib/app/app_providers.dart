@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 import '../core/data/data.dart';
@@ -38,6 +39,133 @@ final quranCacheDatabaseProvider = Provider<QuranCacheDatabase>((ref) {
 final quranCacheRepositoryProvider = Provider<QuranCacheRepository>(
   (ref) => QuranCacheRepository(ref.watch(quranCacheDatabaseProvider)),
 );
+
+final httpClientProvider = Provider<http.Client>((ref) {
+  final client = http.Client();
+  ref.onDispose(client.close);
+  return client;
+});
+
+final quranEncProvider = Provider<QuranEncProvider>(
+  (ref) => QuranEncProvider(
+    client: ref.watch(httpClientProvider),
+    nowUtc: ref.watch(timeProviderProvider).nowUtc,
+  ),
+);
+
+final quranContentCacheProvider = Provider<QuranContentCache>(
+  (ref) => DriftQuranContentCache(ref.watch(quranCacheRepositoryProvider)),
+);
+
+final quranContentRepositoryProvider = Provider<QuranContentRepository>(
+  (ref) => CachingQuranContentRepository(
+    provider: ref.watch(quranEncProvider),
+    cache: ref.watch(quranContentCacheProvider),
+  ),
+);
+
+final tanzilUthmaniTextRepositoryProvider =
+    Provider<TanzilUthmaniTextRepository>((ref) {
+      return TanzilUthmaniTextRepository(
+        metadataProvider: ref.watch(tanzilCatalogProvider),
+      );
+    });
+
+final quranTranslationSelectionRepositoryProvider =
+    Provider<QuranTranslationSelectionRepository>((ref) {
+      return QuranTranslationSelectionRepository(
+        ref.watch(settingsRepositoryProvider),
+      );
+    });
+
+final selectedQuranTranslationProvider =
+    StreamProvider<QuranTranslationSelection?>((ref) {
+      return ref
+          .watch(quranTranslationSelectionRepositoryProvider)
+          .watchSelected();
+    });
+
+final russianQuranTranslationsProvider =
+    FutureProvider<QuranContentState<List<QuranTranslation>>>((ref) {
+      return ref
+          .watch(quranContentRepositoryProvider)
+          .listTranslations(languageCode: 'ru', localizationLanguageCode: 'ru');
+    });
+
+final quranTranslationSelectionControllerProvider =
+    Provider<QuranTranslationSelectionController>((ref) {
+      return QuranTranslationSelectionController(
+        repository: ref.watch(quranTranslationSelectionRepositoryProvider),
+        timeProvider: ref.watch(timeProviderProvider),
+      );
+    });
+
+final quranReadingRepositoryProvider = Provider<QuranReadingRepository>((ref) {
+  return QuranReadingRepository(
+    arabic: ref.watch(tanzilUthmaniTextRepositoryProvider),
+    translations: ref.watch(quranContentRepositoryProvider),
+  );
+});
+
+typedef QuranReadingRequest = ({
+  int surahNumber,
+  int ayahCount,
+  bool warmTranslation,
+});
+
+typedef QuranTranslationWarmupRequest = ({
+  int surahNumber,
+  int ayahCount,
+  QuranTranslationSelection selection,
+});
+
+final quranTranslationWarmupProvider = FutureProvider.autoDispose
+    .family<QuranReadingSurah, QuranTranslationWarmupRequest>((ref, request) {
+      return ref
+          .watch(quranReadingRepositoryProvider)
+          .getSurah(
+            surahNumber: request.surahNumber,
+            ayahCount: request.ayahCount,
+            translationSelection: request.selection,
+            allowTranslationNetwork: true,
+          );
+    });
+
+final quranReadingSurahProvider = FutureProvider.autoDispose
+    .family<QuranReadingSurah, QuranReadingRequest>((ref, request) async {
+      final selectionState = ref.watch(selectedQuranTranslationProvider);
+      final selected = selectionState.valueOrNull;
+      AsyncValue<QuranReadingSurah>? warmup;
+      if (selected != null && request.warmTranslation) {
+        warmup = ref.watch(
+          quranTranslationWarmupProvider((
+            surahNumber: request.surahNumber,
+            ayahCount: request.ayahCount,
+            selection: selected,
+          )),
+        );
+      }
+      final warmed = warmup?.valueOrNull;
+      if (warmed != null) return warmed;
+
+      final reading = await ref
+          .watch(quranReadingRepositoryProvider)
+          .getSurah(
+            surahNumber: request.surahNumber,
+            ayahCount: request.ayahCount,
+            translationSelection: selected,
+            allowTranslationNetwork: false,
+          );
+      if (selectionState.hasError) {
+        return reading.withTranslationIssue(
+          const QuranContentIssue(
+            reason: QuranContentUnavailableReason.invalidProviderResponse,
+            code: 'quran_translation_selection_invalid',
+          ),
+        );
+      }
+      return reading;
+    });
 
 final quranSourcesProvider = StreamProvider<List<QuranSourceRecord>>(
   (ref) => ref.watch(quranCacheRepositoryProvider).watchSources(),
@@ -123,7 +251,7 @@ final widgetSyncCoordinatorProvider = Provider<WidgetSyncCoordinator>((ref) {
 final widgetSyncDriverProvider = Provider<_AppWidgetSyncDriver>((ref) {
   return _AppWidgetSyncDriver(
     coordinator: ref.watch(widgetSyncCoordinatorProvider),
-    quranCache: ref.watch(quranCacheRepositoryProvider),
+    quranText: ref.watch(tanzilUthmaniTextRepositoryProvider),
     timeProvider: ref.watch(timeProviderProvider),
   );
 });
@@ -136,12 +264,8 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
   final rotation = ref.watch(rotationSnapshotProvider).valueOrNull;
   final learning = ref.watch(allLearningProvider).valueOrNull;
   final catalog = ref.watch(fullCatalogProvider).valueOrNull;
-  final sources = ref.watch(quranSourcesProvider).valueOrNull;
   final selectedLearningSurahId = ref.watch(selectedLearningSurahProvider);
-  if (rotation == null ||
-      learning == null ||
-      catalog == null ||
-      sources == null) {
+  if (rotation == null || learning == null || catalog == null) {
     return;
   }
   ref
@@ -151,7 +275,6 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
         rotation: rotation,
         learning: learning,
         catalog: catalog,
-        sources: sources,
         selectedLearningSurahId: selectedLearningSurahId,
       );
 });
@@ -216,6 +339,8 @@ final catalogBootstrapProvider = FutureProvider<void>((ref) async {
 
 final startupProvider = FutureProvider<void>((ref) async {
   await ref.watch(catalogBootstrapProvider.future);
+  await ref.watch(tanzilUthmaniTextRepositoryProvider).load();
+  await _normalizeRotationExclusions(ref);
   final learning = ref.watch(learningRepositoryProvider);
   final machine = LearningStateMachine(
     timeProvider: ref.watch(timeProviderProvider),
@@ -236,6 +361,62 @@ final startupProvider = FutureProvider<void>((ref) async {
     ref.read(learningRollbackQueueProvider.notifier).replace(rollbacks);
   }
 });
+
+final class QuranTranslationSelectionController {
+  const QuranTranslationSelectionController({
+    required this.repository,
+    required this.timeProvider,
+  });
+
+  final QuranTranslationSelectionRepository repository;
+  final TimeProvider timeProvider;
+
+  Future<void> select(QuranTranslation translation) async {
+    if (translation.source != QuranEncProvider.sourceId ||
+        translation.languageCode != 'ru') {
+      throw ArgumentError.value(
+        '${translation.source}/${translation.languageCode}',
+        'translation',
+        'Only Russian catalog entries returned by QuranEnc may be selected.',
+      );
+    }
+    final now = timeProvider.nowUtc();
+    await repository.save(
+      QuranTranslationSelection.fromCatalog(
+        translation: translation,
+        fetchedAtUtc: now,
+        attribution: QuranEncProvider.attribution,
+        sourceUri: Uri.parse('https://quranenc.com/'),
+      ),
+      updatedAtUtc: now,
+    );
+  }
+
+  Future<void> clear() async {
+    await repository.clear();
+  }
+}
+
+const String _rotationExclusionsMarker = 'rotation_exclusions_v1_normalized';
+
+Future<void> _normalizeRotationExclusions(Ref ref) async {
+  final settings = ref.read(settingsRepositoryProvider);
+  if (await settings.getBool(_rotationExclusionsMarker) == true) return;
+
+  final surahs = ref.read(surahRepositoryProvider);
+  final catalog = await surahs.getCatalog();
+  for (final item in catalog) {
+    if (item.surah.surahNumber == 1 && item.isMastered && item.isActive) {
+      await surahs.setActive(item.surah.id, isActive: false);
+      break;
+    }
+  }
+  await settings.setBool(
+    _rotationExclusionsMarker,
+    true,
+    updatedAtUtc: ref.read(timeProviderProvider).nowUtc(),
+  );
+}
 
 final class SelectedPrayerController extends StateNotifier<PrayerContext> {
   SelectedPrayerController({
@@ -462,11 +643,16 @@ final class AppActions {
         displayOrder: snapshot.surahs.length,
       );
       await learning.saveOutcome(outcome.learning);
-      await surahs.addMastered(
-        surah.id,
-        activate: true,
-        displayOrder: snapshot.surahs.length,
+      final alreadyMastered = snapshot.surahs.any(
+        (mastered) => mastered.id == surah.id,
       );
+      if (!alreadyMastered) {
+        await surahs.addMastered(
+          surah.id,
+          activate: surah.isRotationEligible,
+          displayOrder: snapshot.surahs.length,
+        );
+      }
     });
   }
 
@@ -489,12 +675,12 @@ final class AppActions {
 final class _AppWidgetSyncDriver {
   _AppWidgetSyncDriver({
     required this.coordinator,
-    required this.quranCache,
+    required this.quranText,
     required this.timeProvider,
   });
 
   final WidgetSyncCoordinator coordinator;
-  final QuranCacheRepository quranCache;
+  final TanzilUthmaniTextRepository quranText;
   final TimeProvider timeProvider;
 
   int _revision = 0;
@@ -505,7 +691,6 @@ final class _AppWidgetSyncDriver {
     required RotationSnapshot rotation,
     required List<LearningSurahState> learning,
     required List<CatalogSurah> catalog,
-    required List<QuranSourceRecord> sources,
     required String? selectedLearningSurahId,
   }) {
     final revision = ++_revision;
@@ -515,7 +700,6 @@ final class _AppWidgetSyncDriver {
             rotation: rotation,
             learning: List<LearningSurahState>.of(learning),
             catalog: List<CatalogSurah>.of(catalog),
-            sources: List<QuranSourceRecord>.of(sources),
             selectedLearningSurahId: selectedLearningSurahId,
           )
           .then((snapshot) async {
@@ -536,20 +720,21 @@ final class _AppWidgetSyncDriver {
     required RotationSnapshot rotation,
     required List<LearningSurahState> learning,
     required List<CatalogSurah> catalog,
-    required List<QuranSourceRecord> sources,
     required String? selectedLearningSurahId,
   }) async {
     final localeCode = const <String>{'ru', 'en', 'uz'}.contains(languageCode)
         ? languageCode
         : 'ru';
     final l10n = lookupAppLocalizations(Locale(localeCode));
-    final recommendation = const SurahSuggestionService().suggest(
-      rotation,
-      limit: 1,
-    );
-    final firstSuggestion = recommendation.isEmpty
-        ? null
-        : recommendation.first;
+    final recommendations = const SurahSuggestionService().suggest(rotation);
+    final recommendationRanks = <String, int>{
+      for (var index = 0; index < recommendations.length; index += 1)
+        recommendations[index].surah.id: index,
+    };
+    final recommendedPartIds = <String, String?>{
+      for (final suggestion in recommendations)
+        suggestion.surah.id: suggestion.recommendedPart?.id,
+    };
     final candidates = <RotationWidgetCandidate>[];
     for (final surah in rotation.activeSurahs) {
       final scheme = surah.rotationScheme;
@@ -562,7 +747,7 @@ final class _AppWidgetSyncDriver {
             displayName: surah.surah.displayName,
             ayahCount: surah.surah.ayahCount,
             remaining: rotation.rotationTarget - surah.rotationScore,
-            isRecommended: firstSuggestion?.surah.id == surah.id,
+            recommendationRank: recommendationRanks[surah.id],
             displayOrder: surah.displayOrder,
             lastUsedAtUtc: surah.lastUsedAtUtc,
           ),
@@ -582,9 +767,9 @@ final class _AppWidgetSyncDriver {
             startAyah: part.ayahRange.startAyah,
             endAyah: part.ayahRange.endAyah,
             remaining: rotation.rotationTarget - part.rotationScore,
-            isRecommended:
-                firstSuggestion?.surah.id == surah.id &&
-                firstSuggestion?.recommendedPart?.id == part.id,
+            recommendationRank: recommendedPartIds[surah.id] == part.id
+                ? recommendationRanks[surah.id]
+                : null,
             displayOrder: surah.displayOrder,
             lastUsedAtUtc: part.lastUsedAtUtc,
           ),
@@ -623,8 +808,7 @@ final class _AppWidgetSyncDriver {
             : l10n.cumulativeRange(learningState.stage.endAyah),
         startAyah: startAyah,
         endAyah: endAyah,
-        verifiedTextLines: await _verifiedTextLines(
-          sources: sources,
+        verifiedTextLines: await _verifiedArabicTextLines(
           surahNumber: descriptor.surahNumber,
           startAyah: startAyah,
           endAyah: endAyah,
@@ -647,34 +831,16 @@ final class _AppWidgetSyncDriver {
     );
   }
 
-  Future<List<String>> _verifiedTextLines({
-    required List<QuranSourceRecord> sources,
+  Future<List<String>> _verifiedArabicTextLines({
     required int surahNumber,
     required int startAyah,
     required int endAyah,
   }) async {
-    for (final source in sources) {
-      final lines = <String>[];
-      var complete = true;
-      for (var ayahNumber = startAyah; ayahNumber <= endAyah; ayahNumber += 1) {
-        final ayah = await quranCache.getAyah(
-          sourceId: source.id,
-          surahNumber: surahNumber,
-          ayahNumber: ayahNumber,
-        );
-        final exact = ayah?.arabicText?.isNotEmpty ?? false
-            ? ayah!.arabicText
-            : ayah?.translation;
-        if (exact == null || exact.isEmpty) {
-          complete = false;
-          break;
-        }
-        lines.add(exact);
-      }
-      if (complete && lines.isNotEmpty) {
-        return List<String>.unmodifiable(lines);
-      }
-    }
-    return const <String>[];
+    final ayahs = await quranText.getRange(
+      surahNumber: surahNumber,
+      startAyah: startAyah,
+      endAyah: endAyah,
+    );
+    return List<String>.unmodifiable(ayahs.map((ayah) => ayah.arabicText));
   }
 }

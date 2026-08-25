@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:murajaah/core/widgets/widget_projection_builder.dart';
+import 'package:murajaah/core/widgets/widget_snapshot.dart';
 
 void main() {
   const builder = WidgetProjectionBuilder(
@@ -19,7 +20,7 @@ void main() {
       _whole(
         id: 'recommended',
         remaining: 1,
-        isRecommended: true,
+        recommendationRank: 0,
         displayOrder: 99,
       ),
       _whole(id: 'due-2', remaining: 2, displayOrder: 2),
@@ -72,7 +73,6 @@ void main() {
         startAyah: 72,
         endAyah: 141,
         remaining: 2,
-        isRecommended: false,
         displayOrder: 0,
       ),
     ]);
@@ -91,6 +91,28 @@ void main() {
       ]).items,
       isEmpty,
     );
+  });
+
+  test('keeps eight recommendations in exact rank order', () {
+    final result = builder.buildRotation(<RotationWidgetCandidate>[
+      for (var rank = 7; rank >= 0; rank -= 1)
+        _whole(id: 'recommended-$rank', remaining: 1, recommendationRank: rank),
+    ]);
+
+    expect(
+      result.items.map((item) => item.recommendationRank),
+      List<int>.generate(8, (index) => index),
+    );
+  });
+
+  test('bounds a large due projection and reports omitted rows', () {
+    final result = builder.buildRotation(<RotationWidgetCandidate>[
+      for (var index = 0; index < maxRotationWidgetItems + 9; index += 1)
+        _whole(id: 'due-$index', remaining: 1, displayOrder: index),
+    ]);
+
+    expect(result.items, hasLength(maxRotationWidgetItems));
+    expect(result.omittedCount, 9);
   });
 
   test('learning cumulative range and exact verified text are projected', () {
@@ -133,6 +155,22 @@ void main() {
     );
   });
 
+  test('learning widget keeps only the latest three verified ayah lines', () {
+    final result = builder.buildLearning(
+      LearningWidgetCandidate(
+        surahId: '2',
+        surahNumber: 2,
+        displayName: 'Бакара',
+        stageLabel: 'Накопительно',
+        startAyah: 1,
+        endAyah: 5,
+        verifiedTextLines: const <String>['a', 'b', 'c', 'd', 'e'],
+      ),
+    );
+
+    expect(result.item!.verifiedTextLines, const <String>['c', 'd', 'e']);
+  });
+
   test('no selected learning surah produces empty projection', () {
     expect(builder.buildLearning(null).item, isNull);
   });
@@ -142,7 +180,7 @@ RotationWidgetCandidate _whole({
   required String id,
   required int remaining,
   String displayName = 'Такасур',
-  bool isRecommended = false,
+  int? recommendationRank,
   int displayOrder = 0,
   DateTime? lastUsedAtUtc,
 }) => RotationWidgetCandidate.whole(
@@ -152,7 +190,7 @@ RotationWidgetCandidate _whole({
   displayName: displayName,
   ayahCount: 8,
   remaining: remaining,
-  isRecommended: isRecommended,
+  recommendationRank: recommendationRank,
   displayOrder: displayOrder,
   lastUsedAtUtc: lastUsedAtUtc,
 );
