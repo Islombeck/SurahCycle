@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rotation_widget_name">Murajaah takrori</string>
+    <string name="rotation_widget_description">Takrorlash vaqti kelgan suralar va qismlar</string>
+    <string name="rotation_widget_title">Takrorlash</string>
+    <string name="rotation_widget_subtitle">Takrorlash kerak</string>
+    <string name="rotation_widget_empty">Barcha takrorlar bajarildi. Tartibni koʻrish uchun Murajaahʼni oching.</string>
+    <string name="rotation_widget_preview_sample">102. Takosur · 8 · 2×</string>
+    <string name="learning_widget_name">Murajaah yodlash</string>
+    <string name="learning_widget_description">Tanlangan sura va joriy yodlash bosqichi</string>
+    <string name="learning_widget_title">Yodlash</string>
+    <string name="learning_widget_empty">Yodlash boʻlimida surani tanlang.</string>
+    <string name="learning_widget_preview_sample">112. Ixlos · 1–3</string>
+    <string name="widget_open_murajaah">Murajaahʼni oching</string>
+    <string name="widget_open_app">Ilovani ochish</string>
+    <string name="widget_recommended_marker">&#9733;</string>
+</resources>

@@ -1,0 +1,246 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../app/app_providers.dart';
+import '../../../app/localization_extensions.dart';
+import '../../../core/domain/domain.dart';
+import '../../quran/quran.dart';
+
+final class SettingsScreen extends ConsumerStatefulWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  String? _selectedSurahId;
+  bool _adjusting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ref.watch(themePreferenceProvider);
+    final snapshot = ref.watch(rotationSnapshotProvider);
+    return Scaffold(
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: <Widget>[
+            SliverAppBar.large(title: Text(context.l10n.settingsTab)),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+              sliver: SliverList.list(
+                children: <Widget>[
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Text(
+                            context.l10n.darkMode,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          SegmentedButton<AppThemePreference>(
+                            segments: <ButtonSegment<AppThemePreference>>[
+                              ButtonSegment<AppThemePreference>(
+                                value: AppThemePreference.system,
+                                icon: const Icon(Icons.brightness_auto),
+                                label: Text(context.l10n.themeSystem),
+                              ),
+                              ButtonSegment<AppThemePreference>(
+                                value: AppThemePreference.light,
+                                icon: const Icon(Icons.light_mode_outlined),
+                                label: Text(context.l10n.themeLight),
+                              ),
+                              ButtonSegment<AppThemePreference>(
+                                value: AppThemePreference.dark,
+                                icon: const Icon(Icons.dark_mode_outlined),
+                                label: Text(context.l10n.themeDark),
+                              ),
+                            ],
+                            selected: <AppThemePreference>{theme},
+                            showSelectedIcon: false,
+                            onSelectionChanged: (selection) => ref
+                                .read(themePreferenceProvider.notifier)
+                                .select(selection.single),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: Column(
+                      children: <Widget>[
+                        ListTile(
+                          leading: const Icon(Icons.history),
+                          title: Text(context.l10n.openHistory),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => context.push('/history'),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.file_download_outlined),
+                          title: Text(context.l10n.exportData),
+                          onTap: () =>
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(context.l10n.exportPrepared),
+                                ),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.verified_outlined),
+                      title: Text(context.l10n.sourceMetadata),
+                      subtitle: Text(
+                        '${TanzilMetadataProvider.attribution} · '
+                        'v${TanzilMetadataProvider.version} · '
+                        '${TanzilMetadataProvider.license}\n'
+                        '${context.l10n.contentIntegrityNotice}',
+                      ),
+                      trailing: const Icon(Icons.offline_pin_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    clipBehavior: Clip.antiAlias,
+                    child: ExpansionTile(
+                      leading: const Icon(Icons.tune),
+                      title: Text(context.l10n.advancedSettings),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      children: <Widget>[
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(context.l10n.balanceAdjustmentBody),
+                        ),
+                        const SizedBox(height: 12),
+                        snapshot.when(
+                          data: _buildBalanceControls,
+                          loading: () => const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: CircularProgressIndicator(),
+                          ),
+                          error: (error, stackTrace) =>
+                              Text(context.l10n.errorGeneric),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBalanceControls(RotationSnapshot snapshot) {
+    final candidates =
+        snapshot.surahs
+            .where((surah) => surah.hasEnteredRotation)
+            .toList(growable: false)
+          ..sort(
+            (left, right) =>
+                left.surah.surahNumber.compareTo(right.surah.surahNumber),
+          );
+    if (candidates.isEmpty) {
+      return Text(context.l10n.noActiveSurahs);
+    }
+    final validSelection = candidates.any((item) => item.id == _selectedSurahId)
+        ? _selectedSurahId
+        : candidates.first.id;
+    final selected = candidates.firstWhere((item) => item.id == validSelection);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        DropdownButtonFormField<String>(
+          initialValue: validSelection,
+          decoration: InputDecoration(labelText: context.l10n.selectSurah),
+          items: <DropdownMenuItem<String>>[
+            for (final item in candidates)
+              DropdownMenuItem<String>(
+                value: item.id,
+                child: Text(item.surah.displayName),
+              ),
+          ],
+          onChanged: _adjusting
+              ? null
+              : (value) => setState(() => _selectedSurahId = value),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          context.l10n.aheadBy(
+            selected.rotationScore > snapshot.rotationTarget
+                ? selected.rotationScore - snapshot.rotationTarget
+                : 0,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _adjusting
+                    ? null
+                    : () => _confirmAdjustment(validSelection!, -1),
+                child: Text(context.l10n.shiftMinusOne),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton.tonal(
+                onPressed: _adjusting
+                    ? null
+                    : () => _confirmAdjustment(validSelection!, 1),
+                child: Text(context.l10n.shiftPlusOne),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmAdjustment(String surahId, int delta) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.balanceAdjustment),
+        content: Text(context.l10n.balanceConfirm),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(context.l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _adjusting = true);
+    try {
+      await ref
+          .read(appActionsProvider)
+          .adjustBalance(surahId: surahId, delta: delta);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.errorGeneric)));
+      }
+    } finally {
+      if (mounted) setState(() => _adjusting = false);
+    }
+  }
+}

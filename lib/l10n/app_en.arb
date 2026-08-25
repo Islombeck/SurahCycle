@@ -1,0 +1,111 @@
+{
+  "@@locale": "en",
+  "appName": "Murajaah",
+  "homeTab": "Home",
+  "surahsTab": "Surahs",
+  "learningTab": "Learning",
+  "statisticsTab": "Statistics",
+  "settingsTab": "Settings",
+  "historyTitle": "History",
+  "recommendedTitle": "Recommended",
+  "activeSurahsTitle": "Active surahs",
+  "noActiveSurahs": "Select mastered surahs and add them to rotation.",
+  "contentUnavailableTitle": "Quran content is not downloaded yet",
+  "contentUnavailableBody": "The verified surah catalog is available offline. Ayah text and translations are not downloaded yet; rotation and learning stages still work.",
+  "refreshContent": "Check source",
+  "sourceUnavailable": "A verified source is not connected yet",
+  "prayerContextTitle": "Prayer context",
+  "fajr": "Fajr",
+  "dhuhr": "Dhuhr",
+  "asr": "Asr",
+  "maghrib": "Maghrib",
+  "isha": "Isha",
+  "witr": "Witr",
+  "nafl": "Nafl",
+  "qada": "Qada",
+  "selectPrayer": "Select prayer",
+  "surahMarked": "Surah marked",
+  "undo": "Undo",
+  "doneForCycle": "Complete",
+  "recitationsRemaining": "{count}×",
+  "ayahCount": "{count} ayahs",
+  "surahNumber": "Surah {number}",
+  "searchSurahs": "Search by number or name",
+  "noSearchResults": "No surahs match this search.",
+  "masteredOnly": "Mastered",
+  "activeRotation": "In rotation",
+  "inactiveRotation": "Paused",
+  "addToMastered": "Add to mastered",
+  "removeFromRotation": "Pause",
+  "returnToRotation": "Return to rotation",
+  "editAlias": "Edit name",
+  "aliasHint": "Your surah name",
+  "save": "Save",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "delete": "Delete",
+  "deleteHistoryConfirm": "Delete this entry? Balance will be rebuilt from saved events.",
+  "emptyHistory": "No recitations yet.",
+  "normalRecitation": "Regular",
+  "qadaRecitation": "Qada",
+  "totalRecitations": "Total recitations",
+  "lastUsed": "Last recitation",
+  "never": "Not recited yet",
+  "prayerBreakdown": "By prayer",
+  "noStatistics": "Statistics will appear after the first recitation.",
+  "currentLearning": "Currently learning",
+  "showOnHome": "Show on Home",
+  "startLearning": "Start learning",
+  "repeated": "Repeated",
+  "learned": "Learned",
+  "newAyah": "New ayah {number}",
+  "cumulativeRange": "Review ayahs 1–{end}",
+  "learningRolledBack": "After 72 hours without review, the stage moved back once.",
+  "learningCompletedTitle": "Surah learned",
+  "learningCompletedBody": "Add it to active rotation?",
+  "completeAndAdd": "Complete and add",
+  "darkMode": "Dark theme",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "advancedSettings": "Advanced settings",
+  "balanceAdjustment": "Balance adjustment",
+  "balanceAdjustmentBody": "Use only to migrate an existing balance. Recitation history will not change.",
+  "shiftPlusOne": "Shift balance +1",
+  "shiftMinusOne": "Shift balance −1",
+  "balanceConfirm": "Change only this surah's balance? Historical statistics stay unchanged.",
+  "exportData": "Export data",
+  "exportPrepared": "The export boundary is ready; file sharing is planned for the next sprint.",
+  "sourceMetadata": "Data source",
+  "offlineReady": "Works offline",
+  "retry": "Retry",
+  "errorGeneric": "The action could not be completed",
+  "loading": "Loading…",
+  "noLearningSurahs": "No surahs are being learned.",
+  "openHistory": "Open history",
+  "aheadBy": "Ahead by {count}",
+  "statisticsFilter": "Prayer filter",
+  "allPrayers": "All prayers",
+  "isQadaLabel": "Make-up prayer",
+  "reorderHint": "Long-press and drag to reorder",
+  "selectSurah": "Select a surah",
+  "contentIntegrityNotice": "Text and metadata are shown unchanged only after loading them from a verified source."
+  ,"editSegmentation": "Recitation parts"
+  ,"wholeSurah": "Whole surah"
+  ,"partLabel": "Part {number}"
+  ,"ayahRange": "Ayahs {start}–{end}"
+  ,"@ayahRange": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"rakaatSpan": "Rakaats: {count}"
+  ,"selectCoverage": "Select the recited parts"
+  ,"splitIntoParts": "Split into {count} parts"
+  ,"automaticBoundaries": "Automatic boundaries"
+  ,"manualBoundaries": "Edit boundaries"
+  ,"schemeVersion": "Version {version}"
+  ,"recitationActions": "Recitation actions"
+  ,"fullEquivalentRecitations": "Full-surah equivalents"
+  ,"dueSurahsCount": "Due: {count}"
+  ,"widgetPart": "Part"
+  ,"widgetAyah": "Ayah"
+  ,"widgetAyahs": "Ayahs"
+  ,"widgetOpenAppToLoadText": "Open Murajaah to load verified text"
+}

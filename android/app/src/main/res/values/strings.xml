@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rotation_widget_name">Murajaah rotation</string>
+    <string name="rotation_widget_description">Surahs and parts that are due for revision</string>
+    <string name="rotation_widget_title">Rotation</string>
+    <string name="rotation_widget_subtitle">Due for revision</string>
+    <string name="rotation_widget_empty">Nothing is due. Open Murajaah to review your rotation.</string>
+    <string name="rotation_widget_preview_sample">102. Takathur · 8 · 2×</string>
+    <string name="learning_widget_name">Murajaah learning</string>
+    <string name="learning_widget_description">The selected surah and current learning stage</string>
+    <string name="learning_widget_title">Learning</string>
+    <string name="learning_widget_empty">Choose a surah in Learning.</string>
+    <string name="learning_widget_preview_sample">112. Al-Ikhlas · 1–3</string>
+    <string name="widget_open_murajaah">Open Murajaah</string>
+    <string name="widget_open_app">Open app</string>
+    <string name="widget_recommended_marker">&#9733;</string>
+</resources>

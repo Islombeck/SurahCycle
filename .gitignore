@@ -1,0 +1,34 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+coverage/
+.kotlin/
+
+# Local tooling and secrets
+.tools/
+.env
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Android / iOS generated local settings
+android/local.properties
+android/key.properties
+ios/Flutter/ephemeral/
+ios/Pods/
+ios/.symlinks/
+
+# Local QA artifacts kept outside source control
+/app-debug.apk
+/video_*.mp4

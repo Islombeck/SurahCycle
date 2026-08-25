@@ -1,0 +1,111 @@
+{
+  "@@locale": "uz",
+  "appName": "Murajaah",
+  "homeTab": "Bosh sahifa",
+  "surahsTab": "Suralar",
+  "learningTab": "O‘rganish",
+  "statisticsTab": "Statistika",
+  "settingsTab": "Sozlamalar",
+  "historyTitle": "Tarix",
+  "recommendedTitle": "Tavsiya",
+  "activeSurahsTitle": "Faol suralar",
+  "noActiveSurahs": "Yodlangan suralarni tanlang va aylanishga qo‘shing.",
+  "contentUnavailableTitle": "Qur’on ma’lumotlari hali yuklanmagan",
+  "contentUnavailableBody": "Tasdiqlangan suralar katalogi oflayn mavjud. Oyat matni va tarjimalar hali yuklanmagan; aylanish va o‘rganish bosqichlari ishlashda davom etadi.",
+  "refreshContent": "Manbani tekshirish",
+  "sourceUnavailable": "Tasdiqlangan manba hali ulanmagan",
+  "prayerContextTitle": "Namoz konteksti",
+  "fajr": "Bomdod",
+  "dhuhr": "Peshin",
+  "asr": "Asr",
+  "maghrib": "Shom",
+  "isha": "Xufton",
+  "witr": "Vitr",
+  "nafl": "Nafl",
+  "qada": "Qazo",
+  "selectPrayer": "Namozni tanlash",
+  "surahMarked": "Sura belgilandi",
+  "undo": "Bekor qilish",
+  "doneForCycle": "Bajarildi",
+  "recitationsRemaining": "{count}×",
+  "ayahCount": "{count} oyat",
+  "surahNumber": "{number}-sura",
+  "searchSurahs": "Raqam yoki nom bo‘yicha qidirish",
+  "noSearchResults": "Bu qidiruv bo‘yicha sura topilmadi.",
+  "masteredOnly": "Yodlangan",
+  "activeRotation": "Aylanishda",
+  "inactiveRotation": "To‘xtatilgan",
+  "addToMastered": "Yodlanganlarga qo‘shish",
+  "removeFromRotation": "To‘xtatish",
+  "returnToRotation": "Aylanishga qaytarish",
+  "editAlias": "Nomni o‘zgartirish",
+  "aliasHint": "Sura uchun nomingiz",
+  "save": "Saqlash",
+  "cancel": "Bekor qilish",
+  "confirm": "Tasdiqlash",
+  "delete": "O‘chirish",
+  "deleteHistoryConfirm": "Bu yozuv o‘chirilsinmi? Balans saqlangan hodisalardan qayta hisoblanadi.",
+  "emptyHistory": "Hali qiroat yo‘q.",
+  "normalRecitation": "Oddiy",
+  "qadaRecitation": "Qazo",
+  "totalRecitations": "Jami qiroatlar",
+  "lastUsed": "Oxirgi qiroat",
+  "never": "Hali o‘qilmagan",
+  "prayerBreakdown": "Namozlar bo‘yicha",
+  "noStatistics": "Statistika birinchi qiroatdan keyin paydo bo‘ladi.",
+  "currentLearning": "Hozir o‘rganilmoqda",
+  "showOnHome": "Bosh sahifada ko‘rsatish",
+  "startLearning": "O‘rganishni boshlash",
+  "repeated": "Takrorladim",
+  "learned": "Yodladim",
+  "newAyah": "Yangi oyat {number}",
+  "cumulativeRange": "1–{end} oyatlarni takrorlash",
+  "learningRolledBack": "72 soat takrorsiz o‘tgach, bosqich bir qadam ortga qaytdi.",
+  "learningCompletedTitle": "Sura yodlandi",
+  "learningCompletedBody": "Uni faol aylanishga qo‘shilsinmi?",
+  "completeAndAdd": "Tugatish va qo‘shish",
+  "darkMode": "Qorong‘i mavzu",
+  "themeSystem": "Tizim kabi",
+  "themeLight": "Yorug‘",
+  "themeDark": "Qorong‘i",
+  "advancedSettings": "Kengaytirilgan sozlamalar",
+  "balanceAdjustment": "Balansni tuzatish",
+  "balanceAdjustmentBody": "Faqat mavjud balansni ko‘chirish uchun ishlating. Qiroat tarixi o‘zgarmaydi.",
+  "shiftPlusOne": "Balansni +1 siljitish",
+  "shiftMinusOne": "Balansni −1 siljitish",
+  "balanceConfirm": "Faqat shu suraning balansi o‘zgartirilsinmi? Tarixiy statistika o‘zgarmaydi.",
+  "exportData": "Ma’lumotlarni eksport qilish",
+  "exportPrepared": "Eksport chegarasi tayyor; fayl keyingi sprintda qo‘shiladi.",
+  "sourceMetadata": "Ma’lumot manbasi",
+  "offlineReady": "Oflayn ishlaydi",
+  "retry": "Qayta urinish",
+  "errorGeneric": "Amalni bajarib bo‘lmadi",
+  "loading": "Yuklanmoqda…",
+  "noLearningSurahs": "Hali o‘rganilayotgan sura yo‘q.",
+  "openHistory": "Tarixni ochish",
+  "aheadBy": "Oldinda: {count}",
+  "statisticsFilter": "Namoz filtri",
+  "allPrayers": "Barcha namozlar",
+  "isQadaLabel": "Qazo namozi",
+  "reorderHint": "Tartibni o‘zgartirish uchun bosib ushlab suring",
+  "selectSurah": "Surani tanlang",
+  "contentIntegrityNotice": "Matn va metama’lumotlar faqat tasdiqlangan manbadan o‘zgartirilmasdan ko‘rsatiladi."
+  ,"editSegmentation": "Takrorlash qismlari"
+  ,"wholeSurah": "To‘liq sura"
+  ,"partLabel": "{number}-qism"
+  ,"ayahRange": "{start}–{end}-oyatlar"
+  ,"@ayahRange": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"rakaatSpan": "Rakaatlar: {count}"
+  ,"selectCoverage": "O‘qilgan qismlarni tanlang"
+  ,"splitIntoParts": "{count} qismga bo‘lish"
+  ,"automaticBoundaries": "Avtomatik chegaralar"
+  ,"manualBoundaries": "Chegaralarni o‘zgartirish"
+  ,"schemeVersion": "{version}-versiya"
+  ,"recitationActions": "Qiroat amallari"
+  ,"fullEquivalentRecitations": "To‘liq sura ekvivalentlari"
+  ,"dueSurahsCount": "Takrorlash kerak: {count}"
+  ,"widgetPart": "Qism"
+  ,"widgetAyah": "Oyat"
+  ,"widgetAyahs": "Oyatlar"
+  ,"widgetOpenAppToLoadText": "Tasdiqlangan matnni yuklash uchun Murajaah’ni oching"
+}
