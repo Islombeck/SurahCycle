@@ -1,19 +1,23 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/application/application.dart';
 import '../core/data/data.dart';
 import '../core/domain/domain.dart';
 import '../core/widgets/widgets.dart';
 import '../features/quran/quran.dart';
+import '../features/prayer_times/prayer_times.dart';
 import '../l10n/app_localizations.dart';
+import 'widget_localization.dart';
 
-abstract interface class LocalDateProvider {
-  LocalDate today();
-}
+abstract interface class LocalDateProvider
+    implements RecitationLocalDateProvider {}
 
 final class SystemLocalDateProvider implements LocalDateProvider {
   const SystemLocalDateProvider();
@@ -71,10 +75,38 @@ final tanzilUthmaniTextRepositoryProvider =
       );
     });
 
+final tanzilEnglishTransliterationRepositoryProvider =
+    Provider<TanzilEnglishTransliterationRepository>((ref) {
+      return TanzilEnglishTransliterationRepository(
+        metadataProvider: ref.watch(tanzilCatalogProvider),
+      );
+    });
+
 final quranTranslationSelectionRepositoryProvider =
     Provider<QuranTranslationSelectionRepository>((ref) {
       return QuranTranslationSelectionRepository(
         ref.watch(settingsRepositoryProvider),
+      );
+    });
+
+final quranDisplayPreferencesRepositoryProvider =
+    Provider<QuranDisplayPreferencesRepository>((ref) {
+      return QuranDisplayPreferencesRepository(
+        ref.watch(settingsRepositoryProvider),
+      );
+    });
+
+final quranDisplayPreferencesProvider = StreamProvider<QuranDisplayPreferences>(
+  (ref) {
+    return ref.watch(quranDisplayPreferencesRepositoryProvider).watch();
+  },
+);
+
+final quranDisplayPreferencesControllerProvider =
+    Provider<QuranDisplayPreferencesController>((ref) {
+      return QuranDisplayPreferencesController(
+        repository: ref.watch(quranDisplayPreferencesRepositoryProvider),
+        timeProvider: ref.watch(timeProviderProvider),
       );
     });
 
@@ -104,6 +136,7 @@ final quranReadingRepositoryProvider = Provider<QuranReadingRepository>((ref) {
   return QuranReadingRepository(
     arabic: ref.watch(tanzilUthmaniTextRepositoryProvider),
     translations: ref.watch(quranContentRepositoryProvider),
+    transliterations: ref.watch(tanzilEnglishTransliterationRepositoryProvider),
   );
 });
 
@@ -187,9 +220,119 @@ final prayerRepositoryProvider = Provider<PrayerRepository>(
   (ref) => PrayerRepository(ref.watch(appDatabaseProvider)),
 );
 
+final prayerContextResolverProvider = Provider<RecitationPrayerContextResolver>(
+  (ref) => StoredManualRecitationPrayerContextResolver(
+    ref.watch(prayerRepositoryProvider),
+  ),
+);
+
+final storedPrayerContextProvider = StreamProvider<PrayerContext?>((ref) {
+  return ref.watch(prayerRepositoryProvider).watchSelectedContext();
+});
+
 final settingsRepositoryProvider = Provider<AppSettingsRepository>(
   (ref) => AppSettingsRepository(ref.watch(appDatabaseProvider)),
 );
+
+final prayerTimeSettingsRepositoryProvider =
+    Provider<PrayerTimeSettingsRepository>((ref) {
+      return PrayerTimeSettingsRepository(
+        ref.watch(settingsRepositoryProvider),
+      );
+    });
+
+final prayerTimeSettingsProvider = StreamProvider<PrayerTimeSettings>((ref) {
+  return ref.watch(prayerTimeSettingsRepositoryProvider).watch();
+});
+
+final devicePrayerLocationServiceProvider =
+    Provider<DevicePrayerLocationService>(
+      (ref) => const GeolocatorDevicePrayerLocationService(),
+    );
+
+final prayerScheduleCacheStoreProvider =
+    FutureProvider<PrayerScheduleCacheStore>((ref) async {
+      final support = await getApplicationSupportDirectory();
+      return FilePrayerScheduleCacheStore(
+        directory: Directory(
+          '${support.path}${Platform.pathSeparator}prayer_time_cache_v1',
+        ),
+      );
+    });
+
+final namozVaqtiUzPrayerTimeProvider = Provider<NamozVaqtiUzPrayerTimeProvider>(
+  (ref) {
+    return NamozVaqtiUzPrayerTimeProvider(
+      client: ref.watch(httpClientProvider),
+      timeProvider: ref.watch(timeProviderProvider),
+    );
+  },
+);
+
+final adhanPrayerTimeCalculatorProvider = Provider<AdhanPrayerTimeCalculator>(
+  (ref) =>
+      AdhanPrayerTimeCalculator(timeProvider: ref.watch(timeProviderProvider)),
+);
+
+final cachingPrayerScheduleRepositoryProvider =
+    FutureProvider<CachingPrayerScheduleRepository>((ref) async {
+      return CachingPrayerScheduleRepository(
+        provider: ref.watch(namozVaqtiUzPrayerTimeProvider),
+        cache: await ref.watch(prayerScheduleCacheStoreProvider.future),
+        timeProvider: ref.watch(timeProviderProvider),
+      );
+    });
+
+final prayerScheduleCoordinatorProvider =
+    FutureProvider<PrayerScheduleCoordinator>((ref) async {
+      return PrayerScheduleCoordinator(
+        publishedRepository: await ref.watch(
+          cachingPrayerScheduleRepositoryProvider.future,
+        ),
+        calculator: ref.watch(adhanPrayerTimeCalculatorProvider),
+      );
+    });
+
+final prayerScheduleUseCasesProvider = FutureProvider<PrayerScheduleUseCases>((
+  ref,
+) async {
+  return PrayerScheduleUseCases(
+    coordinator: await ref.watch(prayerScheduleCoordinatorProvider.future),
+    timeProvider: ref.watch(timeProviderProvider),
+  );
+});
+
+final prayerTodayScheduleProvider = FutureProvider<PrayerTodaySchedule>((
+  ref,
+) async {
+  final settings = await ref.watch(prayerTimeSettingsProvider.future);
+  final timeProvider = ref.watch(timeProviderProvider);
+  final nextLocalDayRefresh = Timer(
+    _durationUntilNextLocalDay(
+      nowUtc: timeProvider.nowUtc(),
+      utcOffsetMinutes: settings.location.utcOffsetMinutes,
+    ),
+    ref.invalidateSelf,
+  );
+  ref.onDispose(nextLocalDayRefresh.cancel);
+  final useCases = await ref.watch(prayerScheduleUseCasesProvider.future);
+  return useCases.loadToday(settings: settings);
+});
+
+final prayerTimeSettingsControllerProvider =
+    Provider<PrayerTimeSettingsController>((ref) {
+      return PrayerTimeSettingsController(
+        repository: ref.watch(prayerTimeSettingsRepositoryProvider),
+        timeProvider: ref.watch(timeProviderProvider),
+        refreshSchedules: (settings) async {
+          final useCases = await ref.read(
+            prayerScheduleUseCasesProvider.future,
+          );
+          await useCases.refreshCurrentAndNext(settings: settings);
+          ref.invalidate(prayerTodayScheduleProvider);
+        },
+      );
+    });
 
 final timeProviderProvider = Provider<TimeProvider>(
   (ref) => const SystemTimeProvider(),
@@ -200,6 +343,18 @@ final localDateProvider = Provider<LocalDateProvider>(
 );
 
 final uuidProvider = Provider<Uuid>((ref) => const Uuid());
+
+final recitationApplicationServiceProvider =
+    Provider<RecitationApplicationService>((ref) {
+      return RecitationApplicationService(
+        surahs: ref.watch(surahRepositoryProvider),
+        recitations: ref.watch(recitationRepositoryProvider),
+        prayerContextResolver: ref.watch(prayerContextResolverProvider),
+        timeProvider: ref.watch(timeProviderProvider),
+        localDates: ref.watch(localDateProvider),
+        createEventId: ref.watch(uuidProvider).v4,
+      );
+    });
 
 final rotationSnapshotProvider = StreamProvider<RotationSnapshot>(
   (ref) => ref.watch(surahRepositoryProvider).watchRotationSnapshot(),
@@ -251,8 +406,9 @@ final widgetSyncCoordinatorProvider = Provider<WidgetSyncCoordinator>((ref) {
 final widgetSyncDriverProvider = Provider<_AppWidgetSyncDriver>((ref) {
   return _AppWidgetSyncDriver(
     coordinator: ref.watch(widgetSyncCoordinatorProvider),
-    quranText: ref.watch(tanzilUthmaniTextRepositoryProvider),
+    quranReading: ref.watch(quranReadingRepositoryProvider),
     timeProvider: ref.watch(timeProviderProvider),
+    uuid: ref.watch(uuidProvider),
   );
 });
 
@@ -264,10 +420,34 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
   final rotation = ref.watch(rotationSnapshotProvider).valueOrNull;
   final learning = ref.watch(allLearningProvider).valueOrNull;
   final catalog = ref.watch(fullCatalogProvider).valueOrNull;
+  final storedPrayer = ref.watch(storedPrayerContextProvider);
+  final prayerTimeSettings = ref.watch(prayerTimeSettingsProvider);
+  final automaticPrayerResolution = ref.watch(prayerContextResolutionProvider);
+  final displayPreferences =
+      ref.watch(quranDisplayPreferencesProvider).valueOrNull ??
+      QuranDisplayPreferences.defaults;
+  final translationSelection = ref
+      .watch(selectedQuranTranslationProvider)
+      .valueOrNull;
   final selectedLearningSurahId = ref.watch(selectedLearningSurahProvider);
-  if (rotation == null || learning == null || catalog == null) {
+  if (rotation == null ||
+      learning == null ||
+      catalog == null ||
+      storedPrayer.isLoading ||
+      prayerTimeSettings.isLoading) {
     return;
   }
+  final settings = prayerTimeSettings.valueOrNull;
+  if (settings == null) return;
+  final widgetPrayerResolution =
+      settings.contextSelectionMode == PrayerContextSelectionMode.manual
+      ? PrayerContextResolution(
+          status: storedPrayer.valueOrNull == null
+              ? PrayerContextResolutionStatus.missingManualContext
+              : PrayerContextResolutionStatus.manual,
+          context: storedPrayer.valueOrNull,
+        )
+      : automaticPrayerResolution.valueOrNull;
   ref
       .watch(widgetSyncDriverProvider)
       .update(
@@ -275,6 +455,9 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
         rotation: rotation,
         learning: learning,
         catalog: catalog,
+        prayerResolution: widgetPrayerResolution,
+        displayPreferences: displayPreferences,
+        translationSelection: translationSelection,
         selectedLearningSurahId: selectedLearningSurahId,
       );
 });
@@ -283,6 +466,61 @@ final selectedPrayerProvider =
     StateNotifierProvider<SelectedPrayerController, PrayerContext>((ref) {
       return SelectedPrayerController(
         repository: ref.watch(prayerRepositoryProvider),
+        timeProvider: ref.watch(timeProviderProvider),
+      );
+    });
+
+final prayerContextResolutionProvider = StreamProvider<PrayerContextResolution>(
+  (ref) {
+    final settings = ref.watch(prayerTimeSettingsProvider).valueOrNull;
+    if (settings == null) {
+      return Stream<PrayerContextResolution>.value(
+        const PrayerContextResolution(
+          status: PrayerContextResolutionStatus.missingSchedule,
+        ),
+      );
+    }
+    final manualContext = ref.watch(selectedPrayerProvider);
+    if (settings.contextSelectionMode == PrayerContextSelectionMode.manual) {
+      return Stream<PrayerContextResolution>.value(
+        PrayerContextResolution(
+          status: PrayerContextResolutionStatus.manual,
+          context: manualContext,
+        ),
+      );
+    }
+    final today = ref.watch(prayerTodayScheduleProvider).valueOrNull;
+    if (today == null) {
+      return Stream<PrayerContextResolution>.value(
+        const PrayerContextResolution(
+          status: PrayerContextResolutionStatus.missingSchedule,
+        ),
+      );
+    }
+    return _watchPrayerContextResolution(
+      settings: settings,
+      today: today,
+      timeProvider: ref.watch(timeProviderProvider),
+    );
+  },
+);
+
+/// Schedule-derived context used for current/next timing presentation even
+/// while the user keeps recitation attribution in manual mode.
+final prayerScheduleContextResolutionProvider =
+    StreamProvider<PrayerContextResolution>((ref) {
+      final settings = ref.watch(prayerTimeSettingsProvider).valueOrNull;
+      final today = ref.watch(prayerTodayScheduleProvider).valueOrNull;
+      if (settings == null || today == null) {
+        return Stream<PrayerContextResolution>.value(
+          const PrayerContextResolution(
+            status: PrayerContextResolutionStatus.missingSchedule,
+          ),
+        );
+      }
+      return _watchPrayerContextResolution(
+        settings: settings,
+        today: today,
         timeProvider: ref.watch(timeProviderProvider),
       );
     });
@@ -313,6 +551,7 @@ final appActionsProvider = Provider<AppActions>((ref) {
     database: ref.watch(appDatabaseProvider),
     surahs: ref.watch(surahRepositoryProvider),
     recitations: ref.watch(recitationRepositoryProvider),
+    recitationService: ref.watch(recitationApplicationServiceProvider),
     learning: ref.watch(learningRepositoryProvider),
     timeProvider: ref.watch(timeProviderProvider),
     localDates: ref.watch(localDateProvider),
@@ -395,6 +634,41 @@ final class QuranTranslationSelectionController {
   Future<void> clear() async {
     await repository.clear();
   }
+}
+
+final class QuranDisplayPreferencesController {
+  const QuranDisplayPreferencesController({
+    required this.repository,
+    required this.timeProvider,
+  });
+
+  final QuranDisplayPreferencesRepository repository;
+  final TimeProvider timeProvider;
+
+  Future<void> save(QuranDisplayPreferences value) =>
+      repository.save(value, updatedAtUtc: timeProvider.nowUtc());
+}
+
+typedef PrayerScheduleRefresh =
+    Future<void> Function(PrayerTimeSettings settings);
+
+final class PrayerTimeSettingsController {
+  const PrayerTimeSettingsController({
+    required this.repository,
+    required this.timeProvider,
+    required this.refreshSchedules,
+  });
+
+  final PrayerTimeSettingsRepository repository;
+  final TimeProvider timeProvider;
+  final PrayerScheduleRefresh refreshSchedules;
+
+  Future<void> save(PrayerTimeSettings value, {bool refresh = true}) async {
+    await repository.save(value, updatedAtUtc: timeProvider.nowUtc());
+    if (refresh) await refreshSchedules(value);
+  }
+
+  Future<void> refresh(PrayerTimeSettings value) => refreshSchedules(value);
 }
 
 const String _rotationExclusionsMarker = 'rotation_exclusions_v1_normalized';
@@ -523,6 +797,7 @@ final class AppActions {
     required this.database,
     required this.surahs,
     required this.recitations,
+    required this.recitationService,
     required this.learning,
     required this.timeProvider,
     required this.localDates,
@@ -532,6 +807,7 @@ final class AppActions {
   final AppDatabase database;
   final SurahRepository surahs;
   final RecitationRepository recitations;
+  final RecitationApplicationService recitationService;
   final LearningRepository learning;
   final TimeProvider timeProvider;
   final LocalDateProvider localDates;
@@ -543,36 +819,11 @@ final class AppActions {
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
   }) {
-    return _registerRecitation(
+    return recitationService.registerFromApp(
       surahId: surahId,
       prayerContext: prayerContext,
       coveredPartIds: coveredPartIds,
       rakaatSpanCount: rakaatSpanCount,
-    );
-  }
-
-  Future<RecitationRegistration> _registerRecitation({
-    required String surahId,
-    required PrayerContext prayerContext,
-    required Iterable<String>? coveredPartIds,
-    required int rakaatSpanCount,
-  }) async {
-    final snapshot = await surahs.getRotationSnapshot();
-    final mastered = snapshot.surahById(surahId);
-    final explicitPartIds = coveredPartIds?.toList(growable: false);
-    return recitations.register(
-      SurahRecitationEvent(
-        id: uuid.v4(),
-        surahId: surahId,
-        prayerContext: prayerContext,
-        createdAtUtc: timeProvider.nowUtc(),
-        localDate: localDates.today(),
-        rotationSchemeId: explicitPartIds == null
-            ? null
-            : mastered.rotationScheme.id,
-        coveredPartIds: explicitPartIds,
-        rakaatSpanCount: rakaatSpanCount,
-      ),
     );
   }
 
@@ -675,13 +926,15 @@ final class AppActions {
 final class _AppWidgetSyncDriver {
   _AppWidgetSyncDriver({
     required this.coordinator,
-    required this.quranText,
+    required this.quranReading,
     required this.timeProvider,
+    required this.uuid,
   });
 
   final WidgetSyncCoordinator coordinator;
-  final TanzilUthmaniTextRepository quranText;
+  final QuranReadingRepository quranReading;
   final TimeProvider timeProvider;
+  final Uuid uuid;
 
   int _revision = 0;
   bool _hasCompletedStartupSync = false;
@@ -691,6 +944,9 @@ final class _AppWidgetSyncDriver {
     required RotationSnapshot rotation,
     required List<LearningSurahState> learning,
     required List<CatalogSurah> catalog,
+    required PrayerContextResolution? prayerResolution,
+    required QuranDisplayPreferences displayPreferences,
+    required QuranTranslationSelection? translationSelection,
     required String? selectedLearningSurahId,
   }) {
     final revision = ++_revision;
@@ -700,6 +956,9 @@ final class _AppWidgetSyncDriver {
             rotation: rotation,
             learning: List<LearningSurahState>.of(learning),
             catalog: List<CatalogSurah>.of(catalog),
+            prayerResolution: prayerResolution,
+            displayPreferences: displayPreferences,
+            translationSelection: translationSelection,
             selectedLearningSurahId: selectedLearningSurahId,
           )
           .then((snapshot) async {
@@ -720,62 +979,33 @@ final class _AppWidgetSyncDriver {
     required RotationSnapshot rotation,
     required List<LearningSurahState> learning,
     required List<CatalogSurah> catalog,
+    required PrayerContextResolution? prayerResolution,
+    required QuranDisplayPreferences displayPreferences,
+    required QuranTranslationSelection? translationSelection,
     required String? selectedLearningSurahId,
   }) async {
     final localeCode = const <String>{'ru', 'en', 'uz'}.contains(languageCode)
         ? languageCode
         : 'ru';
     final l10n = lookupAppLocalizations(Locale(localeCode));
-    final recommendations = const SurahSuggestionService().suggest(rotation);
-    final recommendationRanks = <String, int>{
-      for (var index = 0; index < recommendations.length; index += 1)
-        recommendations[index].surah.id: index,
-    };
-    final recommendedPartIds = <String, String?>{
-      for (final suggestion in recommendations)
-        suggestion.surah.id: suggestion.recommendedPart?.id,
-    };
-    final candidates = <RotationWidgetCandidate>[];
-    for (final surah in rotation.activeSurahs) {
-      final scheme = surah.rotationScheme;
-      if (!scheme.isSplit) {
-        candidates.add(
-          RotationWidgetCandidate.whole(
-            id: scheme.id,
-            surahId: surah.id,
-            surahNumber: surah.surah.surahNumber,
-            displayName: surah.surah.displayName,
-            ayahCount: surah.surah.ayahCount,
-            remaining: rotation.rotationTarget - surah.rotationScore,
-            recommendationRank: recommendationRanks[surah.id],
-            displayOrder: surah.displayOrder,
-            lastUsedAtUtc: surah.lastUsedAtUtc,
+    final widgetLocalization = WidgetLocalization.forLanguageCode(localeCode);
+    final prayerContext = prayerResolution?.context;
+    final rotationProjection =
+        RotationWidgetProjectionFactory(
+          labels: widgetLocalization.projectionLabels,
+        ).build(
+          rotation: rotation,
+          contextLabel: widgetLocalization.prayerContextLabel(
+            prayerContext,
+            isAutomatic:
+                prayerResolution?.status ==
+                PrayerContextResolutionStatus.automatic,
+            startsAt: prayerResolution?.currentStartsAt?.toString(),
+            endsAt: prayerResolution?.currentEndsAt?.toString(),
           ),
+          createActionToken: uuid.v4,
+          actionsEnabled: prayerResolution?.canMarkDirectly ?? false,
         );
-        continue;
-      }
-      for (final part in scheme.parts) {
-        candidates.add(
-          RotationWidgetCandidate.part(
-            id: part.id,
-            surahId: surah.id,
-            surahNumber: surah.surah.surahNumber,
-            displayName: surah.surah.displayName,
-            partId: part.id,
-            partIndex: part.partNumber,
-            partCount: scheme.parts.length,
-            startAyah: part.ayahRange.startAyah,
-            endAyah: part.ayahRange.endAyah,
-            remaining: rotation.rotationTarget - part.rotationScore,
-            recommendationRank: recommendedPartIds[surah.id] == part.id
-                ? recommendationRanks[surah.id]
-                : null,
-            displayOrder: surah.displayOrder,
-            lastUsedAtUtc: part.lastUsedAtUtc,
-          ),
-        );
-      }
-    }
 
     final activeLearning = learning
         .where((state) => !state.isCompleted)
@@ -799,6 +1029,19 @@ final class _AppWidgetSyncDriver {
     if (learningState != null && descriptor != null) {
       final startAyah = learningState.stage.startAyah;
       final endAyah = learningState.stage.endAyah;
+      var readingLines = const <LearningWidgetAyahLine>[];
+      try {
+        readingLines = await _verifiedLearningLines(
+          surahNumber: descriptor.surahNumber,
+          ayahCount: descriptor.ayahCount,
+          startAyah: startAyah,
+          endAyah: endAyah,
+          translationSelection: translationSelection,
+        );
+      } on Object {
+        // A failed Quran integrity/content load must still publish a valid
+        // metadata-only widget projection with its localized safe fallback.
+      }
       learningCandidate = LearningWidgetCandidate(
         surahId: learningState.surahId,
         surahNumber: descriptor.surahNumber,
@@ -808,39 +1051,116 @@ final class _AppWidgetSyncDriver {
             : l10n.cumulativeRange(learningState.stage.endAyah),
         startAyah: startAyah,
         endAyah: endAyah,
-        verifiedTextLines: await _verifiedArabicTextLines(
-          surahNumber: descriptor.surahNumber,
-          startAyah: startAyah,
-          endAyah: endAyah,
-        ),
+        ayahLines: readingLines,
+        showArabic: displayPreferences.showArabic,
+        showTransliteration: displayPreferences.showTransliteration,
+        showTranslation: displayPreferences.showTranslation,
       );
     }
 
-    return WidgetProjectionBuilder(
-      WidgetProjectionLabels(
-        part: l10n.widgetPart,
-        ayah: l10n.widgetAyah,
-        ayahs: l10n.widgetAyahs,
-        openAppToLoadText: l10n.widgetOpenAppToLoadText,
-      ),
-    ).build(
+    return WidgetSnapshot(
       generatedAtUtc: timeProvider.nowUtc(),
       locale: localeCode,
-      rotationCandidates: candidates,
-      learningCandidate: learningCandidate,
+      rotation: rotationProjection,
+      learning: WidgetProjectionBuilder(
+        widgetLocalization.projectionLabels,
+      ).buildLearning(learningCandidate),
     );
   }
 
-  Future<List<String>> _verifiedArabicTextLines({
+  Future<List<LearningWidgetAyahLine>> _verifiedLearningLines({
     required int surahNumber,
+    required int ayahCount,
     required int startAyah,
     required int endAyah,
+    required QuranTranslationSelection? translationSelection,
   }) async {
-    final ayahs = await quranText.getRange(
+    final reading = await quranReading.getSurah(
       surahNumber: surahNumber,
-      startAyah: startAyah,
-      endAyah: endAyah,
+      ayahCount: ayahCount,
+      translationSelection: translationSelection,
+      allowTranslationNetwork: false,
     );
-    return List<String>.unmodifiable(ayahs.map((ayah) => ayah.arabicText));
+    return List<LearningWidgetAyahLine>.unmodifiable(
+      reading
+          .range(startAyah: startAyah, endAyah: endAyah)
+          .map(
+            (ayah) => LearningWidgetAyahLine(
+              surahNumber: ayah.surahNumber,
+              ayahNumber: ayah.ayahNumber,
+              arabic: ayah.arabicText,
+              transliteration: ayah.transliteration == null
+                  ? null
+                  : TanzilTransliterationMarkup.toPlainText(
+                      ayah.transliteration!,
+                    ),
+              translation: ayah.translation,
+            ),
+          ),
+    );
   }
 }
+
+Duration _durationUntilNextLocalDay({
+  required DateTime nowUtc,
+  required int utcOffsetMinutes,
+}) {
+  if (!nowUtc.isUtc) {
+    throw StateError('TimeProvider.nowUtc() must return UTC.');
+  }
+  final offset = Duration(minutes: utcOffsetMinutes);
+  final local = nowUtc.add(offset);
+  final nextLocalMidnight = DateTime.utc(
+    local.year,
+    local.month,
+    local.day + 1,
+  );
+  final delay = nextLocalMidnight.subtract(offset).difference(nowUtc);
+  return delay.isNegative || delay == Duration.zero
+      ? const Duration(minutes: 1)
+      : delay + const Duration(seconds: 1);
+}
+
+Stream<PrayerContextResolution> _watchPrayerContextResolution({
+  required PrayerTimeSettings settings,
+  required PrayerTodaySchedule today,
+  required TimeProvider timeProvider,
+}) => Stream<PrayerContextResolution>.multi((controller) {
+  void emit() {
+    final nowUtc = timeProvider.nowUtc();
+    final localNow = nowUtc.add(
+      Duration(minutes: settings.location.utcOffsetMinutes),
+    );
+    final date = LocalDate.fromLocalDateTime(localNow);
+    final month = today.loadResult.schedule;
+    final current = month.day(date);
+    final previousDateTime = DateTime.utc(
+      date.year,
+      date.month,
+      date.day,
+    ).subtract(const Duration(days: 1));
+    final nextDateTime = DateTime.utc(
+      date.year,
+      date.month,
+      date.day,
+    ).add(const Duration(days: 1));
+    final reliable = today.loadResult.isReliableForAutomaticContext;
+    controller.add(
+      PrayerContextResolver(timeProvider).resolve(
+        mode: PrayerContextSelectionMode.automatic,
+        automaticSchedule: current,
+        automaticScheduleIsReliable: reliable,
+        previousDaySchedule: month.day(
+          LocalDate.fromLocalDateTime(previousDateTime),
+        ),
+        previousDayScheduleIsReliable: reliable,
+        nextDaySchedule: month.day(LocalDate.fromLocalDateTime(nextDateTime)),
+        nextDayScheduleIsReliable: reliable,
+      ),
+    );
+  }
+
+  emit();
+  final timer = Timer.periodic(const Duration(minutes: 1), (_) => emit());
+  controller.onCancel = timer.cancel;
+});

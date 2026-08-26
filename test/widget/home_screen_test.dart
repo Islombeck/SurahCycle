@@ -8,6 +8,7 @@ import 'package:murajaah/app/app_providers.dart';
 import 'package:murajaah/app/murajaah_app.dart';
 import 'package:murajaah/core/data/data.dart';
 import 'package:murajaah/core/domain/domain.dart';
+import 'package:murajaah/features/prayer_times/prayer_times.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -1021,6 +1022,17 @@ final class _WidgetFixture {
           timeProviderProvider.overrideWithValue(_FixedTimeProvider(now)),
           localDateProvider.overrideWithValue(
             _FixedLocalDateProvider(LocalDate(2026, 8, 24)),
+          ),
+          prayerContextResolutionProvider.overrideWith(
+            (ref) => Stream<PrayerContextResolution>.value(
+              PrayerContextResolution(
+                status: PrayerContextResolutionStatus.manual,
+                context: PrayerContext(prayerType: PrayerType.fajr),
+              ),
+            ),
+          ),
+          prayerTodayScheduleProvider.overrideWith(
+            (ref) async => throw StateError('Fixture schedule unavailable.'),
           ),
         ],
         child: const MurajaahApp(),

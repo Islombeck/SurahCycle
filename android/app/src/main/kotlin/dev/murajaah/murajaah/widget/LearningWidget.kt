@@ -102,7 +102,7 @@ class LearningWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                     }
                 else -> {
                     item { LearningMetadata(context, learningItem) }
-                    if (learningItem.verifiedTextLines.isEmpty()) {
+                    if (learningItem.ayahLines.isEmpty()) {
                         item {
                             Text(
                                 learningItem.unavailableTextLabel,
@@ -120,23 +120,27 @@ class LearningWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                             )
                         }
                     } else {
+                        val visibleLines =
+                            learningItem.ayahLines.filter { line ->
+                                learningItem.showArabic ||
+                                    (learningItem.showTransliteration &&
+                                        line.transliteration != null) ||
+                                    (learningItem.showTranslation && line.translation != null)
+                            }
                         items(
-                            items = learningItem.verifiedTextLines.withIndex().toList(),
-                            itemId = { stableWidgetItemId("quran:${it.index}") },
-                        ) { indexedText ->
-                            Text(
-                                indexedText.value,
-                                modifier =
-                                    GlanceModifier.fillMaxWidth()
-                                        .clickable(
-                                            actionStartActivity<MainActivity>(
-                                                context,
-                                                learningItem.deepLink,
-                                            )
-                                        )
-                                        .padding(vertical = 8.dp),
-                                style =
-                                    TextStyle(fontSize = 20.sp, textAlign = TextAlign.End),
+                            items = visibleLines.withIndex().toList(),
+                            itemId = { indexedLine ->
+                                val line = indexedLine.value
+                                stableWidgetItemId(
+                                    "quran:${line.surahNumber ?: 0}:" +
+                                        "${line.ayahNumber ?: indexedLine.index}"
+                                )
+                            },
+                        ) { indexedLine ->
+                            LearningAyahBlock(
+                                context = context,
+                                item = learningItem,
+                                line = indexedLine.value,
                             )
                         }
                     }
@@ -152,6 +156,51 @@ class LearningWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                             .padding(vertical = 10.dp),
                     style = TextStyle(fontSize = 12.sp),
                     maxLines = 1,
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun LearningAyahBlock(
+        context: Context,
+        item: NativeLearningItem,
+        line: NativeLearningAyahLine,
+    ) {
+        val action = actionStartActivity<MainActivity>(context, item.deepLink)
+        Column(
+            modifier =
+                GlanceModifier.fillMaxWidth()
+                    .clickable(action)
+                    .padding(vertical = 8.dp)
+        ) {
+            if (item.showArabic) {
+                Text(
+                    line.arabic,
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    style = TextStyle(fontSize = 20.sp, textAlign = TextAlign.End),
+                    maxLines = 3,
+                )
+            }
+            if (item.showTransliteration && line.transliteration != null) {
+                if (item.showArabic) Spacer(GlanceModifier.height(3.dp))
+                Text(
+                    line.transliteration.withoutTanzilPresentationTags(),
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    style = TextStyle(fontSize = 12.sp, textAlign = TextAlign.Start),
+                    maxLines = 2,
+                )
+            }
+            if (item.showTranslation && line.translation != null) {
+                if (item.showArabic ||
+                    (item.showTransliteration && line.transliteration != null)) {
+                    Spacer(GlanceModifier.height(3.dp))
+                }
+                Text(
+                    line.translation,
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    style = TextStyle(fontSize = 12.sp, textAlign = TextAlign.Start),
+                    maxLines = 3,
                 )
             }
         }
@@ -197,3 +246,8 @@ class LearningWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
 class LearningWidgetReceiver : HomeWidgetGlanceWidgetReceiver<LearningWidget>() {
     override val glanceAppWidget = LearningWidget()
 }
+
+private val tanzilPresentationTag = Regex("</?(?:u|b|strong|i)>", RegexOption.IGNORE_CASE)
+
+/** Removes only audited Tanzil presentation tags for Glance's plain Text API. */
+private fun String.withoutTanzilPresentationTags(): String = replace(tanzilPresentationTag, "")

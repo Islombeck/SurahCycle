@@ -148,6 +148,12 @@ abstract class AppLocalizations {
   /// **'Рекомендуется'**
   String get recommendedTitle;
 
+  /// No description provided for @recommendationRank.
+  ///
+  /// In ru, this message translates to:
+  /// **'Рекомендация {rank}'**
+  String recommendationRank(int rank);
+
   /// No description provided for @activeSurahsTitle.
   ///
   /// In ru, this message translates to:
@@ -799,7 +805,7 @@ abstract class AppLocalizations {
   /// No description provided for @noRussianTranslations.
   ///
   /// In ru, this message translates to:
-  /// **'QuranEnc сейчас не возвращает русские переводы в официальном каталоге API. Арабский текст остаётся доступен офлайн.'**
+  /// **'У QuranEnc сейчас нет доступных проверенных русских переводов. Арабский текст остаётся доступен офлайн.'**
   String get noRussianTranslations;
 
   /// No description provided for @translationCatalogError.
@@ -807,6 +813,36 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Не удалось получить официальный список переводов QuranEnc.'**
   String get translationCatalogError;
+
+  /// No description provided for @translationNoNetwork.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет сети. Уже скачанные переводы остаются доступны офлайн.'**
+  String get translationNoNetwork;
+
+  /// No description provided for @translationSourceError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Источник перевода отклонил запрос. Попробуйте позже.'**
+  String get translationSourceError;
+
+  /// No description provided for @translationValidationFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ответ источника повреждён или не прошёл проверку. Он не сохранён.'**
+  String get translationValidationFailed;
+
+  /// No description provided for @translationCatalogFromCache.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показан сохранённый офлайн-каталог.'**
+  String get translationCatalogFromCache;
+
+  /// No description provided for @translationRefreshFailedCached.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновить источник не удалось; сохранённые проверенные данные оставлены без изменений.'**
+  String get translationRefreshFailedCached;
 
   /// No description provided for @translationNotSelected.
   ///
@@ -861,6 +897,324 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0'**
   String get tanzilTextMetadata;
+
+  /// No description provided for @tanzilTransliterationMetadata.
+  ///
+  /// In ru, this message translates to:
+  /// **'Tanzil · English Transliteration · снимок 2010-09-06 · 6236 аятов'**
+  String get tanzilTransliterationMetadata;
+
+  /// No description provided for @transliterationNonCommercialNotice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Условия набора транскрипции разрешают только некоммерческое использование; коммерческий production-релиз требует отдельного разрешения.'**
+  String get transliterationNonCommercialNotice;
+
+  /// No description provided for @quranDisplayLayers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Слои текста Корана'**
+  String get quranDisplayLayers;
+
+  /// No description provided for @showArabicText.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показывать арабский текст'**
+  String get showArabicText;
+
+  /// No description provided for @showTransliteration.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показывать транскрипцию'**
+  String get showTransliteration;
+
+  /// No description provided for @showTranslation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показывать перевод'**
+  String get showTranslation;
+
+  /// No description provided for @transliterationSourceShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Транскрипция (латинская транслитерация) · Tanzil · офлайн'**
+  String get transliterationSourceShort;
+
+  /// No description provided for @transliterationUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверенная транскрипция недоступна.'**
+  String get transliterationUnavailable;
+
+  /// No description provided for @prayerTimesTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Время намаза'**
+  String get prayerTimesTitle;
+
+  /// No description provided for @prayerRegion.
+  ///
+  /// In ru, this message translates to:
+  /// **'Регион'**
+  String get prayerRegion;
+
+  /// No description provided for @selectPrayerRegion.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выберите регион вручную'**
+  String get selectPrayerRegion;
+
+  /// No description provided for @useMyLocation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Использовать моё местоположение'**
+  String get useMyLocation;
+
+  /// No description provided for @locationOptionalNotice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Необязательно. Геопозиция запрашивается только после нажатия, без фонового доступа.'**
+  String get locationOptionalNotice;
+
+  /// No description provided for @prayerContextMode.
+  ///
+  /// In ru, this message translates to:
+  /// **'Контекст отметки'**
+  String get prayerContextMode;
+
+  /// No description provided for @prayerModeManual.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ручной режим'**
+  String get prayerModeManual;
+
+  /// No description provided for @prayerModeAutomatic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автоматически'**
+  String get prayerModeAutomatic;
+
+  /// No description provided for @automaticPrayerSafetyNotice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автовыбор работает только по свежему надёжному расписанию. После восхода до Зухра отметка потребует ручного выбора.'**
+  String get automaticPrayerSafetyNotice;
+
+  /// No description provided for @allowCalculatedFallback.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разрешить локальный расчёт'**
+  String get allowCalculatedFallback;
+
+  /// No description provided for @calculatedFallbackNotice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это отдельный расчётный источник, а не официальное расписание ОМИ. По умолчанию: Karachi, Аср Hanafi.'**
+  String get calculatedFallbackNotice;
+
+  /// No description provided for @calculatedFallbackCoordinatesUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Для этого региона поставщика нет отдельно проверенных координат, поэтому локальный расчёт недоступен.'**
+  String get calculatedFallbackCoordinatesUnavailable;
+
+  /// No description provided for @calculationMethod.
+  ///
+  /// In ru, this message translates to:
+  /// **'Расчётный метод'**
+  String get calculationMethod;
+
+  /// No description provided for @asrHanafi.
+  ///
+  /// In ru, this message translates to:
+  /// **'Аср: Hanafi'**
+  String get asrHanafi;
+
+  /// No description provided for @asrStandard.
+  ///
+  /// In ru, this message translates to:
+  /// **'Аср: стандартный'**
+  String get asrStandard;
+
+  /// No description provided for @manualMinuteAdjustments.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ручные поправки в минутах'**
+  String get manualMinuteAdjustments;
+
+  /// No description provided for @rawTimesPreserved.
+  ///
+  /// In ru, this message translates to:
+  /// **'Исходное время источника сохраняется; показывается отдельное скорректированное значение.'**
+  String get rawTimesPreserved;
+
+  /// No description provided for @minuteAdjustment.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поправка: {value} мин'**
+  String minuteAdjustment(int value);
+
+  /// No description provided for @decreaseMinute.
+  ///
+  /// In ru, this message translates to:
+  /// **'Уменьшить на минуту'**
+  String get decreaseMinute;
+
+  /// No description provided for @increaseMinute.
+  ///
+  /// In ru, this message translates to:
+  /// **'Увеличить на минуту'**
+  String get increaseMinute;
+
+  /// No description provided for @locationCalculationEnabled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Местоположение сохранено для локального расчёта.'**
+  String get locationCalculationEnabled;
+
+  /// No description provided for @locationServicesDisabled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Геолокация выключена. Выберите регион вручную.'**
+  String get locationServicesDisabled;
+
+  /// No description provided for @locationDeniedChooseRegion.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступ к геопозиции не предоставлен. Выберите регион вручную.'**
+  String get locationDeniedChooseRegion;
+
+  /// No description provided for @locationOutsideUzbekistan.
+  ///
+  /// In ru, this message translates to:
+  /// **'Для этой точки нет проверенной настройки часового пояса. Выберите регион вручную.'**
+  String get locationOutsideUzbekistan;
+
+  /// No description provided for @locationFailedChooseRegion.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось получить геопозицию. Выберите регион вручную.'**
+  String get locationFailedChooseRegion;
+
+  /// No description provided for @prayerScheduleToday.
+  ///
+  /// In ru, this message translates to:
+  /// **'Расписание на сегодня'**
+  String get prayerScheduleToday;
+
+  /// No description provided for @sunrise.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восход'**
+  String get sunrise;
+
+  /// No description provided for @prayerSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Источник'**
+  String get prayerSource;
+
+  /// No description provided for @prayerUpdated.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновлено'**
+  String get prayerUpdated;
+
+  /// No description provided for @asrSchool.
+  ///
+  /// In ru, this message translates to:
+  /// **'Расчёт Асра'**
+  String get asrSchool;
+
+  /// No description provided for @timesManuallyAdjusted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Время скорректировано вручную; исходные значения сохранены.'**
+  String get timesManuallyAdjusted;
+
+  /// No description provided for @prayerOfflineCache.
+  ///
+  /// In ru, this message translates to:
+  /// **'Используется свежий офлайн-кеш.'**
+  String get prayerOfflineCache;
+
+  /// No description provided for @refreshPrayerSchedule.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновить текущий и следующий месяц'**
+  String get refreshPrayerSchedule;
+
+  /// No description provided for @prayerStartsAt.
+  ///
+  /// In ru, this message translates to:
+  /// **'С {start}'**
+  String prayerStartsAt(String start);
+
+  /// No description provided for @prayerTimeRange.
+  ///
+  /// In ru, this message translates to:
+  /// **'{start}–{end}'**
+  String prayerTimeRange(String start, String end);
+
+  /// No description provided for @nextPrayerAt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Далее: {prayer} в {time}'**
+  String nextPrayerAt(String prayer, String time);
+
+  /// No description provided for @betweenPrayers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Между намазами'**
+  String get betweenPrayers;
+
+  /// No description provided for @prayerScheduleStale.
+  ///
+  /// In ru, this message translates to:
+  /// **'Расписание устарело — автовыбор отключён'**
+  String get prayerScheduleStale;
+
+  /// No description provided for @prayerScheduleUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Расписание недоступно — выберите намаз вручную'**
+  String get prayerScheduleUnavailable;
+
+  /// No description provided for @widgetManualPrayerContext.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ручной: {prayer} · Ротация'**
+  String widgetManualPrayerContext(String prayer);
+
+  /// No description provided for @widgetAutomaticPrayerContext.
+  ///
+  /// In ru, this message translates to:
+  /// **'{prayer} · Авто · Ротация'**
+  String widgetAutomaticPrayerContext(String prayer);
+
+  /// No description provided for @widgetAutomaticPrayerRange.
+  ///
+  /// In ru, this message translates to:
+  /// **'{prayer} · {start}–{end} · Ротация'**
+  String widgetAutomaticPrayerRange(String prayer, String start, String end);
+
+  /// No description provided for @widgetAutomaticPrayerStart.
+  ///
+  /// In ru, this message translates to:
+  /// **'{prayer} · с {start} · Ротация'**
+  String widgetAutomaticPrayerStart(String prayer, String start);
+
+  /// No description provided for @widgetSelectPrayerInApp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выберите намаз в Murajaah'**
+  String get widgetSelectPrayerInApp;
+
+  /// No description provided for @widgetActionNotCompleted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось отметить. Показаны актуальные данные.'**
+  String get widgetActionNotCompleted;
 }
 
 class _AppLocalizationsDelegate

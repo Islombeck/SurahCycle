@@ -1,0 +1,34 @@
+Murajaah bundled Quran transliteration notice
+=============================================
+
+Dataset: English Transliteration (`en.transliteration`)
+Translator field supplied by Tanzil: English Transliteration
+Source and publisher surface: Tanzil.net
+Official download: https://tanzil.net/trans/en.transliteration?type=txt-2
+Terms page: https://tanzil.net/trans/
+Changelog: https://tanzil.net/trans/log/en.transliteration
+Dataset footer date: September 6, 2010
+Last changelog entry observed during the audit: September 14, 2010
+Bundled byte length: 1,044,894
+SHA-256: 8c20d95e484534e921cd2e0d2546aab7f5300090c0bd76697095b3ca1db1e01d
+
+The Tanzil translations download page supplies this dataset for
+non-commercial use. Commercial or other redistribution requires permission
+from the translator or publisher. No separate copyright holder is named in
+the downloaded dataset footer.
+
+This dataset is a translation/transliteration resource. The Creative Commons
+Attribution 3.0 notice for Tanzil's Arabic Quran text is a separate grant and
+must not be treated as a license for this transliteration.
+
+Release decision
+----------------
+
+Bundling is approved only for the current private, testing, non-commercial
+build. A public commercial or otherwise monetized production release is
+blocked until written redistribution permission (or a newly published term
+that clearly permits that release) has been recorded and reviewed.
+
+The source file is preserved byte-for-byte, including its embedded metadata
+footer and presentation markup. Runtime rendering may interpret the documented
+markup without replacing the stored source string.

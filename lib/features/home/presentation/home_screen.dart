@@ -7,6 +7,9 @@ import '../../../app/app_providers.dart';
 import '../../../app/localization_extensions.dart';
 import '../../../core/data/data.dart';
 import '../../../core/domain/domain.dart';
+import '../../prayer_times/prayer_times.dart';
+import '../../quran/quran.dart';
+import 'widgets/recommendation_rank_badge.dart';
 
 final class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key, this.primaryNavigationIndexListenable});
@@ -74,7 +77,15 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     final rotation = ref.watch(rotationSnapshotProvider);
     final learning = ref.watch(activeLearningProvider);
     final catalog = ref.watch(fullCatalogProvider);
-    final prayer = ref.watch(selectedPrayerProvider);
+    final manualPrayer = ref.watch(selectedPrayerProvider);
+    final prayerResolution = ref
+        .watch(prayerContextResolutionProvider)
+        .valueOrNull;
+    final scheduleResolution = ref
+        .watch(prayerScheduleContextResolutionProvider)
+        .valueOrNull;
+    final prayerSettings = ref.watch(prayerTimeSettingsProvider).valueOrNull;
+    final prayerSchedule = ref.watch(prayerTodayScheduleProvider).valueOrNull;
     final selectedLearningSurahId = ref.watch(selectedLearningSurahProvider);
     final rollbackQueue = ref.watch(learningRollbackQueueProvider);
 
@@ -106,8 +117,11 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                 sliver: SliverList.list(
                   children: <Widget>[
                     _PrayerContextCard(
-                      contextValue: prayer,
-                      onTap: () => _showPrayerPicker(prayer),
+                      resolution: prayerResolution,
+                      scheduleResolution: scheduleResolution,
+                      settings: prayerSettings,
+                      schedule: prayerSchedule,
+                      onTap: () => _showPrayerPicker(manualPrayer),
                     ),
                     const SizedBox(height: 16),
                     if (rollbackQueue.isNotEmpty)
@@ -121,8 +135,11 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                       data: (snapshot) => _RotationContent(
                         snapshot: snapshot,
                         busyIds: _busySurahIds,
-                        onMarkRequested: (surah) =>
-                            _handleMarkRequest(surah, prayer),
+                        onMarkRequested: (surah) => _handleMarkRequest(
+                          surah,
+                          prayerResolution?.context,
+                          manualPrayer,
+                        ),
                       ),
                       loading: () => const Center(
                         child: Padding(
@@ -158,8 +175,13 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// The one UI entry point for marking a surah.
   Future<void> _handleMarkRequest(
     MasteredSurah surah,
-    PrayerContext prayer,
+    PrayerContext? prayer,
+    PrayerContext manualPrayer,
   ) async {
+    if (prayer == null) {
+      await _showPrayerPicker(manualPrayer);
+      return;
+    }
     if (!surah.rotationScheme.isSplit) {
       return _registerRecitation(surah, prayer);
     }
@@ -295,6 +317,20 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
     if (selected != null) {
       await ref.read(selectedPrayerProvider.notifier).select(selected);
+      final prayerTimeSettings = await ref
+          .read(prayerTimeSettingsRepositoryProvider)
+          .load();
+      if (prayerTimeSettings.contextSelectionMode !=
+          PrayerContextSelectionMode.manual) {
+        await ref
+            .read(prayerTimeSettingsControllerProvider)
+            .save(
+              prayerTimeSettings.copyWith(
+                contextSelectionMode: PrayerContextSelectionMode.manual,
+              ),
+              refresh: false,
+            );
+      }
     }
   }
 
@@ -441,13 +477,51 @@ final class _RecitationCoverageSheetState
 }
 
 final class _PrayerContextCard extends StatelessWidget {
-  const _PrayerContextCard({required this.contextValue, required this.onTap});
+  const _PrayerContextCard({
+    required this.resolution,
+    required this.scheduleResolution,
+    required this.settings,
+    required this.schedule,
+    required this.onTap,
+  });
 
-  final PrayerContext contextValue;
+  final PrayerContextResolution? resolution;
+  final PrayerContextResolution? scheduleResolution;
+  final PrayerTimeSettings? settings;
+  final PrayerTodaySchedule? schedule;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final resolved = resolution;
+    final prayerContext = resolved?.context;
+    final title =
+        prayerContext?.label(context.l10n) ??
+        _resolutionLabel(context, resolved?.status);
+    final timing =
+        settings?.contextSelectionMode == PrayerContextSelectionMode.automatic
+        ? resolved
+        : scheduleResolution;
+    final details = <String>[
+      settings?.contextSelectionMode == PrayerContextSelectionMode.automatic
+          ? context.l10n.prayerModeAutomatic
+          : context.l10n.prayerModeManual,
+      if (timing?.currentStartsAt != null)
+        timing?.currentEndsAt == null
+            ? context.l10n.prayerStartsAt('${timing!.currentStartsAt}')
+            : context.l10n.prayerTimeRange(
+                '${timing!.currentStartsAt}',
+                '${timing.currentEndsAt}',
+              ),
+      if (timing?.nextPrayerType != null && timing?.nextPrayerAt != null)
+        context.l10n.nextPrayerAt(
+          timing!.nextPrayerType!.label(context.l10n),
+          '${timing.nextPrayerAt}',
+        ),
+      if (schedule case final loaded?)
+        '${loaded.loadResult.schedule.provenance.source.displayName} · '
+            '${loaded.loadResult.schedule.location.displayName}',
+    ];
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -470,9 +544,11 @@ final class _PrayerContextCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
                     const SizedBox(height: 2),
+                    Text(title, style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 2),
                     Text(
-                      contextValue.label(context.l10n),
-                      style: Theme.of(context).textTheme.titleLarge,
+                      details.join('\n'),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
@@ -484,6 +560,19 @@ final class _PrayerContextCard extends StatelessWidget {
       ),
     );
   }
+
+  String _resolutionLabel(
+    BuildContext context,
+    PrayerContextResolutionStatus? status,
+  ) => switch (status) {
+    PrayerContextResolutionStatus.betweenPrayers => context.l10n.betweenPrayers,
+    PrayerContextResolutionStatus.unreliableSchedule =>
+      context.l10n.prayerScheduleStale,
+    PrayerContextResolutionStatus.missingSchedule ||
+    PrayerContextResolutionStatus.scheduleDateMismatch =>
+      context.l10n.prayerScheduleUnavailable,
+    _ => context.l10n.selectPrayer,
+  };
 }
 
 final class _RotationContent extends StatelessWidget {
@@ -538,17 +627,14 @@ final class _RotationContent extends StatelessWidget {
                 runSpacing: 8,
                 children: <Widget>[
                   for (final suggestion in suggestions)
-                    Chip(
-                      avatar: CircleAvatar(
-                        child: Text('${suggestion.recommendationRank + 1}'),
-                      ),
-                      label: Text(
-                        suggestion.recommendedPart == null ||
-                                !suggestion.surah.rotationScheme.isSplit
-                            ? suggestion.surah.surah.displayName
-                            : '${suggestion.surah.surah.displayName} · '
-                                  '${context.l10n.ayahRange(suggestion.recommendedPart!.ayahRange.startAyah, suggestion.recommendedPart!.ayahRange.endAyah)}',
-                      ),
+                    RecommendationChip(
+                      rank: suggestion.recommendationRank + 1,
+                      label:
+                          suggestion.recommendedPart == null ||
+                              !suggestion.surah.rotationScheme.isSplit
+                          ? suggestion.surah.surah.displayName
+                          : '${suggestion.surah.surah.displayName} · '
+                                '${context.l10n.ayahRange(suggestion.recommendedPart!.ayahRange.startAyah, suggestion.recommendedPart!.ayahRange.endAyah)}',
                     ),
                 ],
               ),
@@ -740,6 +826,9 @@ final class _CurrentLearningCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final displayPreferences =
+        ref.watch(quranDisplayPreferencesProvider).valueOrNull ??
+        QuranDisplayPreferences.defaults;
     if (learning.isEmpty) return const SizedBox.shrink();
     final selected = learning.where((item) => item.surahId == selectedSurahId);
     final state = selected.isEmpty ? learning.first : selected.first;
@@ -763,6 +852,13 @@ final class _CurrentLearningCard extends ConsumerWidget {
               )
               .valueOrNull;
     final currentAyah = reading?.ayah(state.stage.endAyah);
+    final hasVisibleLayer =
+        currentAyah != null &&
+        (displayPreferences.showArabic ||
+            (displayPreferences.showTransliteration &&
+                currentAyah.transliteration != null) ||
+            (displayPreferences.showTranslation &&
+                currentAyah.translation != null));
     return Card(
       key: const ValueKey<String>('learning-card'),
       clipBehavior: Clip.antiAlias,
@@ -792,7 +888,7 @@ final class _CurrentLearningCard extends ConsumerWidget {
                   const Icon(Icons.chevron_right),
                 ],
               ),
-              if (currentAyah != null) ...<Widget>[
+              if (hasVisibleLayer) ...<Widget>[
                 const SizedBox(height: 12),
                 DecoratedBox(
                   decoration: BoxDecoration(
@@ -803,18 +899,11 @@ final class _CurrentLearningCard extends ConsumerWidget {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
-                    child: Directionality(
-                      textDirection: TextDirection.rtl,
-                      child: Text(
-                        currentAyah.arabicText,
-                        key: ValueKey<String>(
-                          'home-learning-ayah-${currentAyah.surahNumber}-${currentAyah.ayahNumber}',
-                        ),
-                        textAlign: TextAlign.right,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleLarge?.copyWith(height: 1.7),
-                      ),
+                    child: QuranAyahLayers(
+                      ayah: currentAyah,
+                      preferences: displayPreferences,
+                      compact: true,
+                      keyPrefix: 'home-learning',
                     ),
                   ),
                 ),

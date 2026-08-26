@@ -1,31 +1,48 @@
-# Backlog после Sprint 2
+# Backlog после Sprint 4
 
-Ниже перечислены функции, осознанно не реализованные в Sprint 2:
+Ниже только осознанно не реализованные функции. Автоматическое расписание
+намаза, добровольная location, Android direct widget mark и Quran display
+layers уже не являются backlog.
 
-1. Автоматические времена намаза.
-2. Геолокация.
-3. Notifications.
-4. Сервер.
-5. Регистрация пользователя.
-6. Синхронизация нескольких устройств.
-7. Полноценный Quran reader.
-8. Аудио аятов.
-9. Выбор чтеца.
-10. Tajweed highlighting.
-11. Расширенные правила мазхаба.
-12. Рекомендации для пары сур между ракаатами.
-13. Импорт Google Tasks.
-14. Cloud backup.
-15. iCloud.
-16. Google Drive backup.
-17. Production WidgetKit extension и iOS/Mac device QA. Общий snapshot-контракт уже подготовлен.
-18. Прямая отметка прочтения из Android/iOS widget.
-19. Полная модель каждого отдельного ракаата; сейчас хранится только `rakaatSpanCount` 1–4.
-20. Wearable integration.
-21. Дополнительная аналитика поверх уже реализованных full-equivalent/action/part-credit метрик.
-22. Streaks.
-23. Apple/Google sign-in.
+1. Prayer notifications и системные alarms.
+2. Adhan audio.
+3. Qibla compass.
+4. Mosque finder.
+5. Ramadan calendar и Hijri calendar.
+6. Полноценный Quran reader.
+7. Word-by-word translation.
+8. Quran audio и выбор чтеца.
+9. Tajweed highlighting.
+10. Более читабельная transliteration от нового документированного provider;
+    источник с client secret требует backend proxy.
+11. Разрешение на commercial/monetized redistribution bundled Tanzil English
+    Transliteration; до этого production release с asset заблокирован.
+12. Разрешение неоднозначных district aliases Namoz-vaqti.uz после публикации
+    стабильных provider slugs.
+13. Подтверждённая публичная спецификация
+    `Fatvo markazi taqvim mezonlari`; до неё generic calculation не
+    называется методом ОМИ.
+14. Prayer rules beyond the implemented schedule boundaries, explicit
+    Hanafi/Shafi Asr selector and manual offsets.
+15. Рекомендации для пары сур между ракаатами.
+16. Полная модель каждого отдельного ракаата; сейчас хранится
+    `rakaatSpanCount` 1–4.
+17. Импорт Google Tasks.
+18. Server, account registration и multi-device sync.
+19. Cloud backup, Google Drive и iCloud.
+20. Apple/Google sign-in.
+21. Production WidgetKit extension и отдельный iOS location/widget QA sprint.
+22. Wearable integration.
+23. Дополнительная аналитика поверх full-equivalent/action/part-credit metrics.
+24. Streaks и социальные функции.
 
-Для будущей функции создаётся отдельный product/architecture review. В частности, религиозные правила нельзя реализовывать на предположениях, геолокация требует явного разрешения, а server/sync и cloud backup требуют threat model и политики приватности.
+Отдельные release/operational gates, а не новые product features:
 
-Этот файл не заявляет порядок реализации. План backend вынесен в [SERVER_PLAN.md](SERVER_PLAN.md).
+- physical Android QA интерактивного widget на целевых launchers;
+- измерение tap → DB → redraw и Home micro-lag на реальном устройстве;
+- offline/airplane-mode проверка Quran translation и prayer cache;
+- iOS device QA location permission.
+
+Новая религиозная логика требует подтверждённых источников. Геолокация остаётся
+только добровольной, а server/sync и backup требуют threat model и privacy
+policy. План backend находится в [SERVER_PLAN.md](SERVER_PLAN.md).

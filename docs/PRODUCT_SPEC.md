@@ -1,150 +1,219 @@
-# Product Spec — Sprint 3
+# Product Spec — Sprint 4
 
 ## Продуктовая цель
 
-Murajaah заменяет ручной список в Google Tasks: помогает равномерно использовать все выученные суры, быстро фиксировать факт чтения в намазе и постепенно учить новые суры. Приложение рассчитано на короткие ежедневные сессии и работает без обязательного аккаунта, сервера и Интернета.
+Murajaah заменяет ручной список повторения сур: помогает равномерно
+использовать выученные суры, быстро фиксировать чтение в Prayer Context и
+постепенно учить новые суры. Основные действия local-first, без обязательного
+аккаунта, сервера или постоянного Интернета.
 
-Главный принцип: корректность пользовательской истории и Quran content важнее скорости добавления функций.
-
-## Пользовательские задачи
-
-Пользователь должен иметь возможность:
-
-1. Выбрать известные ему суры, задать удобные названия и порядок.
-2. Включать их в ротацию, временно отключать и возвращать без потери баланса.
-3. Выбрать контекст намаза и одним нажатием отметить прочитанную суру.
-4. Видеть, каким сурам сейчас требуется одно или несколько повторений.
-5. Отменить последнее нажатие либо удалить ошибочную запись из истории.
-6. Посмотреть статистику по суре и по типу намаза.
-7. Учить одну или несколько сур, сохраняя независимый прогресс каждой.
-8. Закрыть и снова открыть приложение без потери состояния.
-9. Разделить большую суру на 1–`ayahCount` непрерывных частей и менять схему без переписывания истории.
-10. Одним действием отметить одну, несколько или все части и указать 1–4 ракаата.
-11. Использовать Витр, в том числе с признаком каза.
-12. Видеть актуальную ротацию и обучение в Android home-screen widgets.
+Главный принцип: корректность пользовательской истории, Prayer Context и Quran
+content важнее количества функций.
 
 ## Реализованный объём
 
-Базовый объём Sprint 1–2 сохранён, а Sprint 3 доводит текущую архитектуру до следующего состояния:
+Sprint 4 сохраняет весь объём Sprints 1–3:
 
-1. Flutter-проект с Android и iOS targets.
-2. Мигрируемая локальная база данных.
-3. Выбор списка выученных сур.
-4. Активная и неактивная ротация.
-5. Тестируемый `RotationEngine`.
-6. Быстрый главный экран.
-7. Выбор контекста намаза.
-8. Регистрация прочтения с локальной фиксацией.
-9. Undo последней регистрации.
-10. История прочтений и удаление ошибочной записи.
-11. Базовая статистика по сурам и намазам.
-12. Объяснимый `SurahSuggestionService`.
-13. Доменная `LearningStateMachine`.
-14. Экран обучения.
-15. Абстракция `QuranContentRepository`.
-16. Расширяемая архитектура поставщиков Quran content.
-17. Verbatim Tanzil Uthmani v1.1 offline Arabic и отдельное состояние отсутствующего пользовательского перевода без поддельных данных.
-18. Светлая и тёмная Material 3 темы.
-19. Unit tests доменных правил.
-20. Базовые widget tests ключевых сценариев.
-21. Проектная документация.
-22. Версионируемые схемы разбиения сур на 1–`ayahCount` частей с быстрыми preset 1/2/3/4 и custom mode.
-23. Exact coverage, multi-part actions и `rakaatSpanCount` 1–4.
-24. Исторические диапазоны в History и раздельные full-equivalent/action/part-credit метрики в Statistics.
-25. Витр и нейтральный capability `supportsQada`.
-26. Неразрушающие Drift migration v1→v2→v3 и v2→v3.
-27. Android Rotation и Learning widgets с безопасными deep links, диагностикой composition error и собственным fallback.
-28. RU/EN/UZ локализация нового UI и нативных fallback-состояний.
-29. Динамическая operational sorting и до восьми ranked recommendations.
-30. Аль‑Фатиха остаётся в catalog/Learning/history, но исключена из rotation.
-31. Явный выбор QuranEnc translation и version-pinned offline cache.
+- мигрируемая Drift schema v3 и локальный event journal;
+- список выученных сур, aliases, порядок и active/inactive rotation;
+- versioned whole/split schemes, exact part coverage и 1–4 ракаата;
+- `RotationEngine`, due state, до восьми объяснимых ranked
+  recommendations и отдельные full-equivalent/action/part-credit metrics;
+- manual Prayer Context с Фаджром, Зухром, Асром, Магрибом, Иша, Витром,
+  Нафлем и capability каза;
+- atomic registration, краткоживущий Undo, History Delete и projection rebuild;
+- независимая `LearningStateMachine` с cumulative stages;
+- RU/EN/UZ Material 3 UI;
+- Android Rotation/Learning widgets;
+- Tanzil metadata v1.0 и exact Uthmani v1.1 Arabic offline;
+- явный QuranEnc translation selector и versioned offline cache.
 
-Backend, аккаунты и автоматические времена намаза в Sprint 2 не входят. Полный перечень осознанно отложенного находится в [BACKLOG.md](BACKLOG.md).
+Sprint 4 добавляет:
 
-## Ключевые сценарии
+1. Геометрически стабильный recommendation rank badge 1–8. Один компонент
+   используется при text scale 1.0, 1.3 и 1.5; rank не смешивается с номером
+   суры.
+2. Диагностику пустого RU QuranEnc catalog и audited fallback registry
+   `russian_rwwad` / `russian_aboadel` с runtime probes и
+   corpus/surah SHA-256 pins.
+3. Pinned Tanzil `en.transliteration` как независимый verified
+   offline repository. Transliteration не генерируется из Arabic.
+4. Три независимых Quran display layers: Arabic, transliteration и translation.
+   Settings применяются к Learning, Home Learning Card и Learning Widget.
+5. Structured Learning Widget ayah blocks, связывающие три слоя одной
+   координатой.
+6. Direct mark из круглого control Rotation Widget через официальный
+   home_widget background flow, exact-once `actionToken` и повторную
+   Dart validation.
+7. Опубликованное месячное расписание Namoz-vaqti.uz, audited selector
+   Узбекистана, offline cache и видимый provenance.
+8. Добровольную location только после tap и без background tracking.
+9. Opt-in local calculation через `adhan_dart` с method, Hanafi/Shafi
+   Asr, high-latitude rule и ручными minute adjustments.
+10. Manual/automatic Prayer Context с fail-closed поведением при stale/missing
+    schedule и явным sunrise gap.
 
-### Настройка ротации
+Функции вне scope перечислены в [BACKLOG.md](BACKLOG.md).
 
-Пользователь выбирает выученные суры, при необходимости задаёт alias и включает их. Новая сура получает один шаг долга относительно текущей цели. Простое включение, отключение или повторное включение не сдвигает глобальную цель; при повторном включении сохраняется прежний `rotationScore`.
+## Главный сценарий ротации
 
-### Регистрация прочтения
+Пользователь выбирает выученные суры и включает их в rotation. Новая сура
+получает один шаг долга относительно текущей цели; повторное включение не
+теряет прежний score. Аль-Фатиха остаётся в catalog, Learning и History, но
+не участвует в rotation.
 
-На главном экране выбран контекст намаза. У неразделённой суры единственная левая кнопка атомарно создаёт событие. У разделённой она открывает sheet выбора одной/нескольких/всех частей и 1–4 ракаатов; до подтверждения запись не выполняется. После commit обновляются проекция, рекомендации и widgets, затем на 4 секунды показывается `Сура отмечена` с точным действием `Отменить`.
+Home показывает до восьми рекомендаций с фиксированным rank badge, затем все
+active surahs. У whole row круглая кнопка создаёт одно событие. У split row
+кнопка в приложении открывает выбор одной/нескольких/всех частей и 1–4
+ракаатов. В Android widget каждая split-row отмечает только показанную часть
+и использует один ракаат.
 
-### История и исправление ошибки
+После commit пересчитываются rotation и widgets. Undo восстанавливает точный
+pre-action snapshot. History Delete требует подтверждения, сохраняет tombstone
+event ID и не позволяет старому widget action создать событие повторно.
 
-История показывает дату и время, суру, исторический диапазон/whole coverage, число ракаатов, тип намаза и режим каза. Удаление требует подтверждения и запускает перестроение производных данных. Смена текущего разбиения не меняет старые строки.
+## Quran content
 
-### Обучение
+### Источники
 
-Для каждой изучаемой суры хранится собственный этап. `Повторил` фиксирует активность без перехода, `Выучил` переводит дальше. После 72 часов отсутствия пользовательской активности возможен ровно один откат за один непрерывный период бездействия. После финального cumulative-этапа предлагается добавить суру в выученные и ротацию.
+- names/ayah counts: bundled Tanzil metadata v1.0;
+- Arabic: bundled Tanzil Uthmani v1.1, exact offline corpus;
+- transliteration: bundled Tanzil English Transliteration
+  `en.transliteration`, exact offline corpus;
+- translation: выбранный пользователем audited QuranEnc dataset, загруженный
+  через документированный JSON API и сохранённый versioned cache.
 
-## Главный экран
+Каждый corpus проверяет hash, expected metadata и все 6 236 coordinates.
+Religious strings не trim-ятся, не нормализуются, не исправляются и не
+генерируются. Missing layer остаётся missing и не блокирует остальные.
 
-Порядок блоков:
+Документы:
 
-- выбранный Prayer Context, например `Аср`, `Зухр · Каза` или `Нафль`;
-- до 8 рекомендуемых сур с видимым rank;
-- все активные выученные суры;
-- компактная карточка текущей изучаемой суры.
+- [QURAN_DATA_SOURCES.md](QURAN_DATA_SOURCES.md);
+- [QURAN_TRANSLITERATION.md](QURAN_TRANSLITERATION.md);
+- [QURAN_TRANSLATION_LICENSE_AUDIT.md](QURAN_TRANSLATION_LICENSE_AUDIT.md).
 
-Строка суры показывает номер, пользовательское название, проверенное количество аятов и состояние цикла. При `remaining == 1` показывается пустая галочка, при `remaining > 1` — `2×`, `3×` и далее, при `remaining == 0` — зелёная галочка, при опережении — `-x`, `-2x` и далее. Отдельный summary показывает, сколько due-позиций осталось до следующего круга. Единственный control регистрации находится слева; сама строка открывает детали и не создаёт событие.
+### Display settings
 
-Каталог названий и количества аятов загружается из проверенного bundled Tanzil metadata asset. Арабский Tanzil Uthmani v1.1 также включён verbatim и доступен offline; запуск принимает его только после проверки hash, 114 сур и 6236 координат. Отсутствие выбранного или закешированного перевода отображается отдельно и не скрывает Arabic.
+Три switches управляют Arabic, transliteration и translation независимо.
+По умолчанию все включены. Хотя бы один слой всегда может быть отображён;
+presentation сохраняет coordinate alignment.
 
-## Намаз
+Learning Screen показывает каждый аят вертикальным блоком: Arabic RTL,
+transliteration и translation. Cumulative stage показывает весь накопленный
+range, а не только последний аят. Home Learning Card использует тот же порядок
+в compact layout. Learning Widget получает до трёх последних аятов диапазона и
+выбирает слои по тем же persisted settings; translation появляется только
+после verified cache.
 
-Поддерживаются `Фаджр`, `Зухр`, `Аср`, `Магриб`, `Иша`, `Витр`, `Нафль`. Каза — дополнительный флаг типа, для которого `supportsQada == true`: пяти обязательных типов и Витра. Нафль каза не поддерживает. Домен не выводит богословскую классификацию через `isObligatory`.
+### Translation UX
 
-## Рекомендации
+Пустой успешный RU catalog — отдельное диагностируемое состояние upstream.
+Только при нём provider проверяет два заранее audited official keys. Каждый key
+должен пройти live direct probe и pinned hash; ни один не выбирается
+автоматически. UI показывает точные title/source/version и состояния
+downloaded, unavailable и failure. Последний проверенный cache остаётся
+доступным offline.
 
-Рекомендации не ограничивают выбор и содержат только due whole-суры/части. Выше находится наибольшее положительное part-specific `remaining`; при равенстве предпочитается никогда или наиболее давно прочитанная позиция, затем порядок пользователя и стабильный id. Никаких ML/AI-рекомендаций и непроверенных религиозных запретов нет.
+Bundled Tanzil Transliteration разрешён только для текущей
+private/testing/non-commercial сборки. Commercial/monetized release с этим
+asset заблокирован до отдельного разрешения.
 
-## Статистика
+## Prayer Times
 
-Минимальный набор:
+### Основной provider
 
-- full-equivalent число полных комплектов как минимум part counts;
-- отдельное число пользовательских событий и число part credits;
-- дата последнего прочтения;
-- распределение по Фаджру, Зухру, Асру, Магрибу, Иша, Витру и Нафлю;
-- сохранение признака каза и возможность отфильтровать такие чтения.
-- breakdown по частям без приравнивания частичного действия к полной суре.
+Пользователь вручную выбирает область, город или подтверждённый район.
+Namoz-vaqti.uz загружает полный текущий месяц, а явный refresh — текущий и
+следующий. UI показывает raw/effective times, source, provider region,
+fetched/cache state и attribution. Это расписание на основе официальных
+источников Узбекистана, но не «official OMI API».
 
-Ручная корректировка баланса не увеличивает статистику прочтений.
+Cache внешней месячной data отделён от пользовательской Drift database. Сбой
+сети не стирает предыдущий месяц. Stale schedule разрешено показать, но не
+использовать для automatic direct mark.
 
-## UX и доступность
+### Location и calculation
 
-- крупные зоны нажатия и минимум шагов в основном сценарии;
-- Material 3, хороший контраст, светлая и тёмная темы;
-- русский интерфейс с архитектурной готовностью к узбекскому и английскому;
-- арабский текст отображается RTL, перевод — LTR;
-- отсутствие рекламы, геймификации, streak-механик, социальных функций и лишнего onboarding;
-- подтверждение перед удалением истории или сбросом баланса;
-- свободный выбор суры: `RecitationRuleService` в Sprint 2 ничего не запрещает.
+GPS не требуется. Кнопка «Использовать моё местоположение» запрашивает
+permission только после tap; deny возвращает пользователя к manual selector.
+Background location отсутствует.
 
-## Offline и сохранность
+Calculated fallback выключен по умолчанию и подписан как расчёт. Доступны
+presets библиотеки `adhan_dart`, Hanafi/Shafi Asr и high-latitude
+rules. Default Uzbekistan fallback — Karachi + Hanafi, но не метод ОМИ.
+Пользователь может добавить отдельные offsets для Фаджра, Зухра, Асра,
+Магриба и Иша; raw provider/calculator values сохраняются.
 
-Ротация, регистрация, намазы, история, статистика, настройки и обучение полностью локальны. Сбой поставщика контента не мешает этим операциям. Загруженный и проверенный Quran content кешируется для offline-доступа и отделён от пользовательских данных.
+### Manual и automatic Prayer Context
+
+Manual mode использует сохранённый выбор, включая Витр, Нафль и каза.
+Automatic mode выбирает только Фаджр/Зухр/Аср/Магриб/Иша по надёжному schedule
+текущей локальной даты:
+
+- до восхода — Фаджр;
+- восход → Зухр — gap без direct mark;
+- затем контекст действует до следующей prayer boundary;
+- Иша пересекает полночь только с надёжным соседним днём.
+
+Home Card показывает current interval, next prayer и причину disabled state.
+Widget вычисляет контекст на execution time только из persisted settings,
+локального cache или локального calculation; HTTP на tap отсутствует.
+
+Подробности:
+
+- [PRAYER_TIME_SOURCE_AUDIT.md](PRAYER_TIME_SOURCE_AUDIT.md);
+- [PRAYER_TIME_ARCHITECTURE.md](PRAYER_TIME_ARCHITECTURE.md).
 
 ## Android widgets
 
-Rotation Widget отображает bounded прокручиваемый due-only список: максимум восемь ranked recommendations, затем другие due items и `Ещё N`. Learning Widget отображает выбранную суру, этап, cumulative range и до трёх точных строк bundled Tanzil text. Виджеты не отмечают чтение и не открывают Drift: Flutter публикует готовый JSON snapshot schema 2, Kotlin/Glance только валидирует и рисует его.
+Rotation Widget показывает due-only projection. Круг mark вызывает headless
+Dart callback; текст строки открывает app. `actionToken` становится ID
+event journal, поэтому redelivery и double tap exact-once. Перед записью
+повторно проверяются surah, active state, current scheme, part и execution-time
+Prayer Context. Stale action отклоняется и widget перестраивается из базы.
 
-## Критерии приёмки Sprint 2
+Learning Widget показывает coordinate-bound Arabic/transliteration/translation.
+Kotlin/Glance не исполняет доменные правила и не открывает Drift.
 
-Сценарий считается реализованным, когда пользователь может без сервера:
+Контракты:
 
-- запустить Android-приложение и выбрать 10–30 известных ему сур при наличии проверенных метаданных;
-- начать ротацию, выбрать Аср и зарегистрировать конкретную суру;
-- повторно отметить её и увидеть рост приоритета остальных;
-- перезапустить приложение и увидеть сохранённое состояние;
-- отменить последнее действие и удалить ошибочную запись из истории;
-- увидеть статистику по Асру;
-- выбрать изучаемую суру и пройти корректные этапы state machine;
-- получить честное сообщение вместо непроверенного Quran content.
-- обновить реальную v1-базу до v2 без потери пользовательских и content-таблиц;
-- разделить суру, зарегистрировать exact coverage/ракааты, отменить или удалить его без повреждения истории;
-- добавить оба Android widget, прокрутить due list и открыть приложение по строгому deep link.
+- [ANDROID_WIDGETS.md](ANDROID_WIDGETS.md);
+- [INTERACTIVE_ANDROID_WIDGET.md](INTERACTIVE_ANDROID_WIDGET.md).
 
-Документ задаёт ожидаемое поведение, а не заявляет о результатах сборки или тестов.
+## Offline и сохранность
+
+Rotation, manual registration, History, Statistics, Settings и Learning
+работают локально. Arabic и transliteration bundled. Загруженная translation и
+monthly prayer schedule остаются offline. Сбой content/schedule provider не
+повреждает event journal. Automatic mark fail-closed, если его контекст нельзя
+доказать.
+
+## UX и доступность
+
+- одна явная зона mark и отдельная navigation target;
+- fixed badge geometry при поддерживаемых text scales;
+- Material 3, светлая/тёмная темы и RU/EN/UZ;
+- Arabic RTL; transliteration/translation используют обычное направление;
+- source/provenance видимы;
+- destructive History/reset actions требуют подтверждения;
+- нет рекламы, streaks, социальных функций и лишнего onboarding.
+
+## Критерии приёмки Sprint 4
+
+Автоматически проверяются:
+
+- Sprint 3 regression suite и новые domain/provider/widget tests;
+- три Quran layers и их combinations;
+- verified translation/transliteration integrity;
+- полный prayer provider/cache/calculator/resolver flow;
+- direct widget validation, exact-once и native contract;
+- Flutter analyzer, Kotlin tests/compile и debug APK build.
+
+На физическом Android отдельно проверяются launcher rendering, circle/text
+targets, foreground/background/swiped-away/killed callback, History/Delete
+refresh, airplane-mode cache, permission flow и latency. Если ADB не видит
+device, документ не объявляет эти проверки выполненными.
+
+Этот spec описывает реализованное поведение; фактические результаты конкретного
+прогона приводятся в Sprint report, а не предполагаются здесь.

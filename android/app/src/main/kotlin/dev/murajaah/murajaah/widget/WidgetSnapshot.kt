@@ -13,6 +13,8 @@ internal data class NativeWidgetSnapshot(
 internal data class NativeRotationProjection(
     val items: List<NativeRotationItem>,
     val omittedCount: Int,
+    val contextLabel: String?,
+    val statusMessage: String?,
 )
 
 internal data class NativeRotationItem(
@@ -22,7 +24,27 @@ internal data class NativeRotationItem(
     val debtLabel: String,
     val recommendationRank: Int?,
     val deepLink: Uri,
+    val action: NativeRotationAction?,
 )
+
+internal data class NativeRotationAction(
+    val actionToken: String,
+    val surahId: String,
+    val rotationSchemeId: String,
+    val partId: String?,
+) {
+    val uri: Uri
+        get() =
+            Uri.Builder()
+                .scheme("murajaah-widget")
+                .authority("recitation")
+                .appendQueryParameter("schema", ACTION_SCHEMA_VERSION.toString())
+                .appendQueryParameter("token", actionToken)
+                .appendQueryParameter("surah", surahId)
+                .appendQueryParameter("scheme", rotationSchemeId)
+                .apply { partId?.let { appendQueryParameter("part", it) } }
+                .build()
+}
 
 internal data class NativeLearningProjection(val item: NativeLearningItem?)
 
@@ -31,8 +53,21 @@ internal data class NativeLearningItem(
     val stageLabel: String,
     val rangeLabel: String,
     val unavailableTextLabel: String,
-    val verifiedTextLines: List<String>,
+    val showArabic: Boolean,
+    val showTransliteration: Boolean,
+    val showTranslation: Boolean,
+    val ayahLines: List<NativeLearningAyahLine>,
     val deepLink: Uri,
+)
+
+internal data class NativeLearningAyahLine(
+    // Schema 2 had only Arabic strings. Nullable coordinates keep that old
+    // display projection readable while schema 3 always supplies both values.
+    val surahNumber: Int?,
+    val ayahNumber: Int?,
+    val arabic: String,
+    val transliteration: String?,
+    val translation: String?,
 )
 
 /**
@@ -43,7 +78,8 @@ internal data class NativeLearningItem(
  * fallback instead of throwing from a launcher process.
  */
 internal object NativeWidgetSnapshotParser {
-    private const val SCHEMA_VERSION = 2
+    private const val PREVIOUS_SCHEMA_VERSION = 2
+    private const val SCHEMA_VERSION = 3
     private const val MAX_ROTATION_ITEMS = 64
     private const val MAX_TEXT_LINES = 3
     // Mirrors Dart's domain-level maxRecommendationCount.
@@ -53,17 +89,21 @@ internal object NativeWidgetSnapshotParser {
         if (raw.isNullOrEmpty() || raw.length > 2_000_000) return null
         return runCatching {
             val root = JSONObject(raw)
-            require(root.getInt("schemaVersion") == SCHEMA_VERSION)
+            val schemaVersion = root.getInt("schemaVersion")
+            require(schemaVersion == PREVIOUS_SCHEMA_VERSION || schemaVersion == SCHEMA_VERSION)
             requireText(root.getString("generatedAtUtc"), 128)
             requireText(root.getString("locale"), 32)
             NativeWidgetSnapshot(
-                rotation = parseRotation(root.getJSONObject("rotation")),
-                learning = parseLearning(root.getJSONObject("learning")),
+                rotation = parseRotation(root.getJSONObject("rotation"), schemaVersion),
+                learning = parseLearning(root.getJSONObject("learning"), schemaVersion),
             )
         }.getOrNull()
     }
 
-    private fun parseRotation(json: JSONObject): NativeRotationProjection {
+    private fun parseRotation(
+        json: JSONObject,
+        schemaVersion: Int,
+    ): NativeRotationProjection {
         val itemsJson = json.getJSONArray("items")
         require(itemsJson.length() <= MAX_ROTATION_ITEMS)
         val omittedCount = json.getInt("omittedCount")
@@ -71,6 +111,7 @@ internal object NativeWidgetSnapshotParser {
         val ids = HashSet<String>(itemsJson.length())
         val stableIds = HashSet<Long>(itemsJson.length())
         val recommendationRanks = HashSet<Int>(MAX_RECOMMENDATION_COUNT)
+        val actionTokens = HashSet<String>(itemsJson.length())
         val items = ArrayList<NativeRotationItem>(itemsJson.length())
         for (index in 0 until itemsJson.length()) {
             val item = itemsJson.getJSONObject(index)
@@ -95,6 +136,15 @@ internal object NativeWidgetSnapshotParser {
                 }
             val deepLink = Uri.parse(item.getString("deepLink"))
             require(isSafeRotationLink(deepLink, surahId, partId))
+            val action =
+                if (schemaVersion >= SCHEMA_VERSION && item.has("action")) {
+                    require(!item.isNull("action"))
+                    parseAction(item.getJSONObject("action"), surahId, partId).also {
+                        require(actionTokens.add(it.actionToken))
+                    }
+                } else {
+                    null
+                }
             items +=
                 NativeRotationItem(
                     id = id,
@@ -103,12 +153,55 @@ internal object NativeWidgetSnapshotParser {
                     debtLabel = debtLabel,
                     recommendationRank = recommendationRank,
                     deepLink = deepLink,
+                    action = action,
                 )
         }
-        return NativeRotationProjection(items = items, omittedCount = omittedCount)
+        return NativeRotationProjection(
+            items = items,
+            omittedCount = omittedCount,
+            contextLabel =
+                if (schemaVersion >= SCHEMA_VERSION) {
+                    requireText(json.getString("contextLabel"), 256)
+                } else {
+                    null
+                },
+            statusMessage =
+                if (schemaVersion >= SCHEMA_VERSION) {
+                    json.optionalString("statusMessage")?.let { requireText(it, 512) }
+                } else {
+                    null
+                },
+        )
     }
 
-    private fun parseLearning(json: JSONObject): NativeLearningProjection {
+    private fun parseAction(
+        json: JSONObject,
+        expectedSurahId: String,
+        expectedPartId: String?,
+    ): NativeRotationAction {
+        requireOnlyKeys(
+            json,
+            setOf("schemaVersion", "actionToken", "surahId", "rotationSchemeId", "partId"),
+        )
+        require(json.getInt("schemaVersion") == ACTION_SCHEMA_VERSION)
+        val actionToken = requireText(json.getString("actionToken"), 36)
+        require(UUID_V4.matches(actionToken))
+        val surahId = requireSafeId(json.getString("surahId"))
+        val schemeId = requireSafeId(json.getString("rotationSchemeId"))
+        val partId = json.optionalString("partId")?.let(::requireSafeId)
+        require(surahId == expectedSurahId && partId == expectedPartId)
+        return NativeRotationAction(
+            actionToken = actionToken.lowercase(),
+            surahId = surahId,
+            rotationSchemeId = schemeId,
+            partId = partId,
+        )
+    }
+
+    private fun parseLearning(
+        json: JSONObject,
+        schemaVersion: Int,
+    ): NativeLearningProjection {
         if (!json.has("item") || json.isNull("item")) {
             return NativeLearningProjection(item = null)
         }
@@ -116,12 +209,63 @@ internal object NativeWidgetSnapshotParser {
         val surahId = requireSafeId(item.getString("surahId"))
         val deepLink = Uri.parse(item.getString("deepLink"))
         require(isSafeLearningLink(deepLink, surahId))
-        val linesJson = item.getJSONArray("verifiedTextLines")
-        require(linesJson.length() <= MAX_TEXT_LINES)
-        val lines = ArrayList<String>(linesJson.length())
-        for (index in 0 until linesJson.length()) {
-            // No trim/normalization: these are exact verified cache strings.
-            lines += requireText(linesJson.getString(index), 8192)
+        val lines: List<NativeLearningAyahLine>
+        val showArabic: Boolean
+        val showTransliteration: Boolean
+        val showTranslation: Boolean
+        if (schemaVersion == PREVIOUS_SCHEMA_VERSION) {
+            val linesJson = item.getJSONArray("verifiedTextLines")
+            require(linesJson.length() <= MAX_TEXT_LINES)
+            lines =
+                List(linesJson.length()) { index ->
+                    // No trim/normalization: these are exact verified cache strings.
+                    NativeLearningAyahLine(
+                        surahNumber = null,
+                        ayahNumber = null,
+                        arabic = requireText(linesJson.getString(index), 8192),
+                        transliteration = null,
+                        translation = null,
+                    )
+                }
+            showArabic = true
+            showTransliteration = false
+            showTranslation = false
+        } else {
+            val surahNumber = item.getInt("surahNumber")
+            val startAyah = item.getInt("startAyah")
+            val endAyah = item.getInt("endAyah")
+            require(surahNumber > 0 && startAyah > 0 && endAyah >= startAyah)
+            showArabic = item.getBoolean("showArabic")
+            showTransliteration = item.getBoolean("showTransliteration")
+            showTranslation = item.getBoolean("showTranslation")
+            val linesJson = item.getJSONArray("ayahLines")
+            require(linesJson.length() <= MAX_TEXT_LINES)
+            var previousAyah = 0
+            lines =
+                List(linesJson.length()) { index ->
+                    val line = linesJson.getJSONObject(index)
+                    val lineSurah = line.getInt("surah")
+                    val lineAyah = line.getInt("ayah")
+                    require(
+                        lineSurah == surahNumber &&
+                            lineAyah in startAyah..endAyah &&
+                            lineAyah > previousAyah
+                    )
+                    previousAyah = lineAyah
+                    NativeLearningAyahLine(
+                        surahNumber = lineSurah,
+                        ayahNumber = lineAyah,
+                        arabic = requireText(line.getString("arabic"), 8192),
+                        transliteration =
+                            line.optionalString("transliteration")?.let {
+                                requireText(it, 8192)
+                            },
+                        translation =
+                            line.optionalString("translation")?.let {
+                                requireText(it, 8192)
+                            },
+                    )
+                }
         }
         return NativeLearningProjection(
             NativeLearningItem(
@@ -130,7 +274,10 @@ internal object NativeWidgetSnapshotParser {
                 rangeLabel = requireText(item.getString("rangeLabel"), 256),
                 unavailableTextLabel =
                     requireText(item.getString("unavailableTextLabel"), 512),
-                verifiedTextLines = lines,
+                showArabic = showArabic,
+                showTransliteration = showTransliteration,
+                showTranslation = showTranslation,
+                ayahLines = lines,
                 deepLink = deepLink,
             )
         )
@@ -138,6 +285,11 @@ internal object NativeWidgetSnapshotParser {
 
     private fun JSONObject.optionalString(key: String): String? =
         if (has(key) && !isNull(key)) getString(key) else null
+
+    private fun requireOnlyKeys(json: JSONObject, allowed: Set<String>) {
+        val keys = json.keys()
+        while (keys.hasNext()) require(keys.next() in allowed)
+    }
 
     private fun requireText(value: String, maxLength: Int): String {
         require(value.isNotEmpty() && value.length <= maxLength)
@@ -173,7 +325,14 @@ internal object NativeWidgetSnapshotParser {
             uri.fragment == null
 
     private val SAFE_ID = Regex("^[A-Za-z0-9._~:-]+$")
+    private val UUID_V4 =
+        Regex(
+            "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-" +
+                "[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        )
 }
+
+internal const val ACTION_SCHEMA_VERSION = 1
 
 internal fun stableWidgetItemId(value: String): Long {
     var hash = 1_125_899_906_842_597L

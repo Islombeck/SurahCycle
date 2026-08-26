@@ -1,8 +1,10 @@
 import '../data/providers/tanzil_uthmani_text_repository.dart';
 import '../data/quran_content_repository.dart';
 import '../data/quran_content_state.dart';
+import '../data/quran_transliteration_repository.dart';
 import '../domain/quran_models.dart';
 import '../domain/quran_translation_selection.dart';
+import '../domain/quran_transliteration.dart';
 
 /// Display-ready ayah content assembled without changing either source string.
 final class QuranReadingAyah {
@@ -10,17 +12,19 @@ final class QuranReadingAyah {
     required this.surahNumber,
     required this.ayahNumber,
     required this.arabicText,
+    this.transliteration,
     this.translation,
   });
 
   final int surahNumber;
   final int ayahNumber;
   final String arabicText;
+  final String? transliteration;
   final String? translation;
 }
 
 /// Arabic is always present because it comes from the bundled Tanzil corpus.
-/// Translation availability is deliberately independent and may be absent.
+/// Transliteration and translation are independent layers and may be absent.
 final class QuranReadingSurah {
   QuranReadingSurah({
     required this.surahNumber,
@@ -28,6 +32,8 @@ final class QuranReadingSurah {
     required this.translationSelection,
     required this.translationFromCache,
     required this.translationIssue,
+    required this.transliterationSource,
+    required this.transliterationIssueCode,
   }) : ayahs = List<QuranReadingAyah>.unmodifiable(ayahs);
 
   final int surahNumber;
@@ -35,6 +41,11 @@ final class QuranReadingSurah {
   final QuranTranslationSelection? translationSelection;
   final bool? translationFromCache;
   final QuranContentIssue? translationIssue;
+  final QuranTransliterationSource? transliterationSource;
+
+  /// Stable, content-free diagnostics. Null means either a verified source
+  /// was assembled successfully or no transliteration repository is installed.
+  final String? transliterationIssueCode;
 
   QuranReadingSurah withTranslationIssue(QuranContentIssue? issue) =>
       QuranReadingSurah(
@@ -43,6 +54,8 @@ final class QuranReadingSurah {
         translationSelection: translationSelection,
         translationFromCache: translationFromCache,
         translationIssue: issue,
+        transliterationSource: transliterationSource,
+        transliterationIssueCode: transliterationIssueCode,
       );
 
   QuranReadingAyah ayah(int ayahNumber) {
@@ -65,16 +78,18 @@ final class QuranReadingSurah {
   }
 }
 
-/// Joins the pinned offline Arabic corpus with an optional version-pinned
-/// QuranEnc translation. Provider text is never trimmed or normalized.
+/// Joins pinned offline Arabic with optional provider-owned transliteration
+/// and a version-pinned translation. Source text is never trimmed or normalized.
 final class QuranReadingRepository {
   const QuranReadingRepository({
     required this.arabic,
     required this.translations,
+    this.transliterations,
   });
 
   final TanzilUthmaniTextRepository arabic;
   final QuranContentRepository translations;
+  final QuranTransliterationRepository? transliterations;
 
   Future<QuranReadingSurah> getSurah({
     required int surahNumber,
@@ -101,6 +116,42 @@ final class QuranReadingRepository {
     );
 
     final translationsByAyah = <int, String>{};
+    final transliterationsByAyah = <int, String>{};
+    QuranTransliterationSource? transliterationSource;
+    String? transliterationIssueCode;
+    final transliterationRepository = transliterations;
+    if (transliterationRepository != null) {
+      try {
+        final sourceAyahs = await transliterationRepository.getRange(
+          surahNumber: surahNumber,
+          startAyah: 1,
+          endAyah: ayahCount,
+        );
+        final complete =
+            sourceAyahs.length == ayahCount &&
+            sourceAyahs.indexed.every(
+              (entry) =>
+                  entry.$2.surahNumber == surahNumber &&
+                  entry.$2.ayahNumber == entry.$1 + 1 &&
+                  entry.$2.exactText.isNotEmpty &&
+                  entry.$2.source == sourceAyahs.first.source,
+            );
+        if (!complete) {
+          transliterationIssueCode =
+              'transliteration_surah_coordinates_incomplete';
+        } else {
+          transliterationSource = sourceAyahs.first.source;
+          for (final ayah in sourceAyahs) {
+            transliterationsByAyah[ayah.ayahNumber] = ayah.exactText;
+          }
+        }
+      } on Object {
+        // Arabic and any cached translation remain useful even if the
+        // independent transliteration source cannot be loaded or validated.
+        transliterationIssueCode = 'quran_transliteration_unavailable';
+      }
+    }
+
     bool? fromCache;
     QuranContentIssue? issue;
     if (translationSelection != null) {
@@ -156,12 +207,15 @@ final class QuranReadingRepository {
             surahNumber: ayah.surahNumber,
             ayahNumber: ayah.ayahNumber,
             arabicText: ayah.arabicText,
+            transliteration: transliterationsByAyah[ayah.ayahNumber],
             translation: translationsByAyah[ayah.ayahNumber],
           ),
       ],
       translationSelection: translationSelection,
       translationFromCache: fromCache,
       translationIssue: issue,
+      transliterationSource: transliterationSource,
+      transliterationIssueCode: transliterationIssueCode,
     );
   }
 }

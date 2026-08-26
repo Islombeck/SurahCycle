@@ -13,7 +13,9 @@ void main() {
     tester,
   ) async {
     final database = AppDatabase(NativeDatabase.memory());
+    final quranCache = QuranCacheDatabase(NativeDatabase.memory());
     addTearDown(database.close);
+    addTearDown(quranCache.close);
     await SurahRepository(database).getRotationSnapshot();
     final translation = QuranTranslation(
       source: QuranEncProvider.sourceId,
@@ -27,6 +29,7 @@ void main() {
       ProviderScope(
         overrides: <Override>[
           appDatabaseProvider.overrideWithValue(database),
+          quranCacheDatabaseProvider.overrideWithValue(quranCache),
           startupProvider.overrideWith((ref) async {}),
           timeProviderProvider.overrideWithValue(
             _FixedTimeProvider(DateTime.utc(2026, 8, 25, 12)),
@@ -37,6 +40,9 @@ void main() {
               fromCache: false,
             ),
           ),
+          prayerTodayScheduleProvider.overrideWith(
+            (ref) async => throw StateError('Fixture schedule unavailable.'),
+          ),
         ],
         child: const MurajaahApp(),
       ),
@@ -46,6 +52,7 @@ void main() {
       find.byKey(const ValueKey<String>('primary-tab-settings')),
     );
     await tester.pumpAndSettle();
+    await _scrollToTranslationSettings(tester);
 
     final selector = find.byKey(
       const ValueKey<String>('quran-translation-selector'),
@@ -60,7 +67,7 @@ void main() {
 
     await tester.tap(selector);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Fixture Russian · v1.2.3').last);
+    await tester.tap(find.text('Fixture Russian · quranenc.com · v1.2.3').last);
     await tester.pumpAndSettle();
 
     final stored = await QuranTranslationSelectionRepository(
@@ -203,15 +210,21 @@ Future<void> _pumpSettings(
   AppDatabase database,
   QuranContentState<List<QuranTranslation>> catalog,
 ) async {
+  final quranCache = QuranCacheDatabase(NativeDatabase.memory());
+  addTearDown(quranCache.close);
   await tester.pumpWidget(
     ProviderScope(
       overrides: <Override>[
         appDatabaseProvider.overrideWithValue(database),
+        quranCacheDatabaseProvider.overrideWithValue(quranCache),
         startupProvider.overrideWith((ref) async {}),
         timeProviderProvider.overrideWithValue(
           _FixedTimeProvider(DateTime.utc(2026, 8, 25, 12)),
         ),
         russianQuranTranslationsProvider.overrideWith((ref) async => catalog),
+        prayerTodayScheduleProvider.overrideWith(
+          (ref) async => throw StateError('Fixture schedule unavailable.'),
+        ),
       ],
       child: const MurajaahApp(),
     ),
@@ -219,6 +232,23 @@ Future<void> _pumpSettings(
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const ValueKey<String>('primary-tab-settings')));
   await tester.pumpAndSettle();
+  await _scrollToTranslationSettings(tester);
+}
+
+Future<void> _scrollToTranslationSettings(WidgetTester tester) async {
+  final target = find.byKey(
+    const ValueKey<String>('quran-translation-settings-card'),
+  );
+  for (var attempt = 0; attempt < 12; attempt += 1) {
+    if (target.evaluate().isNotEmpty) {
+      await tester.ensureVisible(target);
+      await tester.pumpAndSettle();
+      return;
+    }
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+  }
+  throw TestFailure('Quran translation settings were not built after scroll.');
 }
 
 Future<void> _disposeWidgetTree(WidgetTester tester) async {

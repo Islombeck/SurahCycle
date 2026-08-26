@@ -15,6 +15,7 @@
     <string name="widget_open_murajaah">Откройте Murajaah</string>
     <string name="widget_open_app">Открыть приложение</string>
     <string name="widget_recommendation_rank">&#9733; %1$d</string>
+    <string name="widget_mark_recitation">Отметить прочтение</string>
     <string name="widget_error_title">Murajaah</string>
     <string name="widget_error_message">Не удалось обновить виджет.</string>
     <string name="widget_error_open_app">Откройте приложение</string>

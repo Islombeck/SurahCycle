@@ -176,6 +176,216 @@ void main() {
         expect(error.toString(), isNot(contains('Synthetic body')));
       }
     });
+
+    test(
+      'uses audited direct probes only after an empty Russian catalog',
+      () async {
+        final requestedPaths = <String>[];
+        final emittedDiagnostics = <QuranEncCatalogDiagnostics>[];
+        final client = MockClient((request) async {
+          requestedPaths.add(request.url.path);
+          if (request.url.path == '/api/v1/translations/list/ru') {
+            return _jsonResponse(<String, Object?>{
+              'translations': <Object?>[],
+            });
+          }
+          if (request.url.path.endsWith('/russian_rwwad/1')) {
+            // Structurally valid but intentionally not the audited QuranEnc
+            // revision. It must never become an available translation.
+            return _jsonResponse(<String, Object?>{
+              'result': <Object?>[
+                <String, Object?>{
+                  'sura': '1',
+                  'aya': '1',
+                  'translation': 'Synthetic mismatch',
+                  'footnotes': null,
+                },
+              ],
+            });
+          }
+          if (request.url.path.endsWith('/russian_aboadel/1')) {
+            return http.Response('', 404);
+          }
+          fail('Unexpected request: ${request.url}');
+        });
+        final provider = QuranEncProvider(
+          client: client,
+          diagnosticsSink: emittedDiagnostics.add,
+        );
+
+        final discovery = await provider.discoverTranslations(
+          languageCode: 'ru',
+          localizationLanguageCode: 'ru',
+        );
+
+        expect(discovery.translations, isEmpty);
+        expect(
+          discovery.diagnostics.origin,
+          QuranEncDiscoveryOrigin.knownOfficialDirectFallback,
+        );
+        expect(discovery.diagnostics.httpStatus, 200);
+        expect(
+          discovery.diagnostics.contentType,
+          'application/json; charset=utf-8',
+        );
+        expect(discovery.diagnostics.responseByteLength, greaterThan(0));
+        expect(discovery.diagnostics.parsedTranslationCount, 0);
+        expect(discovery.diagnostics.knownProbes, hasLength(2));
+        expect(emittedDiagnostics, <QuranEncCatalogDiagnostics>[
+          discovery.diagnostics,
+        ]);
+        expect(
+          discovery.diagnostics.knownProbes[0].status,
+          QuranEncKnownProbeStatus.contentRevisionMismatch,
+        );
+        expect(
+          discovery.diagnostics.knownProbes[1].status,
+          QuranEncKnownProbeStatus.rejectedRequest,
+        );
+        expect(
+          requestedPaths,
+          containsAll(<String>[
+            '/api/v1/translation/sura/russian_rwwad/1',
+            '/api/v1/translation/sura/russian_aboadel/1',
+          ]),
+        );
+      },
+    );
+
+    test('never probes known keys for a non-Russian empty catalog', () async {
+      var requests = 0;
+      final client = MockClient((request) async {
+        requests += 1;
+        return _jsonResponse(<String, Object?>{'translations': <Object?>[]});
+      });
+      final provider = QuranEncProvider(client: client);
+
+      final discovery = await provider.discoverTranslations(languageCode: 'en');
+
+      expect(discovery.translations, isEmpty);
+      expect(
+        discovery.diagnostics.origin,
+        QuranEncDiscoveryOrigin.officialCatalog,
+      );
+      expect(discovery.diagnostics.knownProbes, isEmpty);
+      expect(requests, 1);
+    });
+
+    test(
+      'never probes known keys when the Russian catalog has entries',
+      () async {
+        var requests = 0;
+        final client = MockClient((request) async {
+          requests += 1;
+          return _jsonResponse(<String, Object?>{
+            'translations': <Object?>[
+              <String, Object?>{
+                'key': 'catalog-key',
+                'language_iso_code': 'ru',
+                'version': 'catalog-v1',
+                'title': 'Catalog fixture',
+              },
+            ],
+          });
+        });
+        final provider = QuranEncProvider(client: client);
+
+        final discovery = await provider.discoverTranslations(
+          languageCode: 'ru',
+        );
+
+        expect(discovery.translations.single.key, 'catalog-key');
+        expect(
+          discovery.diagnostics.origin,
+          QuranEncDiscoveryOrigin.officialCatalog,
+        );
+        expect(discovery.diagnostics.knownProbes, isEmpty);
+        expect(requests, 1);
+      },
+    );
+
+    test('rejects HTML even when the response status is successful', () async {
+      final provider = QuranEncProvider(
+        client: MockClient(
+          (request) async => http.Response(
+            '<html>Synthetic provider error</html>',
+            200,
+            headers: const <String, String>{'content-type': 'text/html'},
+          ),
+        ),
+      );
+
+      await expectLater(
+        provider.listTranslations(languageCode: 'ru'),
+        throwsA(
+          isA<QuranProviderException>().having(
+            (error) => error.code,
+            'code',
+            'quranenc_content_type_invalid',
+          ),
+        ),
+      );
+    });
+
+    test(
+      'direct fallback content must match its pinned surah revision',
+      () async {
+        final known = KnownOfficialQuranEncTranslations.russian.first;
+        final provider = QuranEncProvider(
+          client: MockClient(
+            (request) async => _jsonResponse(<String, Object?>{
+              'result': <Object?>[
+                <String, Object?>{
+                  'sura': '1',
+                  'aya': '1',
+                  'translation': 'Synthetic mismatch',
+                  'footnotes': null,
+                },
+              ],
+            }),
+          ),
+        );
+
+        await expectLater(
+          provider.fetchSurahTranslation(
+            translation: known.toTranslation(),
+            surahNumber: 1,
+          ),
+          throwsA(
+            isA<QuranProviderException>().having(
+              (error) => error.code,
+              'code',
+              'quranenc_known_content_revision_mismatch',
+            ),
+          ),
+        );
+      },
+    );
+
+    test('known registry carries complete truthful audit metadata', () {
+      expect(KnownOfficialQuranEncTranslations.russian, hasLength(2));
+      for (final known in KnownOfficialQuranEncTranslations.russian) {
+        expect(known.languageCode, 'ru');
+        expect(known.expectedSource, QuranEncProvider.sourceId);
+        expect(known.officialVersion, startsWith('V'));
+        expect(known.provenance.scheme, 'https');
+        expect(known.lastVerifiedAtUtc.isUtc, isTrue);
+        expect(known.corpusSha256, matches(RegExp(r'^[0-9a-f]{64}$')));
+        expect(
+          known.technicalRevision,
+          'quranenc-direct-${known.lastVerifiedDateIso8601}-sha256-'
+          '${known.corpusSha256}',
+        );
+        expect(
+          known.expectedSurahSha256(1),
+          matches(RegExp(r'^[0-9a-f]{64}$')),
+        );
+        expect(
+          known.expectedSurahSha256(114),
+          matches(RegExp(r'^[0-9a-f]{64}$')),
+        );
+      }
+    });
   });
 }
 

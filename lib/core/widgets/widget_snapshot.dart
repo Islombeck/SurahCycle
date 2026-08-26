@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../application/widget_recitation_action.dart';
 import '../domain/suggestion.dart';
 import 'widget_deep_link.dart';
 
@@ -8,7 +9,7 @@ const String widgetSnapshotStorageKey = 'murajaah_widget_snapshot';
 
 /// Shared protocol ceilings mirrored by the native Android decoder.
 const int maxRotationWidgetItems = 64;
-const int maxLearningWidgetTextLines = 3;
+const int maxLearningWidgetAyahLines = 3;
 
 /// A fully denormalized, display-ready projection for home-screen widgets.
 ///
@@ -44,7 +45,7 @@ final class WidgetSnapshot {
     required this.learning,
   });
 
-  static const int schemaVersion = 2;
+  static const int schemaVersion = 3;
 
   final DateTime generatedAtUtc;
   final String locale;
@@ -84,6 +85,8 @@ final class RotationWidgetProjection {
   factory RotationWidgetProjection({
     required Iterable<RotationWidgetItem> items,
     int omittedCount = 0,
+    String contextLabel = 'Rotation',
+    String? statusMessage,
   }) {
     if (omittedCount < 0) {
       throw ArgumentError.value(
@@ -100,9 +103,14 @@ final class RotationWidgetProjection {
         'Must contain at most $maxRotationWidgetItems rows.',
       );
     }
+    _requireText(contextLabel, 'contextLabel', maxLength: 256);
+    if (statusMessage != null) {
+      _requireText(statusMessage, 'statusMessage', maxLength: 512);
+    }
     final ids = <String>{};
     final stableIds = <int>{};
     final recommendationRanks = <int>{};
+    final actionTokens = <String>{};
     for (final item in result) {
       if (!ids.add(item.id)) {
         throw ArgumentError.value(item.id, 'items', 'IDs must be unique.');
@@ -122,18 +130,40 @@ final class RotationWidgetProjection {
           'Recommendation ranks must be unique.',
         );
       }
+      final action = item.action;
+      if (action != null && !actionTokens.add(action.actionToken)) {
+        throw ArgumentError.value(
+          action.actionToken,
+          'items',
+          'Widget action tokens must be unique.',
+        );
+      }
     }
-    return RotationWidgetProjection._(result, omittedCount);
+    return RotationWidgetProjection._(
+      result,
+      omittedCount,
+      contextLabel,
+      statusMessage,
+    );
   }
 
-  const RotationWidgetProjection._(this.items, this.omittedCount);
+  const RotationWidgetProjection._(
+    this.items,
+    this.omittedCount,
+    this.contextLabel,
+    this.statusMessage,
+  );
 
   final List<RotationWidgetItem> items;
   final int omittedCount;
+  final String contextLabel;
+  final String? statusMessage;
 
   Map<String, Object?> toJson() => <String, Object?>{
     'items': items.map((item) => item.toJson()).toList(growable: false),
     'omittedCount': omittedCount,
+    'contextLabel': contextLabel,
+    if (statusMessage != null) 'statusMessage': statusMessage,
   };
 
   static RotationWidgetProjection _fromJson(Map<String, Object?> json) =>
@@ -143,6 +173,8 @@ final class RotationWidgetProjection {
           'items',
         ).map((item) => RotationWidgetItem._fromJson(_asMap(item, 'item'))),
         omittedCount: _integer(json, 'omittedCount'),
+        contextLabel: _string(json, 'contextLabel'),
+        statusMessage: _nullableString(json, 'statusMessage'),
       );
 
   @override
@@ -150,10 +182,17 @@ final class RotationWidgetProjection {
       identical(this, other) ||
       other is RotationWidgetProjection &&
           _listEquals(items, other.items) &&
-          omittedCount == other.omittedCount;
+          omittedCount == other.omittedCount &&
+          contextLabel == other.contextLabel &&
+          statusMessage == other.statusMessage;
 
   @override
-  int get hashCode => Object.hash(Object.hashAll(items), omittedCount);
+  int get hashCode => Object.hash(
+    Object.hashAll(items),
+    omittedCount,
+    contextLabel,
+    statusMessage,
+  );
 }
 
 final class RotationWidgetItem {
@@ -166,6 +205,7 @@ final class RotationWidgetItem {
     required int remaining,
     int? recommendationRank,
     required Uri deepLink,
+    WidgetRecitationAction? action,
   }) {
     _requireText(id, 'id', maxLength: 256);
     _requireText(surahId, 'surahId', maxLength: 128);
@@ -195,6 +235,14 @@ final class RotationWidgetItem {
         'Must target the projected surah and part.',
       );
     }
+    if (action != null &&
+        (action.surahId != surahId || action.partId != partId)) {
+      throw ArgumentError.value(
+        action,
+        'action',
+        'Must target the projected surah and part.',
+      );
+    }
     return RotationWidgetItem._(
       id: id,
       surahId: surahId,
@@ -204,6 +252,7 @@ final class RotationWidgetItem {
       remaining: remaining,
       recommendationRank: recommendationRank,
       deepLink: deepLink,
+      action: action,
     );
   }
 
@@ -216,6 +265,7 @@ final class RotationWidgetItem {
     required this.remaining,
     required this.recommendationRank,
     required this.deepLink,
+    required this.action,
   });
 
   final String id;
@@ -226,6 +276,7 @@ final class RotationWidgetItem {
   final int remaining;
   final int? recommendationRank;
   final Uri deepLink;
+  final WidgetRecitationAction? action;
 
   bool get isRecommended => recommendationRank != null;
 
@@ -242,6 +293,7 @@ final class RotationWidgetItem {
     'debtLabel': debtLabel,
     if (recommendationRank != null) 'recommendationRank': recommendationRank,
     'deepLink': deepLink.toString(),
+    if (action != null) 'action': action!.toJson(),
   };
 
   static RotationWidgetItem _fromJson(Map<String, Object?> json) {
@@ -256,6 +308,9 @@ final class RotationWidgetItem {
           ? _integer(json, 'recommendationRank')
           : null,
       deepLink: Uri.parse(_string(json, 'deepLink')),
+      action: json.containsKey('action')
+          ? WidgetRecitationAction.fromJson(_map(json, 'action'))
+          : null,
     );
     if (_string(json, 'debtLabel') != item.debtLabel) {
       throw const FormatException('debtLabel does not match remaining.');
@@ -274,7 +329,8 @@ final class RotationWidgetItem {
           subtitle == other.subtitle &&
           remaining == other.remaining &&
           recommendationRank == other.recommendationRank &&
-          deepLink == other.deepLink;
+          deepLink == other.deepLink &&
+          action == other.action;
 
   @override
   int get hashCode => Object.hash(
@@ -286,6 +342,7 @@ final class RotationWidgetItem {
     remaining,
     recommendationRank,
     deepLink,
+    action,
   );
 }
 
@@ -319,32 +376,142 @@ final class LearningWidgetProjection {
   int get hashCode => item.hashCode;
 }
 
+/// One coordinate-bound ayah block for the Learning widget.
+///
+/// The three content layers deliberately live in the same object so an
+/// Arabic ayah can never be paired with another ayah's transliteration or
+/// translation. Strings are validated without trimming or normalization.
+final class LearningWidgetAyahLine {
+  factory LearningWidgetAyahLine({
+    required int surahNumber,
+    required int ayahNumber,
+    required String arabic,
+    String? transliteration,
+    String? translation,
+  }) {
+    if (surahNumber <= 0) {
+      throw ArgumentError.value(
+        surahNumber,
+        'surahNumber',
+        'Must be positive.',
+      );
+    }
+    if (ayahNumber <= 0) {
+      throw ArgumentError.value(ayahNumber, 'ayahNumber', 'Must be positive.');
+    }
+    _requireText(arabic, 'arabic', maxLength: 8192);
+    if (transliteration != null) {
+      _requireText(transliteration, 'transliteration', maxLength: 8192);
+    }
+    if (translation != null) {
+      _requireText(translation, 'translation', maxLength: 8192);
+    }
+    return LearningWidgetAyahLine._(
+      surahNumber: surahNumber,
+      ayahNumber: ayahNumber,
+      arabic: arabic,
+      transliteration: transliteration,
+      translation: translation,
+    );
+  }
+
+  const LearningWidgetAyahLine._({
+    required this.surahNumber,
+    required this.ayahNumber,
+    required this.arabic,
+    required this.transliteration,
+    required this.translation,
+  });
+
+  final int surahNumber;
+  final int ayahNumber;
+  final String arabic;
+  final String? transliteration;
+  final String? translation;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'surah': surahNumber,
+    'ayah': ayahNumber,
+    'arabic': arabic,
+    if (transliteration != null) 'transliteration': transliteration,
+    if (translation != null) 'translation': translation,
+  };
+
+  static LearningWidgetAyahLine _fromJson(Map<String, Object?> json) =>
+      LearningWidgetAyahLine(
+        surahNumber: _integer(json, 'surah'),
+        ayahNumber: _integer(json, 'ayah'),
+        arabic: _string(json, 'arabic'),
+        transliteration: _nullableString(json, 'transliteration'),
+        translation: _nullableString(json, 'translation'),
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LearningWidgetAyahLine &&
+          surahNumber == other.surahNumber &&
+          ayahNumber == other.ayahNumber &&
+          arabic == other.arabic &&
+          transliteration == other.transliteration &&
+          translation == other.translation;
+
+  @override
+  int get hashCode => Object.hash(
+    surahNumber,
+    ayahNumber,
+    arabic,
+    transliteration,
+    translation,
+  );
+}
+
 final class LearningWidgetItem {
   factory LearningWidgetItem({
     required String surahId,
+    required int surahNumber,
+    required int startAyah,
+    required int endAyah,
     required String title,
     required String stageLabel,
     required String rangeLabel,
     required String unavailableTextLabel,
-    Iterable<String> verifiedTextLines = const <String>[],
+    Iterable<LearningWidgetAyahLine> ayahLines =
+        const <LearningWidgetAyahLine>[],
+    bool showArabic = true,
+    bool showTransliteration = true,
+    bool showTranslation = true,
     required Uri deepLink,
   }) {
     _requireText(surahId, 'surahId', maxLength: 128);
+    if (surahNumber <= 0 || startAyah <= 0 || endAyah < startAyah) {
+      throw ArgumentError('Invalid Learning widget coordinates.');
+    }
     _requireText(title, 'title', maxLength: 512);
     _requireText(stageLabel, 'stageLabel', maxLength: 256);
     _requireText(rangeLabel, 'rangeLabel', maxLength: 256);
     _requireText(unavailableTextLabel, 'unavailableTextLabel', maxLength: 512);
-    final textLines = List<String>.unmodifiable(verifiedTextLines);
-    if (textLines.length > maxLearningWidgetTextLines) {
+    final lines = List<LearningWidgetAyahLine>.unmodifiable(ayahLines);
+    if (lines.length > maxLearningWidgetAyahLines) {
       throw ArgumentError.value(
-        textLines.length,
-        'verifiedTextLines',
-        'Must contain at most $maxLearningWidgetTextLines lines.',
+        lines.length,
+        'ayahLines',
+        'Must contain at most $maxLearningWidgetAyahLines lines.',
       );
     }
-    for (final line in textLines) {
-      // Validate without trimming or otherwise changing verified Quran text.
-      _requireText(line, 'verifiedTextLines', maxLength: 8192);
+    var previousAyah = 0;
+    for (final line in lines) {
+      if (line.surahNumber != surahNumber ||
+          line.ayahNumber < startAyah ||
+          line.ayahNumber > endAyah ||
+          line.ayahNumber <= previousAyah) {
+        throw ArgumentError.value(
+          line,
+          'ayahLines',
+          'Coordinates must match the surah/range and be strictly ordered.',
+        );
+      }
+      previousAyah = line.ayahNumber;
     }
     final parsedLink = WidgetDeepLink.parse(deepLink);
     if (parsedLink is! WidgetLearningDeepLink ||
@@ -357,59 +524,86 @@ final class LearningWidgetItem {
     }
     return LearningWidgetItem._(
       surahId: surahId,
+      surahNumber: surahNumber,
+      startAyah: startAyah,
+      endAyah: endAyah,
       title: title,
       stageLabel: stageLabel,
       rangeLabel: rangeLabel,
       unavailableTextLabel: unavailableTextLabel,
-      verifiedTextLines: textLines,
+      ayahLines: lines,
+      showArabic: showArabic,
+      showTransliteration: showTransliteration,
+      showTranslation: showTranslation,
       deepLink: deepLink,
     );
   }
 
   const LearningWidgetItem._({
     required this.surahId,
+    required this.surahNumber,
+    required this.startAyah,
+    required this.endAyah,
     required this.title,
     required this.stageLabel,
     required this.rangeLabel,
     required this.unavailableTextLabel,
-    required this.verifiedTextLines,
+    required this.ayahLines,
+    required this.showArabic,
+    required this.showTransliteration,
+    required this.showTranslation,
     required this.deepLink,
   });
 
   final String surahId;
+  final int surahNumber;
+  final int startAyah;
+  final int endAyah;
   final String title;
   final String stageLabel;
   final String rangeLabel;
   final String unavailableTextLabel;
 
-  /// Exact verified cached content supplied by the Quran repository boundary.
+  /// Exact verified cached content supplied by Quran repository boundaries.
   /// This model never fabricates, transliterates, trims, or normalizes it.
-  final List<String> verifiedTextLines;
+  final List<LearningWidgetAyahLine> ayahLines;
+  final bool showArabic;
+  final bool showTransliteration;
+  final bool showTranslation;
   final Uri deepLink;
 
   Map<String, Object?> toJson() => <String, Object?>{
     'surahId': surahId,
+    'surahNumber': surahNumber,
+    'startAyah': startAyah,
+    'endAyah': endAyah,
     'title': title,
     'stageLabel': stageLabel,
     'rangeLabel': rangeLabel,
     'unavailableTextLabel': unavailableTextLabel,
-    'verifiedTextLines': verifiedTextLines,
+    'showArabic': showArabic,
+    'showTransliteration': showTransliteration,
+    'showTranslation': showTranslation,
+    'ayahLines': ayahLines.map((line) => line.toJson()).toList(growable: false),
     'deepLink': deepLink.toString(),
   };
 
   static LearningWidgetItem _fromJson(Map<String, Object?> json) =>
       LearningWidgetItem(
         surahId: _string(json, 'surahId'),
+        surahNumber: _integer(json, 'surahNumber'),
+        startAyah: _integer(json, 'startAyah'),
+        endAyah: _integer(json, 'endAyah'),
         title: _string(json, 'title'),
         stageLabel: _string(json, 'stageLabel'),
         rangeLabel: _string(json, 'rangeLabel'),
         unavailableTextLabel: _string(json, 'unavailableTextLabel'),
-        verifiedTextLines: _list(json, 'verifiedTextLines').map((line) {
-          if (line is! String) {
-            throw const FormatException('Verified text line is not a string.');
-          }
-          return line;
-        }),
+        ayahLines: _list(json, 'ayahLines').map(
+          (line) => LearningWidgetAyahLine._fromJson(_asMap(line, 'ayahLine')),
+        ),
+        showArabic: _boolean(json, 'showArabic'),
+        showTransliteration: _boolean(json, 'showTransliteration'),
+        showTranslation: _boolean(json, 'showTranslation'),
         deepLink: Uri.parse(_string(json, 'deepLink')),
       );
 
@@ -418,21 +612,33 @@ final class LearningWidgetItem {
       identical(this, other) ||
       other is LearningWidgetItem &&
           surahId == other.surahId &&
+          surahNumber == other.surahNumber &&
+          startAyah == other.startAyah &&
+          endAyah == other.endAyah &&
           title == other.title &&
           stageLabel == other.stageLabel &&
           rangeLabel == other.rangeLabel &&
           unavailableTextLabel == other.unavailableTextLabel &&
-          _listEquals(verifiedTextLines, other.verifiedTextLines) &&
+          _listEquals(ayahLines, other.ayahLines) &&
+          showArabic == other.showArabic &&
+          showTransliteration == other.showTransliteration &&
+          showTranslation == other.showTranslation &&
           deepLink == other.deepLink;
 
   @override
   int get hashCode => Object.hash(
     surahId,
+    surahNumber,
+    startAyah,
+    endAyah,
     title,
     stageLabel,
     rangeLabel,
     unavailableTextLabel,
-    Object.hashAll(verifiedTextLines),
+    Object.hashAll(ayahLines),
+    showArabic,
+    showTransliteration,
+    showTranslation,
     deepLink,
   );
 }
@@ -532,6 +738,12 @@ String? _nullableString(Map<String, Object?> json, String key) {
 int _integer(Map<String, Object?> json, String key) {
   final value = json[key];
   if (value is! int) throw FormatException('$key is not an integer.');
+  return value;
+}
+
+bool _boolean(Map<String, Object?> json, String key) {
+  final value = json[key];
+  if (value is! bool) throw FormatException('$key is not a boolean.');
   return value;
 }
 

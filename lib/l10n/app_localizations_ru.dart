@@ -33,6 +33,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get recommendedTitle => 'Рекомендуется';
 
   @override
+  String recommendationRank(int rank) {
+    return 'Рекомендация $rank';
+  }
+
+  @override
   String get activeSurahsTitle => 'Активные суры';
 
   @override
@@ -396,11 +401,31 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get noRussianTranslations =>
-      'QuranEnc сейчас не возвращает русские переводы в официальном каталоге API. Арабский текст остаётся доступен офлайн.';
+      'У QuranEnc сейчас нет доступных проверенных русских переводов. Арабский текст остаётся доступен офлайн.';
 
   @override
   String get translationCatalogError =>
       'Не удалось получить официальный список переводов QuranEnc.';
+
+  @override
+  String get translationNoNetwork =>
+      'Нет сети. Уже скачанные переводы остаются доступны офлайн.';
+
+  @override
+  String get translationSourceError =>
+      'Источник перевода отклонил запрос. Попробуйте позже.';
+
+  @override
+  String get translationValidationFailed =>
+      'Ответ источника повреждён или не прошёл проверку. Он не сохранён.';
+
+  @override
+  String get translationCatalogFromCache =>
+      'Показан сохранённый офлайн-каталог.';
+
+  @override
+  String get translationRefreshFailedCached =>
+      'Обновить источник не удалось; сохранённые проверенные данные оставлены без изменений.';
 
   @override
   String get translationNotSelected => 'Перевод не выбран';
@@ -437,4 +462,196 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get tanzilTextMetadata =>
       'Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0';
+
+  @override
+  String get tanzilTransliterationMetadata =>
+      'Tanzil · English Transliteration · снимок 2010-09-06 · 6236 аятов';
+
+  @override
+  String get transliterationNonCommercialNotice =>
+      'Условия набора транскрипции разрешают только некоммерческое использование; коммерческий production-релиз требует отдельного разрешения.';
+
+  @override
+  String get quranDisplayLayers => 'Слои текста Корана';
+
+  @override
+  String get showArabicText => 'Показывать арабский текст';
+
+  @override
+  String get showTransliteration => 'Показывать транскрипцию';
+
+  @override
+  String get showTranslation => 'Показывать перевод';
+
+  @override
+  String get transliterationSourceShort =>
+      'Транскрипция (латинская транслитерация) · Tanzil · офлайн';
+
+  @override
+  String get transliterationUnavailable =>
+      'Проверенная транскрипция недоступна.';
+
+  @override
+  String get prayerTimesTitle => 'Время намаза';
+
+  @override
+  String get prayerRegion => 'Регион';
+
+  @override
+  String get selectPrayerRegion => 'Выберите регион вручную';
+
+  @override
+  String get useMyLocation => 'Использовать моё местоположение';
+
+  @override
+  String get locationOptionalNotice =>
+      'Необязательно. Геопозиция запрашивается только после нажатия, без фонового доступа.';
+
+  @override
+  String get prayerContextMode => 'Контекст отметки';
+
+  @override
+  String get prayerModeManual => 'Ручной режим';
+
+  @override
+  String get prayerModeAutomatic => 'Автоматически';
+
+  @override
+  String get automaticPrayerSafetyNotice =>
+      'Автовыбор работает только по свежему надёжному расписанию. После восхода до Зухра отметка потребует ручного выбора.';
+
+  @override
+  String get allowCalculatedFallback => 'Разрешить локальный расчёт';
+
+  @override
+  String get calculatedFallbackNotice =>
+      'Это отдельный расчётный источник, а не официальное расписание ОМИ. По умолчанию: Karachi, Аср Hanafi.';
+
+  @override
+  String get calculatedFallbackCoordinatesUnavailable =>
+      'Для этого региона поставщика нет отдельно проверенных координат, поэтому локальный расчёт недоступен.';
+
+  @override
+  String get calculationMethod => 'Расчётный метод';
+
+  @override
+  String get asrHanafi => 'Аср: Hanafi';
+
+  @override
+  String get asrStandard => 'Аср: стандартный';
+
+  @override
+  String get manualMinuteAdjustments => 'Ручные поправки в минутах';
+
+  @override
+  String get rawTimesPreserved =>
+      'Исходное время источника сохраняется; показывается отдельное скорректированное значение.';
+
+  @override
+  String minuteAdjustment(int value) {
+    return 'Поправка: $value мин';
+  }
+
+  @override
+  String get decreaseMinute => 'Уменьшить на минуту';
+
+  @override
+  String get increaseMinute => 'Увеличить на минуту';
+
+  @override
+  String get locationCalculationEnabled =>
+      'Местоположение сохранено для локального расчёта.';
+
+  @override
+  String get locationServicesDisabled =>
+      'Геолокация выключена. Выберите регион вручную.';
+
+  @override
+  String get locationDeniedChooseRegion =>
+      'Доступ к геопозиции не предоставлен. Выберите регион вручную.';
+
+  @override
+  String get locationOutsideUzbekistan =>
+      'Для этой точки нет проверенной настройки часового пояса. Выберите регион вручную.';
+
+  @override
+  String get locationFailedChooseRegion =>
+      'Не удалось получить геопозицию. Выберите регион вручную.';
+
+  @override
+  String get prayerScheduleToday => 'Расписание на сегодня';
+
+  @override
+  String get sunrise => 'Восход';
+
+  @override
+  String get prayerSource => 'Источник';
+
+  @override
+  String get prayerUpdated => 'Обновлено';
+
+  @override
+  String get asrSchool => 'Расчёт Асра';
+
+  @override
+  String get timesManuallyAdjusted =>
+      'Время скорректировано вручную; исходные значения сохранены.';
+
+  @override
+  String get prayerOfflineCache => 'Используется свежий офлайн-кеш.';
+
+  @override
+  String get refreshPrayerSchedule => 'Обновить текущий и следующий месяц';
+
+  @override
+  String prayerStartsAt(String start) {
+    return 'С $start';
+  }
+
+  @override
+  String prayerTimeRange(String start, String end) {
+    return '$start–$end';
+  }
+
+  @override
+  String nextPrayerAt(String prayer, String time) {
+    return 'Далее: $prayer в $time';
+  }
+
+  @override
+  String get betweenPrayers => 'Между намазами';
+
+  @override
+  String get prayerScheduleStale => 'Расписание устарело — автовыбор отключён';
+
+  @override
+  String get prayerScheduleUnavailable =>
+      'Расписание недоступно — выберите намаз вручную';
+
+  @override
+  String widgetManualPrayerContext(String prayer) {
+    return 'Ручной: $prayer · Ротация';
+  }
+
+  @override
+  String widgetAutomaticPrayerContext(String prayer) {
+    return '$prayer · Авто · Ротация';
+  }
+
+  @override
+  String widgetAutomaticPrayerRange(String prayer, String start, String end) {
+    return '$prayer · $start–$end · Ротация';
+  }
+
+  @override
+  String widgetAutomaticPrayerStart(String prayer, String start) {
+    return '$prayer · с $start · Ротация';
+  }
+
+  @override
+  String get widgetSelectPrayerInApp => 'Выберите намаз в Murajaah';
+
+  @override
+  String get widgetActionNotCompleted =>
+      'Не удалось отметить. Показаны актуальные данные.';
 }

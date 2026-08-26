@@ -1,12 +1,125 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
 import '../../domain/quran_models.dart';
 import '../quran_content_provider.dart';
+import 'known_official_quran_enc_translations.dart';
 
 DateTime _systemUtcNow() => DateTime.now().toUtc();
+
+typedef QuranEncDiagnosticsSink =
+    void Function(QuranEncCatalogDiagnostics diagnostics);
+
+void _logQuranEncDiagnostics(QuranEncCatalogDiagnostics diagnostics) {
+  developer.log(
+    jsonEncode(<String, Object?>{
+      'catalogUri': diagnostics.catalogUri.toString(),
+      'httpStatus': diagnostics.httpStatus,
+      'contentType': diagnostics.contentType,
+      'responseByteLength': diagnostics.responseByteLength,
+      'parsedTranslationCount': diagnostics.parsedTranslationCount,
+      'origin': diagnostics.origin.name,
+      'knownProbes': <Object?>[
+        for (final probe in diagnostics.knownProbes)
+          <String, Object?>{
+            'key': probe.key,
+            'status': probe.status.name,
+            'code': probe.code,
+            'httpStatus': probe.httpStatus,
+            'responseByteLength': probe.responseByteLength,
+            'contentType': probe.contentType,
+          },
+      ],
+    }),
+    name: 'murajaah.quranenc.discovery',
+  );
+}
+
+enum QuranEncDiscoveryOrigin { officialCatalog, knownOfficialDirectFallback }
+
+enum QuranEncKnownProbeStatus {
+  available,
+  networkFailure,
+  rejectedRequest,
+  invalidResponse,
+  contentRevisionMismatch,
+}
+
+/// Body-free HTTP diagnostics safe for developer logs and support screens.
+final class QuranEncCatalogDiagnostics {
+  QuranEncCatalogDiagnostics({
+    required this.catalogUri,
+    required this.httpStatus,
+    required this.contentType,
+    required this.responseByteLength,
+    required this.parsedTranslationCount,
+    required this.origin,
+    required Iterable<QuranEncKnownTranslationProbe> knownProbes,
+  }) : knownProbes = List<QuranEncKnownTranslationProbe>.unmodifiable(
+         knownProbes,
+       );
+
+  final Uri catalogUri;
+  final int httpStatus;
+  final String? contentType;
+  final int responseByteLength;
+  final int parsedTranslationCount;
+  final QuranEncDiscoveryOrigin origin;
+  final List<QuranEncKnownTranslationProbe> knownProbes;
+}
+
+final class QuranEncKnownTranslationProbe {
+  const QuranEncKnownTranslationProbe({
+    required this.key,
+    required this.status,
+    required this.code,
+    this.httpStatus,
+    this.responseByteLength,
+    this.contentType,
+  });
+
+  final String key;
+  final QuranEncKnownProbeStatus status;
+  final String code;
+  final int? httpStatus;
+  final int? responseByteLength;
+  final String? contentType;
+}
+
+final class QuranEncTranslationDiscovery {
+  QuranEncTranslationDiscovery({
+    required Iterable<QuranTranslation> translations,
+    required this.diagnostics,
+  }) : translations = List<QuranTranslation>.unmodifiable(translations);
+
+  final List<QuranTranslation> translations;
+  final QuranEncCatalogDiagnostics diagnostics;
+}
+
+final class _QuranEncJsonResponse {
+  const _QuranEncJsonResponse({
+    required this.root,
+    required this.statusCode,
+    required this.contentType,
+    required this.byteLength,
+  });
+
+  final Map<String, Object?> root;
+  final int statusCode;
+  final String? contentType;
+  final int byteLength;
+}
+
+final class _ParsedQuranEncSurah {
+  const _ParsedQuranEncSurah({required this.ayahs, required this.sha256});
+
+  final List<Ayah> ayahs;
+  final String sha256;
+}
 
 /// Adapter for QuranEnc's documented public translation endpoints.
 ///
@@ -18,11 +131,13 @@ final class QuranEncProvider implements QuranContentProvider {
     required http.Client client,
     Uri? baseUri,
     DateTime Function()? nowUtc,
+    QuranEncDiagnosticsSink? diagnosticsSink,
     this.requestTimeout = const Duration(seconds: 20),
     this.maxResponseBytes = 8 * 1024 * 1024,
   }) : _client = client, // ignore: prefer_initializing_formals
        _baseUri = baseUri ?? Uri.parse('https://quranenc.com/api/v1/'),
-       _nowUtc = nowUtc ?? _systemUtcNow {
+       _nowUtc = nowUtc ?? _systemUtcNow,
+       _diagnosticsSink = diagnosticsSink ?? _logQuranEncDiagnostics {
     if (_baseUri.scheme != 'https' || !_baseUri.hasAuthority) {
       throw ArgumentError.value(
         _baseUri,
@@ -59,6 +174,7 @@ final class QuranEncProvider implements QuranContentProvider {
   final http.Client _client;
   final Uri _baseUri;
   final DateTime Function() _nowUtc;
+  final QuranEncDiagnosticsSink _diagnosticsSink;
   final Duration requestTimeout;
   final int maxResponseBytes;
 
@@ -75,6 +191,20 @@ final class QuranEncProvider implements QuranContentProvider {
 
   @override
   Future<List<QuranTranslation>> listTranslations({
+    String? languageCode,
+    String? localizationLanguageCode,
+  }) async => (await discoverTranslations(
+    languageCode: languageCode,
+    localizationLanguageCode: localizationLanguageCode,
+  )).translations;
+
+  /// Discovers the normal catalog and, only for an empty Russian catalog,
+  /// runtime-probes the narrowly audited direct-key registry.
+  ///
+  /// Returning a fallback candidate never selects it. The caller still owns
+  /// the explicit user choice. Response bodies and Quran strings are omitted
+  /// from [QuranEncCatalogDiagnostics].
+  Future<QuranEncTranslationDiscovery> discoverTranslations({
     String? languageCode,
     String? localizationLanguageCode,
   }) async {
@@ -95,8 +225,8 @@ final class QuranEncProvider implements QuranContentProvider {
       );
     }
 
-    final root = await _getObject(uri);
-    final rawTranslations = root['translations'];
+    final catalogResponse = await _getObjectResponse(uri);
+    final rawTranslations = catalogResponse.root['translations'];
     if (rawTranslations is! List<Object?>) {
       throw const QuranProviderException(
         failure: QuranProviderFailure.invalidResponse,
@@ -166,7 +296,48 @@ final class QuranEncProvider implements QuranContentProvider {
         ),
       );
     }
-    return List<QuranTranslation>.unmodifiable(translations);
+    if (translations.isNotEmpty || languageCode != 'ru') {
+      final discovery = QuranEncTranslationDiscovery(
+        translations: translations,
+        diagnostics: QuranEncCatalogDiagnostics(
+          catalogUri: uri,
+          httpStatus: catalogResponse.statusCode,
+          contentType: catalogResponse.contentType,
+          responseByteLength: catalogResponse.byteLength,
+          parsedTranslationCount: translations.length,
+          origin: QuranEncDiscoveryOrigin.officialCatalog,
+          knownProbes: const <QuranEncKnownTranslationProbe>[],
+        ),
+      );
+      _diagnosticsSink(discovery.diagnostics);
+      return discovery;
+    }
+
+    final probes = await Future.wait(
+      KnownOfficialQuranEncTranslations.russian.map(_probeKnownTranslation),
+    );
+    final available = <QuranTranslation>[];
+    for (var index = 0; index < probes.length; index += 1) {
+      if (probes[index].status == QuranEncKnownProbeStatus.available) {
+        available.add(
+          KnownOfficialQuranEncTranslations.russian[index].toTranslation(),
+        );
+      }
+    }
+    final discovery = QuranEncTranslationDiscovery(
+      translations: available,
+      diagnostics: QuranEncCatalogDiagnostics(
+        catalogUri: uri,
+        httpStatus: catalogResponse.statusCode,
+        contentType: catalogResponse.contentType,
+        responseByteLength: catalogResponse.byteLength,
+        parsedTranslationCount: 0,
+        origin: QuranEncDiscoveryOrigin.knownOfficialDirectFallback,
+        knownProbes: probes,
+      ),
+    );
+    _diagnosticsSink(discovery.diagnostics);
+    return discovery;
   }
 
   @override
@@ -186,7 +357,7 @@ final class QuranEncProvider implements QuranContentProvider {
         code: 'quranenc_translation_identity_missing',
       );
     }
-    if (surahNumber <= 0) {
+    if (surahNumber < 1 || surahNumber > 114) {
       throw const QuranProviderException(
         failure: QuranProviderFailure.rejectedRequest,
         code: 'quranenc_surah_number_invalid',
@@ -196,61 +367,23 @@ final class QuranEncProvider implements QuranContentProvider {
     final uri = _baseUri.resolve(
       'translation/sura/${Uri.encodeComponent(translation.key)}/$surahNumber',
     );
-    final root = await _getObject(uri);
-    final rawAyahs = root['result'];
-    if (rawAyahs is! List<Object?> || rawAyahs.isEmpty) {
-      throw const QuranProviderException(
-        failure: QuranProviderFailure.invalidResponse,
-        code: 'quranenc_surah_result_invalid',
-      );
-    }
-
-    final ayahs = <Ayah>[];
-    final ayahNumbers = <int>{};
-    for (final rawAyah in rawAyahs) {
-      final item = _asStringMap(rawAyah, code: 'quranenc_ayah_invalid');
-      final responseSurahNumber = _requiredInteger(
-        item,
-        'sura',
-        code: 'quranenc_ayah_surah_invalid',
-      );
-      final ayahNumber = _requiredInteger(
-        item,
-        'aya',
-        code: 'quranenc_ayah_number_invalid',
-      );
-      if (responseSurahNumber != surahNumber ||
-          ayahNumber <= 0 ||
-          !ayahNumbers.add(ayahNumber)) {
+    final response = await _getObjectResponse(uri);
+    final parsed = _parseSurah(
+      response.root,
+      surahNumber: surahNumber,
+      translationVersion: translation.version,
+    );
+    final known = KnownOfficialQuranEncTranslations.byKey(translation.key);
+    if (translation.version.startsWith('quranenc-direct-')) {
+      if (known == null ||
+          translation.version != known.technicalRevision ||
+          translation.languageCode != known.languageCode ||
+          parsed.sha256 != known.expectedSurahSha256(surahNumber)) {
         throw const QuranProviderException(
           failure: QuranProviderFailure.invalidResponse,
-          code: 'quranenc_ayah_coordinates_invalid',
+          code: 'quranenc_known_content_revision_mismatch',
         );
       }
-      final exactTranslation = _requiredString(
-        item,
-        'translation',
-        code: 'quranenc_ayah_translation_invalid',
-      );
-      final exactFootnotes = _optionalString(
-        item,
-        'footnotes',
-        code: 'quranenc_ayah_footnotes_invalid',
-      );
-
-      ayahs.add(
-        Ayah(
-          surahNumber: surahNumber,
-          ayahNumber: ayahNumber,
-          // `arabic_text`, if present in the response, is intentionally not
-          // accepted from this translation-only adapter.
-          arabicText: null,
-          fullTranslation: exactTranslation,
-          translationSource: sourceId,
-          translationVersion: translation.version,
-          translationFootnotes: exactFootnotes,
-        ),
-      );
     }
 
     final fetchedAt = _nowUtc();
@@ -273,11 +406,143 @@ final class QuranEncProvider implements QuranContentProvider {
         sourceUri: uri,
       ),
       capabilities: capabilities,
-      ayahs: ayahs,
+      ayahs: parsed.ayahs,
     );
   }
 
-  Future<Map<String, Object?>> _getObject(Uri uri) async {
+  Future<QuranEncKnownTranslationProbe> _probeKnownTranslation(
+    KnownOfficialQuranEncTranslation translation,
+  ) async {
+    final uri = _baseUri.resolve(
+      'translation/sura/${Uri.encodeComponent(translation.key)}/1',
+    );
+    try {
+      final response = await _getObjectResponse(uri);
+      final parsed = _parseSurah(
+        response.root,
+        surahNumber: 1,
+        translationVersion: translation.technicalRevision,
+      );
+      if (parsed.sha256 != translation.expectedSurahSha256(1)) {
+        return QuranEncKnownTranslationProbe(
+          key: translation.key,
+          status: QuranEncKnownProbeStatus.contentRevisionMismatch,
+          code: 'quranenc_known_content_revision_mismatch',
+          httpStatus: response.statusCode,
+          responseByteLength: response.byteLength,
+          contentType: response.contentType,
+        );
+      }
+      return QuranEncKnownTranslationProbe(
+        key: translation.key,
+        status: QuranEncKnownProbeStatus.available,
+        code: 'quranenc_known_translation_available',
+        httpStatus: response.statusCode,
+        responseByteLength: response.byteLength,
+        contentType: response.contentType,
+      );
+    } on QuranProviderException catch (error) {
+      final status = switch (error.failure) {
+        QuranProviderFailure.network => QuranEncKnownProbeStatus.networkFailure,
+        QuranProviderFailure.rejectedRequest =>
+          QuranEncKnownProbeStatus.rejectedRequest,
+        QuranProviderFailure.invalidResponse ||
+        QuranProviderFailure.credentialsRequireBackend =>
+          QuranEncKnownProbeStatus.invalidResponse,
+      };
+      return QuranEncKnownTranslationProbe(
+        key: translation.key,
+        status: status,
+        code: error.code,
+        httpStatus: error.statusCode,
+      );
+    }
+  }
+
+  _ParsedQuranEncSurah _parseSurah(
+    Map<String, Object?> root, {
+    required int surahNumber,
+    required String translationVersion,
+  }) {
+    final rawAyahs = root['result'];
+    if (rawAyahs is! List<Object?> || rawAyahs.isEmpty) {
+      throw const QuranProviderException(
+        failure: QuranProviderFailure.invalidResponse,
+        code: 'quranenc_surah_result_invalid',
+      );
+    }
+
+    final ayahs = <Ayah>[];
+    final canonical = StringBuffer();
+    for (var index = 0; index < rawAyahs.length; index += 1) {
+      final item = _asStringMap(rawAyahs[index], code: 'quranenc_ayah_invalid');
+      final responseSurahNumber = _requiredInteger(
+        item,
+        'sura',
+        code: 'quranenc_ayah_surah_invalid',
+      );
+      final ayahNumber = _requiredInteger(
+        item,
+        'aya',
+        code: 'quranenc_ayah_number_invalid',
+      );
+      if (responseSurahNumber != surahNumber || ayahNumber != index + 1) {
+        throw const QuranProviderException(
+          failure: QuranProviderFailure.invalidResponse,
+          code: 'quranenc_ayah_coordinates_invalid',
+        );
+      }
+      final exactTranslation = _requiredString(
+        item,
+        'translation',
+        code: 'quranenc_ayah_translation_invalid',
+      );
+      final exactFootnotes = _optionalString(
+        item,
+        'footnotes',
+        code: 'quranenc_ayah_footnotes_invalid',
+      );
+      if (_containsHashFramingCharacter(exactTranslation) ||
+          (exactFootnotes != null &&
+              _containsHashFramingCharacter(exactFootnotes))) {
+        throw const QuranProviderException(
+          failure: QuranProviderFailure.invalidResponse,
+          code: 'quranenc_ayah_framing_character_invalid',
+        );
+      }
+
+      canonical
+        ..write(surahNumber)
+        ..write('\u001f')
+        ..write(ayahNumber)
+        ..write('\u001f')
+        ..write(exactTranslation)
+        ..write('\u001f')
+        ..write(exactFootnotes == null ? '0' : '1$exactFootnotes')
+        ..write('\u001e');
+      ayahs.add(
+        Ayah(
+          surahNumber: surahNumber,
+          ayahNumber: ayahNumber,
+          // `arabic_text`, if present, is outside this translation adapter.
+          arabicText: null,
+          fullTranslation: exactTranslation,
+          translationSource: sourceId,
+          translationVersion: translationVersion,
+          translationFootnotes: exactFootnotes,
+        ),
+      );
+    }
+    return _ParsedQuranEncSurah(
+      ayahs: List<Ayah>.unmodifiable(ayahs),
+      sha256: sha256.convert(utf8.encode(canonical.toString())).toString(),
+    );
+  }
+
+  bool _containsHashFramingCharacter(String value) =>
+      value.contains('\u001f') || value.contains('\u001e');
+
+  Future<_QuranEncJsonResponse> _getObjectResponse(Uri uri) async {
     late http.Response response;
     try {
       response = await _client
@@ -312,9 +577,25 @@ final class QuranEncProvider implements QuranContentProvider {
       );
     }
 
+    final rawContentType = response.headers['content-type'];
+    final contentType = rawContentType?.split(';').first.trim().toLowerCase();
+    if (contentType != 'application/json') {
+      throw const QuranProviderException(
+        failure: QuranProviderFailure.invalidResponse,
+        code: 'quranenc_content_type_invalid',
+      );
+    }
+
     try {
-      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-      return _asStringMap(decoded, code: 'quranenc_json_root_invalid');
+      final decoded = jsonDecode(
+        utf8.decode(response.bodyBytes, allowMalformed: false),
+      );
+      return _QuranEncJsonResponse(
+        root: _asStringMap(decoded, code: 'quranenc_json_root_invalid'),
+        statusCode: response.statusCode,
+        contentType: rawContentType,
+        byteLength: response.bodyBytes.length,
+      );
     } on QuranProviderException {
       rethrow;
     } on FormatException {

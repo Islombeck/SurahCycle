@@ -8,6 +8,8 @@
   "settingsTab": "Настройки",
   "historyTitle": "История",
   "recommendedTitle": "Рекомендуется",
+  "recommendationRank": "Рекомендация {rank}",
+  "@recommendationRank": {"placeholders": {"rank": {"type": "int"}}},
   "activeSurahsTitle": "Активные суры",
   "noActiveSurahs": "Выберите выученные суры и включите их в ротацию.",
   "contentUnavailableTitle": "Данные Корана ещё не загружены",
@@ -124,8 +126,13 @@
   ,"arabicTextOfflineReady": "Проверенный арабский текст Tanzil доступен офлайн."
   ,"quranTranslation": "Перевод Корана"
   ,"chooseTranslation": "Выберите перевод в настройках"
-  ,"noRussianTranslations": "QuranEnc сейчас не возвращает русские переводы в официальном каталоге API. Арабский текст остаётся доступен офлайн."
+  ,"noRussianTranslations": "У QuranEnc сейчас нет доступных проверенных русских переводов. Арабский текст остаётся доступен офлайн."
   ,"translationCatalogError": "Не удалось получить официальный список переводов QuranEnc."
+  ,"translationNoNetwork": "Нет сети. Уже скачанные переводы остаются доступны офлайн."
+  ,"translationSourceError": "Источник перевода отклонил запрос. Попробуйте позже."
+  ,"translationValidationFailed": "Ответ источника повреждён или не прошёл проверку. Он не сохранён."
+  ,"translationCatalogFromCache": "Показан сохранённый офлайн-каталог."
+  ,"translationRefreshFailedCached": "Обновить источник не удалось; сохранённые проверенные данные оставлены без изменений."
   ,"translationNotSelected": "Перевод не выбран"
   ,"translationCachedOffline": "Выбранный перевод сохраняется для офлайн-чтения по мере открытия сур."
   ,"translationUnavailableOffline": "Для этого аята перевод ещё не сохранён. Арабский текст доступен, пока перевод загружается в фоне."
@@ -137,4 +144,65 @@
   ,"useTranslationVersion": "Использовать v{version}"
   ,"@useTranslationVersion": {"placeholders": {"version": {"type": "String"}}}
   ,"tanzilTextMetadata": "Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0"
+  ,"tanzilTransliterationMetadata": "Tanzil · English Transliteration · снимок 2010-09-06 · 6236 аятов"
+  ,"transliterationNonCommercialNotice": "Условия набора транскрипции разрешают только некоммерческое использование; коммерческий production-релиз требует отдельного разрешения."
+  ,"quranDisplayLayers": "Слои текста Корана"
+  ,"showArabicText": "Показывать арабский текст"
+  ,"showTransliteration": "Показывать транскрипцию"
+  ,"showTranslation": "Показывать перевод"
+  ,"transliterationSourceShort": "Транскрипция (латинская транслитерация) · Tanzil · офлайн"
+  ,"transliterationUnavailable": "Проверенная транскрипция недоступна."
+  ,"prayerTimesTitle": "Время намаза"
+  ,"prayerRegion": "Регион"
+  ,"selectPrayerRegion": "Выберите регион вручную"
+  ,"useMyLocation": "Использовать моё местоположение"
+  ,"locationOptionalNotice": "Необязательно. Геопозиция запрашивается только после нажатия, без фонового доступа."
+  ,"prayerContextMode": "Контекст отметки"
+  ,"prayerModeManual": "Ручной режим"
+  ,"prayerModeAutomatic": "Автоматически"
+  ,"automaticPrayerSafetyNotice": "Автовыбор работает только по свежему надёжному расписанию. После восхода до Зухра отметка потребует ручного выбора."
+  ,"allowCalculatedFallback": "Разрешить локальный расчёт"
+  ,"calculatedFallbackNotice": "Это отдельный расчётный источник, а не официальное расписание ОМИ. По умолчанию: Karachi, Аср Hanafi."
+  ,"calculatedFallbackCoordinatesUnavailable": "Для этого региона поставщика нет отдельно проверенных координат, поэтому локальный расчёт недоступен."
+  ,"calculationMethod": "Расчётный метод"
+  ,"asrHanafi": "Аср: Hanafi"
+  ,"asrStandard": "Аср: стандартный"
+  ,"manualMinuteAdjustments": "Ручные поправки в минутах"
+  ,"rawTimesPreserved": "Исходное время источника сохраняется; показывается отдельное скорректированное значение."
+  ,"minuteAdjustment": "Поправка: {value} мин"
+  ,"@minuteAdjustment": {"placeholders": {"value": {"type": "int"}}}
+  ,"decreaseMinute": "Уменьшить на минуту"
+  ,"increaseMinute": "Увеличить на минуту"
+  ,"locationCalculationEnabled": "Местоположение сохранено для локального расчёта."
+  ,"locationServicesDisabled": "Геолокация выключена. Выберите регион вручную."
+  ,"locationDeniedChooseRegion": "Доступ к геопозиции не предоставлен. Выберите регион вручную."
+  ,"locationOutsideUzbekistan": "Для этой точки нет проверенной настройки часового пояса. Выберите регион вручную."
+  ,"locationFailedChooseRegion": "Не удалось получить геопозицию. Выберите регион вручную."
+  ,"prayerScheduleToday": "Расписание на сегодня"
+  ,"sunrise": "Восход"
+  ,"prayerSource": "Источник"
+  ,"prayerUpdated": "Обновлено"
+  ,"asrSchool": "Расчёт Асра"
+  ,"timesManuallyAdjusted": "Время скорректировано вручную; исходные значения сохранены."
+  ,"prayerOfflineCache": "Используется свежий офлайн-кеш."
+  ,"refreshPrayerSchedule": "Обновить текущий и следующий месяц"
+  ,"prayerStartsAt": "С {start}"
+  ,"@prayerStartsAt": {"placeholders": {"start": {"type": "String"}}}
+  ,"prayerTimeRange": "{start}–{end}"
+  ,"@prayerTimeRange": {"placeholders": {"start": {"type": "String"}, "end": {"type": "String"}}}
+  ,"nextPrayerAt": "Далее: {prayer} в {time}"
+  ,"@nextPrayerAt": {"placeholders": {"prayer": {"type": "String"}, "time": {"type": "String"}}}
+  ,"betweenPrayers": "Между намазами"
+  ,"prayerScheduleStale": "Расписание устарело — автовыбор отключён"
+  ,"prayerScheduleUnavailable": "Расписание недоступно — выберите намаз вручную"
+  ,"widgetManualPrayerContext": "Ручной: {prayer} · Ротация"
+  ,"@widgetManualPrayerContext": {"placeholders": {"prayer": {"type": "String"}}}
+  ,"widgetAutomaticPrayerContext": "{prayer} · Авто · Ротация"
+  ,"@widgetAutomaticPrayerContext": {"placeholders": {"prayer": {"type": "String"}}}
+  ,"widgetAutomaticPrayerRange": "{prayer} · {start}–{end} · Ротация"
+  ,"@widgetAutomaticPrayerRange": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}, "end": {"type": "String"}}}
+  ,"widgetAutomaticPrayerStart": "{prayer} · с {start} · Ротация"
+  ,"@widgetAutomaticPrayerStart": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}}}
+  ,"widgetSelectPrayerInApp": "Выберите намаз в Murajaah"
+  ,"widgetActionNotCompleted": "Не удалось отметить. Показаны актуальные данные."
 }

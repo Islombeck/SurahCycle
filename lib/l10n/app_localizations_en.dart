@@ -33,6 +33,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recommendedTitle => 'Recommended';
 
   @override
+  String recommendationRank(int rank) {
+    return 'Recommendation $rank';
+  }
+
+  @override
   String get activeSurahsTitle => 'Active surahs';
 
   @override
@@ -395,11 +400,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noRussianTranslations =>
-      'QuranEnc currently returns no Russian translations in its official API catalog. Arabic remains available offline.';
+      'QuranEnc currently has no available verified Russian translations. Arabic remains available offline.';
 
   @override
   String get translationCatalogError =>
       'The official QuranEnc translation list could not be loaded.';
+
+  @override
+  String get translationNoNetwork =>
+      'No network connection. Previously downloaded translations remain available offline.';
+
+  @override
+  String get translationSourceError =>
+      'The translation source rejected the request. Try again later.';
+
+  @override
+  String get translationValidationFailed =>
+      'The source response is corrupt or failed validation. It was not stored.';
+
+  @override
+  String get translationCatalogFromCache =>
+      'Showing the saved offline catalog.';
+
+  @override
+  String get translationRefreshFailedCached =>
+      'The source could not be refreshed; saved verified data was left unchanged.';
 
   @override
   String get translationNotSelected => 'No translation selected';
@@ -436,4 +461,197 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get tanzilTextMetadata =>
       'Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0';
+
+  @override
+  String get tanzilTransliterationMetadata =>
+      'Tanzil · English Transliteration · 2010-09-06 snapshot · 6,236 ayahs';
+
+  @override
+  String get transliterationNonCommercialNotice =>
+      'The transliteration dataset permits non-commercial use only; a commercial production release requires separate permission.';
+
+  @override
+  String get quranDisplayLayers => 'Quran text layers';
+
+  @override
+  String get showArabicText => 'Show Arabic text';
+
+  @override
+  String get showTransliteration => 'Show transliteration';
+
+  @override
+  String get showTranslation => 'Show translation';
+
+  @override
+  String get transliterationSourceShort =>
+      'Latin transliteration · Tanzil · offline';
+
+  @override
+  String get transliterationUnavailable =>
+      'Verified transliteration is unavailable.';
+
+  @override
+  String get prayerTimesTitle => 'Prayer times';
+
+  @override
+  String get prayerRegion => 'Region';
+
+  @override
+  String get selectPrayerRegion => 'Choose a region manually';
+
+  @override
+  String get useMyLocation => 'Use my location';
+
+  @override
+  String get locationOptionalNotice =>
+      'Optional. Location is requested only after this tap, with no background access.';
+
+  @override
+  String get prayerContextMode => 'Marking context';
+
+  @override
+  String get prayerModeManual => 'Manual mode';
+
+  @override
+  String get prayerModeAutomatic => 'Automatic';
+
+  @override
+  String get automaticPrayerSafetyNotice =>
+      'Automatic selection works only with a fresh reliable schedule. From sunrise until Dhuhr, marking requires a manual choice.';
+
+  @override
+  String get allowCalculatedFallback => 'Allow local calculation';
+
+  @override
+  String get calculatedFallbackNotice =>
+      'This is a separate calculated source, not an official OMI timetable. Defaults: Karachi and Hanafi Asr.';
+
+  @override
+  String get calculatedFallbackCoordinatesUnavailable =>
+      'Local calculation is unavailable for this provider region because no separately audited coordinates are stored.';
+
+  @override
+  String get calculationMethod => 'Calculation method';
+
+  @override
+  String get asrHanafi => 'Asr: Hanafi';
+
+  @override
+  String get asrStandard => 'Asr: standard';
+
+  @override
+  String get manualMinuteAdjustments => 'Manual minute adjustments';
+
+  @override
+  String get rawTimesPreserved =>
+      'Raw source times are preserved; adjusted values are shown separately.';
+
+  @override
+  String minuteAdjustment(int value) {
+    return 'Adjustment: $value min';
+  }
+
+  @override
+  String get decreaseMinute => 'Decrease by one minute';
+
+  @override
+  String get increaseMinute => 'Increase by one minute';
+
+  @override
+  String get locationCalculationEnabled =>
+      'Location saved for local calculation.';
+
+  @override
+  String get locationServicesDisabled =>
+      'Location services are off. Choose a region manually.';
+
+  @override
+  String get locationDeniedChooseRegion =>
+      'Location access was not granted. Choose a region manually.';
+
+  @override
+  String get locationOutsideUzbekistan =>
+      'No verified timezone setting exists for this point. Choose a region manually.';
+
+  @override
+  String get locationFailedChooseRegion =>
+      'Location could not be obtained. Choose a region manually.';
+
+  @override
+  String get prayerScheduleToday => 'Today\'s schedule';
+
+  @override
+  String get sunrise => 'Sunrise';
+
+  @override
+  String get prayerSource => 'Source';
+
+  @override
+  String get prayerUpdated => 'Updated';
+
+  @override
+  String get asrSchool => 'Asr school';
+
+  @override
+  String get timesManuallyAdjusted =>
+      'Times were adjusted manually; raw values are preserved.';
+
+  @override
+  String get prayerOfflineCache => 'Using a fresh offline cache.';
+
+  @override
+  String get refreshPrayerSchedule => 'Refresh current and next month';
+
+  @override
+  String prayerStartsAt(String start) {
+    return 'From $start';
+  }
+
+  @override
+  String prayerTimeRange(String start, String end) {
+    return '$start–$end';
+  }
+
+  @override
+  String nextPrayerAt(String prayer, String time) {
+    return 'Next: $prayer at $time';
+  }
+
+  @override
+  String get betweenPrayers => 'Between prayers';
+
+  @override
+  String get prayerScheduleStale =>
+      'The schedule is stale — automatic selection is disabled';
+
+  @override
+  String get prayerScheduleUnavailable =>
+      'Schedule unavailable — choose a prayer manually';
+
+  @override
+  String widgetManualPrayerContext(String prayer) {
+    return 'Manual: $prayer · Rotation';
+  }
+
+  @override
+  String widgetAutomaticPrayerContext(String prayer) {
+    return '$prayer · Auto · Rotation';
+  }
+
+  @override
+  String widgetAutomaticPrayerRange(String prayer, String start, String end) {
+    return '$prayer · $start–$end · Rotation';
+  }
+
+  @override
+  String widgetAutomaticPrayerStart(String prayer, String start) {
+    return '$prayer · from $start · Rotation';
+  }
+
+  @override
+  String get widgetSelectPrayerInApp => 'Choose a prayer in Murajaah';
+
+  @override
+  String get widgetActionNotCompleted =>
+      'Could not mark. Current data restored.';
 }

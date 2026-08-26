@@ -1,20 +1,53 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:murajaah/core/application/widget_recitation_action.dart';
 import 'package:murajaah/core/widgets/widget_snapshot.dart';
 
 void main() {
   const codec = WidgetSnapshotCodec();
 
-  test('schema 2 snapshot round-trips without changing verified text', () {
-    const exactText = '  بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ  ';
-    final original = _snapshot(exactText: exactText);
+  test('schema 3 snapshot round-trips exact coordinate-bound layers', () {
+    const exactArabic = '  بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ  ';
+    const exactTransliteration = 'Bismi All<u>a</u>hi  ';
+    const exactTranslation = '  Во имя Аллаха';
+    final original = _snapshot(
+      line: LearningWidgetAyahLine(
+        surahNumber: 112,
+        ayahNumber: 1,
+        arabic: exactArabic,
+        transliteration: exactTransliteration,
+        translation: exactTranslation,
+      ),
+    );
 
-    final result = codec.decode(codec.encode(original));
+    final encoded = codec.encode(original);
+    final result = codec.decode(encoded);
 
     expect(result, isA<WidgetSnapshotDecoded>());
     final decoded = (result as WidgetSnapshotDecoded).snapshot;
     expect(decoded.sameProjectionAs(original), isTrue);
     expect(decoded.generatedAtUtc, original.generatedAtUtc);
-    expect(decoded.learning.item!.verifiedTextLines.single, exactText);
+    final line = decoded.learning.item!.ayahLines.single;
+    expect(line.arabic, exactArabic);
+    expect(line.transliteration, exactTransliteration);
+    expect(line.translation, exactTranslation);
+
+    final json = jsonDecode(encoded) as Map<String, dynamic>;
+    final learning =
+        (json['learning'] as Map<String, dynamic>)['item']
+            as Map<String, dynamic>;
+    expect(learning, containsPair('surahNumber', 112));
+    expect(learning, isNot(contains('verifiedTextLines')));
+    expect(learning['ayahLines'], <Object?>[
+      <String, Object?>{
+        'surah': 112,
+        'ayah': 1,
+        'arabic': exactArabic,
+        'transliteration': exactTransliteration,
+        'translation': exactTranslation,
+      },
+    ]);
   });
 
   test('missing and malformed snapshots produce safe rejection results', () {
@@ -25,8 +58,8 @@ void main() {
     for (final source in <String>[
       '{',
       '[]',
-      '{"schemaVersion":2}',
-      '{"schemaVersion":"1"}',
+      '{"schemaVersion":3}',
+      '{"schemaVersion":"3"}',
     ]) {
       expect(
         (codec.decode(source) as WidgetSnapshotRejected).error,
@@ -35,22 +68,15 @@ void main() {
     }
   });
 
-  test('unknown schema version is distinguishable and never parsed', () {
-    final result = codec.decode('{"schemaVersion":99}');
+  test('unknown and previous schema versions are rejected safely in Dart', () {
+    for (final version in <int>[2, 99]) {
+      final result = codec.decode('{"schemaVersion":$version}');
 
-    expect(result, isA<WidgetSnapshotRejected>());
-    final rejected = result as WidgetSnapshotRejected;
-    expect(rejected.error, WidgetSnapshotDecodeError.unsupportedVersion);
-    expect(rejected.actualVersion, 99);
-  });
-
-  test('schema 1 snapshot is rejected safely after the rank upgrade', () {
-    final result = codec.decode('{"schemaVersion":1}');
-
-    expect(result, isA<WidgetSnapshotRejected>());
-    final rejected = result as WidgetSnapshotRejected;
-    expect(rejected.error, WidgetSnapshotDecodeError.unsupportedVersion);
-    expect(rejected.actualVersion, 1);
+      expect(result, isA<WidgetSnapshotRejected>());
+      final rejected = result as WidgetSnapshotRejected;
+      expect(rejected.error, WidgetSnapshotDecodeError.unsupportedVersion);
+      expect(rejected.actualVersion, version);
+    }
   });
 
   test('tampered derived debt label rejects the entire snapshot', () {
@@ -64,18 +90,16 @@ void main() {
     );
   });
 
-  test('snapshot rejects duplicate rotation item IDs', () {
-    final item = _snapshot().rotation.items.single;
-
-    expect(
-      () => RotationWidgetProjection(items: <RotationWidgetItem>[item, item]),
-      throwsArgumentError,
-    );
-  });
-
-  test('snapshot rejects duplicate recommendation ranks', () {
+  test('snapshot rejects duplicate row IDs, ranks, and action tokens', () {
     final first = _snapshot().rotation.items.single;
-    final second = RotationWidgetItem(
+    final duplicateId = RotationWidgetItem(
+      id: first.id,
+      surahId: '3',
+      title: '3. Fixture',
+      remaining: 1,
+      deepLink: Uri.parse('murajaah://app/surah/3'),
+    );
+    final duplicateRank = RotationWidgetItem(
       id: 'second',
       surahId: '3',
       title: '3. Fixture',
@@ -83,10 +107,32 @@ void main() {
       recommendationRank: 0,
       deepLink: Uri.parse('murajaah://app/surah/3'),
     );
+    final duplicateAction = RotationWidgetItem(
+      id: 'third',
+      surahId: '2',
+      partId: 'part-2',
+      title: '2. Fixture',
+      remaining: 1,
+      deepLink: Uri.parse('murajaah://app/surah/2?part=part-2'),
+      action: first.action,
+    );
 
     expect(
-      () =>
-          RotationWidgetProjection(items: <RotationWidgetItem>[first, second]),
+      () => RotationWidgetProjection(
+        items: <RotationWidgetItem>[first, duplicateId],
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => RotationWidgetProjection(
+        items: <RotationWidgetItem>[first, duplicateRank],
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => RotationWidgetProjection(
+        items: <RotationWidgetItem>[first, duplicateAction],
+      ),
       throwsArgumentError,
     );
   });
@@ -110,16 +156,64 @@ void main() {
     expect(
       () => LearningWidgetItem(
         surahId: '2',
+        surahNumber: 2,
+        startAyah: 1,
+        endAyah: 4,
         title: 'Fixture',
         stageLabel: 'Fixture',
         rangeLabel: 'Fixture',
         unavailableTextLabel: 'Fixture',
-        verifiedTextLines: const <String>['1', '2', '3', '4'],
+        ayahLines: <LearningWidgetAyahLine>[
+          for (var ayah = 1; ayah <= 4; ayah += 1)
+            LearningWidgetAyahLine(
+              surahNumber: 2,
+              ayahNumber: ayah,
+              arabic: '$ayah',
+            ),
+        ],
         deepLink: Uri.parse('murajaah://app/learning/2'),
       ),
       throwsArgumentError,
     );
   });
+
+  test(
+    'structured learning lines reject mismatched or unordered coordinates',
+    () {
+      LearningWidgetItem itemWith(Iterable<LearningWidgetAyahLine> lines) =>
+          LearningWidgetItem(
+            surahId: '112',
+            surahNumber: 112,
+            startAyah: 1,
+            endAyah: 3,
+            title: '112. Ихлас',
+            stageLabel: 'Накопительно',
+            rangeLabel: 'Аяты 1–3',
+            unavailableTextLabel: 'Откройте приложение',
+            ayahLines: lines,
+            deepLink: Uri.parse('murajaah://app/learning/112'),
+          );
+
+      expect(
+        () => itemWith(<LearningWidgetAyahLine>[_line(2), _line(1)]),
+        throwsArgumentError,
+      );
+      expect(
+        () => itemWith(<LearningWidgetAyahLine>[
+          LearningWidgetAyahLine(
+            surahNumber: 113,
+            ayahNumber: 1,
+            arabic: 'fixture',
+          ),
+        ]),
+        throwsArgumentError,
+      );
+      expect(
+        () => itemWith(<LearningWidgetAyahLine>[_line(4)]),
+        throwsArgumentError,
+      );
+    },
+  );
 
   test('snapshot rejects native stable-id collisions', () {
     expect(stableWidgetItemId('Aa'), stableWidgetItemId('BB'));
@@ -157,33 +251,48 @@ void main() {
   });
 }
 
-WidgetSnapshot _snapshot({String exactText = 'قُلْ هُوَ ٱللَّهُ أَحَدٌ'}) =>
-    WidgetSnapshot(
-      generatedAtUtc: DateTime.utc(2026, 8, 25, 10),
-      locale: 'ru',
-      rotation: RotationWidgetProjection(
-        items: <RotationWidgetItem>[
-          RotationWidgetItem(
-            id: 'scheme-1:part-2',
-            surahId: '2',
-            partId: 'part-2',
-            title: '2. Бакара',
-            subtitle: 'Часть 2/4 · аяты 72–141',
-            remaining: 2,
-            recommendationRank: 0,
-            deepLink: Uri.parse('murajaah://app/surah/2?part=part-2'),
-          ),
-        ],
-      ),
-      learning: LearningWidgetProjection.selected(
-        LearningWidgetItem(
-          surahId: '112',
-          title: '112. Ихлас',
-          stageLabel: 'Накопительно',
-          rangeLabel: 'Аяты 1–3',
-          unavailableTextLabel: 'Откройте приложение',
-          verifiedTextLines: <String>[exactText],
-          deepLink: Uri.parse('murajaah://app/learning/112'),
+LearningWidgetAyahLine _line(int ayah) => LearningWidgetAyahLine(
+  surahNumber: 112,
+  ayahNumber: ayah,
+  arabic: 'Arabic $ayah',
+);
+
+WidgetSnapshot _snapshot({LearningWidgetAyahLine? line}) => WidgetSnapshot(
+  generatedAtUtc: DateTime.utc(2026, 8, 25, 10),
+  locale: 'ru',
+  rotation: RotationWidgetProjection(
+    contextLabel: 'Аср · Ротация',
+    items: <RotationWidgetItem>[
+      RotationWidgetItem(
+        id: 'scheme-1:part-2',
+        surahId: '2',
+        partId: 'part-2',
+        title: '2. Бакара',
+        subtitle: 'Часть 2/4 · аяты 72–141',
+        remaining: 2,
+        recommendationRank: 0,
+        deepLink: Uri.parse('murajaah://app/surah/2?part=part-2'),
+        action: WidgetRecitationAction(
+          actionToken: '00000000-0000-4000-8000-000000000001',
+          surahId: '2',
+          rotationSchemeId: 'scheme-1',
+          partId: 'part-2',
         ),
       ),
-    );
+    ],
+  ),
+  learning: LearningWidgetProjection.selected(
+    LearningWidgetItem(
+      surahId: '112',
+      surahNumber: 112,
+      startAyah: 1,
+      endAyah: 3,
+      title: '112. Ихлас',
+      stageLabel: 'Накопительно',
+      rangeLabel: 'Аяты 1–3',
+      unavailableTextLabel: 'Откройте приложение',
+      ayahLines: <LearningWidgetAyahLine>[line ?? _line(1)],
+      deepLink: Uri.parse('murajaah://app/learning/112'),
+    ),
+  ),
+);

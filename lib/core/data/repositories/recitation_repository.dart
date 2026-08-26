@@ -128,6 +128,40 @@ final class RecitationRepository {
   final Object _undoOwner = Object();
   RecitationUndoToken? _activeUndoToken;
 
+  /// Returns whether an immutable journal identifier has already been used.
+  ///
+  /// Interactive widget action tokens reuse the recitation UUID. Checking both
+  /// journal tables prevents an identifier collision from ever becoming a
+  /// second user action.
+  Future<bool> containsJournalEventId(String id) async {
+    final recitation = await (database.select(
+      database.recitationEvents,
+    )..where((RecitationEvents row) => row.id.equals(id))).getSingleOrNull();
+    if (recitation != null) return true;
+    final adjustment = await (database.select(
+      database.rotationAdjustments,
+    )..where((RotationAdjustments row) => row.id.equals(id))).getSingleOrNull();
+    return adjustment != null;
+  }
+
+  /// Registers at most one event for [event.id]. A repeated delivery returns
+  /// null, including after a later History deletion, so retries cannot
+  /// resurrect an action the user deliberately removed.
+  Future<RecitationRegistration?> registerOnce(
+    SurahRecitationEvent event,
+  ) async {
+    if (await containsJournalEventId(event.id)) return null;
+    try {
+      return await register(event);
+    } on Object {
+      // Concurrent background deliveries can both pass the first read. The
+      // primary-key/unique checks inside register serialize the winner; only a
+      // now-present ID is converted into idempotent success.
+      if (await containsJournalEventId(event.id)) return null;
+      rethrow;
+    }
+  }
+
   Future<RecitationRegistration> register(SurahRecitationEvent event) async {
     final normalizedEvent = _atDatabasePrecision(event);
     final registration = await database.transaction(() async {

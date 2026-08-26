@@ -33,6 +33,11 @@ class AppLocalizationsUz extends AppLocalizations {
   String get recommendedTitle => 'Tavsiya';
 
   @override
+  String recommendationRank(int rank) {
+    return 'Tavsiya $rank';
+  }
+
+  @override
   String get activeSurahsTitle => 'Faol suralar';
 
   @override
@@ -396,11 +401,31 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get noRussianTranslations =>
-      'QuranEnc rasmiy API katalogida hozir ruscha tarjimalar qaytarilmayapti. Arabcha matn oflayn mavjud.';
+      'QuranEnc’da hozir tekshirilgan ruscha tarjimalar mavjud emas. Arabcha matn oflayn mavjud.';
 
   @override
   String get translationCatalogError =>
       'QuranEnc rasmiy tarjimalar ro‘yxatini yuklab bo‘lmadi.';
+
+  @override
+  String get translationNoNetwork =>
+      'Tarmoq yo‘q. Avval yuklangan tarjimalar oflayn mavjud bo‘lib qoladi.';
+
+  @override
+  String get translationSourceError =>
+      'Tarjima manbasi so‘rovni rad etdi. Keyinroq urinib ko‘ring.';
+
+  @override
+  String get translationValidationFailed =>
+      'Manba javobi buzilgan yoki tekshiruvdan o‘tmadi. U saqlanmadi.';
+
+  @override
+  String get translationCatalogFromCache =>
+      'Saqlangan oflayn katalog ko‘rsatilmoqda.';
+
+  @override
+  String get translationRefreshFailedCached =>
+      'Manbani yangilab bo‘lmadi; saqlangan tasdiqlangan ma’lumotlar o‘zgarmadi.';
 
   @override
   String get translationNotSelected => 'Tarjima tanlanmagan';
@@ -437,4 +462,197 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get tanzilTextMetadata =>
       'Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0';
+
+  @override
+  String get tanzilTransliterationMetadata =>
+      'Tanzil · English Transliteration · 2010-09-06 nusxasi · 6236 oyat';
+
+  @override
+  String get transliterationNonCommercialNotice =>
+      'Transliteratsiya to‘plami faqat notijorat foydalanishga ruxsat beradi; tijoriy production relizi uchun alohida ruxsat kerak.';
+
+  @override
+  String get quranDisplayLayers => 'Qur’on matni qatlamlari';
+
+  @override
+  String get showArabicText => 'Arabcha matnni ko‘rsatish';
+
+  @override
+  String get showTransliteration => 'Transliteratsiyani ko‘rsatish';
+
+  @override
+  String get showTranslation => 'Tarjimani ko‘rsatish';
+
+  @override
+  String get transliterationSourceShort =>
+      'Lotincha transliteratsiya · Tanzil · oflayn';
+
+  @override
+  String get transliterationUnavailable =>
+      'Tasdiqlangan transliteratsiya mavjud emas.';
+
+  @override
+  String get prayerTimesTitle => 'Namoz vaqtlari';
+
+  @override
+  String get prayerRegion => 'Hudud';
+
+  @override
+  String get selectPrayerRegion => 'Hududni qo‘lda tanlang';
+
+  @override
+  String get useMyLocation => 'Joylashuvimdan foydalanish';
+
+  @override
+  String get locationOptionalNotice =>
+      'Ixtiyoriy. Joylashuv faqat shu tugma bosilganda, fon ruxsatisiz so‘raladi.';
+
+  @override
+  String get prayerContextMode => 'Belgilash konteksti';
+
+  @override
+  String get prayerModeManual => 'Qo‘lda';
+
+  @override
+  String get prayerModeAutomatic => 'Avtomatik';
+
+  @override
+  String get automaticPrayerSafetyNotice =>
+      'Avtomatik tanlov faqat yangi va ishonchli jadval bilan ishlaydi. Quyosh chiqqandan Peshingacha qo‘lda tanlash kerak.';
+
+  @override
+  String get allowCalculatedFallback => 'Mahalliy hisoblashga ruxsat berish';
+
+  @override
+  String get calculatedFallbackNotice =>
+      'Bu OMI rasmiy jadvali emas, alohida hisoblangan manba. Standart: Karachi va Hanafi Asr.';
+
+  @override
+  String get calculatedFallbackCoordinatesUnavailable =>
+      'Bu provider hududi uchun alohida tekshirilgan koordinatalar saqlanmagan, shuning uchun mahalliy hisoblash mavjud emas.';
+
+  @override
+  String get calculationMethod => 'Hisoblash usuli';
+
+  @override
+  String get asrHanafi => 'Asr: Hanafi';
+
+  @override
+  String get asrStandard => 'Asr: standart';
+
+  @override
+  String get manualMinuteAdjustments => 'Daqiqalarda qo‘lda tuzatish';
+
+  @override
+  String get rawTimesPreserved =>
+      'Manbaning asl vaqti saqlanadi; tuzatilgan qiymat alohida ko‘rsatiladi.';
+
+  @override
+  String minuteAdjustment(int value) {
+    return 'Tuzatish: $value daq';
+  }
+
+  @override
+  String get decreaseMinute => 'Bir daqiqaga kamaytirish';
+
+  @override
+  String get increaseMinute => 'Bir daqiqaga oshirish';
+
+  @override
+  String get locationCalculationEnabled =>
+      'Joylashuv mahalliy hisoblash uchun saqlandi.';
+
+  @override
+  String get locationServicesDisabled =>
+      'Geolokatsiya o‘chirilgan. Hududni qo‘lda tanlang.';
+
+  @override
+  String get locationDeniedChooseRegion =>
+      'Joylashuvga ruxsat berilmadi. Hududni qo‘lda tanlang.';
+
+  @override
+  String get locationOutsideUzbekistan =>
+      'Bu nuqta uchun tasdiqlangan vaqt zonasi sozlamasi yo‘q. Hududni qo‘lda tanlang.';
+
+  @override
+  String get locationFailedChooseRegion =>
+      'Joylashuvni olib bo‘lmadi. Hududni qo‘lda tanlang.';
+
+  @override
+  String get prayerScheduleToday => 'Bugungi jadval';
+
+  @override
+  String get sunrise => 'Quyosh';
+
+  @override
+  String get prayerSource => 'Manba';
+
+  @override
+  String get prayerUpdated => 'Yangilangan';
+
+  @override
+  String get asrSchool => 'Asr hisobi';
+
+  @override
+  String get timesManuallyAdjusted =>
+      'Vaqt qo‘lda tuzatildi; asl qiymatlar saqlandi.';
+
+  @override
+  String get prayerOfflineCache => 'Yangi oflayn kesh ishlatilmoqda.';
+
+  @override
+  String get refreshPrayerSchedule => 'Joriy va keyingi oyni yangilash';
+
+  @override
+  String prayerStartsAt(String start) {
+    return '$start dan';
+  }
+
+  @override
+  String prayerTimeRange(String start, String end) {
+    return '$start–$end';
+  }
+
+  @override
+  String nextPrayerAt(String prayer, String time) {
+    return 'Keyingi: $prayer, $time da';
+  }
+
+  @override
+  String get betweenPrayers => 'Namozlar orasida';
+
+  @override
+  String get prayerScheduleStale =>
+      'Jadval eskirgan — avtomatik tanlov o‘chirilgan';
+
+  @override
+  String get prayerScheduleUnavailable =>
+      'Jadval mavjud emas — namozni qo‘lda tanlang';
+
+  @override
+  String widgetManualPrayerContext(String prayer) {
+    return 'Qo‘lda: $prayer · Aylanish';
+  }
+
+  @override
+  String widgetAutomaticPrayerContext(String prayer) {
+    return '$prayer · Avto · Aylanish';
+  }
+
+  @override
+  String widgetAutomaticPrayerRange(String prayer, String start, String end) {
+    return '$prayer · $start–$end · Aylanish';
+  }
+
+  @override
+  String widgetAutomaticPrayerStart(String prayer, String start) {
+    return '$prayer · $start dan · Aylanish';
+  }
+
+  @override
+  String get widgetSelectPrayerInApp => 'Murajaah’da namozni tanlang';
+
+  @override
+  String get widgetActionNotCompleted =>
+      'Belgilab bo‘lmadi. Joriy ma’lumotlar tiklandi.';
 }

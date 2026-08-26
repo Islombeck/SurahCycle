@@ -1,5 +1,25 @@
 # Источники Quran content
 
+## Реализация Sprint 4
+
+Пустой официальный RU catalog QuranEnc больше не означает автоматический
+empty state. Только в этом случае provider проверяет узкий audited registry
+`KnownOfficialQuranEncTranslations`: `russian_rwwad` и `russian_aboadel`.
+Каждый кандидат подтверждён официальной QuranEnc surface, полным аудитом 114
+документированных `translation/sura` endpoints и техническими SHA-256 pins.
+Runtime probe и каждый фактический surah download fail closed при HTTP/JSON,
+coordinate или hash mismatch. HTML не парсится, private API не используется,
+а выбор перевода остаётся действием пользователя. Полная методика и licensing
+decision записаны в [QURAN_TRANSLATION_LICENSE_AUDIT.md](QURAN_TRANSLATION_LICENSE_AUDIT.md).
+
+Отдельный `QuranTransliterationRepository` выдаёт bundled Tanzil
+`en.transliteration` offline. Asset сохранён byte-for-byte, включая source
+markup; parser проверяет `1,044,894` bytes, SHA-256
+`8c20d95e484534e921cd2e0d2546aab7f5300090c0bd76697095b3ca1db1e01d`
+и все 6,236 координат. Условия источника допускают текущий non-commercial
+private/testing build, но блокируют commercial/monetized production release
+без отдельного разрешения. Детали: [QURAN_TRANSLITERATION.md](QURAN_TRANSLITERATION.md).
+
 ## Реализация Sprint 3
 
 В APK включён официальный downloadable dataset Tanzil Quran Text, Uthmani, Version 1.1. Файл `assets/quran/quran-uthmani.txt` сохранён verbatim из официального endpoint с опциями `uthmani`, `txt-2`, pause marks, sajdah signs и tatweel. Его зафиксированные характеристики:
@@ -14,7 +34,7 @@
 
 `TanzilUthmaniTextRepository` перед выдачей данных проверяет raw byte length и SHA-256, строгий UTF-8, официальный footer/version/license, последовательность каждой координаты и точное совпадение per-surah counts с проверенным metadata asset. Пропуски, дубликаты, extra rows и пустой текст отклоняют corpus целиком. Подстрока после второго `|` не trim-ится, не нормализуется и не переписывается. Полный notice сохранён в `assets/quran/TANZIL_TEXT_LICENSE.txt`.
 
-`QuranEncProvider` подключён к application repository только как источник перевода. Settings получает официальный каталог с `languageCode=ru`; перевод по умолчанию отсутствует. На 2026-08-25 официальный endpoint возвращает пустой русский каталог, поэтому UI честно показывает empty state и не hardcode-ит найденные вне catalog ключи. Если официальный каталог начнёт возвращать варианты, пользователь сам выбирает entry; сохраняются key, title, version, source, fetchedAt и attribution. Каждая открытая сура кэшируется отдельно по provider/key/version, а новая server version не заменяет выбранную молча.
+В Sprint 3 `QuranEncProvider` подключался к application repository только как источник перевода. Settings получал официальный каталог с `languageCode=ru`; перевод по умолчанию отсутствовал. На 2026-08-25 официальный endpoint возвращал пустой русский каталог, поэтому Sprint 3 показывал empty state и не использовал ключи вне catalog. Sprint 4 заменяет только эту discovery-часть на проверяемый механизм, описанный выше; пользователь по-прежнему сам выбирает entry, а key/title/version/source/fetchedAt/attribution и versioned cache сохраняются без молчаливой замены версии.
 
 Presentation всегда возвращает bundled Arabic и exact cache выбранной версии первым, не ожидая сеть. Только выбранная Learning-карточка запускает отдельный background warmup перевода. При cache miss repository допускает versionless QuranEnc sura endpoint лишь после точного совпадения `source + key + language + version` с официальным каталогом, проверяет полный упорядоченный диапазон `1..ayahCount`, затем повторяет catalog check перед cache commit. Если каталог недоступен, версия изменилась или ответ неполон, Arabic остаётся доступным, а новый ответ не попадает в cache. Это исключает смешивание версий и cache poisoning; обновление выбора остаётся явным действием пользователя.
 
@@ -141,7 +161,16 @@ integrity checksum, если опубликован или вычислен пр
 
 ### `QuranEncProvider`
 
-Реализован adapter документированных публичных translation endpoints QuranEnc. Он получает каталог переводов без hardcoded translation key, ограничивает timeout/размер ответа, валидирует координаты и сохраняет строку перевода без изменений вместе с `translationKey`, языком, версией и attribution. Поле Arabic из translation response намеренно игнорируется: этот provider в Sprint 1 утверждён только как источник переводов. Provider не включён автоматически и не участвует в запуске основной offline-функциональности.
+Реализован adapter документированных публичных translation endpoints QuranEnc.
+Обычно он использует официальный catalog. Только для доказанно пустого RU
+catalog разрешён узкий hardcoded audit registry из двух официальных keys с
+runtime probe и SHA-256 pins; это не общий список угаданных идентификаторов.
+Adapter ограничивает timeout/размер ответа, валидирует координаты и сохраняет
+строку перевода без изменений вместе с `translationKey`, языком,
+официальной version metadata, технической revision и attribution. Поле Arabic
+из translation response намеренно игнорируется: QuranEnc используется только
+как источник перевода. Пользователь сам выбирает dataset; provider не блокирует
+запуск основной offline-функциональности.
 
 ### `QuranAcademyProvider` / Digital Quran
 

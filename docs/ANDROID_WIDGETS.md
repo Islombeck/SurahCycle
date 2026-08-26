@@ -1,176 +1,218 @@
 # Android home-screen widgets
 
-## Status and compatibility
+## Status
 
-Sprint 2 ships two real Android widgets:
+Murajaah ships two native Android home-screen widgets:
 
-- **Rotation**: a bounded scrollable projection of due whole surahs and parts. Up to eight ranked recommendations are first, followed by other due rows and an `Ещё N` footer when needed; completed and ahead rows are absent.
-- **Learning**: the selected surah, stage, cumulative ayah range, and exact verified bundled Arabic text supplied by Dart.
+- **Rotation** — a scrollable due-only list. Up to eight ranked
+  recommendations appear first, followed by other due rows and an
+  `Ещё N` footer.
+- **Learning** — selected surah, stage, cumulative range and up to three
+  coordinate-bound ayah blocks with Arabic, transliteration and translation
+  according to the same three display settings as the app.
 
-The bridge is pinned to `home_widget: 0.9.3`. That release supports AGP 9 and requires Flutter 3.38.1+/Dart 3.10+; Murajaah uses Flutter 3.44.7/Dart 3.12. Android UI uses the current stable Glance line, `androidx.glance:glance-appwidget:1.1.1`, pinned directly in the app. Glance 1.2 is only a release-candidate line, while the 1.3 alpha line raises the SDK/tooling closure, so neither is appropriate for the current compileSdk 36/AGP 9.0.1 build.
+Rotation has a direct mark control. The circular control marks in a headless
+Dart callback without opening the app; the row text still opens the appropriate
+surah/part. Learning remains navigation-only.
 
-The project keeps minSdk 24 and targetSdk 36. `home_widget` 0.9.3 also brings WorkManager 2.11.2, whose minimum is API 23, so the dependency closure does not require a minSdk increase.
-
-Kotlin 2.3.20 applies `org.jetbrains.kotlin.plugin.compose` rather than the removed legacy Compose compiler configuration. The project still opts out of AGP built-in Kotlin in `android/gradle.properties`; `home_widget` 0.9.3 detects that migration mode and applies Kotlin correctly. Gradle warns that the opt-out is deprecated for AGP 10, but the current AGP 9 build compiles.
+The project pins `home_widget 0.9.3` and
+`androidx.glance:glance-appwidget:1.1.1`. Kotlin 2.3.20 uses the
+Compose compiler plugin. Current Android configuration keeps the Flutter
+min/target/compile SDK values and JVM 17.
 
 ## Ownership boundary
 
-```text
-Drift/domain streams
-        |
-        v
-WidgetProjectionBuilder (Dart: all calculations and display labels)
-        |
-        v
-WidgetSnapshot schemaVersion 2 JSON
-        |
-        v
-home_widget SharedPreferences bridge
-        |
-        +--> RotationWidget (Kotlin/Glance: display only)
-        `--> LearningWidget (Kotlin/Glance: display only)
-```
+`text
+Drift/domain/Quran/prayer streams
+                 |
+                 v
+       Dart projection builders
+                 |
+                 v
+       WidgetSnapshot schema 3
+                 |
+                 v
+ home_widget SharedPreferences bridge
+          |                    |
+          v                    v
+ Rotation Glance        Learning Glance
+ display + transport      display only
+          |
+          v
+ official home_widget background callback
+          |
+          v
+ RecitationApplicationService + Drift transaction
+`
 
-Kotlin never opens Drift, reimplements `RotationEngine`, evaluates `LearningStateMachine`, sorts recommendations, calculates debt, invents Quran content, or marks a recitation. It only validates and displays a denormalized snapshot.
+Dart owns sorting, rank, debt, eligible actions, localized labels, Quran layer
+selection, Prayer Context and all mutation rules. Kotlin validates a
+denormalized snapshot, renders it and transports a prebuilt action. It never
+opens Drift or reimplements `RotationEngine`.
 
-The shared key is `murajaah_widget_snapshot`. Missing JSON, malformed JSON, duplicate IDs, unsafe links, an unreasonable payload, or an unknown `schemaVersion` fails closed to a localized **Open Murajaah** state. RU, EN, and UZ native strings live in `values-ru`, default `values`, and `values-uz`.
+The shared snapshot key is `murajaah_widget_snapshot`. Malformed JSON,
+unknown schema, unsafe deep links, duplicate IDs/tokens, unreasonable payloads
+or native composition errors fail closed to localized fallback UI.
 
-## Dart API and integration
+## Snapshot schema 3
 
-Import `package:murajaah/core/widgets/widgets.dart`.
+The current contract adds:
 
-1. Adapt the latest repository projections into `RotationWidgetCandidate.whole(...)` and `.part(...)`. `remaining` may be negative, but `WidgetProjectionBuilder` emits only `remaining > 0`.
-2. Supply zero-based `recommendationRank` for at most eight recommended items. The builder preserves exact rank, then orders other due rows by greater debt, never/oldest use, `displayOrder`, surah number, and part index.
-3. Adapt the selected learning state into `LearningWidgetCandidate`. Pass the already localized `stageLabel` and cumulative `startAyah`/`endAyah`.
-4. Pass Quran strings through `verifiedTextLines` only from the fully validated bundled `TanzilUthmaniTextRepository`. An empty list displays `openAppToLoadText`; no layer generates substitute Arabic.
-5. Create one root-lifetime `WidgetSyncCoordinator(bridge: const HomeWidgetBridge())`. Feed it recomputed snapshots with `schedule`; use `syncNow` for an explicit startup flush. Call `dispose` from the owner.
+- optional structured action per Rotation row;
+- structured Learning ayah lines bound by surah/ayah coordinates;
+- independent `showArabic`, `showTransliteration` and
+  `showTranslation` flags;
+- exact transliteration/translation fields without generated substitutes.
 
-`WidgetSyncCoordinator` debounces rapid stream emissions for 150 ms, serializes native writes, collapses pending work to the newest projection, and skips an unchanged projection even if `generatedAtUtc` changed. A bridge error is reported through `onError` and does not participate in a domain transaction.
+Abbreviated example:
 
-The application owner must recompute after startup and after every mutation affecting either projection:
-
-- recitation, Undo, history deletion, balance adjustment;
-- mastered-surah add, activation/deactivation, alias, reorder;
-- split scheme or part progress changes;
-- learning selection, repeat/learn action, inactivity rollback, Undo rollback, completion;
-- verified bundled Quran corpus load and learning-stage changes;
-- locale change.
-
-The coordinator deliberately accepts application-layer DTOs rather than importing provider or Drift types. This keeps the snapshot stable while DB/domain models evolve.
-
-## Snapshot contract
-
-Schema 2 contains display-ready data:
-
-```json
+`json
 {
-  "schemaVersion": 2,
-  "generatedAtUtc": "2026-08-25T10:00:00.000Z",
+  "schemaVersion": 3,
+  "generatedAtUtc": "2026-08-26T10:00:00.000Z",
   "locale": "ru",
   "rotation": {
     "items": [{
-      "id": "scheme-uuid:part:2",
+      "id": "scheme-id:part:2",
       "surahId": "2",
-      "partId": "scheme-uuid:part:2",
+      "partId": "part-id",
       "title": "2. Бакара",
       "subtitle": "Часть 2/4 · аяты 72–141",
       "remaining": 2,
       "debtLabel": "2×",
       "recommendationRank": 0,
-      "deepLink": "murajaah://app/surah/2?part=scheme-uuid%3Apart%3A2"
+      "deepLink": "murajaah://app/surah/2?part=part-id",
+      "action": {
+        "schemaVersion": 1,
+        "actionToken": "00000000-0000-4000-8000-000000000001",
+        "surahId": "2",
+        "rotationSchemeId": "scheme-id",
+        "partId": "part-id"
+      }
     }],
     "omittedCount": 0
   },
   "learning": {
     "item": {
       "surahId": "112",
+      "surahNumber": 112,
+      "startAyah": 1,
+      "endAyah": 3,
       "title": "112. Ихляс",
       "stageLabel": "Накопительно",
       "rangeLabel": "Аяты 1–3",
-      "unavailableTextLabel": "Отройте приложение для загрузки текста",
-      "verifiedTextLines": [],
+      "showArabic": true,
+      "showTransliteration": true,
+      "showTranslation": true,
+      "ayahLines": [{
+        "surah": 112,
+        "ayah": 1,
+        "arabic": "exact verified source text",
+        "transliteration": "exact verified source text",
+        "translation": "exact verified cached source text"
+      }],
       "deepLink": "murajaah://app/learning/112"
     }
   }
 }
-```
+`
 
-An empty learning projection is `{}`. `verifiedTextLines` is serialized and rendered without trimming or Unicode normalization. Dart caps rotation projection at 64 rows, always keeping the at-most-eight ranked recommendations first, and supplies `omittedCount` for the localized `Ещё N` footer. Learning supplies at most the latest three exact Arabic lines. Kotlin enforces the same limits.
+Actual Quran strings are never examples hardcoded in production. Arabic comes
+from the pinned Tanzil Uthmani corpus, transliteration from the pinned Tanzil
+English Transliteration asset, and translation only from the selected verified
+QuranEnc cache. Missing layers remain absent.
 
-## Sprint 3 runtime failure and repair
+Native decoder accepts schema 2 only as a display-only migration input and
+schema 3 as current. Dart reads/writes schema 3. Dynamic Glance IDs are masked
+outside the reserved range and checked for collisions.
 
-The physical-device `Невозможно показать контент` state came from an uncaught Glance `IllegalArgumentException`: both `LazyColumn`s assigned static IDs such as `Long.MIN_VALUE + 1`, while Glance reserves every ID below `-4611686018427387904` except the exact `Long.MIN_VALUE` sentinel. The rolling dynamic hash could overflow into the same reserved range.
+## Synchronization
 
-Static items now use Glance-generated IDs and dynamic IDs are masked with `Long.MAX_VALUE`; the native decoder also rejects hash collisions. Both widgets override the four-argument `onCompositionError`, log widget type, appWidgetId, Throwable class/message and full stack under `MurajaahWidget`, then render a local RemoteViews-compatible `widget_error.xml` whose tap opens the app. Glance remains the primary renderer.
+`WidgetSyncCoordinator` debounces foreground stream emissions for
+150 ms, serializes writes, collapses pending work to the newest projection and
+skips unchanged content even if generation time changed. Recalculation occurs
+after app startup, locale/content/display-setting changes and every mutation
+affecting rotation or learning.
 
-## Widgets and interaction
+An interactive outcome performs an immediate zero-debounce rebuild from the
+database. A widget bridge error never rolls back a valid domain transaction.
+Learning content already present in the snapshot is preserved when a lightweight
+interactive refresh cannot initialize Quran repositories.
 
-Both receivers extend `HomeWidgetGlanceWidgetReceiver` and use `HomeWidgetGlanceStateDefinition`. Both widget-provider XML files set `updatePeriodMillis=0`, horizontal/vertical resize, home-screen category, preview layouts, and practical min/target cell sizes. Flutter stream changes drive refreshes; periodic polling does not.
+## Interaction
 
-Both bodies are Glance `LazyColumn`s. Rotation passes every due row into the collection instead of taking the first three. Learning scrolls verified text lines when the launcher viewport is small. Launcher support ultimately controls collection scrolling and exact resize increments.
+The Rotation circle uses Glance `actionRunCallback` and
+`HomeWidgetBackgroundIntent`. The body uses explicit
+`actionStartActivity<MainActivity>` deep links. Headers, footer and
+Learning content also open the app. `flutter_deeplinking_enabled=false`
+prevents duplicate Flutter routing.
 
-Every tap is an `actionStartActivity<MainActivity>`:
+Exact-once semantics, stale validation and the no-network execution path are
+specified in
+[INTERACTIVE_ANDROID_WIDGET.md](INTERACTIVE_ANDROID_WIDGET.md).
 
-- `murajaah://app/home`
-- `murajaah://app/surah/<surahId>`
-- `murajaah://app/surah/<surahId>?part=<partId>`
-- `murajaah://app/learning/<surahId>`
+Both provider receivers are exported only for `APPWIDGET_UPDATE`.
+The background receiver is supplied by home_widget. No browsable custom-scheme
+intent filter exposes MainActivity.
 
-There is no callback, background isolate, checkbox, or native mutation action. `flutter_deeplinking_enabled=false` ensures the Flutter engine does not also route the same URI. The application consumes the single source through `HomeWidgetBridge.initiallyLaunchedFromWidget()` (cold start) and `HomeWidgetBridge.clicks` (already running). Both pass through the strict Dart allowlist. Before routing, the integration layer must still verify that the referenced surah/part exists and is currently valid.
+## Composition fallback
 
-The `MainActivity` widget action is explicit and is not exposed as a browsable web/custom-scheme intent filter. Receivers must be exported so Android launchers can update them, but they declare only `APPWIDGET_UPDATE` and perform no writes.
+Both widgets override Glance `onCompositionError`, log the widget type,
+appWidgetId and throwable under `MurajaahWidget`, and render the local
+`widget_error.xml` fallback. The fallback opens Murajaah but does not
+mutate data.
 
-## Build and QA
+## Build
 
-Focused verification:
+Focused commands:
 
-```powershell
-flutter test --no-pub test/core/widgets
-./android/gradlew.bat -p android :app:compileDebugKotlin
+`powershell
+flutter test --no-pub test/core/widgets test/android
+android\gradlew.bat -p android testDebugUnitTest
 flutter build apk --debug --no-pub
-```
+`
 
-On this Windows checkout, AGP resolves a directory junction back to the physical Cyrillic path and its CMake command formatter rejects the backtick in that path. Use a temporary ASCII drive mapping for Android builds; it changes no source files:
+On this checkout the physical path contains Cyrillic and a backtick. Android
+CMake/AGP tooling requires the existing ASCII junction and, for APK builds, a
+temporary ASCII drive mapping:
 
-```powershell
+`powershell
 subst M: D:\MurajaahWorkspace
 Set-Location M:\
 $env:PUB_CACHE = 'M:\.tools\pub-cache'
 flutter pub get
 flutter build apk --debug --no-pub
-```
+`
 
-`flutter pub get` is required once on the mapped drive so generated plugin paths use the same drive root. `android.overridePathCheck=true` permits this checkout layout, and `kotlin.compiler.execution.strategy=in-process` prevents Kotlin incremental-cache alias collisions between the physical and mapped paths. On a normal ASCII checkout, no `subst` workaround is needed. Remove the temporary mapping later with `subst M: /D` only after leaving that drive.
+Leave `M:\` before running `subst M: /D`. This workaround
+does not change sources and is unnecessary in a normal ASCII checkout.
 
-Required physical-device QA:
+## Physical-device QA
 
-1. Add both picker entries and confirm localized names/previews.
-2. Resize each horizontally and vertically on the target launcher.
-3. Populate more rows than fit; scroll to the final due item.
-4. Confirm recommended rows precede other due rows and closed/ahead items never appear.
-5. Tap headers, whole rows, part rows, learning metadata, verified text, and footer during cold and warm app states.
-6. Confirm a tap only navigates and never creates a recitation.
-7. Trigger each refresh event above, including recitation and Undo, and confirm immediate widget updates.
-8. Test absent, deliberately malformed, and unknown-version snapshot fallbacks.
-9. Switch Android among RU, EN, and UZ and check native fallback/picker text.
+When ADB exposes a device, verify:
 
-## RemoteViews contingency
+1. localized picker names/previews and resize behavior;
+2. scrolling to the final due/Learning item;
+3. rank order and absence of closed/ahead rows;
+4. circle mark without Activity in foreground, background, swiped-away and
+   killed states;
+5. double tap creates one event and a later newly published token works;
+6. text tap opens the correct row without marking;
+7. History contains the widget-created event; Delete refreshes the widget;
+8. manual and reliable automatic Prayer Context attribution;
+9. malformed/unknown snapshot and forced composition fallbacks;
+10. RU/EN/UZ native strings;
+11. tap → database → launcher refresh latency.
 
-Glance 1.1.1 and the Compose compiler plugin compile successfully in the current project, so Glance is the selected implementation. If a future AGP/Kotlin upgrade makes its dependency closure untenable, native `RemoteViews` plus a `RemoteViewsService` collection is the conservative Android fallback: it avoids Compose compiler integration and has a longer compatibility history.
+If no physical device appears in `adb devices`, these items remain
+unverified; desktop tests and APK compilation are not reported as device QA.
 
-However, merely changing the two UI receivers to `RemoteViews` does **not** remove Glance from the graph because `home_widget` itself currently declares `glance-appwidget:1.1.1`. Removing the closure completely would require a verified newer bridge release, a narrowly maintained bridge fork, or a small project-owned MethodChannel/SharedPreferences bridge. Do not make that migration pre-emptively while the pinned stable stack builds.
+## Primary references
 
-## Primary sources checked 2026-08-25
-
-- [home_widget package and requirements](https://pub.dev/packages/home_widget)
-- [home_widget changelog](https://pub.dev/packages/home_widget/changelog)
-- [home_widget 0.9.3 Android dependency file](https://raw.githubusercontent.com/ABausG/home_widget/home_widget-v0.9.3/packages/home_widget/android/build.gradle)
+- [home_widget package](https://pub.dev/packages/home_widget)
 - [home_widget Android setup](https://docs.page/ABausG/home_widget/setup/android)
-- [home_widget click detection](https://docs.page/ABausG/home_widget/features/detect-clicks)
+- [home_widget interactive widgets](https://docs.page/ABausG/home_widget/features/interactive-widgets)
 - [AndroidX Glance release notes](https://developer.android.com/jetpack/androidx/releases/glance)
-- [Official Glance setup](https://developer.android.com/develop/ui/compose/glance/setup)
-- [Official Glance UI and lazy collections](https://developer.android.com/develop/ui/compose/glance/build-ui)
-- [Official Glance interactions](https://developer.android.com/develop/ui/compose/glance/user-interaction)
-- [Android widget collection guidance](https://developer.android.com/develop/ui/views/appwidgets/collections)
-- [Kotlin Compose compiler migration](https://kotlinlang.org/docs/compose-compiler-migration-guide.html)
+- [Glance UI](https://developer.android.com/develop/ui/compose/glance/build-ui)
+- [Glance interactions](https://developer.android.com/develop/ui/compose/glance/user-interaction)
 - [Android unsafe deep-link guidance](https://developer.android.com/privacy-and-security/risks/unsafe-use-of-deeplinks)

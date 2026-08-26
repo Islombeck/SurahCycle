@@ -115,25 +115,48 @@ void main() {
     expect(result.omittedCount, 9);
   });
 
-  test('learning cumulative range and exact verified text are projected', () {
-    const exact = ' قُلْ هُوَ ٱللَّهُ أَحَدٌ ';
-    final result = builder.buildLearning(
-      LearningWidgetCandidate(
-        surahId: '112',
-        surahNumber: 112,
-        displayName: 'Ихлас',
-        stageLabel: 'Накопительно',
-        startAyah: 1,
-        endAyah: 3,
-        verifiedTextLines: const <String>[exact],
-      ),
-    );
+  test(
+    'learning cumulative range and exact structured layers are projected',
+    () {
+      const exactArabic = ' قُلْ هُوَ ٱللَّهُ أَحَدٌ ';
+      const exactTransliteration = 'Qul huwa All<u>a</u>hu';
+      const exactTranslation = 'Скажи: «Он — Аллах Единый»';
+      final result = builder.buildLearning(
+        LearningWidgetCandidate(
+          surahId: '112',
+          surahNumber: 112,
+          displayName: 'Ихлас',
+          stageLabel: 'Накопительно',
+          startAyah: 1,
+          endAyah: 3,
+          ayahLines: <LearningWidgetAyahLine>[
+            LearningWidgetAyahLine(
+              surahNumber: 112,
+              ayahNumber: 1,
+              arabic: exactArabic,
+              transliteration: exactTransliteration,
+              translation: exactTranslation,
+            ),
+          ],
+          showArabic: false,
+          showTranslation: false,
+        ),
+      );
 
-    expect(result.item!.title, '112. Ихлас');
-    expect(result.item!.rangeLabel, 'аяты 1–3');
-    expect(result.item!.verifiedTextLines.single, exact);
-    expect(result.item!.deepLink.toString(), 'murajaah://app/learning/112');
-  });
+      expect(result.item!.title, '112. Ихлас');
+      expect(result.item!.rangeLabel, 'аяты 1–3');
+      expect(result.item!.ayahLines.single.arabic, exactArabic);
+      expect(
+        result.item!.ayahLines.single.transliteration,
+        exactTransliteration,
+      );
+      expect(result.item!.ayahLines.single.translation, exactTranslation);
+      expect(result.item!.showArabic, isFalse);
+      expect(result.item!.showTransliteration, isTrue);
+      expect(result.item!.showTranslation, isFalse);
+      expect(result.item!.deepLink.toString(), 'murajaah://app/learning/112');
+    },
+  );
 
   test('learning without cached Quran has metadata and safe fallback only', () {
     final result = builder.buildLearning(
@@ -148,7 +171,7 @@ void main() {
     );
 
     expect(result.item!.rangeLabel, 'Аят 3');
-    expect(result.item!.verifiedTextLines, isEmpty);
+    expect(result.item!.ayahLines, isEmpty);
     expect(
       result.item!.unavailableTextLabel,
       'Откройте приложение для загрузки текста',
@@ -164,11 +187,22 @@ void main() {
         stageLabel: 'Накопительно',
         startAyah: 1,
         endAyah: 5,
-        verifiedTextLines: const <String>['a', 'b', 'c', 'd', 'e'],
+        ayahLines: <LearningWidgetAyahLine>[
+          for (var ayah = 1; ayah <= 5; ayah += 1)
+            LearningWidgetAyahLine(
+              surahNumber: 2,
+              ayahNumber: ayah,
+              arabic: '$ayah',
+            ),
+        ],
       ),
     );
 
-    expect(result.item!.verifiedTextLines, const <String>['c', 'd', 'e']);
+    expect(result.item!.ayahLines.map((line) => line.ayahNumber), const <int>[
+      3,
+      4,
+      5,
+    ]);
   });
 
   test('no selected learning surah produces empty projection', () {

@@ -294,6 +294,9 @@ final class _LearningCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final displayPreferences =
+        ref.watch(quranDisplayPreferencesProvider).valueOrNull ??
+        QuranDisplayPreferences.defaults;
     final stage = state.stage.kind == LearningStageKind.newAyah
         ? context.l10n.newAyah(state.stage.ayahNumber)
         : context.l10n.cumulativeRange(state.stage.endAyah);
@@ -373,6 +376,7 @@ final class _LearningCard extends ConsumerWidget {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: _LearningAyahCard(
                           ayah: ayah,
+                          displayPreferences: displayPreferences,
                           hasSelectedTranslation:
                               content.translationSelection != null,
                           translationIssue: content.translationIssue,
@@ -410,17 +414,18 @@ final class _LearningCard extends ConsumerWidget {
 final class _LearningAyahCard extends StatelessWidget {
   const _LearningAyahCard({
     required this.ayah,
+    required this.displayPreferences,
     required this.hasSelectedTranslation,
     required this.translationIssue,
   });
 
   final QuranReadingAyah ayah;
+  final QuranDisplayPreferences displayPreferences;
   final bool hasSelectedTranslation;
   final QuranContentIssue? translationIssue;
 
   @override
   Widget build(BuildContext context) {
-    final translation = ayah.translation;
     final fallback = switch (translationIssue) {
       QuranContentIssue(
         reason: QuranContentUnavailableReason.versionMismatch,
@@ -451,20 +456,12 @@ final class _LearningAyahCard extends StatelessWidget {
               style: Theme.of(context).textTheme.labelLarge,
             ),
             const SizedBox(height: 8),
-            Directionality(
-              textDirection: TextDirection.rtl,
-              child: Text(
-                ayah.arabicText,
-                textAlign: TextAlign.right,
-                style: Theme.of(
-                  context,
-                ).textTheme.headlineSmall?.copyWith(height: 1.8),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              translation ?? fallback,
-              style: Theme.of(context).textTheme.bodyMedium,
+            QuranAyahLayers(
+              ayah: ayah,
+              preferences: displayPreferences,
+              transliterationFallback: context.l10n.transliterationUnavailable,
+              translationFallback: fallback,
+              keyPrefix: 'learning',
             ),
           ],
         ),

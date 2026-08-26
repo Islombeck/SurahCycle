@@ -8,6 +8,8 @@
   "settingsTab": "Settings",
   "historyTitle": "History",
   "recommendedTitle": "Recommended",
+  "recommendationRank": "Recommendation {rank}",
+  "@recommendationRank": {"placeholders": {"rank": {"type": "int"}}},
   "activeSurahsTitle": "Active surahs",
   "noActiveSurahs": "Select mastered surahs and add them to rotation.",
   "contentUnavailableTitle": "Quran content is not downloaded yet",
@@ -118,8 +120,13 @@
   ,"arabicTextOfflineReady": "Verified Tanzil Arabic text is available offline."
   ,"quranTranslation": "Quran translation"
   ,"chooseTranslation": "Choose a translation in Settings"
-  ,"noRussianTranslations": "QuranEnc currently returns no Russian translations in its official API catalog. Arabic remains available offline."
+  ,"noRussianTranslations": "QuranEnc currently has no available verified Russian translations. Arabic remains available offline."
   ,"translationCatalogError": "The official QuranEnc translation list could not be loaded."
+  ,"translationNoNetwork": "No network connection. Previously downloaded translations remain available offline."
+  ,"translationSourceError": "The translation source rejected the request. Try again later."
+  ,"translationValidationFailed": "The source response is corrupt or failed validation. It was not stored."
+  ,"translationCatalogFromCache": "Showing the saved offline catalog."
+  ,"translationRefreshFailedCached": "The source could not be refreshed; saved verified data was left unchanged."
   ,"translationNotSelected": "No translation selected"
   ,"translationCachedOffline": "The selected translation is cached for offline reading as surahs are opened."
   ,"translationUnavailableOffline": "The translation for this ayah is not stored yet. Arabic remains available while it downloads in the background."
@@ -131,4 +138,65 @@
   ,"useTranslationVersion": "Use v{version}"
   ,"@useTranslationVersion": {"placeholders": {"version": {"type": "String"}}}
   ,"tanzilTextMetadata": "Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0"
+  ,"tanzilTransliterationMetadata": "Tanzil · English Transliteration · 2010-09-06 snapshot · 6,236 ayahs"
+  ,"transliterationNonCommercialNotice": "The transliteration dataset permits non-commercial use only; a commercial production release requires separate permission."
+  ,"quranDisplayLayers": "Quran text layers"
+  ,"showArabicText": "Show Arabic text"
+  ,"showTransliteration": "Show transliteration"
+  ,"showTranslation": "Show translation"
+  ,"transliterationSourceShort": "Latin transliteration · Tanzil · offline"
+  ,"transliterationUnavailable": "Verified transliteration is unavailable."
+  ,"prayerTimesTitle": "Prayer times"
+  ,"prayerRegion": "Region"
+  ,"selectPrayerRegion": "Choose a region manually"
+  ,"useMyLocation": "Use my location"
+  ,"locationOptionalNotice": "Optional. Location is requested only after this tap, with no background access."
+  ,"prayerContextMode": "Marking context"
+  ,"prayerModeManual": "Manual mode"
+  ,"prayerModeAutomatic": "Automatic"
+  ,"automaticPrayerSafetyNotice": "Automatic selection works only with a fresh reliable schedule. From sunrise until Dhuhr, marking requires a manual choice."
+  ,"allowCalculatedFallback": "Allow local calculation"
+  ,"calculatedFallbackNotice": "This is a separate calculated source, not an official OMI timetable. Defaults: Karachi and Hanafi Asr."
+  ,"calculatedFallbackCoordinatesUnavailable": "Local calculation is unavailable for this provider region because no separately audited coordinates are stored."
+  ,"calculationMethod": "Calculation method"
+  ,"asrHanafi": "Asr: Hanafi"
+  ,"asrStandard": "Asr: standard"
+  ,"manualMinuteAdjustments": "Manual minute adjustments"
+  ,"rawTimesPreserved": "Raw source times are preserved; adjusted values are shown separately."
+  ,"minuteAdjustment": "Adjustment: {value} min"
+  ,"@minuteAdjustment": {"placeholders": {"value": {"type": "int"}}}
+  ,"decreaseMinute": "Decrease by one minute"
+  ,"increaseMinute": "Increase by one minute"
+  ,"locationCalculationEnabled": "Location saved for local calculation."
+  ,"locationServicesDisabled": "Location services are off. Choose a region manually."
+  ,"locationDeniedChooseRegion": "Location access was not granted. Choose a region manually."
+  ,"locationOutsideUzbekistan": "No verified timezone setting exists for this point. Choose a region manually."
+  ,"locationFailedChooseRegion": "Location could not be obtained. Choose a region manually."
+  ,"prayerScheduleToday": "Today's schedule"
+  ,"sunrise": "Sunrise"
+  ,"prayerSource": "Source"
+  ,"prayerUpdated": "Updated"
+  ,"asrSchool": "Asr school"
+  ,"timesManuallyAdjusted": "Times were adjusted manually; raw values are preserved."
+  ,"prayerOfflineCache": "Using a fresh offline cache."
+  ,"refreshPrayerSchedule": "Refresh current and next month"
+  ,"prayerStartsAt": "From {start}"
+  ,"@prayerStartsAt": {"placeholders": {"start": {"type": "String"}}}
+  ,"prayerTimeRange": "{start}–{end}"
+  ,"@prayerTimeRange": {"placeholders": {"start": {"type": "String"}, "end": {"type": "String"}}}
+  ,"nextPrayerAt": "Next: {prayer} at {time}"
+  ,"@nextPrayerAt": {"placeholders": {"prayer": {"type": "String"}, "time": {"type": "String"}}}
+  ,"betweenPrayers": "Between prayers"
+  ,"prayerScheduleStale": "The schedule is stale — automatic selection is disabled"
+  ,"prayerScheduleUnavailable": "Schedule unavailable — choose a prayer manually"
+  ,"widgetManualPrayerContext": "Manual: {prayer} · Rotation"
+  ,"@widgetManualPrayerContext": {"placeholders": {"prayer": {"type": "String"}}}
+  ,"widgetAutomaticPrayerContext": "{prayer} · Auto · Rotation"
+  ,"@widgetAutomaticPrayerContext": {"placeholders": {"prayer": {"type": "String"}}}
+  ,"widgetAutomaticPrayerRange": "{prayer} · {start}–{end} · Rotation"
+  ,"@widgetAutomaticPrayerRange": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}, "end": {"type": "String"}}}
+  ,"widgetAutomaticPrayerStart": "{prayer} · from {start} · Rotation"
+  ,"@widgetAutomaticPrayerStart": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}}}
+  ,"widgetSelectPrayerInApp": "Choose a prayer in Murajaah"
+  ,"widgetActionNotCompleted": "Could not mark. Current data restored."
 }

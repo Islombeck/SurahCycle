@@ -87,6 +87,41 @@ void main() {
     expect(translations.networkRequests, 0);
   });
 
+  test('assembles verified transliteration as an independent layer', () async {
+    final transliterations = TanzilEnglishTransliterationRepository();
+    final repository = QuranReadingRepository(
+      arabic: TanzilUthmaniTextRepository(),
+      translations: _FakeTranslationRepository(),
+      transliterations: transliterations,
+    );
+
+    final reading = await repository.getSurah(surahNumber: 1, ayahCount: 7);
+    final exact = await transliterations.getAyah(surahNumber: 1, ayahNumber: 1);
+
+    expect(reading.ayah(1).transliteration, exact.exactText);
+    expect(reading.ayah(1).transliteration, contains('<u>'));
+    expect(reading.transliterationSource, exact.source);
+    expect(reading.transliterationIssueCode, isNull);
+    expect(reading.ayah(1).translation, isNull);
+  });
+
+  test('transliteration failure does not hide verified Arabic', () async {
+    final repository = QuranReadingRepository(
+      arabic: TanzilUthmaniTextRepository(),
+      translations: _FakeTranslationRepository(),
+      transliterations: _UnavailableTransliterationRepository(),
+    );
+
+    final reading = await repository.getSurah(surahNumber: 1, ayahCount: 7);
+
+    expect(reading.ayahs.every((ayah) => ayah.arabicText.isNotEmpty), isTrue);
+    expect(reading.ayahs.every((ayah) => ayah.transliteration == null), isTrue);
+    expect(
+      reading.transliterationIssueCode,
+      'quran_transliteration_unavailable',
+    );
+  });
+
   test('explicit warmup merges a complete repository response', () async {
     final translation = _translation(version: '1.0.0');
     final translations = _FakeTranslationRepository(
@@ -270,4 +305,31 @@ final class _FakeTranslationRepository implements QuranContentRepository {
       fromCache: false,
     );
   }
+}
+
+final class _UnavailableTransliterationRepository
+    implements QuranTransliterationRepository {
+  Never _unavailable() => throw const TanzilTransliterationException(
+    'synthetic_transliteration_failure',
+  );
+
+  @override
+  Future<QuranTransliterationAyah> getAyah({
+    required int surahNumber,
+    required int ayahNumber,
+  }) async => _unavailable();
+
+  @override
+  Future<List<QuranTransliterationAyah>> getRange({
+    required int surahNumber,
+    required int startAyah,
+    required int endAyah,
+  }) async => _unavailable();
+
+  @override
+  Future<List<QuranTransliterationAyah>> getSurah(int surahNumber) async =>
+      _unavailable();
+
+  @override
+  Future<QuranTransliterationCorpus> load() async => _unavailable();
 }

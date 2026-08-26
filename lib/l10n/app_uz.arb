@@ -8,6 +8,8 @@
   "settingsTab": "Sozlamalar",
   "historyTitle": "Tarix",
   "recommendedTitle": "Tavsiya",
+  "recommendationRank": "Tavsiya {rank}",
+  "@recommendationRank": {"placeholders": {"rank": {"type": "int"}}},
   "activeSurahsTitle": "Faol suralar",
   "noActiveSurahs": "Yodlangan suralarni tanlang va aylanishga qo‘shing.",
   "contentUnavailableTitle": "Qur’on ma’lumotlari hali yuklanmagan",
@@ -118,8 +120,13 @@
   ,"arabicTextOfflineReady": "Tasdiqlangan Tanzil arabcha matni oflayn mavjud."
   ,"quranTranslation": "Qur’on tarjimasi"
   ,"chooseTranslation": "Sozlamalarda tarjimani tanlang"
-  ,"noRussianTranslations": "QuranEnc rasmiy API katalogida hozir ruscha tarjimalar qaytarilmayapti. Arabcha matn oflayn mavjud."
+  ,"noRussianTranslations": "QuranEnc’da hozir tekshirilgan ruscha tarjimalar mavjud emas. Arabcha matn oflayn mavjud."
   ,"translationCatalogError": "QuranEnc rasmiy tarjimalar ro‘yxatini yuklab bo‘lmadi."
+  ,"translationNoNetwork": "Tarmoq yo‘q. Avval yuklangan tarjimalar oflayn mavjud bo‘lib qoladi."
+  ,"translationSourceError": "Tarjima manbasi so‘rovni rad etdi. Keyinroq urinib ko‘ring."
+  ,"translationValidationFailed": "Manba javobi buzilgan yoki tekshiruvdan o‘tmadi. U saqlanmadi."
+  ,"translationCatalogFromCache": "Saqlangan oflayn katalog ko‘rsatilmoqda."
+  ,"translationRefreshFailedCached": "Manbani yangilab bo‘lmadi; saqlangan tasdiqlangan ma’lumotlar o‘zgarmadi."
   ,"translationNotSelected": "Tarjima tanlanmagan"
   ,"translationCachedOffline": "Tanlangan tarjima suralar ochilganda oflayn o‘qish uchun saqlanadi."
   ,"translationUnavailableOffline": "Bu oyat tarjimasi hali saqlanmagan. Tarjima fonda yuklanayotganda arabcha matn mavjud bo‘lib qoladi."
@@ -131,4 +138,65 @@
   ,"useTranslationVersion": "v{version} dan foydalanish"
   ,"@useTranslationVersion": {"placeholders": {"version": {"type": "String"}}}
   ,"tanzilTextMetadata": "Tanzil Project · Uthmani Quran Text v1.1 · CC BY 3.0"
+  ,"tanzilTransliterationMetadata": "Tanzil · English Transliteration · 2010-09-06 nusxasi · 6236 oyat"
+  ,"transliterationNonCommercialNotice": "Transliteratsiya to‘plami faqat notijorat foydalanishga ruxsat beradi; tijoriy production relizi uchun alohida ruxsat kerak."
+  ,"quranDisplayLayers": "Qur’on matni qatlamlari"
+  ,"showArabicText": "Arabcha matnni ko‘rsatish"
+  ,"showTransliteration": "Transliteratsiyani ko‘rsatish"
+  ,"showTranslation": "Tarjimani ko‘rsatish"
+  ,"transliterationSourceShort": "Lotincha transliteratsiya · Tanzil · oflayn"
+  ,"transliterationUnavailable": "Tasdiqlangan transliteratsiya mavjud emas."
+  ,"prayerTimesTitle": "Namoz vaqtlari"
+  ,"prayerRegion": "Hudud"
+  ,"selectPrayerRegion": "Hududni qo‘lda tanlang"
+  ,"useMyLocation": "Joylashuvimdan foydalanish"
+  ,"locationOptionalNotice": "Ixtiyoriy. Joylashuv faqat shu tugma bosilganda, fon ruxsatisiz so‘raladi."
+  ,"prayerContextMode": "Belgilash konteksti"
+  ,"prayerModeManual": "Qo‘lda"
+  ,"prayerModeAutomatic": "Avtomatik"
+  ,"automaticPrayerSafetyNotice": "Avtomatik tanlov faqat yangi va ishonchli jadval bilan ishlaydi. Quyosh chiqqandan Peshingacha qo‘lda tanlash kerak."
+  ,"allowCalculatedFallback": "Mahalliy hisoblashga ruxsat berish"
+  ,"calculatedFallbackNotice": "Bu OMI rasmiy jadvali emas, alohida hisoblangan manba. Standart: Karachi va Hanafi Asr."
+  ,"calculatedFallbackCoordinatesUnavailable": "Bu provider hududi uchun alohida tekshirilgan koordinatalar saqlanmagan, shuning uchun mahalliy hisoblash mavjud emas."
+  ,"calculationMethod": "Hisoblash usuli"
+  ,"asrHanafi": "Asr: Hanafi"
+  ,"asrStandard": "Asr: standart"
+  ,"manualMinuteAdjustments": "Daqiqalarda qo‘lda tuzatish"
+  ,"rawTimesPreserved": "Manbaning asl vaqti saqlanadi; tuzatilgan qiymat alohida ko‘rsatiladi."
+  ,"minuteAdjustment": "Tuzatish: {value} daq"
+  ,"@minuteAdjustment": {"placeholders": {"value": {"type": "int"}}}
+  ,"decreaseMinute": "Bir daqiqaga kamaytirish"
+  ,"increaseMinute": "Bir daqiqaga oshirish"
+  ,"locationCalculationEnabled": "Joylashuv mahalliy hisoblash uchun saqlandi."
+  ,"locationServicesDisabled": "Geolokatsiya o‘chirilgan. Hududni qo‘lda tanlang."
+  ,"locationDeniedChooseRegion": "Joylashuvga ruxsat berilmadi. Hududni qo‘lda tanlang."
+  ,"locationOutsideUzbekistan": "Bu nuqta uchun tasdiqlangan vaqt zonasi sozlamasi yo‘q. Hududni qo‘lda tanlang."
+  ,"locationFailedChooseRegion": "Joylashuvni olib bo‘lmadi. Hududni qo‘lda tanlang."
+  ,"prayerScheduleToday": "Bugungi jadval"
+  ,"sunrise": "Quyosh"
+  ,"prayerSource": "Manba"
+  ,"prayerUpdated": "Yangilangan"
+  ,"asrSchool": "Asr hisobi"
+  ,"timesManuallyAdjusted": "Vaqt qo‘lda tuzatildi; asl qiymatlar saqlandi."
+  ,"prayerOfflineCache": "Yangi oflayn kesh ishlatilmoqda."
+  ,"refreshPrayerSchedule": "Joriy va keyingi oyni yangilash"
+  ,"prayerStartsAt": "{start} dan"
+  ,"@prayerStartsAt": {"placeholders": {"start": {"type": "String"}}}
+  ,"prayerTimeRange": "{start}–{end}"
+  ,"@prayerTimeRange": {"placeholders": {"start": {"type": "String"}, "end": {"type": "String"}}}
+  ,"nextPrayerAt": "Keyingi: {prayer}, {time} da"
+  ,"@nextPrayerAt": {"placeholders": {"prayer": {"type": "String"}, "time": {"type": "String"}}}
+  ,"betweenPrayers": "Namozlar orasida"
+  ,"prayerScheduleStale": "Jadval eskirgan — avtomatik tanlov o‘chirilgan"
+  ,"prayerScheduleUnavailable": "Jadval mavjud emas — namozni qo‘lda tanlang"
+  ,"widgetManualPrayerContext": "Qo‘lda: {prayer} · Aylanish"
+  ,"@widgetManualPrayerContext": {"placeholders": {"prayer": {"type": "String"}}}
+  ,"widgetAutomaticPrayerContext": "{prayer} · Avto · Aylanish"
+  ,"@widgetAutomaticPrayerContext": {"placeholders": {"prayer": {"type": "String"}}}
+  ,"widgetAutomaticPrayerRange": "{prayer} · {start}–{end} · Aylanish"
+  ,"@widgetAutomaticPrayerRange": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}, "end": {"type": "String"}}}
+  ,"widgetAutomaticPrayerStart": "{prayer} · {start} dan · Aylanish"
+  ,"@widgetAutomaticPrayerStart": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}}}
+  ,"widgetSelectPrayerInApp": "Murajaah’da namozni tanlang"
+  ,"widgetActionNotCompleted": "Belgilab bo‘lmadi. Joriy ma’lumotlar tiklandi."
 }

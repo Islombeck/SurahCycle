@@ -1,16 +1,24 @@
-# Архитектура Murajaah — Sprint 2
+# Архитектура Murajaah — Sprint 4
 
-## Что добавлено в Sprint 2
+## Эволюция архитектуры
 
-Sprint 2 сохраняет local-first архитектуру Sprint 1 и расширяет её тремя независимыми слоями:
+Sprints 2–3 сохранили local-first архитектуру Sprint 1 и добавили
+версионируемое разбиение, event journal, проверенный Quran content и два
+Android widget. Sprint 4 расширяет те же границы, не меняя Drift schema v3:
 
 - домен ротации использует версионируемые `SurahRotationScheme` и `SurahRotationPart`; эффективное состояние суры выводится из минимального состояния её частей;
 - Drift v3 хранит неизменяемую схему, части и coverage каждого события отдельно от текущей проекции;
-- Android-виджеты получают только готовый versioned JSON snapshot через `home_widget`; Kotlin/Glance не открывает Drift и не повторяет доменные алгоритмы.
+- Arabic, transliteration и translation приходят через независимые проверяемые repository boundaries и связываются только по координатам аята;
+- prayer schedules разделены на published provider, local calculation, external cache и чистый Prayer Context resolver;
+- Android-виджеты получают готовый versioned JSON snapshot через `home_widget`; Kotlin/Glance не открывает Drift и не повторяет доменные алгоритмы, а интерактивный circle только транспортирует versioned action обратно в Dart.
 
 Одна пользовательская отметка создаёт один `RecitationEvent`, а выбранные части записываются отношением `recitation_event_parts` в той же транзакции. `rakaatSpanCount` описывает, на сколько ракаатов распространялось это действие, но не моделирует каждый ракаат отдельно. Смена разбиения создаёт новую схему; прежняя схема и coverage истории не переписываются.
 
-Все записи из UI проходят через application/repository boundary. Этот же поток обновляет Drift-проекцию, рекомендации и после commit планирует новый widget snapshot. Ошибка синхронизации виджета не откатывает корректное пользовательское событие.
+Все записи из UI и direct widget action проходят через один
+`RecitationApplicationService`/repository boundary. Этот же поток
+обновляет Drift-проекцию, рекомендации и после commit планирует новый widget
+snapshot. Ошибка синхронизации виджета не откатывает корректное пользовательское
+событие.
 
 ## Принципы
 
@@ -24,7 +32,13 @@ Sprint 2 сохраняет local-first архитектуру Sprint 1 и ра�
 
 ## Технологические границы
 
-Текущий стек: Flutter/Dart, Material 3, Riverpod, `go_router`, Drift/SQLite, Flutter localization, `home_widget` и Android Glance. Небольшой HTTP-клиент используется только внутри Quran provider. Новая зависимость добавляется, только если она сокращает риск или существенный объём собственного инфраструктурного кода.
+Текущий стек: Flutter/Dart, Material 3, Riverpod, `go_router`,
+Drift/SQLite, Flutter localization, `home_widget`, Android Glance,
+`adhan_dart` и `geolocator`. HTTP-клиенты существуют только
+в Quran и published prayer provider boundaries. Location service вызывается
+только после явного действия пользователя. Новая зависимость добавляется,
+только если она сокращает риск или существенный объём собственного
+инфраструктурного кода.
 
 Ориентир структуры:
 
@@ -40,6 +54,7 @@ lib/
     learning/          LearningStateMachine
     statistics/        запросы истории и статистики
     quran/             repository, providers и cache
+    prayer_times/      published/calculated schedules, cache и resolver
     settings/          настройки и ручная миграция баланса
 ```
 
@@ -114,7 +129,11 @@ Baseline первого включения хранится в `MasteredSurah.ac
 | `QuranWordCache` | surah/ayah/position, exact Arabic word, exact translation, source/version | будущий пословный режим |
 | `QuranSourceMetadata` | provider, translation key, version, language, fetchedAt, attribution, license/usage data | происхождение каждого набора контента |
 
-Контентные таблицы не имеют каскадного удаления пользовательских событий. Bundled Tanzil metadata v1.0 заполняет каталог, а pinned Tanzil Uthmani v1.1 читается напрямую из проверяемого asset и доступен offline без записи в cache. QuranEnc cache хранит только явно выбранный пользователем version-pinned перевод.
+Контентные таблицы не имеют каскадного удаления пользовательских событий.
+Bundled Tanzil metadata v1.0 заполняет каталог, а pinned Tanzil Uthmani v1.1
+и Tanzil `en.transliteration` читаются из независимо проверяемых
+assets и доступны offline без записи в Quran cache. QuranEnc cache хранит
+только явно выбранный пользователем version-pinned перевод.
 
 ## Инварианты домена
 
@@ -129,6 +148,11 @@ Baseline первого включения хранится в `MasteredSurah.ac
 - Coverage всегда относится к той же суре и той же версии схемы, что и событие.
 - Пользовательское удаление требует подтверждения; Undo последней регистрации восстанавливает полный pre-action snapshot.
 - Quran text, перевод и `ayahCount` принимаются только от проверенного provider без «улучшений».
+- Widget `actionToken` является UUID v4 и ID journal event; однажды
+  встреченный token, включая tombstone удалённого события, не применяется
+  повторно.
+- Automatic Prayer Context не создаётся из stale/missing schedule и не
+  подменяется молитвой по умолчанию.
 
 ## Prayer Context
 
@@ -146,13 +170,49 @@ Baseline первого включения хранится в `MasteredSurah.ac
 
 ## Quran provider boundary
 
-`QuranContentRepository` возвращает типизированные результаты и provenance metadata. Конкретные `QuranEncProvider`, `QuranAcademyProvider` или будущие adapters не видны UI и домену. Arabic/cache-first presentation не ждёт сеть; отдельный background warmup касается только выбранной Learning-карточки. При cache miss repository разрешает versionless QuranEnc sura endpoint только между двумя exact catalog checks и записывает результат лишь после проверки полного диапазона `1..ayahCount`. Сетевой сбой возвращается как явное состояние и никогда не подменяется тестовыми данными.
+`QuranContentRepository` возвращает типизированные результаты и
+provenance metadata. Arabic, transliteration и translation независимы.
+`QuranAyahLayers` объединяет их только по exact
+`surahNumber/ayahNumber` и display preferences.
 
-## Расширения вне Sprint 3
+QuranEnc adapter сначала читает документированный catalog. Пустой успешный RU
+catalog разрешает только audited
+`KnownOfficialQuranEncTranslations`. Каждый direct key обязан пройти
+runtime probe и pinned per-surah hash. Cache commit выполняется после проверки
+полного диапазона `1..ayahCount`; предыдущий verified cache переживает
+сетевую ошибку. HTML scraping, private endpoints и generated Quran strings
+запрещены.
+
+## Prayer-time boundary
+
+Published `NamozVaqtiUzPrayerTimeProvider`, disposable external month
+cache и `AdhanPrayerTimeCalculator` не знают о Drift events.
+`PrayerScheduleCoordinator` предпочитает опубликованный месяц и
+переходит к честно маркированному расчёту только при пользовательском opt-in.
+Raw и effective adjusted times хранятся раздельно.
+
+`PrayerContextResolver` — чистый consumer schedule, mode и
+`TimeProvider`. Sunrise остаётся gap. Витр, Нафль и каза не выводятся
+автоматически. Stale/future/mismatched schedule даёт null context и отключает
+direct mark. Детали: [PRAYER_TIME_ARCHITECTURE.md](PRAYER_TIME_ARCHITECTURE.md).
+
+## Interactive widget boundary
+
+Snapshot schema 3 содержит display-ready rows и необязательные action schema 1.
+Kotlin валидирует и передаёт action официальному home_widget background
+receiver. Headless Dart заново проверяет текущую схему, часть, active state и
+Prayer Context, затем вызывает тот же `RecitationApplicationService`.
+На tap нет HTTP. После любого outcome snapshot перестраивается из базы; database
+закрывается только после awaited transaction/refresh. Детали:
+[INTERACTIVE_ANDROID_WIDGET.md](INTERACTIVE_ANDROID_WIDGET.md).
+
+## Расширения вне Sprint 4
 
 - `RecitationRuleService` — точка подключения будущих подтверждённых правил; сейчас разрешает любой выбор.
 - интерфейс export/sync отделён от Drift DAO, чтобы позже передавать пользовательские события серверу;
-- Prayer Context допускает источник «выбран вручную» или будущий «предложен расчётом», но геолокации и расчёта сейчас нет;
+- notification/audio/qibla и дополнительная религиозная логика требуют
+  отдельного product/source review;
+- iOS WidgetKit и iOS location QA вынесены в отдельный sprint;
 - backend adapter будет добавлен рядом с локальным repository, не вместо него.
 
 ## Безопасность и приватность
@@ -160,7 +220,9 @@ Baseline первого включения хранится в `MasteredSurah.ac
 - секреты поставщиков, keystore, Apple certificates и credential-файлы не входят в репозиторий или APK/IPA;
 - API, требующий client secret, в будущем вызывается только через backend proxy;
 - запрещены scraping HTML и неофициальные private endpoints;
-- пользовательские события не отправляются наружу в Sprint 3;
+- пользовательские события не отправляются наружу в Sprint 4;
+- координаты запрашиваются только по явному tap, не сохраняются как
+  background-location history и не отправляются Namoz-vaqti.uz;
 - в логах не должны появляться полная история пользователя, токены или полный payload Quran API;
 - входящие данные provider валидируются по типам, номерам сур/аятов и версии до помещения в cache, но сам религиозный текст не нормализуется;
 - экспорт/backup в будущем является явным действием пользователя и не включает Quran cache по умолчанию;

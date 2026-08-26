@@ -1,4 +1,5 @@
 import '../domain/suggestion.dart';
+import '../application/widget_recitation_action.dart';
 import 'widget_deep_link.dart';
 import 'widget_snapshot.dart';
 
@@ -28,6 +29,7 @@ final class RotationWidgetCandidate {
     int? recommendationRank,
     required int displayOrder,
     DateTime? lastUsedAtUtc,
+    WidgetRecitationAction? action,
   }) => RotationWidgetCandidate._validated(
     id: id,
     surahId: surahId,
@@ -43,6 +45,7 @@ final class RotationWidgetCandidate {
     recommendationRank: recommendationRank,
     displayOrder: displayOrder,
     lastUsedAtUtc: lastUsedAtUtc,
+    action: action,
   );
 
   factory RotationWidgetCandidate.part({
@@ -59,6 +62,7 @@ final class RotationWidgetCandidate {
     int? recommendationRank,
     required int displayOrder,
     DateTime? lastUsedAtUtc,
+    WidgetRecitationAction? action,
   }) => RotationWidgetCandidate._validated(
     id: id,
     surahId: surahId,
@@ -74,6 +78,7 @@ final class RotationWidgetCandidate {
     recommendationRank: recommendationRank,
     displayOrder: displayOrder,
     lastUsedAtUtc: lastUsedAtUtc,
+    action: action,
   );
 
   factory RotationWidgetCandidate._validated({
@@ -91,6 +96,7 @@ final class RotationWidgetCandidate {
     required int? recommendationRank,
     required int displayOrder,
     required DateTime? lastUsedAtUtc,
+    required WidgetRecitationAction? action,
   }) {
     if (id.isEmpty || surahId.isEmpty || displayName.isEmpty) {
       throw ArgumentError(
@@ -128,6 +134,14 @@ final class RotationWidgetCandidate {
         endAyah < startAyah) {
       throw ArgumentError('Invalid part metadata.');
     }
+    if (action != null &&
+        (action.surahId != surahId || action.partId != partId)) {
+      throw ArgumentError.value(
+        action,
+        'action',
+        'Must target the candidate surah and part.',
+      );
+    }
     return RotationWidgetCandidate._(
       id: id,
       surahId: surahId,
@@ -143,6 +157,7 @@ final class RotationWidgetCandidate {
       recommendationRank: recommendationRank,
       displayOrder: displayOrder,
       lastUsedAtUtc: lastUsedAtUtc,
+      action: action,
     );
   }
 
@@ -161,6 +176,7 @@ final class RotationWidgetCandidate {
     required this.recommendationRank,
     required this.displayOrder,
     required this.lastUsedAtUtc,
+    required this.action,
   });
 
   final String id;
@@ -177,6 +193,7 @@ final class RotationWidgetCandidate {
   final int? recommendationRank;
   final int displayOrder;
   final DateTime? lastUsedAtUtc;
+  final WidgetRecitationAction? action;
 }
 
 final class LearningWidgetCandidate {
@@ -187,13 +204,32 @@ final class LearningWidgetCandidate {
     required String stageLabel,
     required int startAyah,
     required int endAyah,
-    Iterable<String> verifiedTextLines = const <String>[],
+    Iterable<LearningWidgetAyahLine> ayahLines =
+        const <LearningWidgetAyahLine>[],
+    bool showArabic = true,
+    bool showTransliteration = true,
+    bool showTranslation = true,
   }) {
     if (surahId.isEmpty || displayName.isEmpty || stageLabel.isEmpty) {
       throw ArgumentError('Learning widget fields must not be empty.');
     }
     if (surahNumber <= 0 || startAyah <= 0 || endAyah < startAyah) {
       throw ArgumentError('Invalid learning ayah range.');
+    }
+    final lines = List<LearningWidgetAyahLine>.unmodifiable(ayahLines);
+    var previousAyah = 0;
+    for (final line in lines) {
+      if (line.surahNumber != surahNumber ||
+          line.ayahNumber < startAyah ||
+          line.ayahNumber > endAyah ||
+          line.ayahNumber <= previousAyah) {
+        throw ArgumentError.value(
+          line,
+          'ayahLines',
+          'Coordinates must match the candidate and be strictly ordered.',
+        );
+      }
+      previousAyah = line.ayahNumber;
     }
     return LearningWidgetCandidate._(
       surahId: surahId,
@@ -202,7 +238,10 @@ final class LearningWidgetCandidate {
       stageLabel: stageLabel,
       startAyah: startAyah,
       endAyah: endAyah,
-      verifiedTextLines: List<String>.unmodifiable(verifiedTextLines),
+      ayahLines: lines,
+      showArabic: showArabic,
+      showTransliteration: showTransliteration,
+      showTranslation: showTranslation,
     );
   }
 
@@ -213,7 +252,10 @@ final class LearningWidgetCandidate {
     required this.stageLabel,
     required this.startAyah,
     required this.endAyah,
-    required this.verifiedTextLines,
+    required this.ayahLines,
+    required this.showArabic,
+    required this.showTransliteration,
+    required this.showTranslation,
   });
 
   final String surahId;
@@ -223,9 +265,12 @@ final class LearningWidgetCandidate {
   final int startAyah;
   final int endAyah;
 
-  /// Must originate from the verified Quran cache boundary. It is forwarded
-  /// byte-for-byte as Dart strings; the builder never generates Quran text.
-  final List<String> verifiedTextLines;
+  /// Must originate from verified Quran repository boundaries. The builder
+  /// never generates, trims, normalizes, or independently zips content layers.
+  final List<LearningWidgetAyahLine> ayahLines;
+  final bool showArabic;
+  final bool showTransliteration;
+  final bool showTranslation;
 }
 
 final class WidgetProjectionBuilder {
@@ -238,16 +283,24 @@ final class WidgetProjectionBuilder {
     required String locale,
     required Iterable<RotationWidgetCandidate> rotationCandidates,
     LearningWidgetCandidate? learningCandidate,
+    String rotationContextLabel = 'Rotation',
+    String? rotationStatusMessage,
   }) => WidgetSnapshot(
     generatedAtUtc: generatedAtUtc,
     locale: locale,
-    rotation: buildRotation(rotationCandidates),
+    rotation: buildRotation(
+      rotationCandidates,
+      contextLabel: rotationContextLabel,
+      statusMessage: rotationStatusMessage,
+    ),
     learning: buildLearning(learningCandidate),
   );
 
   RotationWidgetProjection buildRotation(
-    Iterable<RotationWidgetCandidate> candidates,
-  ) {
+    Iterable<RotationWidgetCandidate> candidates, {
+    String contextLabel = 'Rotation',
+    String? statusMessage,
+  }) {
     final due =
         candidates
             .where((candidate) => candidate.remaining > 0)
@@ -259,18 +312,18 @@ final class WidgetProjectionBuilder {
       omittedCount: due.length > maxRotationWidgetItems
           ? due.length - maxRotationWidgetItems
           : 0,
+      contextLabel: contextLabel,
+      statusMessage: statusMessage,
     );
   }
 
   LearningWidgetProjection buildLearning(LearningWidgetCandidate? candidate) {
     if (candidate == null) return const LearningWidgetProjection.empty();
-    final verifiedLines =
-        candidate.verifiedTextLines.length <= maxLearningWidgetTextLines
-        ? candidate.verifiedTextLines
-        : candidate.verifiedTextLines
-              .skip(
-                candidate.verifiedTextLines.length - maxLearningWidgetTextLines,
-              )
+    final visibleLines =
+        candidate.ayahLines.length <= maxLearningWidgetAyahLines
+        ? candidate.ayahLines
+        : candidate.ayahLines
+              .skip(candidate.ayahLines.length - maxLearningWidgetAyahLines)
               .toList(growable: false);
     final rangeLabel = candidate.startAyah == candidate.endAyah
         ? '${labels.ayah} ${candidate.startAyah}'
@@ -278,11 +331,17 @@ final class WidgetProjectionBuilder {
     return LearningWidgetProjection.selected(
       LearningWidgetItem(
         surahId: candidate.surahId,
+        surahNumber: candidate.surahNumber,
+        startAyah: candidate.startAyah,
+        endAyah: candidate.endAyah,
         title: '${candidate.surahNumber}. ${candidate.displayName}',
         stageLabel: candidate.stageLabel,
         rangeLabel: rangeLabel,
         unavailableTextLabel: labels.openAppToLoadText,
-        verifiedTextLines: verifiedLines,
+        ayahLines: visibleLines,
+        showArabic: candidate.showArabic,
+        showTransliteration: candidate.showTransliteration,
+        showTranslation: candidate.showTranslation,
         deepLink: WidgetLearningDeepLink(candidate.surahId).uri,
       ),
     );
@@ -308,6 +367,7 @@ final class WidgetProjectionBuilder {
         surahId: candidate.surahId,
         partId: candidate.partId,
       ).uri,
+      action: candidate.action,
     );
   }
 

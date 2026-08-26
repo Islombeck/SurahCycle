@@ -8,8 +8,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.Image
+import androidx.glance.ImageProvider
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
@@ -24,6 +30,7 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -33,6 +40,7 @@ import dev.murajaah.murajaah.R
 import es.antonborri.home_widget.HomeWidgetGlanceState
 import es.antonborri.home_widget.HomeWidgetGlanceStateDefinition
 import es.antonborri.home_widget.HomeWidgetGlanceWidgetReceiver
+import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import es.antonborri.home_widget.actionStartActivity
 
 class RotationWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
@@ -87,10 +95,19 @@ class RotationWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                         maxLines = 1,
                     )
                     Text(
-                        context.getString(R.string.rotation_widget_subtitle),
+                        snapshot?.rotation?.contextLabel
+                            ?: context.getString(R.string.rotation_widget_subtitle),
                         style = TextStyle(fontSize = 12.sp),
                         maxLines = 1,
                     )
+                    snapshot?.rotation?.statusMessage?.let { statusMessage ->
+                        Spacer(GlanceModifier.height(2.dp))
+                        Text(
+                            statusMessage,
+                            style = TextStyle(fontSize = 11.sp),
+                            maxLines = 2,
+                        )
+                    }
                 }
             }
 
@@ -138,7 +155,9 @@ class RotationWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
     @Composable
     private fun RotationRow(context: Context, item: NativeRotationItem) {
         val rowAction = actionStartActivity<MainActivity>(context, item.deepLink)
-        Column(
+        val homeAction =
+            actionStartActivity<MainActivity>(context, Uri.parse("murajaah://app/home"))
+        Row(
             modifier =
                 GlanceModifier.fillMaxWidth()
                     .background(
@@ -149,42 +168,65 @@ class RotationWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                         }
                     )
                     .cornerRadius(14.dp)
-                    .clickable(rowAction)
-                    .padding(horizontal = 10.dp, vertical = 9.dp)
+                    .padding(horizontal = 9.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.Vertical.CenterVertically,
         ) {
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Vertical.CenterVertically,
+            val markAction =
+                item.action?.let { action ->
+                    actionRunCallback<RotationWidgetMarkAction>(
+                        actionParametersOf(rotationActionUriKey to action.uri.toString())
+                    )
+                } ?: homeAction
+            Image(
+                provider = ImageProvider(R.drawable.ic_widget_mark),
+                contentDescription =
+                    context.getString(
+                        if (item.action == null) {
+                            R.string.widget_open_app
+                        } else {
+                            R.string.widget_mark_recitation
+                        }
+                    ),
+                modifier = GlanceModifier.size(30.dp).clickable(markAction),
+            )
+            Spacer(GlanceModifier.width(9.dp))
+            Column(
+                modifier = GlanceModifier.defaultWeight().clickable(rowAction)
             ) {
-                item.recommendationRank?.let { recommendationRank ->
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Vertical.CenterVertically,
+                ) {
+                    item.recommendationRank?.let { recommendationRank ->
+                        Text(
+                            context.getString(
+                                R.string.widget_recommendation_rank,
+                                recommendationRank + 1,
+                            ),
+                            style = TextStyle(fontSize = 12.sp),
+                            maxLines = 1,
+                        )
+                        Spacer(GlanceModifier.width(7.dp))
+                    }
                     Text(
-                        context.getString(
-                            R.string.widget_recommendation_rank,
-                            recommendationRank + 1,
-                        ),
-                        style = TextStyle(fontSize = 12.sp),
+                        item.title,
+                        modifier = GlanceModifier.defaultWeight(),
+                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Medium),
                         maxLines = 1,
                     )
-                    Spacer(GlanceModifier.width(7.dp))
+                    if (item.debtLabel.isNotEmpty()) {
+                        Spacer(GlanceModifier.width(8.dp))
+                        Text(
+                            item.debtLabel,
+                            style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                            maxLines = 1,
+                        )
+                    }
                 }
-                Text(
-                    item.title,
-                    modifier = GlanceModifier.defaultWeight(),
-                    style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Medium),
-                    maxLines = 1,
-                )
-                if (item.debtLabel.isNotEmpty()) {
-                    Spacer(GlanceModifier.width(8.dp))
-                    Text(
-                        item.debtLabel,
-                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold),
-                        maxLines = 1,
-                    )
+                item.subtitle?.let { subtitle ->
+                    Spacer(GlanceModifier.height(2.dp))
+                    Text(subtitle, style = TextStyle(fontSize = 12.sp), maxLines = 2)
                 }
-            }
-            item.subtitle?.let { subtitle ->
-                Spacer(GlanceModifier.height(2.dp))
-                Text(subtitle, style = TextStyle(fontSize = 12.sp), maxLines = 2)
             }
         }
         Spacer(GlanceModifier.height(4.dp))
@@ -206,4 +248,17 @@ class RotationWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
 
 class RotationWidgetReceiver : HomeWidgetGlanceWidgetReceiver<RotationWidget>() {
     override val glanceAppWidget = RotationWidget()
+}
+
+private val rotationActionUriKey = ActionParameters.Key<String>("rotationActionUri")
+
+class RotationWidgetMarkAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        val actionUri = parameters[rotationActionUriKey] ?: return
+        HomeWidgetBackgroundIntent.getBroadcast(context, Uri.parse(actionUri)).send()
+    }
 }
