@@ -25,3 +25,23 @@ extension PrayerContextLocalization on PrayerContext {
     return isQada ? '$prayer · ${l10n.qada}' : prayer;
   }
 }
+
+extension LearningStageLocalization on LearningStage {
+  String label(AppLocalizations l10n) => switch (kind) {
+    LearningStageKind.newAyah => l10n.newAyah(ayahNumber),
+    LearningStageKind.cumulative when startAyah == 1 => l10n.cumulativeRange(
+      endAyah,
+    ),
+    LearningStageKind.cumulative || LearningStageKind.reviewRange =>
+      l10n.learningReviewRange(startAyah, endAyah),
+    LearningStageKind.bridge => l10n.learningBridgeRange(startAyah, endAyah),
+    LearningStageKind.sectionReview => l10n.learningSectionReview(
+      startAyah,
+      endAyah,
+    ),
+    LearningStageKind.finalReview => l10n.learningFinalReview(
+      startAyah,
+      endAyah,
+    ),
+  };
+}

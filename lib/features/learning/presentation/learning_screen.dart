@@ -115,6 +115,10 @@ final class _LearningScreenState extends ConsumerState<LearningScreen> {
                                   state,
                                   descriptors[state.surahId],
                                 ),
+                                onChangePlan: () => _changePlan(
+                                  state,
+                                  descriptors[state.surahId],
+                                ),
                               ),
                             ),
                         ],
@@ -147,10 +151,14 @@ final class _LearningScreenState extends ConsumerState<LearningScreen> {
     List<CatalogSurah> catalog,
     List<LearningSurahState> learning,
   ) async {
-    final learningIds = learning.map((item) => item.surahId).toSet();
+    final learningBySurahId = <String, LearningSurahState>{
+      for (final item in learning) item.surahId: item,
+    };
     final candidates = catalog
         .where(
-          (item) => !item.isMastered && !learningIds.contains(item.surah.id),
+          (item) =>
+              !item.isMastered &&
+              (learningBySurahId[item.surah.id]?.isCompleted ?? true),
         )
         .toList(growable: false);
     if (candidates.isEmpty) {
@@ -202,12 +210,64 @@ final class _LearningScreenState extends ConsumerState<LearningScreen> {
       ),
     );
     if (selected != null) {
-      await ref.read(appActionsProvider).startLearning(selected);
+      if (!mounted) return;
+      final plan = await _showLearningPlanEditor(
+        selected,
+        initialPlan: learningBySurahId[selected.id]?.plan,
+      );
+      if (plan == null) return;
+      await ref.read(appActionsProvider).startLearning(selected, plan: plan);
       await ref
           .read(selectedLearningSurahProvider.notifier)
           .select(selected.id);
     }
   }
+
+  Future<void> _changePlan(
+    LearningSurahState state,
+    SurahDescriptor? descriptor,
+  ) async {
+    if (descriptor == null) return;
+    final plan = await _showLearningPlanEditor(
+      descriptor,
+      initialPlan: state.plan,
+    );
+    if (plan == null || plan == state.plan || !mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.confirmPlanChangeTitle),
+        content: Text(context.l10n.confirmPlanChangeBody),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(context.l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    if (!(confirmed ?? false)) return;
+    await _guard(state.id, () async {
+      await ref
+          .read(appActionsProvider)
+          .changeLearningPlan(state: state, plan: plan);
+    });
+  }
+
+  Future<LearningPlan?> _showLearningPlanEditor(
+    SurahDescriptor surah, {
+    LearningPlan? initialPlan,
+  }) => showModalBottomSheet<LearningPlan>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (context) =>
+        _LearningPlanSheet(surah: surah, initialPlan: initialPlan),
+  );
 
   Future<void> _markRepeated(LearningSurahState state) async {
     await _guard(state.id, () async {
@@ -222,24 +282,42 @@ final class _LearningScreenState extends ConsumerState<LearningScreen> {
     await _guard(state.id, () async {
       final outcome = await ref.read(appActionsProvider).markLearned(state);
       if (!outcome.completionRequired || descriptor == null || !mounted) return;
-      final accepted = await showDialog<bool>(
+      final choice = await showDialog<_LearningCompletionChoice>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text(context.l10n.learningCompletedTitle),
+          title: Text(
+            outcome.state.isFullSurahTarget
+                ? context.l10n.learningCompletedTitle
+                : context.l10n.rangeCompletedTitle,
+          ),
           content: Text(
-            descriptor.isRotationEligible
-                ? context.l10n.learningCompletedBody
+            !outcome.state.isFullSurahTarget
+                ? context.l10n.rangeCompletedBody
+                : descriptor.isRotationEligible
+                ? context.l10n.addToRotationQuestion
                 : context.l10n.fatihaRotationExcluded,
           ),
           actions: <Widget>[
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => Navigator.of(context).pop(),
               child: Text(context.l10n.cancel),
             ),
+            if (outcome.state.isFullSurahTarget &&
+                descriptor.isRotationEligible)
+              TextButton(
+                onPressed: () => Navigator.of(
+                  context,
+                ).pop(_LearningCompletionChoice.completeOnly),
+                child: Text(context.l10n.completeWithoutRotation),
+              ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () => Navigator.of(context).pop(
+                outcome.state.isFullSurahTarget && descriptor.isRotationEligible
+                    ? _LearningCompletionChoice.addToRotation
+                    : _LearningCompletionChoice.completeOnly,
+              ),
               child: Text(
-                descriptor.isRotationEligible
+                outcome.state.isFullSurahTarget && descriptor.isRotationEligible
                     ? context.l10n.completeAndAdd
                     : context.l10n.completeLearningOnly,
               ),
@@ -247,10 +325,14 @@ final class _LearningScreenState extends ConsumerState<LearningScreen> {
           ],
         ),
       );
-      if (accepted ?? false) {
+      if (choice != null) {
         await ref
             .read(appActionsProvider)
-            .completeLearning(state: outcome.state, surah: descriptor);
+            .completeLearning(
+              state: outcome.state,
+              surah: descriptor,
+              addToRotation: choice == _LearningCompletionChoice.addToRotation,
+            );
         await ref.read(selectedLearningSurahProvider.notifier).select(null);
       }
     });
@@ -282,6 +364,7 @@ final class _LearningCard extends ConsumerWidget {
     required this.onSelect,
     required this.onRepeated,
     required this.onLearned,
+    required this.onChangePlan,
   });
 
   final LearningSurahState state;
@@ -291,15 +374,14 @@ final class _LearningCard extends ConsumerWidget {
   final VoidCallback onSelect;
   final VoidCallback onRepeated;
   final VoidCallback onLearned;
+  final VoidCallback onChangePlan;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final displayPreferences =
         ref.watch(quranDisplayPreferencesProvider).valueOrNull ??
         QuranDisplayPreferences.defaults;
-    final stage = state.stage.kind == LearningStageKind.newAyah
-        ? context.l10n.newAyah(state.stage.ayahNumber)
-        : context.l10n.cumulativeRange(state.stage.endAyah);
+    final stage = state.stage.label(context.l10n);
     final reading = descriptor == null
         ? null
         : ref.watch(
@@ -338,16 +420,26 @@ final class _LearningCard extends ConsumerWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 else
-                  IconButton(
-                    tooltip: isSelected
-                        ? context.l10n.currentLearning
-                        : context.l10n.showOnHome,
-                    onPressed: onSelect,
-                    icon: Icon(
-                      isSelected
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      IconButton(
+                        tooltip: context.l10n.changeLearningPlan,
+                        onPressed: onChangePlan,
+                        icon: const Icon(Icons.tune),
+                      ),
+                      IconButton(
+                        tooltip: isSelected
+                            ? context.l10n.currentLearning
+                            : context.l10n.showOnHome,
+                        onPressed: onSelect,
+                        icon: Icon(
+                          isSelected
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                        ),
+                      ),
+                    ],
                   ),
               ],
             ),
@@ -492,6 +584,230 @@ final class _EmptyLearning extends StatelessWidget {
               label: Text(context.l10n.startLearning),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _LearningCompletionChoice { completeOnly, addToRotation }
+
+final class _LearningPlanSheet extends StatefulWidget {
+  const _LearningPlanSheet({required this.surah, this.initialPlan});
+
+  final SurahDescriptor surah;
+  final LearningPlan? initialPlan;
+
+  @override
+  State<_LearningPlanSheet> createState() => _LearningPlanSheetState();
+}
+
+final class _LearningPlanSheetState extends State<_LearningPlanSheet> {
+  static const _presets = <int>[3, 5, 7, 10];
+
+  late LearningPlanKind _kind;
+  late int _startAyah;
+  late int _endAyah;
+  late int _blockSize;
+  late bool _customBlockSize;
+  late final TextEditingController _customBlockController;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialPlan;
+    _kind = initial?.kind ?? LearningPlanKind.classicCumulative;
+    _startAyah = initial?.targetStartAyah ?? 1;
+    _endAyah = initial?.targetEndAyah ?? widget.surah.ayahCount;
+    _blockSize = initial?.blockSize ?? 5;
+    _customBlockSize = !_presets.contains(_blockSize);
+    _customBlockController = TextEditingController(text: '$_blockSize');
+  }
+
+  @override
+  void dispose() {
+    _customBlockController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final customValue = int.tryParse(_customBlockController.text.trim());
+    final canSubmit =
+        _startAyah <= _endAyah &&
+        (_kind == LearningPlanKind.classicCumulative ||
+            (!_customBlockSize || (customValue != null && customValue > 0)));
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                widget.surah.displayName,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                context.l10n.learningHow,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              SegmentedButton<LearningPlanKind>(
+                segments: <ButtonSegment<LearningPlanKind>>[
+                  ButtonSegment<LearningPlanKind>(
+                    value: LearningPlanKind.classicCumulative,
+                    icon: const Icon(Icons.timeline),
+                    label: Text(context.l10n.learningClassic),
+                  ),
+                  ButtonSegment<LearningPlanKind>(
+                    value: LearningPlanKind.chunked,
+                    icon: const Icon(Icons.view_week_outlined),
+                    label: Text(context.l10n.learningChunked),
+                  ),
+                ],
+                selected: <LearningPlanKind>{_kind},
+                onSelectionChanged: (value) {
+                  setState(() => _kind = value.single);
+                },
+              ),
+              if (widget.surah.ayahCount >= 20) ...<Widget>[
+                const SizedBox(height: 8),
+                Text(
+                  context.l10n.learningChunkedRecommended,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+              const SizedBox(height: 20),
+              Text(
+                context.l10n.learningTargetRange,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _startAyah,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: context.l10n.learningTargetStart,
+                      ),
+                      items: <DropdownMenuItem<int>>[
+                        for (
+                          var ayah = 1;
+                          ayah <= widget.surah.ayahCount;
+                          ayah += 1
+                        )
+                          DropdownMenuItem<int>(
+                            value: ayah,
+                            child: Text('$ayah'),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _startAyah = value;
+                          if (_endAyah < value) _endAyah = value;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      key: ValueKey<String>('learning-end-$_startAyah'),
+                      initialValue: _endAyah,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: context.l10n.learningTargetEnd,
+                      ),
+                      items: <DropdownMenuItem<int>>[
+                        for (
+                          var ayah = _startAyah;
+                          ayah <= widget.surah.ayahCount;
+                          ayah += 1
+                        )
+                          DropdownMenuItem<int>(
+                            value: ayah,
+                            child: Text('$ayah'),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) setState(() => _endAyah = value);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              if (_kind == LearningPlanKind.chunked) ...<Widget>[
+                const SizedBox(height: 20),
+                Text(
+                  context.l10n.learningBlockSize,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    for (final preset in _presets)
+                      ChoiceChip(
+                        label: Text(context.l10n.ayahCount(preset)),
+                        selected: !_customBlockSize && _blockSize == preset,
+                        onSelected: (_) {
+                          setState(() {
+                            _blockSize = preset;
+                            _customBlockSize = false;
+                          });
+                        },
+                      ),
+                    ChoiceChip(
+                      label: Text(context.l10n.learningCustomBlockSize),
+                      selected: _customBlockSize,
+                      onSelected: (_) {
+                        setState(() => _customBlockSize = true);
+                      },
+                    ),
+                  ],
+                ),
+                if (_customBlockSize) ...<Widget>[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _customBlockController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.learningBlockSize,
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ],
+              ],
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: canSubmit
+                    ? () {
+                        final plan = _kind == LearningPlanKind.classicCumulative
+                            ? LearningPlan.classicCumulative(
+                                targetStartAyah: _startAyah,
+                                targetEndAyah: _endAyah,
+                              )
+                            : LearningPlan.chunked(
+                                targetStartAyah: _startAyah,
+                                targetEndAyah: _endAyah,
+                                blockSize: _customBlockSize
+                                    ? customValue!
+                                    : _blockSize,
+                              );
+                        Navigator.of(context).pop(plan);
+                      }
+                    : null,
+                child: Text(context.l10n.confirm),
+              ),
+            ],
+          ),
         ),
       ),
     );

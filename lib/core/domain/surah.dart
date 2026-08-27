@@ -95,6 +95,7 @@ final class SurahDescriptor {
 final class MasteredSurah {
   factory MasteredSurah({
     required SurahDescriptor surah,
+    bool isCurrentlyMastered = true,
     bool isActive = false,
     bool hasEnteredRotation = false,
     int? totalRecitations,
@@ -103,6 +104,11 @@ final class MasteredSurah {
     DateTime? lastUsedAtUtc,
     SurahRotationScheme? rotationScheme,
   }) {
+    if (!isCurrentlyMastered && isActive) {
+      throw ArgumentError(
+        'A surah that is not currently mastered cannot be active.',
+      );
+    }
     if (isActive && !hasEnteredRotation) {
       throw ArgumentError(
         'An active surah must already have entered the rotation.',
@@ -176,6 +182,7 @@ final class MasteredSurah {
     }
     return MasteredSurah._(
       surah: surah,
+      isCurrentlyMastered: isCurrentlyMastered,
       isActive: isActive,
       hasEnteredRotation: hasEnteredRotation,
       displayOrder: displayOrder,
@@ -185,6 +192,7 @@ final class MasteredSurah {
 
   const MasteredSurah._({
     required this.surah,
+    required this.isCurrentlyMastered,
     required this.isActive,
     required this.hasEnteredRotation,
     required this.displayOrder,
@@ -192,6 +200,7 @@ final class MasteredSurah {
   });
 
   final SurahDescriptor surah;
+  final bool isCurrentlyMastered;
   final bool isActive;
   final bool hasEnteredRotation;
   final int displayOrder;
@@ -204,6 +213,7 @@ final class MasteredSurah {
 
   MasteredSurah copyWith({
     SurahDescriptor? surah,
+    bool? isCurrentlyMastered,
     bool? isActive,
     bool? hasEnteredRotation,
     int? totalRecitations,
@@ -244,6 +254,7 @@ final class MasteredSurah {
     }
     return MasteredSurah(
       surah: surah ?? this.surah,
+      isCurrentlyMastered: isCurrentlyMastered ?? this.isCurrentlyMastered,
       isActive: isActive ?? this.isActive,
       hasEnteredRotation: hasEnteredRotation ?? this.hasEnteredRotation,
       displayOrder: displayOrder ?? this.displayOrder,
@@ -256,6 +267,7 @@ final class MasteredSurah {
       identical(this, other) ||
       other is MasteredSurah &&
           surah == other.surah &&
+          isCurrentlyMastered == other.isCurrentlyMastered &&
           isActive == other.isActive &&
           hasEnteredRotation == other.hasEnteredRotation &&
           displayOrder == other.displayOrder &&
@@ -264,6 +276,7 @@ final class MasteredSurah {
   @override
   int get hashCode => Object.hash(
     surah,
+    isCurrentlyMastered,
     isActive,
     hasEnteredRotation,
     displayOrder,

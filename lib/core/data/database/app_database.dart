@@ -33,6 +33,8 @@ class MasteredSurahs extends Table {
 
   TextColumn get surahId =>
       text().references(SurahMetadata, #id, onDelete: KeyAction.restrict)();
+  BoolColumn get isCurrentlyMastered =>
+      boolean().withDefault(const Constant<bool>(true))();
   BoolColumn get isActive =>
       boolean().withDefault(const Constant<bool>(false))();
   BoolColumn get hasEnteredRotation =>
@@ -56,6 +58,7 @@ class MasteredSurahs extends Table {
     'CHECK (cached_rotation_score >= 0)',
     'CHECK (cached_total_recitations >= 0)',
     'CHECK (has_entered_rotation = 1 OR is_active = 0)',
+    'CHECK (is_currently_mastered = 1 OR is_active = 0)',
   ];
 }
 
@@ -100,6 +103,8 @@ class RotationSchemes extends Table {
   IntColumn get baselineScore => integer()();
   IntColumn get baselineTotalRecitations => integer()();
   DateTimeColumn get baselineLastUsedAtUtc => dateTime().nullable()();
+  BoolColumn get resetsRotationBaseline =>
+      boolean().withDefault(const Constant<bool>(false))();
   IntColumn get activatedJournalSequence => integer()();
   IntColumn get supersededJournalSequence => integer().nullable()();
 
@@ -294,8 +299,16 @@ class LearningSurahs extends Table {
     onDelete: KeyAction.restrict,
   )();
   IntColumn get ayahCount => integer()();
+  TextColumn get planKind =>
+      text().withDefault(const Constant<String>('classicCumulative'))();
   TextColumn get stageKind => text()();
+  IntColumn get stageStartAyah => integer()();
   IntColumn get stageEndAyah => integer()();
+  IntColumn get targetStartAyah => integer()();
+  IntColumn get targetEndAyah => integer()();
+  IntColumn get blockSize => integer().nullable()();
+  IntColumn get learningCycle =>
+      integer().withDefault(const Constant<int>(1))();
   TextColumn get status => text()();
   DateTimeColumn get lastLearningActivityAtUtc => dateTime().nullable()();
   DateTimeColumn get inactivityRollbackForActivityAtUtc =>
@@ -307,8 +320,19 @@ class LearningSurahs extends Table {
   @override
   List<String> get customConstraints => <String>[
     'CHECK (ayah_count > 0)',
-    'CHECK (stage_end_ayah > 0 AND stage_end_ayah <= ayah_count)',
-    "CHECK (stage_kind IN ('newAyah', 'cumulative'))",
+    'CHECK (target_start_ayah > 0 AND '
+        'target_end_ayah >= target_start_ayah AND '
+        'target_end_ayah <= ayah_count)',
+    'CHECK (stage_start_ayah >= target_start_ayah AND '
+        'stage_end_ayah >= stage_start_ayah AND '
+        'stage_end_ayah <= target_end_ayah)',
+    "CHECK (plan_kind IN ('classicCumulative', 'chunked'))",
+    "CHECK (stage_kind IN ('newAyah', 'cumulative', 'reviewRange', "
+        "'bridge', 'sectionReview', 'finalReview'))",
+    'CHECK (block_size IS NULL OR block_size > 0)',
+    "CHECK (plan_kind = 'chunked' OR block_size IS NULL)",
+    "CHECK (plan_kind = 'classicCumulative' OR block_size IS NOT NULL)",
+    'CHECK (learning_cycle > 0)',
     "CHECK (status IN ('active', 'completed'))",
   ];
 }
@@ -324,10 +348,23 @@ class LearningEvents extends Table {
       text().references(LearningSurahs, #id, onDelete: KeyAction.cascade)();
   TextColumn get type => text()();
   DateTimeColumn get createdAtUtc => dateTime()();
+  IntColumn get learningCycle =>
+      integer().withDefault(const Constant<int>(1))();
+  TextColumn get fromPlanKind => text()();
+  IntColumn get fromTargetStartAyah => integer()();
+  IntColumn get fromTargetEndAyah => integer()();
+  IntColumn get fromBlockSize => integer().nullable()();
   TextColumn get fromStageKind => text()();
+  IntColumn get fromStageStartAyah => integer()();
   IntColumn get fromStageEndAyah => integer()();
+  TextColumn get toPlanKind => text()();
+  IntColumn get toTargetStartAyah => integer()();
+  IntColumn get toTargetEndAyah => integer()();
+  IntColumn get toBlockSize => integer().nullable()();
   TextColumn get toStageKind => text()();
+  IntColumn get toStageStartAyah => integer()();
   IntColumn get toStageEndAyah => integer()();
+  TextColumn get reason => text().nullable()();
 
   @override
   List<Set<Column<Object>>> get uniqueKeys => <Set<Column<Object>>>[
@@ -338,11 +375,29 @@ class LearningEvents extends Table {
   List<String> get customConstraints => <String>[
     'CHECK (length(id) > 0)',
     "CHECK (type IN ('repeated', 'learned', 'inactivityRollback', "
-        "'completed'))",
-    "CHECK (from_stage_kind IN ('newAyah', 'cumulative'))",
-    "CHECK (to_stage_kind IN ('newAyah', 'cumulative'))",
-    'CHECK (from_stage_end_ayah > 0)',
-    'CHECK (to_stage_end_ayah > 0)',
+        "'completed', 'restarted', 'planChanged'))",
+    'CHECK (learning_cycle > 0)',
+    "CHECK (from_plan_kind IN ('classicCumulative', 'chunked'))",
+    "CHECK (to_plan_kind IN ('classicCumulative', 'chunked'))",
+    'CHECK (from_target_start_ayah > 0 AND '
+        'from_target_end_ayah >= from_target_start_ayah)',
+    'CHECK (to_target_start_ayah > 0 AND '
+        'to_target_end_ayah >= to_target_start_ayah)',
+    "CHECK (from_plan_kind = 'chunked' OR from_block_size IS NULL)",
+    "CHECK (to_plan_kind = 'chunked' OR to_block_size IS NULL)",
+    "CHECK (from_plan_kind = 'classicCumulative' OR "
+        'from_block_size IS NOT NULL)',
+    "CHECK (to_plan_kind = 'classicCumulative' OR "
+        'to_block_size IS NOT NULL)',
+    "CHECK (from_stage_kind IN ('newAyah', 'cumulative', 'reviewRange', "
+        "'bridge', 'sectionReview', 'finalReview'))",
+    "CHECK (to_stage_kind IN ('newAyah', 'cumulative', 'reviewRange', "
+        "'bridge', 'sectionReview', 'finalReview'))",
+    'CHECK (from_stage_start_ayah > 0 AND '
+        'from_stage_end_ayah >= from_stage_start_ayah)',
+    'CHECK (to_stage_start_ayah > 0 AND '
+        'to_stage_end_ayah >= to_stage_start_ayah)',
+    'CHECK (reason IS NULL OR length(reason) > 0)',
   ];
 }
 
@@ -386,18 +441,19 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'murajaah_user'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator migrator) async {
       await migrator.createAll();
       await _createVersionTwoIndexes();
+      await _createVersionFourIndexesAndGuards();
       await _ensureRotationSingleton();
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
       if (from == to) return;
-      if (from < 1 || from > 2 || to != 3) {
+      if (from < 1 || from > 3 || to != 4) {
         throw StateError('Unsupported database migration from $from to $to.');
       }
       if (from < 2) {
@@ -406,9 +462,13 @@ class AppDatabase extends _$AppDatabase {
       if (from < 3) {
         await _migrateVersionTwoToThree(migrator);
       }
+      if (from < 4) {
+        await _migrateVersionThreeToFour(migrator);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
+      await _createVersionFourIndexesAndGuards();
       await _ensureRotationSingleton();
     },
   );
@@ -465,6 +525,32 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_learning_events_owner_sequence '
       'ON learning_events (learning_surah_id, sequence)',
     );
+  }
+
+  Future<void> _createVersionFourIndexesAndGuards() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_mastered_current_order '
+      'ON mastered_surahs '
+      '(is_currently_mastered, is_active, display_order)',
+    );
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS trg_mastered_current_insert
+      BEFORE INSERT ON mastered_surahs
+      WHEN NEW.is_currently_mastered = 0 AND NEW.is_active != 0
+      BEGIN
+        SELECT RAISE(ABORT,
+          'A surah that is not currently mastered cannot be active');
+      END
+    ''');
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS trg_mastered_current_update
+      BEFORE UPDATE OF is_currently_mastered, is_active ON mastered_surahs
+      WHEN NEW.is_currently_mastered = 0 AND NEW.is_active != 0
+      BEGIN
+        SELECT RAISE(ABORT,
+          'A surah that is not currently mastered cannot be active');
+      END
+    ''');
   }
 
   Future<void> _migrateVersionOneToTwo(Migrator migrator) async {
@@ -622,6 +708,134 @@ class AppDatabase extends _$AppDatabase {
     if (foreignKeyViolations.isNotEmpty) {
       throw StateError(
         'Foreign-key violations after v2 to v3 migration: '
+        '${foreignKeyViolations.length}.',
+      );
+    }
+  }
+
+  Future<void> _migrateVersionThreeToFour(Migrator migrator) async {
+    final schemeColumns = await customSelect(
+      'PRAGMA table_info(rotation_schemes)',
+    ).get();
+    final hasResetBaselineColumn = schemeColumns.any(
+      (row) => row.read<String>('name') == 'resets_rotation_baseline',
+    );
+    if (!hasResetBaselineColumn) {
+      // A chained v1 upgrade creates rotation_schemes from the current table
+      // definition during v1→v2, while v2/v3 databases still need the column.
+      await migrator.addColumn(
+        rotationSchemes,
+        rotationSchemes.resetsRotationBaseline,
+      );
+    }
+
+    await migrator.alterTable(
+      TableMigration(
+        masteredSurahs,
+        newColumns: <GeneratedColumn<Object>>[
+          masteredSurahs.isCurrentlyMastered,
+        ],
+        columnTransformer: <GeneratedColumn<Object>, Expression<Object>>{
+          masteredSurahs.isCurrentlyMastered: const Constant<bool>(true),
+        },
+      ),
+    );
+
+    // Learning v4 stores a generic stage range and an immutable plan snapshot.
+    // Rebuilding both tables is required because SQLite cannot alter their
+    // CHECK constraints in place. Every legacy row remains in cycle 1 and
+    // retains its exact timestamps, status, event id, and event sequence.
+    await customStatement(
+      'DROP INDEX IF EXISTS idx_learning_events_owner_sequence',
+    );
+    await customStatement('DROP INDEX IF EXISTS idx_learning_surah_status');
+    await customStatement(
+      'ALTER TABLE learning_events RENAME TO learning_events_v3',
+    );
+    await customStatement(
+      'ALTER TABLE learning_surahs RENAME TO learning_surahs_v3',
+    );
+
+    await migrator.createTable(learningSurahs);
+    await customStatement('''
+      INSERT INTO learning_surahs (
+        id, surah_id, ayah_count, plan_kind, stage_kind,
+        stage_start_ayah, stage_end_ayah, target_start_ayah,
+        target_end_ayah, block_size, learning_cycle, status,
+        last_learning_activity_at_utc,
+        inactivity_rollback_for_activity_at_utc
+      )
+      SELECT
+        id,
+        surah_id,
+        ayah_count,
+        'classicCumulative',
+        stage_kind,
+        CASE WHEN stage_kind = 'cumulative' THEN 1 ELSE stage_end_ayah END,
+        stage_end_ayah,
+        1,
+        ayah_count,
+        NULL,
+        1,
+        status,
+        last_learning_activity_at_utc,
+        inactivity_rollback_for_activity_at_utc
+      FROM learning_surahs_v3
+    ''');
+
+    await migrator.createTable(learningEvents);
+    await customStatement('''
+      INSERT INTO learning_events (
+        id, sequence, learning_surah_id, type, created_at_utc,
+        learning_cycle,
+        from_plan_kind, from_target_start_ayah, from_target_end_ayah,
+        from_block_size, from_stage_kind, from_stage_start_ayah,
+        from_stage_end_ayah,
+        to_plan_kind, to_target_start_ayah, to_target_end_ayah,
+        to_block_size, to_stage_kind, to_stage_start_ayah,
+        to_stage_end_ayah, reason
+      )
+      SELECT
+        event.id,
+        event.sequence,
+        event.learning_surah_id,
+        event.type,
+        event.created_at_utc,
+        1,
+        'classicCumulative',
+        1,
+        owner.ayah_count,
+        NULL,
+        event.from_stage_kind,
+        CASE WHEN event.from_stage_kind = 'cumulative'
+          THEN 1 ELSE event.from_stage_end_ayah END,
+        event.from_stage_end_ayah,
+        'classicCumulative',
+        1,
+        owner.ayah_count,
+        NULL,
+        event.to_stage_kind,
+        CASE WHEN event.to_stage_kind = 'cumulative'
+          THEN 1 ELSE event.to_stage_end_ayah END,
+        event.to_stage_end_ayah,
+        NULL
+      FROM learning_events_v3 AS event
+      INNER JOIN learning_surahs_v3 AS owner
+        ON owner.id = event.learning_surah_id
+      ORDER BY event.sequence
+    ''');
+
+    await customStatement('DROP TABLE learning_events_v3');
+    await customStatement('DROP TABLE learning_surahs_v3');
+    await _createVersionTwoIndexes();
+    await _createVersionFourIndexesAndGuards();
+
+    final foreignKeyViolations = await customSelect(
+      'PRAGMA foreign_key_check',
+    ).get();
+    if (foreignKeyViolations.isNotEmpty) {
+      throw StateError(
+        'Foreign-key violations after v3 to v4 migration: '
         '${foreignKeyViolations.length}.',
       );
     }

@@ -1,173 +1,47 @@
 # Алгоритм обучения
 
-## Цель и границы
+Актуальная domain-модель и точные последовательности планов описаны в [LEARNING_PLANS.md](LEARNING_PLANS.md). Этот документ фиксирует общие правила state machine и persistence boundary.
 
-`LearningStateMachine` ведёт независимый прогресс каждой изучаемой суры. Она определяет только последовательность этапов и обработку бездействия; UI отображает её состояние, но не содержит собственных переходов.
+## Ответственность state machine
 
-Начать обучение можно только при наличии проверенного `ayahCount`. Текст аята, перевод и количество аятов не создаются приложением и не выводятся из памяти разработчика. Arabic берётся из bundled Tanzil Uthmani v1.1 после полной integrity-проверки; отсутствие выбранного перевода показывает отдельную подсказку, не скрывая аят.
-
-## Состояние
+`LearningStateMachine` управляет независимым progress каждой суры. Она получает `TimeProvider`, immutable `LearningPlan` и generic ordered `LearningStage`; UI только отображает snapshot и вызывает действия.
 
 Для каждой суры хранятся:
 
 ```text
-surahId
-status: active | awaitingMasteryConfirmation | completed
-stage: NEW_AYAH(n) | CUMULATIVE(1..n)
-ayahCount
-lastUserLearningActivityAtUtc
-rollbackHandledForIdlePeriod
-selectedForHome
+surahId и проверенный ayahCount
+learningCycle >= 1
+plan kind, target range и optional block size
+current stage kind и точный ayah range
+status: active | completed
+lastLearningActivityAtUtc
+inactivityRollbackForActivityAtUtc
 ```
 
-`ayahCount` в пользовательской проекции привязан к версии проверенных метаданных. История переходов хранится отдельно в `LearningEvent`.
+Arabic, transliteration и translation не входят в progression state и связываются с ним только по проверенным координатам `surah:ayah`.
 
-## Порядок этапов
+## Переходы
 
-Для суры из двух и более аятов используется последовательность:
+- `Повторил` создаёт `repeated`, обновляет activity timestamp, но не меняет stage.
+- `Выучил` создаёт `learned` и переходит на следующий элемент `plan.stages`.
+- Последний stage не завершает цикл скрыто: требуется явное completion action.
+- `planChanged` и `restarted` увеличивают `learningCycle`, начинают первый stage нового плана и сохраняют before/after snapshots.
+- `completed` завершает только выбранный target. Mastery всей суры возможен лишь для target `1..ayahCount`.
 
-```text
-NEW_AYAH(1)
-→ NEW_AYAH(2)
-→ CUMULATIVE(1..2)
-→ NEW_AYAH(3)
-→ CUMULATIVE(1..3)
-→ ...
-→ NEW_AYAH(N)
-→ CUMULATIVE(1..N)
-→ awaitingMasteryConfirmation
-```
+Добавление в rotation является отдельным явным выбором. При первом mastery используется baseline `rotationTarget - 1`; при remastery создаётся новая immutable scheme без сброса исторических totals и без накопленного старого долга. Al-Fatiha может завершить Learning, но никогда не входит в rotation.
 
-Первый аят — специальный случай: отдельного `CUMULATIVE(1..1)` в многоаятной суре нет.
+## Бездействие и Undo
 
-Для суры ровно из одного аята поведение зафиксировано отдельно:
+При `idleDuration >= 72 hours` активное состояние может откатиться ровно на один предыдущий ordered stage. Первый stage и completed state не откатываются. Один непрерывный idle period обрабатывается максимум один раз независимо от его длины.
 
-```text
-NEW_AYAH(1)
-→ CUMULATIVE(1..1)
-→ awaitingMasteryConfirmation
-→ completed
-```
+Rollback создаёт `inactivityRollback`; Undo восстанавливает before snapshot, но сохраняет guard обработанного периода. Новый rollback возможен только после реального действия пользователя и следующего отдельного периода бездействия. Все timestamps хранятся в UTC; отрицательная duration из-за неверных системных часов не вызывает откат.
 
-Таким образом, одноаятная сура обязательно проходит и новый, и cumulative-этап перед завершением.
+## Persistence
 
-## Действия пользователя
+`LearningSurah` содержит текущую проекцию одной суры, а `LearningEvent` — append-style audit действий и переходов. Unique `surahId` сохраняется: новый цикл переиспользует aggregate row и не удаляет старые events. Каждый event хранит plan/stage snapshots до и после, cycle, UTC timestamp и optional reason.
 
-### `Повторил`
-
-- создаёт `LearningEvent.repeated`;
-- обновляет `lastUserLearningActivityAtUtc`;
-- оставляет текущий этап без изменений;
-- начинает новый период активности и сбрасывает guard прошлого бездействия.
-
-### `Выучил`
-
-- создаёт `LearningEvent.learned` с before/after stage;
-- обновляет `lastUserLearningActivityAtUtc`;
-- переводит на следующий этап;
-- сбрасывает guard прошлого бездействия.
-
-На финальном `CUMULATIVE(1..N)` действие переводит состояние в `awaitingMasteryConfirmation` и открывает предложение:
-
-> Добавить суру в выученные и включить в ротацию?
-
-При согласии одной транзакцией:
-
-- создаётся completion event;
-- learning status становится `completed`;
-- сура впервые добавляется в mastered и active rotation;
-- `rotationScore = rotationTarget - 1`;
-- исторический `totalRecitations = 0`, потому что событий чтения ещё нет;
-- история обучения сохраняется.
-
-Если пользователь отказывается или закрывает диалог, сура остаётся на финальном cumulative-этапе/в состоянии ожидания подтверждения и может быть подтверждена позже. Она не добавляется в ротацию автоматически.
-
-## Бездействие 72 часа
-
-Порог проверяется при следующем открытии/возобновлении приложения отдельно для каждой активной, незавершённой суры:
-
-```text
-idleDuration = clock.nowUtc - lastUserLearningActivityAtUtc
-
-eligible = idleDuration >= 72 hours
-           and rollbackHandledForIdlePeriod == false
-           and previousStage exists
-```
-
-Если условие истинно:
-
-1. состояние откатывается ровно на один предыдущий этап;
-2. создаётся отдельный `LearningEvent.inactivityRollback` с before/after и причиной;
-3. `rollbackHandledForIdlePeriod = true`;
-4. UI объясняет, что этап изменён из-за 72 часов без активности;
-5. предлагается Undo.
-
-Граница строгая и тестируемая:
-
-- `71:59:59.999…` — отката нет;
-- ровно `72:00:00` — откат разрешён.
-
-Один непрерывный период бездействия вызывает максимум один rollback, независимо от его длины. Само открытие приложения и автоматический rollback не считаются пользовательской учебной активностью и не запускают новый период. Guard сбрасывается только после `Повторил` или `Выучил`.
-
-Для первого этапа `NEW_AYAH(1)` предыдущего этапа нет, поэтому откат невозможен. `completed` также не откатывается.
-
-## Undo автоматического отката
-
-Undo восстанавливает stage перед `inactivityRollback` и фиксирует отмену события. При этом текущий idle-период остаётся помеченным обработанным: следующее открытие не должно немедленно повторить тот же откат. Новый rollback станет возможен только после реального действия `Повторил`/`Выучил` и последующего нового периода бездействия.
-
-## Предыдущий этап
-
-Обратная функция однозначна:
-
-```text
-NEW_AYAH(1)           → none
-NEW_AYAH(2)           → NEW_AYAH(1)
-CUMULATIVE(1..2)      → NEW_AYAH(2)
-NEW_AYAH(n), n >= 3   → CUMULATIVE(1..n-1)
-CUMULATIVE(1..n)      → NEW_AYAH(n)
-```
-
-Для одноаятной суры `CUMULATIVE(1..1) → NEW_AYAH(1)`.
-
-## Время
-
-State machine получает `Clock`/`TimeProvider`; прямой `DateTime.now()` внутри домена запрещён. Все timestamps событий хранятся в UTC. Экран форматирует их в локальной timezone, но timezone не участвует в вычислении 72 часов.
-
-Первичная дата добавления суры считается начальной пользовательской активностью. Отрицательная длительность из-за некорректных часов устройства безопасно трактуется как отсутствие бездействия и не вызывает rollback.
-
-## Несколько сур
-
-- каждая сура имеет собственные stage, timestamp и idle guard;
-- действие с одной сурой не обновляет активность другой;
-- на главном экране показывается одна выбранная карточка, но остальные продолжают храниться;
-- переключение текущей карточки не является учебной активностью и не меняет этап.
-
-## События
-
-Минимальные типы:
-
-- `repeated`;
-- `learned`;
-- `inactivityRollback`;
-- `completed`.
-
-Событие содержит UUID, id learning-записи, UTC-время и stage до/после. `LearningSurah` хранит текущий snapshot, timestamp активности и idle guard. В Sprint 1 журнал служит аудитом переходов; полное event-only восстановление и versioned replay добавляются миграцией, если это потребуется для синхронизации. Undo автоматического отката удаляет последнее rollback-событие и атомарно пишет восстановленный snapshot с сохранённым idle guard.
+Migration v4 сохраняет Sprint 4 progress как `classicCumulative`, target `1..ayahCount`, cycle 1; `newAyah N` становится range `N..N`, а `cumulative N` — `1..N`.
 
 ## Проверки
 
-Unit tests фиксируют:
-
-- старт с `NEW_AYAH(1)`;
-- `Повторил` обновляет время, но не stage;
-- переход к второму аяту;
-- `NEW_AYAH(2) → CUMULATIVE(1..2)`;
-- переход к третьему и `CUMULATIVE(1..3)`;
-- последний новый аят и финальный cumulative;
-- одноаятную цепочку `NEW1 → CUMULATIVE1 → подтверждение → complete`;
-- отказ от добавления в mastered без скрытого completion;
-- `71:59` без rollback и `72:00` с rollback;
-- один rollback за длительный idle-период;
-- отсутствие rollback на первом этапе и после completion;
-- Undo без немедленного повторного rollback;
-- независимость двух изучаемых сур;
-- завершение с созданием mastered state `target - 1` и нулевой историей чтений.
+Тесты фиксируют прежнюю classic-цепочку, одноаятный target, chunked blocks/bridge/section/final review, partial target без mastery, смену плана и restart history, границу 72 часов, один rollback за idle period, Undo, независимость сур и remastery lifecycle.

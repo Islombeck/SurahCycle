@@ -155,8 +155,14 @@ final class LearningRepository {
             id: state.id,
             surahId: state.surahId,
             ayahCount: state.ayahCount,
+            planKind: Value<String>(state.plan.kind.name),
             stageKind: state.stage.kind.name,
+            stageStartAyah: state.stage.startAyah,
             stageEndAyah: state.stage.endAyah,
+            targetStartAyah: state.plan.targetStartAyah,
+            targetEndAyah: state.plan.targetEndAyah,
+            blockSize: Value<int?>(state.plan.blockSize),
+            learningCycle: Value<int>(state.learningCycle),
             status: state.status.name,
             lastLearningActivityAtUtc: Value<DateTime?>(
               state.lastLearningActivityAtUtc,
@@ -176,38 +182,97 @@ final class LearningRepository {
           learningSurahId: event.learningSurahId,
           type: event.type.name,
           createdAtUtc: event.createdAtUtc,
+          learningCycle: Value<int>(event.learningCycle),
+          fromPlanKind: event.fromPlan.kind.name,
+          fromTargetStartAyah: event.fromPlan.targetStartAyah,
+          fromTargetEndAyah: event.fromPlan.targetEndAyah,
+          fromBlockSize: Value<int?>(event.fromPlan.blockSize),
           fromStageKind: event.fromStage.kind.name,
+          fromStageStartAyah: event.fromStage.startAyah,
           fromStageEndAyah: event.fromStage.endAyah,
+          toPlanKind: event.toPlan.kind.name,
+          toTargetStartAyah: event.toPlan.targetStartAyah,
+          toTargetEndAyah: event.toPlan.targetEndAyah,
+          toBlockSize: Value<int?>(event.toPlan.blockSize),
           toStageKind: event.toStage.kind.name,
+          toStageStartAyah: event.toStage.startAyah,
           toStageEndAyah: event.toStage.endAyah,
+          reason: Value<String?>(event.reason),
         ),
       );
 
-  LearningSurahState _stateFromRow(LearningSurahRow row) => LearningSurahState(
-    id: row.id,
-    surahId: row.surahId,
-    ayahCount: row.ayahCount,
-    stage: _stage(row.stageKind, row.stageEndAyah),
-    status: LearningStatus.values.byName(row.status),
-    lastLearningActivityAtUtc: row.lastLearningActivityAtUtc?.toUtc(),
-    inactivityRollbackForActivityAtUtc: row.inactivityRollbackForActivityAtUtc
-        ?.toUtc(),
+  LearningSurahState _stateFromRow(LearningSurahRow row) {
+    final plan = _plan(
+      row.planKind,
+      row.targetStartAyah,
+      row.targetEndAyah,
+      row.blockSize,
+    );
+    return LearningSurahState(
+      id: row.id,
+      surahId: row.surahId,
+      ayahCount: row.ayahCount,
+      plan: plan,
+      stage: plan.canonicalStage(
+        _stage(row.stageKind, row.stageStartAyah, row.stageEndAyah),
+      ),
+      learningCycle: row.learningCycle,
+      status: LearningStatus.values.byName(row.status),
+      lastLearningActivityAtUtc: row.lastLearningActivityAtUtc?.toUtc(),
+      inactivityRollbackForActivityAtUtc: row.inactivityRollbackForActivityAtUtc
+          ?.toUtc(),
+    );
+  }
+
+  LearningEvent _eventFromRow(LearningEventRow row) {
+    final fromPlan = _plan(
+      row.fromPlanKind,
+      row.fromTargetStartAyah,
+      row.fromTargetEndAyah,
+      row.fromBlockSize,
+    );
+    final toPlan = _plan(
+      row.toPlanKind,
+      row.toTargetStartAyah,
+      row.toTargetEndAyah,
+      row.toBlockSize,
+    );
+    return LearningEvent(
+      id: row.id,
+      learningSurahId: row.learningSurahId,
+      type: LearningEventType.values.byName(row.type),
+      createdAtUtc: row.createdAtUtc.toUtc(),
+      learningCycle: row.learningCycle,
+      fromPlan: fromPlan,
+      fromStage: fromPlan.canonicalStage(
+        _stage(row.fromStageKind, row.fromStageStartAyah, row.fromStageEndAyah),
+      ),
+      toPlan: toPlan,
+      toStage: toPlan.canonicalStage(
+        _stage(row.toStageKind, row.toStageStartAyah, row.toStageEndAyah),
+      ),
+      reason: row.reason,
+    );
+  }
+
+  LearningPlan _plan(
+    String kind,
+    int targetStartAyah,
+    int targetEndAyah,
+    int? blockSize,
+  ) => LearningPlan(
+    kind: LearningPlanKind.values.byName(kind),
+    targetStartAyah: targetStartAyah,
+    targetEndAyah: targetEndAyah,
+    blockSize: blockSize,
   );
 
-  LearningEvent _eventFromRow(LearningEventRow row) => LearningEvent(
-    id: row.id,
-    learningSurahId: row.learningSurahId,
-    type: LearningEventType.values.byName(row.type),
-    createdAtUtc: row.createdAtUtc.toUtc(),
-    fromStage: _stage(row.fromStageKind, row.fromStageEndAyah),
-    toStage: _stage(row.toStageKind, row.toStageEndAyah),
-  );
-
-  LearningStage _stage(String kind, int endAyah) =>
-      switch (LearningStageKind.values.byName(kind)) {
-        LearningStageKind.newAyah => LearningStage.newAyah(endAyah),
-        LearningStageKind.cumulative => LearningStage.cumulative(endAyah),
-      };
+  LearningStage _stage(String kind, int startAyah, int endAyah) =>
+      LearningStage.persisted(
+        kind: LearningStageKind.values.byName(kind),
+        startAyah: startAyah,
+        endAyah: endAyah,
+      );
 
   bool _samePersistedState(
     LearningSurahState persisted,
@@ -216,7 +281,9 @@ final class LearningRepository {
       persisted.id == candidate.id &&
       persisted.surahId == candidate.surahId &&
       persisted.ayahCount == candidate.ayahCount &&
+      persisted.plan == candidate.plan &&
       persisted.stage == candidate.stage &&
+      persisted.learningCycle == candidate.learningCycle &&
       persisted.status == candidate.status &&
       _sameDatabaseTime(
         persisted.lastLearningActivityAtUtc,

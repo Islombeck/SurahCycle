@@ -460,6 +460,20 @@ class $MasteredSurahsTable extends MasteredSurahs
       'REFERENCES surah_metadata (id) ON DELETE RESTRICT',
     ),
   );
+  static const VerificationMeta _isCurrentlyMasteredMeta =
+      const VerificationMeta('isCurrentlyMastered');
+  @override
+  late final GeneratedColumn<bool> isCurrentlyMastered = GeneratedColumn<bool>(
+    'is_currently_mastered',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_currently_mastered" IN (0, 1))',
+    ),
+    defaultValue: const Constant<bool>(true),
+  );
   static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
   );
@@ -557,6 +571,7 @@ class $MasteredSurahsTable extends MasteredSurahs
   @override
   List<GeneratedColumn> get $columns => [
     surahId,
+    isCurrentlyMastered,
     isActive,
     hasEnteredRotation,
     activationBaselineScore,
@@ -585,6 +600,15 @@ class $MasteredSurahsTable extends MasteredSurahs
       );
     } else if (isInserting) {
       context.missing(_surahIdMeta);
+    }
+    if (data.containsKey('is_currently_mastered')) {
+      context.handle(
+        _isCurrentlyMasteredMeta,
+        isCurrentlyMastered.isAcceptableOrUnknown(
+          data['is_currently_mastered']!,
+          _isCurrentlyMasteredMeta,
+        ),
+      );
     }
     if (data.containsKey('is_active')) {
       context.handle(
@@ -665,6 +689,10 @@ class $MasteredSurahsTable extends MasteredSurahs
         DriftSqlType.string,
         data['${effectivePrefix}surah_id'],
       )!,
+      isCurrentlyMastered: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_currently_mastered'],
+      )!,
       isActive: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
@@ -709,6 +737,7 @@ class $MasteredSurahsTable extends MasteredSurahs
 class MasteredSurahRow extends DataClass
     implements Insertable<MasteredSurahRow> {
   final String surahId;
+  final bool isCurrentlyMastered;
   final bool isActive;
   final bool hasEnteredRotation;
   final int? activationBaselineScore;
@@ -719,6 +748,7 @@ class MasteredSurahRow extends DataClass
   final int displayOrder;
   const MasteredSurahRow({
     required this.surahId,
+    required this.isCurrentlyMastered,
     required this.isActive,
     required this.hasEnteredRotation,
     this.activationBaselineScore,
@@ -732,6 +762,7 @@ class MasteredSurahRow extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['surah_id'] = Variable<String>(surahId);
+    map['is_currently_mastered'] = Variable<bool>(isCurrentlyMastered);
     map['is_active'] = Variable<bool>(isActive);
     map['has_entered_rotation'] = Variable<bool>(hasEnteredRotation);
     if (!nullToAbsent || activationBaselineScore != null) {
@@ -752,6 +783,7 @@ class MasteredSurahRow extends DataClass
   MasteredSurahsCompanion toCompanion(bool nullToAbsent) {
     return MasteredSurahsCompanion(
       surahId: Value(surahId),
+      isCurrentlyMastered: Value(isCurrentlyMastered),
       isActive: Value(isActive),
       hasEnteredRotation: Value(hasEnteredRotation),
       activationBaselineScore: activationBaselineScore == null && nullToAbsent
@@ -776,6 +808,9 @@ class MasteredSurahRow extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MasteredSurahRow(
       surahId: serializer.fromJson<String>(json['surahId']),
+      isCurrentlyMastered: serializer.fromJson<bool>(
+        json['isCurrentlyMastered'],
+      ),
       isActive: serializer.fromJson<bool>(json['isActive']),
       hasEnteredRotation: serializer.fromJson<bool>(json['hasEnteredRotation']),
       activationBaselineScore: serializer.fromJson<int?>(
@@ -799,6 +834,7 @@ class MasteredSurahRow extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'surahId': serializer.toJson<String>(surahId),
+      'isCurrentlyMastered': serializer.toJson<bool>(isCurrentlyMastered),
       'isActive': serializer.toJson<bool>(isActive),
       'hasEnteredRotation': serializer.toJson<bool>(hasEnteredRotation),
       'activationBaselineScore': serializer.toJson<int?>(
@@ -814,6 +850,7 @@ class MasteredSurahRow extends DataClass
 
   MasteredSurahRow copyWith({
     String? surahId,
+    bool? isCurrentlyMastered,
     bool? isActive,
     bool? hasEnteredRotation,
     Value<int?> activationBaselineScore = const Value.absent(),
@@ -824,6 +861,7 @@ class MasteredSurahRow extends DataClass
     int? displayOrder,
   }) => MasteredSurahRow(
     surahId: surahId ?? this.surahId,
+    isCurrentlyMastered: isCurrentlyMastered ?? this.isCurrentlyMastered,
     isActive: isActive ?? this.isActive,
     hasEnteredRotation: hasEnteredRotation ?? this.hasEnteredRotation,
     activationBaselineScore: activationBaselineScore.present
@@ -841,6 +879,9 @@ class MasteredSurahRow extends DataClass
   MasteredSurahRow copyWithCompanion(MasteredSurahsCompanion data) {
     return MasteredSurahRow(
       surahId: data.surahId.present ? data.surahId.value : this.surahId,
+      isCurrentlyMastered: data.isCurrentlyMastered.present
+          ? data.isCurrentlyMastered.value
+          : this.isCurrentlyMastered,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       hasEnteredRotation: data.hasEnteredRotation.present
           ? data.hasEnteredRotation.value
@@ -868,6 +909,7 @@ class MasteredSurahRow extends DataClass
   String toString() {
     return (StringBuffer('MasteredSurahRow(')
           ..write('surahId: $surahId, ')
+          ..write('isCurrentlyMastered: $isCurrentlyMastered, ')
           ..write('isActive: $isActive, ')
           ..write('hasEnteredRotation: $hasEnteredRotation, ')
           ..write('activationBaselineScore: $activationBaselineScore, ')
@@ -883,6 +925,7 @@ class MasteredSurahRow extends DataClass
   @override
   int get hashCode => Object.hash(
     surahId,
+    isCurrentlyMastered,
     isActive,
     hasEnteredRotation,
     activationBaselineScore,
@@ -897,6 +940,7 @@ class MasteredSurahRow extends DataClass
       identical(this, other) ||
       (other is MasteredSurahRow &&
           other.surahId == this.surahId &&
+          other.isCurrentlyMastered == this.isCurrentlyMastered &&
           other.isActive == this.isActive &&
           other.hasEnteredRotation == this.hasEnteredRotation &&
           other.activationBaselineScore == this.activationBaselineScore &&
@@ -909,6 +953,7 @@ class MasteredSurahRow extends DataClass
 
 class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
   final Value<String> surahId;
+  final Value<bool> isCurrentlyMastered;
   final Value<bool> isActive;
   final Value<bool> hasEnteredRotation;
   final Value<int?> activationBaselineScore;
@@ -920,6 +965,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
   final Value<int> rowid;
   const MasteredSurahsCompanion({
     this.surahId = const Value.absent(),
+    this.isCurrentlyMastered = const Value.absent(),
     this.isActive = const Value.absent(),
     this.hasEnteredRotation = const Value.absent(),
     this.activationBaselineScore = const Value.absent(),
@@ -932,6 +978,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
   });
   MasteredSurahsCompanion.insert({
     required String surahId,
+    this.isCurrentlyMastered = const Value.absent(),
     this.isActive = const Value.absent(),
     this.hasEnteredRotation = const Value.absent(),
     this.activationBaselineScore = const Value.absent(),
@@ -944,6 +991,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
   }) : surahId = Value(surahId);
   static Insertable<MasteredSurahRow> custom({
     Expression<String>? surahId,
+    Expression<bool>? isCurrentlyMastered,
     Expression<bool>? isActive,
     Expression<bool>? hasEnteredRotation,
     Expression<int>? activationBaselineScore,
@@ -956,6 +1004,8 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
   }) {
     return RawValuesInsertable({
       if (surahId != null) 'surah_id': surahId,
+      if (isCurrentlyMastered != null)
+        'is_currently_mastered': isCurrentlyMastered,
       if (isActive != null) 'is_active': isActive,
       if (hasEnteredRotation != null)
         'has_entered_rotation': hasEnteredRotation,
@@ -975,6 +1025,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
 
   MasteredSurahsCompanion copyWith({
     Value<String>? surahId,
+    Value<bool>? isCurrentlyMastered,
     Value<bool>? isActive,
     Value<bool>? hasEnteredRotation,
     Value<int?>? activationBaselineScore,
@@ -987,6 +1038,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
   }) {
     return MasteredSurahsCompanion(
       surahId: surahId ?? this.surahId,
+      isCurrentlyMastered: isCurrentlyMastered ?? this.isCurrentlyMastered,
       isActive: isActive ?? this.isActive,
       hasEnteredRotation: hasEnteredRotation ?? this.hasEnteredRotation,
       activationBaselineScore:
@@ -1006,6 +1058,9 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
     final map = <String, Expression>{};
     if (surahId.present) {
       map['surah_id'] = Variable<String>(surahId.value);
+    }
+    if (isCurrentlyMastered.present) {
+      map['is_currently_mastered'] = Variable<bool>(isCurrentlyMastered.value);
     }
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
@@ -1047,6 +1102,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
   String toString() {
     return (StringBuffer('MasteredSurahsCompanion(')
           ..write('surahId: $surahId, ')
+          ..write('isCurrentlyMastered: $isCurrentlyMastered, ')
           ..write('isActive: $isActive, ')
           ..write('hasEnteredRotation: $hasEnteredRotation, ')
           ..write('activationBaselineScore: $activationBaselineScore, ')
@@ -1475,6 +1531,21 @@ class $RotationSchemesTable extends RotationSchemes
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _resetsRotationBaselineMeta =
+      const VerificationMeta('resetsRotationBaseline');
+  @override
+  late final GeneratedColumn<bool> resetsRotationBaseline =
+      GeneratedColumn<bool>(
+        'resets_rotation_baseline',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("resets_rotation_baseline" IN (0, 1))',
+        ),
+        defaultValue: const Constant<bool>(false),
+      );
   static const VerificationMeta _activatedJournalSequenceMeta =
       const VerificationMeta('activatedJournalSequence');
   @override
@@ -1506,6 +1577,7 @@ class $RotationSchemesTable extends RotationSchemes
     baselineScore,
     baselineTotalRecitations,
     baselineLastUsedAtUtc,
+    resetsRotationBaseline,
     activatedJournalSequence,
     supersededJournalSequence,
   ];
@@ -1584,6 +1656,15 @@ class $RotationSchemesTable extends RotationSchemes
         ),
       );
     }
+    if (data.containsKey('resets_rotation_baseline')) {
+      context.handle(
+        _resetsRotationBaselineMeta,
+        resetsRotationBaseline.isAcceptableOrUnknown(
+          data['resets_rotation_baseline']!,
+          _resetsRotationBaselineMeta,
+        ),
+      );
+    }
     if (data.containsKey('activated_journal_sequence')) {
       context.handle(
         _activatedJournalSequenceMeta,
@@ -1646,6 +1727,10 @@ class $RotationSchemesTable extends RotationSchemes
         DriftSqlType.dateTime,
         data['${effectivePrefix}baseline_last_used_at_utc'],
       ),
+      resetsRotationBaseline: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}resets_rotation_baseline'],
+      )!,
       activatedJournalSequence: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}activated_journal_sequence'],
@@ -1672,6 +1757,7 @@ class RotationSchemeRow extends DataClass
   final int baselineScore;
   final int baselineTotalRecitations;
   final DateTime? baselineLastUsedAtUtc;
+  final bool resetsRotationBaseline;
   final int activatedJournalSequence;
   final int? supersededJournalSequence;
   const RotationSchemeRow({
@@ -1682,6 +1768,7 @@ class RotationSchemeRow extends DataClass
     required this.baselineScore,
     required this.baselineTotalRecitations,
     this.baselineLastUsedAtUtc,
+    required this.resetsRotationBaseline,
     required this.activatedJournalSequence,
     this.supersededJournalSequence,
   });
@@ -1699,6 +1786,7 @@ class RotationSchemeRow extends DataClass
         baselineLastUsedAtUtc,
       );
     }
+    map['resets_rotation_baseline'] = Variable<bool>(resetsRotationBaseline);
     map['activated_journal_sequence'] = Variable<int>(activatedJournalSequence);
     if (!nullToAbsent || supersededJournalSequence != null) {
       map['superseded_journal_sequence'] = Variable<int>(
@@ -1719,6 +1807,7 @@ class RotationSchemeRow extends DataClass
       baselineLastUsedAtUtc: baselineLastUsedAtUtc == null && nullToAbsent
           ? const Value.absent()
           : Value(baselineLastUsedAtUtc),
+      resetsRotationBaseline: Value(resetsRotationBaseline),
       activatedJournalSequence: Value(activatedJournalSequence),
       supersededJournalSequence:
           supersededJournalSequence == null && nullToAbsent
@@ -1744,6 +1833,9 @@ class RotationSchemeRow extends DataClass
       baselineLastUsedAtUtc: serializer.fromJson<DateTime?>(
         json['baselineLastUsedAtUtc'],
       ),
+      resetsRotationBaseline: serializer.fromJson<bool>(
+        json['resetsRotationBaseline'],
+      ),
       activatedJournalSequence: serializer.fromJson<int>(
         json['activatedJournalSequence'],
       ),
@@ -1767,6 +1859,7 @@ class RotationSchemeRow extends DataClass
       'baselineLastUsedAtUtc': serializer.toJson<DateTime?>(
         baselineLastUsedAtUtc,
       ),
+      'resetsRotationBaseline': serializer.toJson<bool>(resetsRotationBaseline),
       'activatedJournalSequence': serializer.toJson<int>(
         activatedJournalSequence,
       ),
@@ -1784,6 +1877,7 @@ class RotationSchemeRow extends DataClass
     int? baselineScore,
     int? baselineTotalRecitations,
     Value<DateTime?> baselineLastUsedAtUtc = const Value.absent(),
+    bool? resetsRotationBaseline,
     int? activatedJournalSequence,
     Value<int?> supersededJournalSequence = const Value.absent(),
   }) => RotationSchemeRow(
@@ -1797,6 +1891,8 @@ class RotationSchemeRow extends DataClass
     baselineLastUsedAtUtc: baselineLastUsedAtUtc.present
         ? baselineLastUsedAtUtc.value
         : this.baselineLastUsedAtUtc,
+    resetsRotationBaseline:
+        resetsRotationBaseline ?? this.resetsRotationBaseline,
     activatedJournalSequence:
         activatedJournalSequence ?? this.activatedJournalSequence,
     supersededJournalSequence: supersededJournalSequence.present
@@ -1820,6 +1916,9 @@ class RotationSchemeRow extends DataClass
       baselineLastUsedAtUtc: data.baselineLastUsedAtUtc.present
           ? data.baselineLastUsedAtUtc.value
           : this.baselineLastUsedAtUtc,
+      resetsRotationBaseline: data.resetsRotationBaseline.present
+          ? data.resetsRotationBaseline.value
+          : this.resetsRotationBaseline,
       activatedJournalSequence: data.activatedJournalSequence.present
           ? data.activatedJournalSequence.value
           : this.activatedJournalSequence,
@@ -1839,6 +1938,7 @@ class RotationSchemeRow extends DataClass
           ..write('baselineScore: $baselineScore, ')
           ..write('baselineTotalRecitations: $baselineTotalRecitations, ')
           ..write('baselineLastUsedAtUtc: $baselineLastUsedAtUtc, ')
+          ..write('resetsRotationBaseline: $resetsRotationBaseline, ')
           ..write('activatedJournalSequence: $activatedJournalSequence, ')
           ..write('supersededJournalSequence: $supersededJournalSequence')
           ..write(')'))
@@ -1854,6 +1954,7 @@ class RotationSchemeRow extends DataClass
     baselineScore,
     baselineTotalRecitations,
     baselineLastUsedAtUtc,
+    resetsRotationBaseline,
     activatedJournalSequence,
     supersededJournalSequence,
   );
@@ -1868,6 +1969,7 @@ class RotationSchemeRow extends DataClass
           other.baselineScore == this.baselineScore &&
           other.baselineTotalRecitations == this.baselineTotalRecitations &&
           other.baselineLastUsedAtUtc == this.baselineLastUsedAtUtc &&
+          other.resetsRotationBaseline == this.resetsRotationBaseline &&
           other.activatedJournalSequence == this.activatedJournalSequence &&
           other.supersededJournalSequence == this.supersededJournalSequence);
 }
@@ -1880,6 +1982,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
   final Value<int> baselineScore;
   final Value<int> baselineTotalRecitations;
   final Value<DateTime?> baselineLastUsedAtUtc;
+  final Value<bool> resetsRotationBaseline;
   final Value<int> activatedJournalSequence;
   final Value<int?> supersededJournalSequence;
   final Value<int> rowid;
@@ -1891,6 +1994,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
     this.baselineScore = const Value.absent(),
     this.baselineTotalRecitations = const Value.absent(),
     this.baselineLastUsedAtUtc = const Value.absent(),
+    this.resetsRotationBaseline = const Value.absent(),
     this.activatedJournalSequence = const Value.absent(),
     this.supersededJournalSequence = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1903,6 +2007,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
     required int baselineScore,
     required int baselineTotalRecitations,
     this.baselineLastUsedAtUtc = const Value.absent(),
+    this.resetsRotationBaseline = const Value.absent(),
     required int activatedJournalSequence,
     this.supersededJournalSequence = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1921,6 +2026,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
     Expression<int>? baselineScore,
     Expression<int>? baselineTotalRecitations,
     Expression<DateTime>? baselineLastUsedAtUtc,
+    Expression<bool>? resetsRotationBaseline,
     Expression<int>? activatedJournalSequence,
     Expression<int>? supersededJournalSequence,
     Expression<int>? rowid,
@@ -1935,6 +2041,8 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
         'baseline_total_recitations': baselineTotalRecitations,
       if (baselineLastUsedAtUtc != null)
         'baseline_last_used_at_utc': baselineLastUsedAtUtc,
+      if (resetsRotationBaseline != null)
+        'resets_rotation_baseline': resetsRotationBaseline,
       if (activatedJournalSequence != null)
         'activated_journal_sequence': activatedJournalSequence,
       if (supersededJournalSequence != null)
@@ -1951,6 +2059,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
     Value<int>? baselineScore,
     Value<int>? baselineTotalRecitations,
     Value<DateTime?>? baselineLastUsedAtUtc,
+    Value<bool>? resetsRotationBaseline,
     Value<int>? activatedJournalSequence,
     Value<int?>? supersededJournalSequence,
     Value<int>? rowid,
@@ -1965,6 +2074,8 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
           baselineTotalRecitations ?? this.baselineTotalRecitations,
       baselineLastUsedAtUtc:
           baselineLastUsedAtUtc ?? this.baselineLastUsedAtUtc,
+      resetsRotationBaseline:
+          resetsRotationBaseline ?? this.resetsRotationBaseline,
       activatedJournalSequence:
           activatedJournalSequence ?? this.activatedJournalSequence,
       supersededJournalSequence:
@@ -2001,6 +2112,11 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
         baselineLastUsedAtUtc.value,
       );
     }
+    if (resetsRotationBaseline.present) {
+      map['resets_rotation_baseline'] = Variable<bool>(
+        resetsRotationBaseline.value,
+      );
+    }
     if (activatedJournalSequence.present) {
       map['activated_journal_sequence'] = Variable<int>(
         activatedJournalSequence.value,
@@ -2027,6 +2143,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
           ..write('baselineScore: $baselineScore, ')
           ..write('baselineTotalRecitations: $baselineTotalRecitations, ')
           ..write('baselineLastUsedAtUtc: $baselineLastUsedAtUtc, ')
+          ..write('resetsRotationBaseline: $resetsRotationBaseline, ')
           ..write('activatedJournalSequence: $activatedJournalSequence, ')
           ..write('supersededJournalSequence: $supersededJournalSequence, ')
           ..write('rowid: $rowid')
@@ -4501,6 +4618,18 @@ class $LearningSurahsTable extends LearningSurahs
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _planKindMeta = const VerificationMeta(
+    'planKind',
+  );
+  @override
+  late final GeneratedColumn<String> planKind = GeneratedColumn<String>(
+    'plan_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant<String>('classicCumulative'),
+  );
   static const VerificationMeta _stageKindMeta = const VerificationMeta(
     'stageKind',
   );
@@ -4510,6 +4639,17 @@ class $LearningSurahsTable extends LearningSurahs
     aliasedName,
     false,
     type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stageStartAyahMeta = const VerificationMeta(
+    'stageStartAyah',
+  );
+  @override
+  late final GeneratedColumn<int> stageStartAyah = GeneratedColumn<int>(
+    'stage_start_ayah',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _stageEndAyahMeta = const VerificationMeta(
@@ -4522,6 +4662,51 @@ class $LearningSurahsTable extends LearningSurahs
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetStartAyahMeta = const VerificationMeta(
+    'targetStartAyah',
+  );
+  @override
+  late final GeneratedColumn<int> targetStartAyah = GeneratedColumn<int>(
+    'target_start_ayah',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetEndAyahMeta = const VerificationMeta(
+    'targetEndAyah',
+  );
+  @override
+  late final GeneratedColumn<int> targetEndAyah = GeneratedColumn<int>(
+    'target_end_ayah',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _blockSizeMeta = const VerificationMeta(
+    'blockSize',
+  );
+  @override
+  late final GeneratedColumn<int> blockSize = GeneratedColumn<int>(
+    'block_size',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _learningCycleMeta = const VerificationMeta(
+    'learningCycle',
+  );
+  @override
+  late final GeneratedColumn<int> learningCycle = GeneratedColumn<int>(
+    'learning_cycle',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant<int>(1),
   );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
@@ -4559,8 +4744,14 @@ class $LearningSurahsTable extends LearningSurahs
     id,
     surahId,
     ayahCount,
+    planKind,
     stageKind,
+    stageStartAyah,
     stageEndAyah,
+    targetStartAyah,
+    targetEndAyah,
+    blockSize,
+    learningCycle,
     status,
     lastLearningActivityAtUtc,
     inactivityRollbackForActivityAtUtc,
@@ -4598,6 +4789,12 @@ class $LearningSurahsTable extends LearningSurahs
     } else if (isInserting) {
       context.missing(_ayahCountMeta);
     }
+    if (data.containsKey('plan_kind')) {
+      context.handle(
+        _planKindMeta,
+        planKind.isAcceptableOrUnknown(data['plan_kind']!, _planKindMeta),
+      );
+    }
     if (data.containsKey('stage_kind')) {
       context.handle(
         _stageKindMeta,
@@ -4605,6 +4802,17 @@ class $LearningSurahsTable extends LearningSurahs
       );
     } else if (isInserting) {
       context.missing(_stageKindMeta);
+    }
+    if (data.containsKey('stage_start_ayah')) {
+      context.handle(
+        _stageStartAyahMeta,
+        stageStartAyah.isAcceptableOrUnknown(
+          data['stage_start_ayah']!,
+          _stageStartAyahMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_stageStartAyahMeta);
     }
     if (data.containsKey('stage_end_ayah')) {
       context.handle(
@@ -4616,6 +4824,43 @@ class $LearningSurahsTable extends LearningSurahs
       );
     } else if (isInserting) {
       context.missing(_stageEndAyahMeta);
+    }
+    if (data.containsKey('target_start_ayah')) {
+      context.handle(
+        _targetStartAyahMeta,
+        targetStartAyah.isAcceptableOrUnknown(
+          data['target_start_ayah']!,
+          _targetStartAyahMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_targetStartAyahMeta);
+    }
+    if (data.containsKey('target_end_ayah')) {
+      context.handle(
+        _targetEndAyahMeta,
+        targetEndAyah.isAcceptableOrUnknown(
+          data['target_end_ayah']!,
+          _targetEndAyahMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_targetEndAyahMeta);
+    }
+    if (data.containsKey('block_size')) {
+      context.handle(
+        _blockSizeMeta,
+        blockSize.isAcceptableOrUnknown(data['block_size']!, _blockSizeMeta),
+      );
+    }
+    if (data.containsKey('learning_cycle')) {
+      context.handle(
+        _learningCycleMeta,
+        learningCycle.isAcceptableOrUnknown(
+          data['learning_cycle']!,
+          _learningCycleMeta,
+        ),
+      );
     }
     if (data.containsKey('status')) {
       context.handle(
@@ -4664,13 +4909,37 @@ class $LearningSurahsTable extends LearningSurahs
         DriftSqlType.int,
         data['${effectivePrefix}ayah_count'],
       )!,
+      planKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plan_kind'],
+      )!,
       stageKind: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}stage_kind'],
       )!,
+      stageStartAyah: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}stage_start_ayah'],
+      )!,
       stageEndAyah: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}stage_end_ayah'],
+      )!,
+      targetStartAyah: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}target_start_ayah'],
+      )!,
+      targetEndAyah: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}target_end_ayah'],
+      )!,
+      blockSize: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}block_size'],
+      ),
+      learningCycle: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}learning_cycle'],
       )!,
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -4698,8 +4967,14 @@ class LearningSurahRow extends DataClass
   final String id;
   final String surahId;
   final int ayahCount;
+  final String planKind;
   final String stageKind;
+  final int stageStartAyah;
   final int stageEndAyah;
+  final int targetStartAyah;
+  final int targetEndAyah;
+  final int? blockSize;
+  final int learningCycle;
   final String status;
   final DateTime? lastLearningActivityAtUtc;
   final DateTime? inactivityRollbackForActivityAtUtc;
@@ -4707,8 +4982,14 @@ class LearningSurahRow extends DataClass
     required this.id,
     required this.surahId,
     required this.ayahCount,
+    required this.planKind,
     required this.stageKind,
+    required this.stageStartAyah,
     required this.stageEndAyah,
+    required this.targetStartAyah,
+    required this.targetEndAyah,
+    this.blockSize,
+    required this.learningCycle,
     required this.status,
     this.lastLearningActivityAtUtc,
     this.inactivityRollbackForActivityAtUtc,
@@ -4719,8 +5000,16 @@ class LearningSurahRow extends DataClass
     map['id'] = Variable<String>(id);
     map['surah_id'] = Variable<String>(surahId);
     map['ayah_count'] = Variable<int>(ayahCount);
+    map['plan_kind'] = Variable<String>(planKind);
     map['stage_kind'] = Variable<String>(stageKind);
+    map['stage_start_ayah'] = Variable<int>(stageStartAyah);
     map['stage_end_ayah'] = Variable<int>(stageEndAyah);
+    map['target_start_ayah'] = Variable<int>(targetStartAyah);
+    map['target_end_ayah'] = Variable<int>(targetEndAyah);
+    if (!nullToAbsent || blockSize != null) {
+      map['block_size'] = Variable<int>(blockSize);
+    }
+    map['learning_cycle'] = Variable<int>(learningCycle);
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || lastLearningActivityAtUtc != null) {
       map['last_learning_activity_at_utc'] = Variable<DateTime>(
@@ -4740,8 +5029,16 @@ class LearningSurahRow extends DataClass
       id: Value(id),
       surahId: Value(surahId),
       ayahCount: Value(ayahCount),
+      planKind: Value(planKind),
       stageKind: Value(stageKind),
+      stageStartAyah: Value(stageStartAyah),
       stageEndAyah: Value(stageEndAyah),
+      targetStartAyah: Value(targetStartAyah),
+      targetEndAyah: Value(targetEndAyah),
+      blockSize: blockSize == null && nullToAbsent
+          ? const Value.absent()
+          : Value(blockSize),
+      learningCycle: Value(learningCycle),
       status: Value(status),
       lastLearningActivityAtUtc:
           lastLearningActivityAtUtc == null && nullToAbsent
@@ -4763,8 +5060,14 @@ class LearningSurahRow extends DataClass
       id: serializer.fromJson<String>(json['id']),
       surahId: serializer.fromJson<String>(json['surahId']),
       ayahCount: serializer.fromJson<int>(json['ayahCount']),
+      planKind: serializer.fromJson<String>(json['planKind']),
       stageKind: serializer.fromJson<String>(json['stageKind']),
+      stageStartAyah: serializer.fromJson<int>(json['stageStartAyah']),
       stageEndAyah: serializer.fromJson<int>(json['stageEndAyah']),
+      targetStartAyah: serializer.fromJson<int>(json['targetStartAyah']),
+      targetEndAyah: serializer.fromJson<int>(json['targetEndAyah']),
+      blockSize: serializer.fromJson<int?>(json['blockSize']),
+      learningCycle: serializer.fromJson<int>(json['learningCycle']),
       status: serializer.fromJson<String>(json['status']),
       lastLearningActivityAtUtc: serializer.fromJson<DateTime?>(
         json['lastLearningActivityAtUtc'],
@@ -4781,8 +5084,14 @@ class LearningSurahRow extends DataClass
       'id': serializer.toJson<String>(id),
       'surahId': serializer.toJson<String>(surahId),
       'ayahCount': serializer.toJson<int>(ayahCount),
+      'planKind': serializer.toJson<String>(planKind),
       'stageKind': serializer.toJson<String>(stageKind),
+      'stageStartAyah': serializer.toJson<int>(stageStartAyah),
       'stageEndAyah': serializer.toJson<int>(stageEndAyah),
+      'targetStartAyah': serializer.toJson<int>(targetStartAyah),
+      'targetEndAyah': serializer.toJson<int>(targetEndAyah),
+      'blockSize': serializer.toJson<int?>(blockSize),
+      'learningCycle': serializer.toJson<int>(learningCycle),
       'status': serializer.toJson<String>(status),
       'lastLearningActivityAtUtc': serializer.toJson<DateTime?>(
         lastLearningActivityAtUtc,
@@ -4797,8 +5106,14 @@ class LearningSurahRow extends DataClass
     String? id,
     String? surahId,
     int? ayahCount,
+    String? planKind,
     String? stageKind,
+    int? stageStartAyah,
     int? stageEndAyah,
+    int? targetStartAyah,
+    int? targetEndAyah,
+    Value<int?> blockSize = const Value.absent(),
+    int? learningCycle,
     String? status,
     Value<DateTime?> lastLearningActivityAtUtc = const Value.absent(),
     Value<DateTime?> inactivityRollbackForActivityAtUtc = const Value.absent(),
@@ -4806,8 +5121,14 @@ class LearningSurahRow extends DataClass
     id: id ?? this.id,
     surahId: surahId ?? this.surahId,
     ayahCount: ayahCount ?? this.ayahCount,
+    planKind: planKind ?? this.planKind,
     stageKind: stageKind ?? this.stageKind,
+    stageStartAyah: stageStartAyah ?? this.stageStartAyah,
     stageEndAyah: stageEndAyah ?? this.stageEndAyah,
+    targetStartAyah: targetStartAyah ?? this.targetStartAyah,
+    targetEndAyah: targetEndAyah ?? this.targetEndAyah,
+    blockSize: blockSize.present ? blockSize.value : this.blockSize,
+    learningCycle: learningCycle ?? this.learningCycle,
     status: status ?? this.status,
     lastLearningActivityAtUtc: lastLearningActivityAtUtc.present
         ? lastLearningActivityAtUtc.value
@@ -4822,10 +5143,24 @@ class LearningSurahRow extends DataClass
       id: data.id.present ? data.id.value : this.id,
       surahId: data.surahId.present ? data.surahId.value : this.surahId,
       ayahCount: data.ayahCount.present ? data.ayahCount.value : this.ayahCount,
+      planKind: data.planKind.present ? data.planKind.value : this.planKind,
       stageKind: data.stageKind.present ? data.stageKind.value : this.stageKind,
+      stageStartAyah: data.stageStartAyah.present
+          ? data.stageStartAyah.value
+          : this.stageStartAyah,
       stageEndAyah: data.stageEndAyah.present
           ? data.stageEndAyah.value
           : this.stageEndAyah,
+      targetStartAyah: data.targetStartAyah.present
+          ? data.targetStartAyah.value
+          : this.targetStartAyah,
+      targetEndAyah: data.targetEndAyah.present
+          ? data.targetEndAyah.value
+          : this.targetEndAyah,
+      blockSize: data.blockSize.present ? data.blockSize.value : this.blockSize,
+      learningCycle: data.learningCycle.present
+          ? data.learningCycle.value
+          : this.learningCycle,
       status: data.status.present ? data.status.value : this.status,
       lastLearningActivityAtUtc: data.lastLearningActivityAtUtc.present
           ? data.lastLearningActivityAtUtc.value
@@ -4843,8 +5178,14 @@ class LearningSurahRow extends DataClass
           ..write('id: $id, ')
           ..write('surahId: $surahId, ')
           ..write('ayahCount: $ayahCount, ')
+          ..write('planKind: $planKind, ')
           ..write('stageKind: $stageKind, ')
+          ..write('stageStartAyah: $stageStartAyah, ')
           ..write('stageEndAyah: $stageEndAyah, ')
+          ..write('targetStartAyah: $targetStartAyah, ')
+          ..write('targetEndAyah: $targetEndAyah, ')
+          ..write('blockSize: $blockSize, ')
+          ..write('learningCycle: $learningCycle, ')
           ..write('status: $status, ')
           ..write('lastLearningActivityAtUtc: $lastLearningActivityAtUtc, ')
           ..write(
@@ -4859,8 +5200,14 @@ class LearningSurahRow extends DataClass
     id,
     surahId,
     ayahCount,
+    planKind,
     stageKind,
+    stageStartAyah,
     stageEndAyah,
+    targetStartAyah,
+    targetEndAyah,
+    blockSize,
+    learningCycle,
     status,
     lastLearningActivityAtUtc,
     inactivityRollbackForActivityAtUtc,
@@ -4872,8 +5219,14 @@ class LearningSurahRow extends DataClass
           other.id == this.id &&
           other.surahId == this.surahId &&
           other.ayahCount == this.ayahCount &&
+          other.planKind == this.planKind &&
           other.stageKind == this.stageKind &&
+          other.stageStartAyah == this.stageStartAyah &&
           other.stageEndAyah == this.stageEndAyah &&
+          other.targetStartAyah == this.targetStartAyah &&
+          other.targetEndAyah == this.targetEndAyah &&
+          other.blockSize == this.blockSize &&
+          other.learningCycle == this.learningCycle &&
           other.status == this.status &&
           other.lastLearningActivityAtUtc == this.lastLearningActivityAtUtc &&
           other.inactivityRollbackForActivityAtUtc ==
@@ -4884,8 +5237,14 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
   final Value<String> id;
   final Value<String> surahId;
   final Value<int> ayahCount;
+  final Value<String> planKind;
   final Value<String> stageKind;
+  final Value<int> stageStartAyah;
   final Value<int> stageEndAyah;
+  final Value<int> targetStartAyah;
+  final Value<int> targetEndAyah;
+  final Value<int?> blockSize;
+  final Value<int> learningCycle;
   final Value<String> status;
   final Value<DateTime?> lastLearningActivityAtUtc;
   final Value<DateTime?> inactivityRollbackForActivityAtUtc;
@@ -4894,8 +5253,14 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
     this.id = const Value.absent(),
     this.surahId = const Value.absent(),
     this.ayahCount = const Value.absent(),
+    this.planKind = const Value.absent(),
     this.stageKind = const Value.absent(),
+    this.stageStartAyah = const Value.absent(),
     this.stageEndAyah = const Value.absent(),
+    this.targetStartAyah = const Value.absent(),
+    this.targetEndAyah = const Value.absent(),
+    this.blockSize = const Value.absent(),
+    this.learningCycle = const Value.absent(),
     this.status = const Value.absent(),
     this.lastLearningActivityAtUtc = const Value.absent(),
     this.inactivityRollbackForActivityAtUtc = const Value.absent(),
@@ -4905,8 +5270,14 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
     required String id,
     required String surahId,
     required int ayahCount,
+    this.planKind = const Value.absent(),
     required String stageKind,
+    required int stageStartAyah,
     required int stageEndAyah,
+    required int targetStartAyah,
+    required int targetEndAyah,
+    this.blockSize = const Value.absent(),
+    this.learningCycle = const Value.absent(),
     required String status,
     this.lastLearningActivityAtUtc = const Value.absent(),
     this.inactivityRollbackForActivityAtUtc = const Value.absent(),
@@ -4915,14 +5286,23 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
        surahId = Value(surahId),
        ayahCount = Value(ayahCount),
        stageKind = Value(stageKind),
+       stageStartAyah = Value(stageStartAyah),
        stageEndAyah = Value(stageEndAyah),
+       targetStartAyah = Value(targetStartAyah),
+       targetEndAyah = Value(targetEndAyah),
        status = Value(status);
   static Insertable<LearningSurahRow> custom({
     Expression<String>? id,
     Expression<String>? surahId,
     Expression<int>? ayahCount,
+    Expression<String>? planKind,
     Expression<String>? stageKind,
+    Expression<int>? stageStartAyah,
     Expression<int>? stageEndAyah,
+    Expression<int>? targetStartAyah,
+    Expression<int>? targetEndAyah,
+    Expression<int>? blockSize,
+    Expression<int>? learningCycle,
     Expression<String>? status,
     Expression<DateTime>? lastLearningActivityAtUtc,
     Expression<DateTime>? inactivityRollbackForActivityAtUtc,
@@ -4932,8 +5312,14 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
       if (id != null) 'id': id,
       if (surahId != null) 'surah_id': surahId,
       if (ayahCount != null) 'ayah_count': ayahCount,
+      if (planKind != null) 'plan_kind': planKind,
       if (stageKind != null) 'stage_kind': stageKind,
+      if (stageStartAyah != null) 'stage_start_ayah': stageStartAyah,
       if (stageEndAyah != null) 'stage_end_ayah': stageEndAyah,
+      if (targetStartAyah != null) 'target_start_ayah': targetStartAyah,
+      if (targetEndAyah != null) 'target_end_ayah': targetEndAyah,
+      if (blockSize != null) 'block_size': blockSize,
+      if (learningCycle != null) 'learning_cycle': learningCycle,
       if (status != null) 'status': status,
       if (lastLearningActivityAtUtc != null)
         'last_learning_activity_at_utc': lastLearningActivityAtUtc,
@@ -4948,8 +5334,14 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
     Value<String>? id,
     Value<String>? surahId,
     Value<int>? ayahCount,
+    Value<String>? planKind,
     Value<String>? stageKind,
+    Value<int>? stageStartAyah,
     Value<int>? stageEndAyah,
+    Value<int>? targetStartAyah,
+    Value<int>? targetEndAyah,
+    Value<int?>? blockSize,
+    Value<int>? learningCycle,
     Value<String>? status,
     Value<DateTime?>? lastLearningActivityAtUtc,
     Value<DateTime?>? inactivityRollbackForActivityAtUtc,
@@ -4959,8 +5351,14 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
       id: id ?? this.id,
       surahId: surahId ?? this.surahId,
       ayahCount: ayahCount ?? this.ayahCount,
+      planKind: planKind ?? this.planKind,
       stageKind: stageKind ?? this.stageKind,
+      stageStartAyah: stageStartAyah ?? this.stageStartAyah,
       stageEndAyah: stageEndAyah ?? this.stageEndAyah,
+      targetStartAyah: targetStartAyah ?? this.targetStartAyah,
+      targetEndAyah: targetEndAyah ?? this.targetEndAyah,
+      blockSize: blockSize ?? this.blockSize,
+      learningCycle: learningCycle ?? this.learningCycle,
       status: status ?? this.status,
       lastLearningActivityAtUtc:
           lastLearningActivityAtUtc ?? this.lastLearningActivityAtUtc,
@@ -4983,11 +5381,29 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
     if (ayahCount.present) {
       map['ayah_count'] = Variable<int>(ayahCount.value);
     }
+    if (planKind.present) {
+      map['plan_kind'] = Variable<String>(planKind.value);
+    }
     if (stageKind.present) {
       map['stage_kind'] = Variable<String>(stageKind.value);
     }
+    if (stageStartAyah.present) {
+      map['stage_start_ayah'] = Variable<int>(stageStartAyah.value);
+    }
     if (stageEndAyah.present) {
       map['stage_end_ayah'] = Variable<int>(stageEndAyah.value);
+    }
+    if (targetStartAyah.present) {
+      map['target_start_ayah'] = Variable<int>(targetStartAyah.value);
+    }
+    if (targetEndAyah.present) {
+      map['target_end_ayah'] = Variable<int>(targetEndAyah.value);
+    }
+    if (blockSize.present) {
+      map['block_size'] = Variable<int>(blockSize.value);
+    }
+    if (learningCycle.present) {
+      map['learning_cycle'] = Variable<int>(learningCycle.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
@@ -5014,8 +5430,14 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
           ..write('id: $id, ')
           ..write('surahId: $surahId, ')
           ..write('ayahCount: $ayahCount, ')
+          ..write('planKind: $planKind, ')
           ..write('stageKind: $stageKind, ')
+          ..write('stageStartAyah: $stageStartAyah, ')
           ..write('stageEndAyah: $stageEndAyah, ')
+          ..write('targetStartAyah: $targetStartAyah, ')
+          ..write('targetEndAyah: $targetEndAyah, ')
+          ..write('blockSize: $blockSize, ')
+          ..write('learningCycle: $learningCycle, ')
           ..write('status: $status, ')
           ..write('lastLearningActivityAtUtc: $lastLearningActivityAtUtc, ')
           ..write(
@@ -5091,6 +5513,61 @@ class $LearningEventsTable extends LearningEvents
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _learningCycleMeta = const VerificationMeta(
+    'learningCycle',
+  );
+  @override
+  late final GeneratedColumn<int> learningCycle = GeneratedColumn<int>(
+    'learning_cycle',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant<int>(1),
+  );
+  static const VerificationMeta _fromPlanKindMeta = const VerificationMeta(
+    'fromPlanKind',
+  );
+  @override
+  late final GeneratedColumn<String> fromPlanKind = GeneratedColumn<String>(
+    'from_plan_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fromTargetStartAyahMeta =
+      const VerificationMeta('fromTargetStartAyah');
+  @override
+  late final GeneratedColumn<int> fromTargetStartAyah = GeneratedColumn<int>(
+    'from_target_start_ayah',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fromTargetEndAyahMeta = const VerificationMeta(
+    'fromTargetEndAyah',
+  );
+  @override
+  late final GeneratedColumn<int> fromTargetEndAyah = GeneratedColumn<int>(
+    'from_target_end_ayah',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fromBlockSizeMeta = const VerificationMeta(
+    'fromBlockSize',
+  );
+  @override
+  late final GeneratedColumn<int> fromBlockSize = GeneratedColumn<int>(
+    'from_block_size',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _fromStageKindMeta = const VerificationMeta(
     'fromStageKind',
   );
@@ -5100,6 +5577,16 @@ class $LearningEventsTable extends LearningEvents
     aliasedName,
     false,
     type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fromStageStartAyahMeta =
+      const VerificationMeta('fromStageStartAyah');
+  @override
+  late final GeneratedColumn<int> fromStageStartAyah = GeneratedColumn<int>(
+    'from_stage_start_ayah',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _fromStageEndAyahMeta = const VerificationMeta(
@@ -5113,6 +5600,50 @@ class $LearningEventsTable extends LearningEvents
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _toPlanKindMeta = const VerificationMeta(
+    'toPlanKind',
+  );
+  @override
+  late final GeneratedColumn<String> toPlanKind = GeneratedColumn<String>(
+    'to_plan_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _toTargetStartAyahMeta = const VerificationMeta(
+    'toTargetStartAyah',
+  );
+  @override
+  late final GeneratedColumn<int> toTargetStartAyah = GeneratedColumn<int>(
+    'to_target_start_ayah',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _toTargetEndAyahMeta = const VerificationMeta(
+    'toTargetEndAyah',
+  );
+  @override
+  late final GeneratedColumn<int> toTargetEndAyah = GeneratedColumn<int>(
+    'to_target_end_ayah',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _toBlockSizeMeta = const VerificationMeta(
+    'toBlockSize',
+  );
+  @override
+  late final GeneratedColumn<int> toBlockSize = GeneratedColumn<int>(
+    'to_block_size',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _toStageKindMeta = const VerificationMeta(
     'toStageKind',
   );
@@ -5122,6 +5653,17 @@ class $LearningEventsTable extends LearningEvents
     aliasedName,
     false,
     type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _toStageStartAyahMeta = const VerificationMeta(
+    'toStageStartAyah',
+  );
+  @override
+  late final GeneratedColumn<int> toStageStartAyah = GeneratedColumn<int>(
+    'to_stage_start_ayah',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _toStageEndAyahMeta = const VerificationMeta(
@@ -5135,6 +5677,15 @@ class $LearningEventsTable extends LearningEvents
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5142,10 +5693,22 @@ class $LearningEventsTable extends LearningEvents
     learningSurahId,
     type,
     createdAtUtc,
+    learningCycle,
+    fromPlanKind,
+    fromTargetStartAyah,
+    fromTargetEndAyah,
+    fromBlockSize,
     fromStageKind,
+    fromStageStartAyah,
     fromStageEndAyah,
+    toPlanKind,
+    toTargetStartAyah,
+    toTargetEndAyah,
+    toBlockSize,
     toStageKind,
+    toStageStartAyah,
     toStageEndAyah,
+    reason,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5200,6 +5763,57 @@ class $LearningEventsTable extends LearningEvents
     } else if (isInserting) {
       context.missing(_createdAtUtcMeta);
     }
+    if (data.containsKey('learning_cycle')) {
+      context.handle(
+        _learningCycleMeta,
+        learningCycle.isAcceptableOrUnknown(
+          data['learning_cycle']!,
+          _learningCycleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('from_plan_kind')) {
+      context.handle(
+        _fromPlanKindMeta,
+        fromPlanKind.isAcceptableOrUnknown(
+          data['from_plan_kind']!,
+          _fromPlanKindMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_fromPlanKindMeta);
+    }
+    if (data.containsKey('from_target_start_ayah')) {
+      context.handle(
+        _fromTargetStartAyahMeta,
+        fromTargetStartAyah.isAcceptableOrUnknown(
+          data['from_target_start_ayah']!,
+          _fromTargetStartAyahMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_fromTargetStartAyahMeta);
+    }
+    if (data.containsKey('from_target_end_ayah')) {
+      context.handle(
+        _fromTargetEndAyahMeta,
+        fromTargetEndAyah.isAcceptableOrUnknown(
+          data['from_target_end_ayah']!,
+          _fromTargetEndAyahMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_fromTargetEndAyahMeta);
+    }
+    if (data.containsKey('from_block_size')) {
+      context.handle(
+        _fromBlockSizeMeta,
+        fromBlockSize.isAcceptableOrUnknown(
+          data['from_block_size']!,
+          _fromBlockSizeMeta,
+        ),
+      );
+    }
     if (data.containsKey('from_stage_kind')) {
       context.handle(
         _fromStageKindMeta,
@@ -5210,6 +5824,17 @@ class $LearningEventsTable extends LearningEvents
       );
     } else if (isInserting) {
       context.missing(_fromStageKindMeta);
+    }
+    if (data.containsKey('from_stage_start_ayah')) {
+      context.handle(
+        _fromStageStartAyahMeta,
+        fromStageStartAyah.isAcceptableOrUnknown(
+          data['from_stage_start_ayah']!,
+          _fromStageStartAyahMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_fromStageStartAyahMeta);
     }
     if (data.containsKey('from_stage_end_ayah')) {
       context.handle(
@@ -5222,6 +5847,48 @@ class $LearningEventsTable extends LearningEvents
     } else if (isInserting) {
       context.missing(_fromStageEndAyahMeta);
     }
+    if (data.containsKey('to_plan_kind')) {
+      context.handle(
+        _toPlanKindMeta,
+        toPlanKind.isAcceptableOrUnknown(
+          data['to_plan_kind']!,
+          _toPlanKindMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_toPlanKindMeta);
+    }
+    if (data.containsKey('to_target_start_ayah')) {
+      context.handle(
+        _toTargetStartAyahMeta,
+        toTargetStartAyah.isAcceptableOrUnknown(
+          data['to_target_start_ayah']!,
+          _toTargetStartAyahMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_toTargetStartAyahMeta);
+    }
+    if (data.containsKey('to_target_end_ayah')) {
+      context.handle(
+        _toTargetEndAyahMeta,
+        toTargetEndAyah.isAcceptableOrUnknown(
+          data['to_target_end_ayah']!,
+          _toTargetEndAyahMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_toTargetEndAyahMeta);
+    }
+    if (data.containsKey('to_block_size')) {
+      context.handle(
+        _toBlockSizeMeta,
+        toBlockSize.isAcceptableOrUnknown(
+          data['to_block_size']!,
+          _toBlockSizeMeta,
+        ),
+      );
+    }
     if (data.containsKey('to_stage_kind')) {
       context.handle(
         _toStageKindMeta,
@@ -5233,6 +5900,17 @@ class $LearningEventsTable extends LearningEvents
     } else if (isInserting) {
       context.missing(_toStageKindMeta);
     }
+    if (data.containsKey('to_stage_start_ayah')) {
+      context.handle(
+        _toStageStartAyahMeta,
+        toStageStartAyah.isAcceptableOrUnknown(
+          data['to_stage_start_ayah']!,
+          _toStageStartAyahMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_toStageStartAyahMeta);
+    }
     if (data.containsKey('to_stage_end_ayah')) {
       context.handle(
         _toStageEndAyahMeta,
@@ -5243,6 +5921,12 @@ class $LearningEventsTable extends LearningEvents
       );
     } else if (isInserting) {
       context.missing(_toStageEndAyahMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
     }
     return context;
   }
@@ -5277,22 +5961,70 @@ class $LearningEventsTable extends LearningEvents
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at_utc'],
       )!,
+      learningCycle: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}learning_cycle'],
+      )!,
+      fromPlanKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}from_plan_kind'],
+      )!,
+      fromTargetStartAyah: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}from_target_start_ayah'],
+      )!,
+      fromTargetEndAyah: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}from_target_end_ayah'],
+      )!,
+      fromBlockSize: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}from_block_size'],
+      ),
       fromStageKind: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}from_stage_kind'],
+      )!,
+      fromStageStartAyah: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}from_stage_start_ayah'],
       )!,
       fromStageEndAyah: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}from_stage_end_ayah'],
       )!,
+      toPlanKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}to_plan_kind'],
+      )!,
+      toTargetStartAyah: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}to_target_start_ayah'],
+      )!,
+      toTargetEndAyah: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}to_target_end_ayah'],
+      )!,
+      toBlockSize: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}to_block_size'],
+      ),
       toStageKind: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}to_stage_kind'],
+      )!,
+      toStageStartAyah: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}to_stage_start_ayah'],
       )!,
       toStageEndAyah: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}to_stage_end_ayah'],
       )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      ),
     );
   }
 
@@ -5309,20 +6041,44 @@ class LearningEventRow extends DataClass
   final String learningSurahId;
   final String type;
   final DateTime createdAtUtc;
+  final int learningCycle;
+  final String fromPlanKind;
+  final int fromTargetStartAyah;
+  final int fromTargetEndAyah;
+  final int? fromBlockSize;
   final String fromStageKind;
+  final int fromStageStartAyah;
   final int fromStageEndAyah;
+  final String toPlanKind;
+  final int toTargetStartAyah;
+  final int toTargetEndAyah;
+  final int? toBlockSize;
   final String toStageKind;
+  final int toStageStartAyah;
   final int toStageEndAyah;
+  final String? reason;
   const LearningEventRow({
     required this.id,
     required this.sequence,
     required this.learningSurahId,
     required this.type,
     required this.createdAtUtc,
+    required this.learningCycle,
+    required this.fromPlanKind,
+    required this.fromTargetStartAyah,
+    required this.fromTargetEndAyah,
+    this.fromBlockSize,
     required this.fromStageKind,
+    required this.fromStageStartAyah,
     required this.fromStageEndAyah,
+    required this.toPlanKind,
+    required this.toTargetStartAyah,
+    required this.toTargetEndAyah,
+    this.toBlockSize,
     required this.toStageKind,
+    required this.toStageStartAyah,
     required this.toStageEndAyah,
+    this.reason,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5332,10 +6088,28 @@ class LearningEventRow extends DataClass
     map['learning_surah_id'] = Variable<String>(learningSurahId);
     map['type'] = Variable<String>(type);
     map['created_at_utc'] = Variable<DateTime>(createdAtUtc);
+    map['learning_cycle'] = Variable<int>(learningCycle);
+    map['from_plan_kind'] = Variable<String>(fromPlanKind);
+    map['from_target_start_ayah'] = Variable<int>(fromTargetStartAyah);
+    map['from_target_end_ayah'] = Variable<int>(fromTargetEndAyah);
+    if (!nullToAbsent || fromBlockSize != null) {
+      map['from_block_size'] = Variable<int>(fromBlockSize);
+    }
     map['from_stage_kind'] = Variable<String>(fromStageKind);
+    map['from_stage_start_ayah'] = Variable<int>(fromStageStartAyah);
     map['from_stage_end_ayah'] = Variable<int>(fromStageEndAyah);
+    map['to_plan_kind'] = Variable<String>(toPlanKind);
+    map['to_target_start_ayah'] = Variable<int>(toTargetStartAyah);
+    map['to_target_end_ayah'] = Variable<int>(toTargetEndAyah);
+    if (!nullToAbsent || toBlockSize != null) {
+      map['to_block_size'] = Variable<int>(toBlockSize);
+    }
     map['to_stage_kind'] = Variable<String>(toStageKind);
+    map['to_stage_start_ayah'] = Variable<int>(toStageStartAyah);
     map['to_stage_end_ayah'] = Variable<int>(toStageEndAyah);
+    if (!nullToAbsent || reason != null) {
+      map['reason'] = Variable<String>(reason);
+    }
     return map;
   }
 
@@ -5346,10 +6120,28 @@ class LearningEventRow extends DataClass
       learningSurahId: Value(learningSurahId),
       type: Value(type),
       createdAtUtc: Value(createdAtUtc),
+      learningCycle: Value(learningCycle),
+      fromPlanKind: Value(fromPlanKind),
+      fromTargetStartAyah: Value(fromTargetStartAyah),
+      fromTargetEndAyah: Value(fromTargetEndAyah),
+      fromBlockSize: fromBlockSize == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fromBlockSize),
       fromStageKind: Value(fromStageKind),
+      fromStageStartAyah: Value(fromStageStartAyah),
       fromStageEndAyah: Value(fromStageEndAyah),
+      toPlanKind: Value(toPlanKind),
+      toTargetStartAyah: Value(toTargetStartAyah),
+      toTargetEndAyah: Value(toTargetEndAyah),
+      toBlockSize: toBlockSize == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toBlockSize),
       toStageKind: Value(toStageKind),
+      toStageStartAyah: Value(toStageStartAyah),
       toStageEndAyah: Value(toStageEndAyah),
+      reason: reason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reason),
     );
   }
 
@@ -5364,10 +6156,24 @@ class LearningEventRow extends DataClass
       learningSurahId: serializer.fromJson<String>(json['learningSurahId']),
       type: serializer.fromJson<String>(json['type']),
       createdAtUtc: serializer.fromJson<DateTime>(json['createdAtUtc']),
+      learningCycle: serializer.fromJson<int>(json['learningCycle']),
+      fromPlanKind: serializer.fromJson<String>(json['fromPlanKind']),
+      fromTargetStartAyah: serializer.fromJson<int>(
+        json['fromTargetStartAyah'],
+      ),
+      fromTargetEndAyah: serializer.fromJson<int>(json['fromTargetEndAyah']),
+      fromBlockSize: serializer.fromJson<int?>(json['fromBlockSize']),
       fromStageKind: serializer.fromJson<String>(json['fromStageKind']),
+      fromStageStartAyah: serializer.fromJson<int>(json['fromStageStartAyah']),
       fromStageEndAyah: serializer.fromJson<int>(json['fromStageEndAyah']),
+      toPlanKind: serializer.fromJson<String>(json['toPlanKind']),
+      toTargetStartAyah: serializer.fromJson<int>(json['toTargetStartAyah']),
+      toTargetEndAyah: serializer.fromJson<int>(json['toTargetEndAyah']),
+      toBlockSize: serializer.fromJson<int?>(json['toBlockSize']),
       toStageKind: serializer.fromJson<String>(json['toStageKind']),
+      toStageStartAyah: serializer.fromJson<int>(json['toStageStartAyah']),
       toStageEndAyah: serializer.fromJson<int>(json['toStageEndAyah']),
+      reason: serializer.fromJson<String?>(json['reason']),
     );
   }
   @override
@@ -5379,10 +6185,22 @@ class LearningEventRow extends DataClass
       'learningSurahId': serializer.toJson<String>(learningSurahId),
       'type': serializer.toJson<String>(type),
       'createdAtUtc': serializer.toJson<DateTime>(createdAtUtc),
+      'learningCycle': serializer.toJson<int>(learningCycle),
+      'fromPlanKind': serializer.toJson<String>(fromPlanKind),
+      'fromTargetStartAyah': serializer.toJson<int>(fromTargetStartAyah),
+      'fromTargetEndAyah': serializer.toJson<int>(fromTargetEndAyah),
+      'fromBlockSize': serializer.toJson<int?>(fromBlockSize),
       'fromStageKind': serializer.toJson<String>(fromStageKind),
+      'fromStageStartAyah': serializer.toJson<int>(fromStageStartAyah),
       'fromStageEndAyah': serializer.toJson<int>(fromStageEndAyah),
+      'toPlanKind': serializer.toJson<String>(toPlanKind),
+      'toTargetStartAyah': serializer.toJson<int>(toTargetStartAyah),
+      'toTargetEndAyah': serializer.toJson<int>(toTargetEndAyah),
+      'toBlockSize': serializer.toJson<int?>(toBlockSize),
       'toStageKind': serializer.toJson<String>(toStageKind),
+      'toStageStartAyah': serializer.toJson<int>(toStageStartAyah),
       'toStageEndAyah': serializer.toJson<int>(toStageEndAyah),
+      'reason': serializer.toJson<String?>(reason),
     };
   }
 
@@ -5392,20 +6210,46 @@ class LearningEventRow extends DataClass
     String? learningSurahId,
     String? type,
     DateTime? createdAtUtc,
+    int? learningCycle,
+    String? fromPlanKind,
+    int? fromTargetStartAyah,
+    int? fromTargetEndAyah,
+    Value<int?> fromBlockSize = const Value.absent(),
     String? fromStageKind,
+    int? fromStageStartAyah,
     int? fromStageEndAyah,
+    String? toPlanKind,
+    int? toTargetStartAyah,
+    int? toTargetEndAyah,
+    Value<int?> toBlockSize = const Value.absent(),
     String? toStageKind,
+    int? toStageStartAyah,
     int? toStageEndAyah,
+    Value<String?> reason = const Value.absent(),
   }) => LearningEventRow(
     id: id ?? this.id,
     sequence: sequence ?? this.sequence,
     learningSurahId: learningSurahId ?? this.learningSurahId,
     type: type ?? this.type,
     createdAtUtc: createdAtUtc ?? this.createdAtUtc,
+    learningCycle: learningCycle ?? this.learningCycle,
+    fromPlanKind: fromPlanKind ?? this.fromPlanKind,
+    fromTargetStartAyah: fromTargetStartAyah ?? this.fromTargetStartAyah,
+    fromTargetEndAyah: fromTargetEndAyah ?? this.fromTargetEndAyah,
+    fromBlockSize: fromBlockSize.present
+        ? fromBlockSize.value
+        : this.fromBlockSize,
     fromStageKind: fromStageKind ?? this.fromStageKind,
+    fromStageStartAyah: fromStageStartAyah ?? this.fromStageStartAyah,
     fromStageEndAyah: fromStageEndAyah ?? this.fromStageEndAyah,
+    toPlanKind: toPlanKind ?? this.toPlanKind,
+    toTargetStartAyah: toTargetStartAyah ?? this.toTargetStartAyah,
+    toTargetEndAyah: toTargetEndAyah ?? this.toTargetEndAyah,
+    toBlockSize: toBlockSize.present ? toBlockSize.value : this.toBlockSize,
     toStageKind: toStageKind ?? this.toStageKind,
+    toStageStartAyah: toStageStartAyah ?? this.toStageStartAyah,
     toStageEndAyah: toStageEndAyah ?? this.toStageEndAyah,
+    reason: reason.present ? reason.value : this.reason,
   );
   LearningEventRow copyWithCompanion(LearningEventsCompanion data) {
     return LearningEventRow(
@@ -5418,18 +6262,52 @@ class LearningEventRow extends DataClass
       createdAtUtc: data.createdAtUtc.present
           ? data.createdAtUtc.value
           : this.createdAtUtc,
+      learningCycle: data.learningCycle.present
+          ? data.learningCycle.value
+          : this.learningCycle,
+      fromPlanKind: data.fromPlanKind.present
+          ? data.fromPlanKind.value
+          : this.fromPlanKind,
+      fromTargetStartAyah: data.fromTargetStartAyah.present
+          ? data.fromTargetStartAyah.value
+          : this.fromTargetStartAyah,
+      fromTargetEndAyah: data.fromTargetEndAyah.present
+          ? data.fromTargetEndAyah.value
+          : this.fromTargetEndAyah,
+      fromBlockSize: data.fromBlockSize.present
+          ? data.fromBlockSize.value
+          : this.fromBlockSize,
       fromStageKind: data.fromStageKind.present
           ? data.fromStageKind.value
           : this.fromStageKind,
+      fromStageStartAyah: data.fromStageStartAyah.present
+          ? data.fromStageStartAyah.value
+          : this.fromStageStartAyah,
       fromStageEndAyah: data.fromStageEndAyah.present
           ? data.fromStageEndAyah.value
           : this.fromStageEndAyah,
+      toPlanKind: data.toPlanKind.present
+          ? data.toPlanKind.value
+          : this.toPlanKind,
+      toTargetStartAyah: data.toTargetStartAyah.present
+          ? data.toTargetStartAyah.value
+          : this.toTargetStartAyah,
+      toTargetEndAyah: data.toTargetEndAyah.present
+          ? data.toTargetEndAyah.value
+          : this.toTargetEndAyah,
+      toBlockSize: data.toBlockSize.present
+          ? data.toBlockSize.value
+          : this.toBlockSize,
       toStageKind: data.toStageKind.present
           ? data.toStageKind.value
           : this.toStageKind,
+      toStageStartAyah: data.toStageStartAyah.present
+          ? data.toStageStartAyah.value
+          : this.toStageStartAyah,
       toStageEndAyah: data.toStageEndAyah.present
           ? data.toStageEndAyah.value
           : this.toStageEndAyah,
+      reason: data.reason.present ? data.reason.value : this.reason,
     );
   }
 
@@ -5441,26 +6319,50 @@ class LearningEventRow extends DataClass
           ..write('learningSurahId: $learningSurahId, ')
           ..write('type: $type, ')
           ..write('createdAtUtc: $createdAtUtc, ')
+          ..write('learningCycle: $learningCycle, ')
+          ..write('fromPlanKind: $fromPlanKind, ')
+          ..write('fromTargetStartAyah: $fromTargetStartAyah, ')
+          ..write('fromTargetEndAyah: $fromTargetEndAyah, ')
+          ..write('fromBlockSize: $fromBlockSize, ')
           ..write('fromStageKind: $fromStageKind, ')
+          ..write('fromStageStartAyah: $fromStageStartAyah, ')
           ..write('fromStageEndAyah: $fromStageEndAyah, ')
+          ..write('toPlanKind: $toPlanKind, ')
+          ..write('toTargetStartAyah: $toTargetStartAyah, ')
+          ..write('toTargetEndAyah: $toTargetEndAyah, ')
+          ..write('toBlockSize: $toBlockSize, ')
           ..write('toStageKind: $toStageKind, ')
-          ..write('toStageEndAyah: $toStageEndAyah')
+          ..write('toStageStartAyah: $toStageStartAyah, ')
+          ..write('toStageEndAyah: $toStageEndAyah, ')
+          ..write('reason: $reason')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     sequence,
     learningSurahId,
     type,
     createdAtUtc,
+    learningCycle,
+    fromPlanKind,
+    fromTargetStartAyah,
+    fromTargetEndAyah,
+    fromBlockSize,
     fromStageKind,
+    fromStageStartAyah,
     fromStageEndAyah,
+    toPlanKind,
+    toTargetStartAyah,
+    toTargetEndAyah,
+    toBlockSize,
     toStageKind,
+    toStageStartAyah,
     toStageEndAyah,
-  );
+    reason,
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5470,10 +6372,22 @@ class LearningEventRow extends DataClass
           other.learningSurahId == this.learningSurahId &&
           other.type == this.type &&
           other.createdAtUtc == this.createdAtUtc &&
+          other.learningCycle == this.learningCycle &&
+          other.fromPlanKind == this.fromPlanKind &&
+          other.fromTargetStartAyah == this.fromTargetStartAyah &&
+          other.fromTargetEndAyah == this.fromTargetEndAyah &&
+          other.fromBlockSize == this.fromBlockSize &&
           other.fromStageKind == this.fromStageKind &&
+          other.fromStageStartAyah == this.fromStageStartAyah &&
           other.fromStageEndAyah == this.fromStageEndAyah &&
+          other.toPlanKind == this.toPlanKind &&
+          other.toTargetStartAyah == this.toTargetStartAyah &&
+          other.toTargetEndAyah == this.toTargetEndAyah &&
+          other.toBlockSize == this.toBlockSize &&
           other.toStageKind == this.toStageKind &&
-          other.toStageEndAyah == this.toStageEndAyah);
+          other.toStageStartAyah == this.toStageStartAyah &&
+          other.toStageEndAyah == this.toStageEndAyah &&
+          other.reason == this.reason);
 }
 
 class LearningEventsCompanion extends UpdateCompanion<LearningEventRow> {
@@ -5482,20 +6396,44 @@ class LearningEventsCompanion extends UpdateCompanion<LearningEventRow> {
   final Value<String> learningSurahId;
   final Value<String> type;
   final Value<DateTime> createdAtUtc;
+  final Value<int> learningCycle;
+  final Value<String> fromPlanKind;
+  final Value<int> fromTargetStartAyah;
+  final Value<int> fromTargetEndAyah;
+  final Value<int?> fromBlockSize;
   final Value<String> fromStageKind;
+  final Value<int> fromStageStartAyah;
   final Value<int> fromStageEndAyah;
+  final Value<String> toPlanKind;
+  final Value<int> toTargetStartAyah;
+  final Value<int> toTargetEndAyah;
+  final Value<int?> toBlockSize;
   final Value<String> toStageKind;
+  final Value<int> toStageStartAyah;
   final Value<int> toStageEndAyah;
+  final Value<String?> reason;
   const LearningEventsCompanion({
     this.id = const Value.absent(),
     this.sequence = const Value.absent(),
     this.learningSurahId = const Value.absent(),
     this.type = const Value.absent(),
     this.createdAtUtc = const Value.absent(),
+    this.learningCycle = const Value.absent(),
+    this.fromPlanKind = const Value.absent(),
+    this.fromTargetStartAyah = const Value.absent(),
+    this.fromTargetEndAyah = const Value.absent(),
+    this.fromBlockSize = const Value.absent(),
     this.fromStageKind = const Value.absent(),
+    this.fromStageStartAyah = const Value.absent(),
     this.fromStageEndAyah = const Value.absent(),
+    this.toPlanKind = const Value.absent(),
+    this.toTargetStartAyah = const Value.absent(),
+    this.toTargetEndAyah = const Value.absent(),
+    this.toBlockSize = const Value.absent(),
     this.toStageKind = const Value.absent(),
+    this.toStageStartAyah = const Value.absent(),
     this.toStageEndAyah = const Value.absent(),
+    this.reason = const Value.absent(),
   });
   LearningEventsCompanion.insert({
     required String id,
@@ -5503,17 +6441,37 @@ class LearningEventsCompanion extends UpdateCompanion<LearningEventRow> {
     required String learningSurahId,
     required String type,
     required DateTime createdAtUtc,
+    this.learningCycle = const Value.absent(),
+    required String fromPlanKind,
+    required int fromTargetStartAyah,
+    required int fromTargetEndAyah,
+    this.fromBlockSize = const Value.absent(),
     required String fromStageKind,
+    required int fromStageStartAyah,
     required int fromStageEndAyah,
+    required String toPlanKind,
+    required int toTargetStartAyah,
+    required int toTargetEndAyah,
+    this.toBlockSize = const Value.absent(),
     required String toStageKind,
+    required int toStageStartAyah,
     required int toStageEndAyah,
+    this.reason = const Value.absent(),
   }) : id = Value(id),
        learningSurahId = Value(learningSurahId),
        type = Value(type),
        createdAtUtc = Value(createdAtUtc),
+       fromPlanKind = Value(fromPlanKind),
+       fromTargetStartAyah = Value(fromTargetStartAyah),
+       fromTargetEndAyah = Value(fromTargetEndAyah),
        fromStageKind = Value(fromStageKind),
+       fromStageStartAyah = Value(fromStageStartAyah),
        fromStageEndAyah = Value(fromStageEndAyah),
+       toPlanKind = Value(toPlanKind),
+       toTargetStartAyah = Value(toTargetStartAyah),
+       toTargetEndAyah = Value(toTargetEndAyah),
        toStageKind = Value(toStageKind),
+       toStageStartAyah = Value(toStageStartAyah),
        toStageEndAyah = Value(toStageEndAyah);
   static Insertable<LearningEventRow> custom({
     Expression<String>? id,
@@ -5521,10 +6479,22 @@ class LearningEventsCompanion extends UpdateCompanion<LearningEventRow> {
     Expression<String>? learningSurahId,
     Expression<String>? type,
     Expression<DateTime>? createdAtUtc,
+    Expression<int>? learningCycle,
+    Expression<String>? fromPlanKind,
+    Expression<int>? fromTargetStartAyah,
+    Expression<int>? fromTargetEndAyah,
+    Expression<int>? fromBlockSize,
     Expression<String>? fromStageKind,
+    Expression<int>? fromStageStartAyah,
     Expression<int>? fromStageEndAyah,
+    Expression<String>? toPlanKind,
+    Expression<int>? toTargetStartAyah,
+    Expression<int>? toTargetEndAyah,
+    Expression<int>? toBlockSize,
     Expression<String>? toStageKind,
+    Expression<int>? toStageStartAyah,
     Expression<int>? toStageEndAyah,
+    Expression<String>? reason,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5532,10 +6502,24 @@ class LearningEventsCompanion extends UpdateCompanion<LearningEventRow> {
       if (learningSurahId != null) 'learning_surah_id': learningSurahId,
       if (type != null) 'type': type,
       if (createdAtUtc != null) 'created_at_utc': createdAtUtc,
+      if (learningCycle != null) 'learning_cycle': learningCycle,
+      if (fromPlanKind != null) 'from_plan_kind': fromPlanKind,
+      if (fromTargetStartAyah != null)
+        'from_target_start_ayah': fromTargetStartAyah,
+      if (fromTargetEndAyah != null) 'from_target_end_ayah': fromTargetEndAyah,
+      if (fromBlockSize != null) 'from_block_size': fromBlockSize,
       if (fromStageKind != null) 'from_stage_kind': fromStageKind,
+      if (fromStageStartAyah != null)
+        'from_stage_start_ayah': fromStageStartAyah,
       if (fromStageEndAyah != null) 'from_stage_end_ayah': fromStageEndAyah,
+      if (toPlanKind != null) 'to_plan_kind': toPlanKind,
+      if (toTargetStartAyah != null) 'to_target_start_ayah': toTargetStartAyah,
+      if (toTargetEndAyah != null) 'to_target_end_ayah': toTargetEndAyah,
+      if (toBlockSize != null) 'to_block_size': toBlockSize,
       if (toStageKind != null) 'to_stage_kind': toStageKind,
+      if (toStageStartAyah != null) 'to_stage_start_ayah': toStageStartAyah,
       if (toStageEndAyah != null) 'to_stage_end_ayah': toStageEndAyah,
+      if (reason != null) 'reason': reason,
     });
   }
 
@@ -5545,10 +6529,22 @@ class LearningEventsCompanion extends UpdateCompanion<LearningEventRow> {
     Value<String>? learningSurahId,
     Value<String>? type,
     Value<DateTime>? createdAtUtc,
+    Value<int>? learningCycle,
+    Value<String>? fromPlanKind,
+    Value<int>? fromTargetStartAyah,
+    Value<int>? fromTargetEndAyah,
+    Value<int?>? fromBlockSize,
     Value<String>? fromStageKind,
+    Value<int>? fromStageStartAyah,
     Value<int>? fromStageEndAyah,
+    Value<String>? toPlanKind,
+    Value<int>? toTargetStartAyah,
+    Value<int>? toTargetEndAyah,
+    Value<int?>? toBlockSize,
     Value<String>? toStageKind,
+    Value<int>? toStageStartAyah,
     Value<int>? toStageEndAyah,
+    Value<String?>? reason,
   }) {
     return LearningEventsCompanion(
       id: id ?? this.id,
@@ -5556,10 +6552,22 @@ class LearningEventsCompanion extends UpdateCompanion<LearningEventRow> {
       learningSurahId: learningSurahId ?? this.learningSurahId,
       type: type ?? this.type,
       createdAtUtc: createdAtUtc ?? this.createdAtUtc,
+      learningCycle: learningCycle ?? this.learningCycle,
+      fromPlanKind: fromPlanKind ?? this.fromPlanKind,
+      fromTargetStartAyah: fromTargetStartAyah ?? this.fromTargetStartAyah,
+      fromTargetEndAyah: fromTargetEndAyah ?? this.fromTargetEndAyah,
+      fromBlockSize: fromBlockSize ?? this.fromBlockSize,
       fromStageKind: fromStageKind ?? this.fromStageKind,
+      fromStageStartAyah: fromStageStartAyah ?? this.fromStageStartAyah,
       fromStageEndAyah: fromStageEndAyah ?? this.fromStageEndAyah,
+      toPlanKind: toPlanKind ?? this.toPlanKind,
+      toTargetStartAyah: toTargetStartAyah ?? this.toTargetStartAyah,
+      toTargetEndAyah: toTargetEndAyah ?? this.toTargetEndAyah,
+      toBlockSize: toBlockSize ?? this.toBlockSize,
       toStageKind: toStageKind ?? this.toStageKind,
+      toStageStartAyah: toStageStartAyah ?? this.toStageStartAyah,
       toStageEndAyah: toStageEndAyah ?? this.toStageEndAyah,
+      reason: reason ?? this.reason,
     );
   }
 
@@ -5581,17 +6589,53 @@ class LearningEventsCompanion extends UpdateCompanion<LearningEventRow> {
     if (createdAtUtc.present) {
       map['created_at_utc'] = Variable<DateTime>(createdAtUtc.value);
     }
+    if (learningCycle.present) {
+      map['learning_cycle'] = Variable<int>(learningCycle.value);
+    }
+    if (fromPlanKind.present) {
+      map['from_plan_kind'] = Variable<String>(fromPlanKind.value);
+    }
+    if (fromTargetStartAyah.present) {
+      map['from_target_start_ayah'] = Variable<int>(fromTargetStartAyah.value);
+    }
+    if (fromTargetEndAyah.present) {
+      map['from_target_end_ayah'] = Variable<int>(fromTargetEndAyah.value);
+    }
+    if (fromBlockSize.present) {
+      map['from_block_size'] = Variable<int>(fromBlockSize.value);
+    }
     if (fromStageKind.present) {
       map['from_stage_kind'] = Variable<String>(fromStageKind.value);
+    }
+    if (fromStageStartAyah.present) {
+      map['from_stage_start_ayah'] = Variable<int>(fromStageStartAyah.value);
     }
     if (fromStageEndAyah.present) {
       map['from_stage_end_ayah'] = Variable<int>(fromStageEndAyah.value);
     }
+    if (toPlanKind.present) {
+      map['to_plan_kind'] = Variable<String>(toPlanKind.value);
+    }
+    if (toTargetStartAyah.present) {
+      map['to_target_start_ayah'] = Variable<int>(toTargetStartAyah.value);
+    }
+    if (toTargetEndAyah.present) {
+      map['to_target_end_ayah'] = Variable<int>(toTargetEndAyah.value);
+    }
+    if (toBlockSize.present) {
+      map['to_block_size'] = Variable<int>(toBlockSize.value);
+    }
     if (toStageKind.present) {
       map['to_stage_kind'] = Variable<String>(toStageKind.value);
     }
+    if (toStageStartAyah.present) {
+      map['to_stage_start_ayah'] = Variable<int>(toStageStartAyah.value);
+    }
     if (toStageEndAyah.present) {
       map['to_stage_end_ayah'] = Variable<int>(toStageEndAyah.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
     }
     return map;
   }
@@ -5604,10 +6648,22 @@ class LearningEventsCompanion extends UpdateCompanion<LearningEventRow> {
           ..write('learningSurahId: $learningSurahId, ')
           ..write('type: $type, ')
           ..write('createdAtUtc: $createdAtUtc, ')
+          ..write('learningCycle: $learningCycle, ')
+          ..write('fromPlanKind: $fromPlanKind, ')
+          ..write('fromTargetStartAyah: $fromTargetStartAyah, ')
+          ..write('fromTargetEndAyah: $fromTargetEndAyah, ')
+          ..write('fromBlockSize: $fromBlockSize, ')
           ..write('fromStageKind: $fromStageKind, ')
+          ..write('fromStageStartAyah: $fromStageStartAyah, ')
           ..write('fromStageEndAyah: $fromStageEndAyah, ')
+          ..write('toPlanKind: $toPlanKind, ')
+          ..write('toTargetStartAyah: $toTargetStartAyah, ')
+          ..write('toTargetEndAyah: $toTargetEndAyah, ')
+          ..write('toBlockSize: $toBlockSize, ')
           ..write('toStageKind: $toStageKind, ')
-          ..write('toStageEndAyah: $toStageEndAyah')
+          ..write('toStageStartAyah: $toStageStartAyah, ')
+          ..write('toStageEndAyah: $toStageEndAyah, ')
+          ..write('reason: $reason')
           ..write(')'))
         .toString();
   }
@@ -6426,6 +7482,7 @@ typedef $$SurahMetadataTableProcessedTableManager =
 typedef $$MasteredSurahsTableCreateCompanionBuilder =
     MasteredSurahsCompanion Function({
       required String surahId,
+      Value<bool> isCurrentlyMastered,
       Value<bool> isActive,
       Value<bool> hasEnteredRotation,
       Value<int?> activationBaselineScore,
@@ -6439,6 +7496,7 @@ typedef $$MasteredSurahsTableCreateCompanionBuilder =
 typedef $$MasteredSurahsTableUpdateCompanionBuilder =
     MasteredSurahsCompanion Function({
       Value<String> surahId,
+      Value<bool> isCurrentlyMastered,
       Value<bool> isActive,
       Value<bool> hasEnteredRotation,
       Value<int?> activationBaselineScore,
@@ -6486,6 +7544,11 @@ class $$MasteredSurahsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<bool> get isCurrentlyMastered => $composableBuilder(
+    column: $table.isCurrentlyMastered,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<bool> get isActive => $composableBuilder(
     column: $table.isActive,
     builder: (column) => ColumnFilters(column),
@@ -6559,6 +7622,11 @@ class $$MasteredSurahsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<bool> get isCurrentlyMastered => $composableBuilder(
+    column: $table.isCurrentlyMastered,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isActive => $composableBuilder(
     column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
@@ -6632,6 +7700,11 @@ class $$MasteredSurahsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<bool> get isCurrentlyMastered => $composableBuilder(
+    column: $table.isCurrentlyMastered,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
 
@@ -6723,6 +7796,7 @@ class $$MasteredSurahsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> surahId = const Value.absent(),
+                Value<bool> isCurrentlyMastered = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> hasEnteredRotation = const Value.absent(),
                 Value<int?> activationBaselineScore = const Value.absent(),
@@ -6734,6 +7808,7 @@ class $$MasteredSurahsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => MasteredSurahsCompanion(
                 surahId: surahId,
+                isCurrentlyMastered: isCurrentlyMastered,
                 isActive: isActive,
                 hasEnteredRotation: hasEnteredRotation,
                 activationBaselineScore: activationBaselineScore,
@@ -6747,6 +7822,7 @@ class $$MasteredSurahsTableTableManager
           createCompanionCallback:
               ({
                 required String surahId,
+                Value<bool> isCurrentlyMastered = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> hasEnteredRotation = const Value.absent(),
                 Value<int?> activationBaselineScore = const Value.absent(),
@@ -6758,6 +7834,7 @@ class $$MasteredSurahsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => MasteredSurahsCompanion.insert(
                 surahId: surahId,
+                isCurrentlyMastered: isCurrentlyMastered,
                 isActive: isActive,
                 hasEnteredRotation: hasEnteredRotation,
                 activationBaselineScore: activationBaselineScore,
@@ -7034,6 +8111,7 @@ typedef $$RotationSchemesTableCreateCompanionBuilder =
       required int baselineScore,
       required int baselineTotalRecitations,
       Value<DateTime?> baselineLastUsedAtUtc,
+      Value<bool> resetsRotationBaseline,
       required int activatedJournalSequence,
       Value<int?> supersededJournalSequence,
       Value<int> rowid,
@@ -7047,6 +8125,7 @@ typedef $$RotationSchemesTableUpdateCompanionBuilder =
       Value<int> baselineScore,
       Value<int> baselineTotalRecitations,
       Value<DateTime?> baselineLastUsedAtUtc,
+      Value<bool> resetsRotationBaseline,
       Value<int> activatedJournalSequence,
       Value<int?> supersededJournalSequence,
       Value<int> rowid,
@@ -7120,6 +8199,11 @@ class $$RotationSchemesTableFilterComposer
 
   ColumnFilters<DateTime> get baselineLastUsedAtUtc => $composableBuilder(
     column: $table.baselineLastUsedAtUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get resetsRotationBaseline => $composableBuilder(
+    column: $table.resetsRotationBaseline,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7198,6 +8282,11 @@ class $$RotationSchemesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get resetsRotationBaseline => $composableBuilder(
+    column: $table.resetsRotationBaseline,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get activatedJournalSequence => $composableBuilder(
     column: $table.activatedJournalSequence,
     builder: (column) => ColumnOrderings(column),
@@ -7241,6 +8330,11 @@ class $$RotationSchemesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get baselineLastUsedAtUtc => $composableBuilder(
     column: $table.baselineLastUsedAtUtc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get resetsRotationBaseline => $composableBuilder(
+    column: $table.resetsRotationBaseline,
     builder: (column) => column,
   );
 
@@ -7317,6 +8411,7 @@ class $$RotationSchemesTableTableManager
                 Value<int> baselineScore = const Value.absent(),
                 Value<int> baselineTotalRecitations = const Value.absent(),
                 Value<DateTime?> baselineLastUsedAtUtc = const Value.absent(),
+                Value<bool> resetsRotationBaseline = const Value.absent(),
                 Value<int> activatedJournalSequence = const Value.absent(),
                 Value<int?> supersededJournalSequence = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -7328,6 +8423,7 @@ class $$RotationSchemesTableTableManager
                 baselineScore: baselineScore,
                 baselineTotalRecitations: baselineTotalRecitations,
                 baselineLastUsedAtUtc: baselineLastUsedAtUtc,
+                resetsRotationBaseline: resetsRotationBaseline,
                 activatedJournalSequence: activatedJournalSequence,
                 supersededJournalSequence: supersededJournalSequence,
                 rowid: rowid,
@@ -7341,6 +8437,7 @@ class $$RotationSchemesTableTableManager
                 required int baselineScore,
                 required int baselineTotalRecitations,
                 Value<DateTime?> baselineLastUsedAtUtc = const Value.absent(),
+                Value<bool> resetsRotationBaseline = const Value.absent(),
                 required int activatedJournalSequence,
                 Value<int?> supersededJournalSequence = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -7352,6 +8449,7 @@ class $$RotationSchemesTableTableManager
                 baselineScore: baselineScore,
                 baselineTotalRecitations: baselineTotalRecitations,
                 baselineLastUsedAtUtc: baselineLastUsedAtUtc,
+                resetsRotationBaseline: resetsRotationBaseline,
                 activatedJournalSequence: activatedJournalSequence,
                 supersededJournalSequence: supersededJournalSequence,
                 rowid: rowid,
@@ -9013,8 +10111,14 @@ typedef $$LearningSurahsTableCreateCompanionBuilder =
       required String id,
       required String surahId,
       required int ayahCount,
+      Value<String> planKind,
       required String stageKind,
+      required int stageStartAyah,
       required int stageEndAyah,
+      required int targetStartAyah,
+      required int targetEndAyah,
+      Value<int?> blockSize,
+      Value<int> learningCycle,
       required String status,
       Value<DateTime?> lastLearningActivityAtUtc,
       Value<DateTime?> inactivityRollbackForActivityAtUtc,
@@ -9025,8 +10129,14 @@ typedef $$LearningSurahsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> surahId,
       Value<int> ayahCount,
+      Value<String> planKind,
       Value<String> stageKind,
+      Value<int> stageStartAyah,
       Value<int> stageEndAyah,
+      Value<int> targetStartAyah,
+      Value<int> targetEndAyah,
+      Value<int?> blockSize,
+      Value<int> learningCycle,
       Value<String> status,
       Value<DateTime?> lastLearningActivityAtUtc,
       Value<DateTime?> inactivityRollbackForActivityAtUtc,
@@ -9097,13 +10207,43 @@ class $$LearningSurahsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get planKind => $composableBuilder(
+    column: $table.planKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get stageKind => $composableBuilder(
     column: $table.stageKind,
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get stageStartAyah => $composableBuilder(
+    column: $table.stageStartAyah,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get stageEndAyah => $composableBuilder(
     column: $table.stageEndAyah,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get targetStartAyah => $composableBuilder(
+    column: $table.targetStartAyah,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get targetEndAyah => $composableBuilder(
+    column: $table.targetEndAyah,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get blockSize => $composableBuilder(
+    column: $table.blockSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get learningCycle => $composableBuilder(
+    column: $table.learningCycle,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9191,13 +10331,43 @@ class $$LearningSurahsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get planKind => $composableBuilder(
+    column: $table.planKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get stageKind => $composableBuilder(
     column: $table.stageKind,
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get stageStartAyah => $composableBuilder(
+    column: $table.stageStartAyah,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get stageEndAyah => $composableBuilder(
     column: $table.stageEndAyah,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get targetStartAyah => $composableBuilder(
+    column: $table.targetStartAyah,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get targetEndAyah => $composableBuilder(
+    column: $table.targetEndAyah,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get blockSize => $composableBuilder(
+    column: $table.blockSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get learningCycle => $composableBuilder(
+    column: $table.learningCycle,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -9256,11 +10426,37 @@ class $$LearningSurahsTableAnnotationComposer
   GeneratedColumn<int> get ayahCount =>
       $composableBuilder(column: $table.ayahCount, builder: (column) => column);
 
+  GeneratedColumn<String> get planKind =>
+      $composableBuilder(column: $table.planKind, builder: (column) => column);
+
   GeneratedColumn<String> get stageKind =>
       $composableBuilder(column: $table.stageKind, builder: (column) => column);
 
+  GeneratedColumn<int> get stageStartAyah => $composableBuilder(
+    column: $table.stageStartAyah,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get stageEndAyah => $composableBuilder(
     column: $table.stageEndAyah,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get targetStartAyah => $composableBuilder(
+    column: $table.targetStartAyah,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get targetEndAyah => $composableBuilder(
+    column: $table.targetEndAyah,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get blockSize =>
+      $composableBuilder(column: $table.blockSize, builder: (column) => column);
+
+  GeneratedColumn<int> get learningCycle => $composableBuilder(
+    column: $table.learningCycle,
     builder: (column) => column,
   );
 
@@ -9360,8 +10556,14 @@ class $$LearningSurahsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> surahId = const Value.absent(),
                 Value<int> ayahCount = const Value.absent(),
+                Value<String> planKind = const Value.absent(),
                 Value<String> stageKind = const Value.absent(),
+                Value<int> stageStartAyah = const Value.absent(),
                 Value<int> stageEndAyah = const Value.absent(),
+                Value<int> targetStartAyah = const Value.absent(),
+                Value<int> targetEndAyah = const Value.absent(),
+                Value<int?> blockSize = const Value.absent(),
+                Value<int> learningCycle = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime?> lastLearningActivityAtUtc =
                     const Value.absent(),
@@ -9372,8 +10574,14 @@ class $$LearningSurahsTableTableManager
                 id: id,
                 surahId: surahId,
                 ayahCount: ayahCount,
+                planKind: planKind,
                 stageKind: stageKind,
+                stageStartAyah: stageStartAyah,
                 stageEndAyah: stageEndAyah,
+                targetStartAyah: targetStartAyah,
+                targetEndAyah: targetEndAyah,
+                blockSize: blockSize,
+                learningCycle: learningCycle,
                 status: status,
                 lastLearningActivityAtUtc: lastLearningActivityAtUtc,
                 inactivityRollbackForActivityAtUtc:
@@ -9385,8 +10593,14 @@ class $$LearningSurahsTableTableManager
                 required String id,
                 required String surahId,
                 required int ayahCount,
+                Value<String> planKind = const Value.absent(),
                 required String stageKind,
+                required int stageStartAyah,
                 required int stageEndAyah,
+                required int targetStartAyah,
+                required int targetEndAyah,
+                Value<int?> blockSize = const Value.absent(),
+                Value<int> learningCycle = const Value.absent(),
                 required String status,
                 Value<DateTime?> lastLearningActivityAtUtc =
                     const Value.absent(),
@@ -9397,8 +10611,14 @@ class $$LearningSurahsTableTableManager
                 id: id,
                 surahId: surahId,
                 ayahCount: ayahCount,
+                planKind: planKind,
                 stageKind: stageKind,
+                stageStartAyah: stageStartAyah,
                 stageEndAyah: stageEndAyah,
+                targetStartAyah: targetStartAyah,
+                targetEndAyah: targetEndAyah,
+                blockSize: blockSize,
+                learningCycle: learningCycle,
                 status: status,
                 lastLearningActivityAtUtc: lastLearningActivityAtUtc,
                 inactivityRollbackForActivityAtUtc:
@@ -9506,10 +10726,22 @@ typedef $$LearningEventsTableCreateCompanionBuilder =
       required String learningSurahId,
       required String type,
       required DateTime createdAtUtc,
+      Value<int> learningCycle,
+      required String fromPlanKind,
+      required int fromTargetStartAyah,
+      required int fromTargetEndAyah,
+      Value<int?> fromBlockSize,
       required String fromStageKind,
+      required int fromStageStartAyah,
       required int fromStageEndAyah,
+      required String toPlanKind,
+      required int toTargetStartAyah,
+      required int toTargetEndAyah,
+      Value<int?> toBlockSize,
       required String toStageKind,
+      required int toStageStartAyah,
       required int toStageEndAyah,
+      Value<String?> reason,
     });
 typedef $$LearningEventsTableUpdateCompanionBuilder =
     LearningEventsCompanion Function({
@@ -9518,10 +10750,22 @@ typedef $$LearningEventsTableUpdateCompanionBuilder =
       Value<String> learningSurahId,
       Value<String> type,
       Value<DateTime> createdAtUtc,
+      Value<int> learningCycle,
+      Value<String> fromPlanKind,
+      Value<int> fromTargetStartAyah,
+      Value<int> fromTargetEndAyah,
+      Value<int?> fromBlockSize,
       Value<String> fromStageKind,
+      Value<int> fromStageStartAyah,
       Value<int> fromStageEndAyah,
+      Value<String> toPlanKind,
+      Value<int> toTargetStartAyah,
+      Value<int> toTargetEndAyah,
+      Value<int?> toBlockSize,
       Value<String> toStageKind,
+      Value<int> toStageStartAyah,
       Value<int> toStageEndAyah,
+      Value<String?> reason,
     });
 
 final class $$LearningEventsTableReferences
@@ -9581,8 +10825,38 @@ class $$LearningEventsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get learningCycle => $composableBuilder(
+    column: $table.learningCycle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fromPlanKind => $composableBuilder(
+    column: $table.fromPlanKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fromTargetStartAyah => $composableBuilder(
+    column: $table.fromTargetStartAyah,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fromTargetEndAyah => $composableBuilder(
+    column: $table.fromTargetEndAyah,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fromBlockSize => $composableBuilder(
+    column: $table.fromBlockSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get fromStageKind => $composableBuilder(
     column: $table.fromStageKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fromStageStartAyah => $composableBuilder(
+    column: $table.fromStageStartAyah,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9591,13 +10865,43 @@ class $$LearningEventsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get toPlanKind => $composableBuilder(
+    column: $table.toPlanKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get toTargetStartAyah => $composableBuilder(
+    column: $table.toTargetStartAyah,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get toTargetEndAyah => $composableBuilder(
+    column: $table.toTargetEndAyah,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get toBlockSize => $composableBuilder(
+    column: $table.toBlockSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get toStageKind => $composableBuilder(
     column: $table.toStageKind,
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get toStageStartAyah => $composableBuilder(
+    column: $table.toStageStartAyah,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get toStageEndAyah => $composableBuilder(
     column: $table.toStageEndAyah,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9654,8 +10958,38 @@ class $$LearningEventsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get learningCycle => $composableBuilder(
+    column: $table.learningCycle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fromPlanKind => $composableBuilder(
+    column: $table.fromPlanKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fromTargetStartAyah => $composableBuilder(
+    column: $table.fromTargetStartAyah,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fromTargetEndAyah => $composableBuilder(
+    column: $table.fromTargetEndAyah,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fromBlockSize => $composableBuilder(
+    column: $table.fromBlockSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get fromStageKind => $composableBuilder(
     column: $table.fromStageKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fromStageStartAyah => $composableBuilder(
+    column: $table.fromStageStartAyah,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -9664,13 +10998,43 @@ class $$LearningEventsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get toPlanKind => $composableBuilder(
+    column: $table.toPlanKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get toTargetStartAyah => $composableBuilder(
+    column: $table.toTargetStartAyah,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get toTargetEndAyah => $composableBuilder(
+    column: $table.toTargetEndAyah,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get toBlockSize => $composableBuilder(
+    column: $table.toBlockSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get toStageKind => $composableBuilder(
     column: $table.toStageKind,
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get toStageStartAyah => $composableBuilder(
+    column: $table.toStageStartAyah,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get toStageEndAyah => $composableBuilder(
     column: $table.toStageEndAyah,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -9721,8 +11085,38 @@ class $$LearningEventsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get learningCycle => $composableBuilder(
+    column: $table.learningCycle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fromPlanKind => $composableBuilder(
+    column: $table.fromPlanKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fromTargetStartAyah => $composableBuilder(
+    column: $table.fromTargetStartAyah,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fromTargetEndAyah => $composableBuilder(
+    column: $table.fromTargetEndAyah,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fromBlockSize => $composableBuilder(
+    column: $table.fromBlockSize,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get fromStageKind => $composableBuilder(
     column: $table.fromStageKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fromStageStartAyah => $composableBuilder(
+    column: $table.fromStageStartAyah,
     builder: (column) => column,
   );
 
@@ -9731,8 +11125,33 @@ class $$LearningEventsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get toPlanKind => $composableBuilder(
+    column: $table.toPlanKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get toTargetStartAyah => $composableBuilder(
+    column: $table.toTargetStartAyah,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get toTargetEndAyah => $composableBuilder(
+    column: $table.toTargetEndAyah,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get toBlockSize => $composableBuilder(
+    column: $table.toBlockSize,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get toStageKind => $composableBuilder(
     column: $table.toStageKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get toStageStartAyah => $composableBuilder(
+    column: $table.toStageStartAyah,
     builder: (column) => column,
   );
 
@@ -9740,6 +11159,9 @@ class $$LearningEventsTableAnnotationComposer
     column: $table.toStageEndAyah,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
 
   $$LearningSurahsTableAnnotationComposer get learningSurahId {
     final $$LearningSurahsTableAnnotationComposer composer = $composerBuilder(
@@ -9800,20 +11222,44 @@ class $$LearningEventsTableTableManager
                 Value<String> learningSurahId = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 Value<DateTime> createdAtUtc = const Value.absent(),
+                Value<int> learningCycle = const Value.absent(),
+                Value<String> fromPlanKind = const Value.absent(),
+                Value<int> fromTargetStartAyah = const Value.absent(),
+                Value<int> fromTargetEndAyah = const Value.absent(),
+                Value<int?> fromBlockSize = const Value.absent(),
                 Value<String> fromStageKind = const Value.absent(),
+                Value<int> fromStageStartAyah = const Value.absent(),
                 Value<int> fromStageEndAyah = const Value.absent(),
+                Value<String> toPlanKind = const Value.absent(),
+                Value<int> toTargetStartAyah = const Value.absent(),
+                Value<int> toTargetEndAyah = const Value.absent(),
+                Value<int?> toBlockSize = const Value.absent(),
                 Value<String> toStageKind = const Value.absent(),
+                Value<int> toStageStartAyah = const Value.absent(),
                 Value<int> toStageEndAyah = const Value.absent(),
+                Value<String?> reason = const Value.absent(),
               }) => LearningEventsCompanion(
                 id: id,
                 sequence: sequence,
                 learningSurahId: learningSurahId,
                 type: type,
                 createdAtUtc: createdAtUtc,
+                learningCycle: learningCycle,
+                fromPlanKind: fromPlanKind,
+                fromTargetStartAyah: fromTargetStartAyah,
+                fromTargetEndAyah: fromTargetEndAyah,
+                fromBlockSize: fromBlockSize,
                 fromStageKind: fromStageKind,
+                fromStageStartAyah: fromStageStartAyah,
                 fromStageEndAyah: fromStageEndAyah,
+                toPlanKind: toPlanKind,
+                toTargetStartAyah: toTargetStartAyah,
+                toTargetEndAyah: toTargetEndAyah,
+                toBlockSize: toBlockSize,
                 toStageKind: toStageKind,
+                toStageStartAyah: toStageStartAyah,
                 toStageEndAyah: toStageEndAyah,
+                reason: reason,
               ),
           createCompanionCallback:
               ({
@@ -9822,20 +11268,44 @@ class $$LearningEventsTableTableManager
                 required String learningSurahId,
                 required String type,
                 required DateTime createdAtUtc,
+                Value<int> learningCycle = const Value.absent(),
+                required String fromPlanKind,
+                required int fromTargetStartAyah,
+                required int fromTargetEndAyah,
+                Value<int?> fromBlockSize = const Value.absent(),
                 required String fromStageKind,
+                required int fromStageStartAyah,
                 required int fromStageEndAyah,
+                required String toPlanKind,
+                required int toTargetStartAyah,
+                required int toTargetEndAyah,
+                Value<int?> toBlockSize = const Value.absent(),
                 required String toStageKind,
+                required int toStageStartAyah,
                 required int toStageEndAyah,
+                Value<String?> reason = const Value.absent(),
               }) => LearningEventsCompanion.insert(
                 id: id,
                 sequence: sequence,
                 learningSurahId: learningSurahId,
                 type: type,
                 createdAtUtc: createdAtUtc,
+                learningCycle: learningCycle,
+                fromPlanKind: fromPlanKind,
+                fromTargetStartAyah: fromTargetStartAyah,
+                fromTargetEndAyah: fromTargetEndAyah,
+                fromBlockSize: fromBlockSize,
                 fromStageKind: fromStageKind,
+                fromStageStartAyah: fromStageStartAyah,
                 fromStageEndAyah: fromStageEndAyah,
+                toPlanKind: toPlanKind,
+                toTargetStartAyah: toTargetStartAyah,
+                toTargetEndAyah: toTargetEndAyah,
+                toBlockSize: toBlockSize,
                 toStageKind: toStageKind,
+                toStageStartAyah: toStageStartAyah,
                 toStageEndAyah: toStageEndAyah,
+                reason: reason,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -654,4 +654,85 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get widgetActionNotCompleted =>
       'Не удалось отметить. Показаны актуальные данные.';
+
+  @override
+  String get learningHow => 'Как учить?';
+
+  @override
+  String get learningClassic => 'Классически';
+
+  @override
+  String get learningChunked => 'По частям';
+
+  @override
+  String get learningChunkedRecommended =>
+      'Для длинной суры удобнее учить по частям. Выбор можно изменить.';
+
+  @override
+  String get learningTargetRange => 'Диапазон обучения';
+
+  @override
+  String get learningTargetStart => 'Первый аят';
+
+  @override
+  String get learningTargetEnd => 'Последний аят';
+
+  @override
+  String get learningBlockSize => 'Размер блока';
+
+  @override
+  String get learningCustomBlockSize => 'Свой размер';
+
+  @override
+  String get changeLearningPlan => 'Изменить план';
+
+  @override
+  String get confirmPlanChangeTitle => 'Начать новый цикл?';
+
+  @override
+  String get confirmPlanChangeBody =>
+      'Текущий прогресс будет начат заново по новому плану. История обучения сохранится.';
+
+  @override
+  String learningReviewRange(int start, int end) {
+    return 'Повторение аятов $start–$end';
+  }
+
+  @override
+  String learningBridgeRange(int start, int end) {
+    return 'Связка блоков · аяты $start–$end';
+  }
+
+  @override
+  String learningSectionReview(int start, int end) {
+    return 'Повторить раздел · аяты $start–$end';
+  }
+
+  @override
+  String learningFinalReview(int start, int end) {
+    return 'Итоговое повторение · аяты $start–$end';
+  }
+
+  @override
+  String get rangeCompletedTitle => 'Диапазон завершён';
+
+  @override
+  String get rangeCompletedBody =>
+      'Изученный диапазон сохранён. Вся сура не отмечена как выученная.';
+
+  @override
+  String get completeWithoutRotation => 'Завершить без ротации';
+
+  @override
+  String get addToRotationQuestion => 'Добавить в ротацию?';
+
+  @override
+  String get returnToLearning => 'Убрать из выученных';
+
+  @override
+  String get returnToLearningTitle => 'Вернуть суру в обучение?';
+
+  @override
+  String get returnToLearningBody =>
+      'Сура выйдет из ротации. История, статистика, разбиение и прежние оценки сохранятся.';
 }

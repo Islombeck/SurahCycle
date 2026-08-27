@@ -192,8 +192,12 @@ final class RotationSnapshot {
   final int rotationTarget;
   final List<MasteredSurah> surahs;
 
-  Iterable<MasteredSurah> get activeSurahs =>
-      surahs.where((surah) => surah.isActive && surah.surah.isRotationEligible);
+  Iterable<MasteredSurah> get activeSurahs => surahs.where(
+    (surah) =>
+        surah.isCurrentlyMastered &&
+        surah.isActive &&
+        surah.surah.isRotationEligible,
+  );
 
   MasteredSurah surahById(String id) {
     for (final surah in surahs) {
@@ -248,6 +252,7 @@ final class RotationEngine {
     final shouldActivate = activate && surah.isRotationEligible;
     final mastered = MasteredSurah(
       surah: surah,
+      isCurrentlyMastered: true,
       isActive: shouldActivate,
       hasEnteredRotation: shouldActivate,
       displayOrder: displayOrder,
@@ -272,6 +277,11 @@ final class RotationEngine {
     required bool isActive,
   }) {
     final existing = snapshot.surahById(surahId);
+    if (isActive && !existing.isCurrentlyMastered) {
+      throw StateError(
+        'A surah that is not currently mastered cannot enter rotation.',
+      );
+    }
     final shouldBeActive = isActive && existing.surah.isRotationEligible;
     if (existing.isActive == shouldBeActive) return snapshot;
 
@@ -297,7 +307,9 @@ final class RotationEngine {
     MasteredSurah updated,
   ) {
     snapshot.surahById(updated.id);
-    final normalized = updated.surah.isRotationEligible || !updated.isActive
+    final normalized =
+        (updated.isCurrentlyMastered && updated.surah.isRotationEligible) ||
+            !updated.isActive
         ? updated
         : updated.copyWith(isActive: false);
     return _replace(snapshot, normalized);
@@ -309,7 +321,9 @@ final class RotationEngine {
   ) {
     final resolvedEvent = resolveRecitation(snapshot, event);
     final current = snapshot.surahById(resolvedEvent.surahId);
-    if (!current.isActive || !current.surah.isRotationEligible) {
+    if (!current.isCurrentlyMastered ||
+        !current.isActive ||
+        !current.surah.isRotationEligible) {
       throw StateError(
         'Cannot register a rotation recitation for inactive surah '
         '"${resolvedEvent.surahId}".',

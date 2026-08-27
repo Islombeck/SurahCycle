@@ -654,4 +654,85 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get widgetActionNotCompleted =>
       'Could not mark. Current data restored.';
+
+  @override
+  String get learningHow => 'How do you want to learn?';
+
+  @override
+  String get learningClassic => 'Classic';
+
+  @override
+  String get learningChunked => 'In chunks';
+
+  @override
+  String get learningChunkedRecommended =>
+      'Chunks are usually easier for a long surah. You can change this choice.';
+
+  @override
+  String get learningTargetRange => 'Learning range';
+
+  @override
+  String get learningTargetStart => 'First ayah';
+
+  @override
+  String get learningTargetEnd => 'Last ayah';
+
+  @override
+  String get learningBlockSize => 'Block size';
+
+  @override
+  String get learningCustomBlockSize => 'Custom size';
+
+  @override
+  String get changeLearningPlan => 'Change plan';
+
+  @override
+  String get confirmPlanChangeTitle => 'Start a new cycle?';
+
+  @override
+  String get confirmPlanChangeBody =>
+      'Current progress will restart with the new plan. Learning history will be preserved.';
+
+  @override
+  String learningReviewRange(int start, int end) {
+    return 'Review ayahs $start–$end';
+  }
+
+  @override
+  String learningBridgeRange(int start, int end) {
+    return 'Bridge blocks · ayahs $start–$end';
+  }
+
+  @override
+  String learningSectionReview(int start, int end) {
+    return 'Review section · ayahs $start–$end';
+  }
+
+  @override
+  String learningFinalReview(int start, int end) {
+    return 'Final review · ayahs $start–$end';
+  }
+
+  @override
+  String get rangeCompletedTitle => 'Range completed';
+
+  @override
+  String get rangeCompletedBody =>
+      'The learned range was saved. The whole surah was not marked as mastered.';
+
+  @override
+  String get completeWithoutRotation => 'Complete without rotation';
+
+  @override
+  String get addToRotationQuestion => 'Add to rotation?';
+
+  @override
+  String get returnToLearning => 'Remove from mastered';
+
+  @override
+  String get returnToLearningTitle => 'Return this surah to learning?';
+
+  @override
+  String get returnToLearningBody =>
+      'The surah will leave rotation. History, statistics, segmentation, and previous scores will remain.';
 }

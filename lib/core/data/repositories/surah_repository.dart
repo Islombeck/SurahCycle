@@ -69,7 +69,7 @@ final class SurahRepository {
               ayahCount: row.ayahCount,
               alias: masteredById[row.id]?.alias,
             ),
-            isMastered: masteredById.containsKey(row.id),
+            isMastered: masteredById[row.id]?.isCurrentlyMastered ?? false,
             isActive: masteredById[row.id]?.isActive ?? false,
           ),
     ];
@@ -102,6 +102,20 @@ final class SurahRepository {
     if (metadata == null) {
       throw StateError('Surah "$surahId" is absent from the catalog.');
     }
+    final existing =
+        await (database.select(database.masteredSurahs)
+              ..where((MasteredSurahs row) => row.surahId.equals(surahId)))
+            .getSingleOrNull();
+    if (existing != null) {
+      if (existing.isCurrentlyMastered) {
+        throw StateError('Surah "$surahId" is already currently mastered.');
+      }
+      return _restoreMastery(
+        surahId,
+        activate: activate,
+        rotationSchemeId: '$surahId:scheme:restored',
+      );
+    }
     final before = await _projection.loadSnapshot();
     final order = displayOrder ?? before.surahs.length;
     final descriptor = SurahDescriptor(
@@ -123,6 +137,7 @@ final class SurahRepository {
         .insert(
           MasteredSurahsCompanion.insert(
             surahId: surahId,
+            isCurrentlyMastered: const Value<bool>(true),
             isActive: Value<bool>(added.isActive),
             hasEnteredRotation: Value<bool>(added.hasEnteredRotation),
             activationBaselineScore: Value<int?>(
@@ -179,6 +194,106 @@ final class SurahRepository {
     await _projection.writeSnapshot(after);
     return _projection.loadSnapshot();
   });
+
+  /// Keeps all history and immutable schemes while returning a surah to the
+  /// learning candidates. This is the normal user-facing removal operation.
+  Future<RotationSnapshot> returnToLearning(String surahId) =>
+      database.transaction(() async {
+        final before = await _projection.loadSnapshot();
+        final current = before.surahById(surahId);
+        if (!current.isCurrentlyMastered) return before;
+        final after = _engine.updateMasteredSurah(
+          before,
+          current.copyWith(isCurrentlyMastered: false, isActive: false),
+        );
+        await _projection.writeSnapshot(after);
+        return _projection.loadSnapshot();
+      });
+
+  /// Restores semantic mastery. Optional rotation activation starts a fresh
+  /// immutable scheme one step behind the current target, while carrying only
+  /// historical totals and last-used time (never accumulated score debt).
+  Future<RotationSnapshot> restoreMastery(
+    String surahId, {
+    required bool activate,
+    required String rotationSchemeId,
+  }) => database.transaction(
+    () => _restoreMastery(
+      surahId,
+      activate: activate,
+      rotationSchemeId: rotationSchemeId,
+    ),
+  );
+
+  Future<RotationSnapshot> _restoreMastery(
+    String surahId, {
+    required bool activate,
+    required String rotationSchemeId,
+  }) async {
+    final before = await _projection.loadSnapshot();
+    final current = before.surahById(surahId);
+    if (current.isCurrentlyMastered) {
+      throw StateError('Surah "$surahId" is already currently mastered.');
+    }
+    final shouldActivate = activate && current.surah.isRotationEligible;
+    var updated = current.copyWith(isCurrentlyMastered: true, isActive: false);
+    if (current.surah.isRotationEligible) {
+      final state = await _projection.loadRotationState();
+      final resolvedSchemeId = rotationSchemeId == '$surahId:scheme:restored'
+          ? '$surahId:scheme:${current.rotationScheme.version + 1}:restored'
+          : rotationSchemeId;
+      final nextScheme = SurahRotationScheme.fromRanges(
+        id: resolvedSchemeId,
+        surahId: surahId,
+        version: current.rotationScheme.version + 1,
+        ayahCount: current.surah.ayahCount,
+        ranges: current.rotationScheme.parts.map((part) => part.ayahRange),
+        baselineRotationScore: before.rotationTarget - 1,
+        baselineTotalRecitations: current.totalRecitations,
+        baselineLastUsedAtUtc: current.lastUsedAtUtc,
+        resetsRotationBaseline: true,
+      );
+      final superseded =
+          await (database.update(database.rotationSchemes)..where(
+                (RotationSchemes row) =>
+                    row.id.equals(current.rotationScheme.id) &
+                    row.supersededJournalSequence.isNull(),
+              ))
+              .write(
+                RotationSchemesCompanion(
+                  supersededJournalSequence: Value<int?>(
+                    state.lastJournalSequence,
+                  ),
+                ),
+              );
+      if (superseded != 1) {
+        throw StateError('The current rotation scheme changed concurrently.');
+      }
+      await _insertScheme(
+        nextScheme,
+        activatedJournalSequence: state.lastJournalSequence,
+      );
+      updated = updated.copyWith(
+        isActive: shouldActivate,
+        // This describes whether the current lifecycle scheme has entered
+        // rotation. Historical schemes continue to record older membership.
+        hasEnteredRotation: shouldActivate,
+        rotationScheme: nextScheme,
+      );
+    }
+    final after = _engine.updateMasteredSurah(before, updated);
+    await _projection.writeSnapshot(after);
+    await (database.update(
+      database.masteredSurahs,
+    )..where((MasteredSurahs row) => row.surahId.equals(surahId))).write(
+      MasteredSurahsCompanion(
+        activationBaselineScore: Value<int?>(
+          shouldActivate ? after.surahById(surahId).rotationScore : null,
+        ),
+      ),
+    );
+    return _projection.loadSnapshot();
+  }
 
   /// Activates a new immutable segmentation version without rewriting history.
   Future<RotationSnapshot> changeRotationScheme({
@@ -237,7 +352,11 @@ final class SurahRepository {
 
   Future<void> reorder(List<String> orderedSurahIds) =>
       database.transaction(() async {
-        final rows = await database.select(database.masteredSurahs).get();
+        final rows =
+            await (database.select(database.masteredSurahs)..where(
+                  (MasteredSurahs row) => row.isCurrentlyMastered.equals(true),
+                ))
+                .get();
         final existingIds = rows
             .map((MasteredSurahRow row) => row.surahId)
             .toSet();
@@ -297,6 +416,7 @@ final class SurahRepository {
             baselineLastUsedAtUtc: Value<DateTime?>(
               scheme.baselineLastUsedAtUtc,
             ),
+            resetsRotationBaseline: Value<bool>(scheme.resetsRotationBaseline),
             activatedJournalSequence: activatedJournalSequence,
             supersededJournalSequence: const Value<int?>.absent(),
           ),

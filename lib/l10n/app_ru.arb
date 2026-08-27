@@ -205,4 +205,31 @@
   ,"@widgetAutomaticPrayerStart": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}}}
   ,"widgetSelectPrayerInApp": "Выберите намаз в Murajaah"
   ,"widgetActionNotCompleted": "Не удалось отметить. Показаны актуальные данные."
+  ,"learningHow": "Как учить?"
+  ,"learningClassic": "Классически"
+  ,"learningChunked": "По частям"
+  ,"learningChunkedRecommended": "Для длинной суры удобнее учить по частям. Выбор можно изменить."
+  ,"learningTargetRange": "Диапазон обучения"
+  ,"learningTargetStart": "Первый аят"
+  ,"learningTargetEnd": "Последний аят"
+  ,"learningBlockSize": "Размер блока"
+  ,"learningCustomBlockSize": "Свой размер"
+  ,"changeLearningPlan": "Изменить план"
+  ,"confirmPlanChangeTitle": "Начать новый цикл?"
+  ,"confirmPlanChangeBody": "Текущий прогресс будет начат заново по новому плану. История обучения сохранится."
+  ,"learningReviewRange": "Повторение аятов {start}–{end}"
+  ,"@learningReviewRange": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"learningBridgeRange": "Связка блоков · аяты {start}–{end}"
+  ,"@learningBridgeRange": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"learningSectionReview": "Повторить раздел · аяты {start}–{end}"
+  ,"@learningSectionReview": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"learningFinalReview": "Итоговое повторение · аяты {start}–{end}"
+  ,"@learningFinalReview": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"rangeCompletedTitle": "Диапазон завершён"
+  ,"rangeCompletedBody": "Изученный диапазон сохранён. Вся сура не отмечена как выученная."
+  ,"completeWithoutRotation": "Завершить без ротации"
+  ,"addToRotationQuestion": "Добавить в ротацию?"
+  ,"returnToLearning": "Убрать из выученных"
+  ,"returnToLearningTitle": "Вернуть суру в обучение?"
+  ,"returnToLearningBody": "Сура выйдет из ротации. История, статистика, разбиение и прежние оценки сохранятся."
 }

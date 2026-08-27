@@ -14,6 +14,7 @@ import '../core/widgets/widgets.dart';
 import '../features/quran/quran.dart';
 import '../features/prayer_times/prayer_times.dart';
 import '../l10n/app_localizations.dart';
+import 'localization_extensions.dart';
 import 'widget_localization.dart';
 
 abstract interface class LocalDateProvider
@@ -848,17 +849,58 @@ final class AppActions {
     );
   }
 
-  Future<void> startLearning(SurahDescriptor surah) async {
+  Future<LearningSurahState> startLearning(
+    SurahDescriptor surah, {
+    LearningPlan? plan,
+  }) async {
+    final resolvedPlan =
+        plan ??
+        LearningPlan.classicCumulative(
+          targetStartAyah: 1,
+          targetEndAyah: surah.ayahCount,
+        );
     final existing = await learning.getBySurahId(surah.id);
-    if (existing != null) return;
     final machine = LearningStateMachine(timeProvider: timeProvider);
-    await learning.saveState(
-      machine.start(
+    if (existing == null) {
+      final started = machine.start(
         id: uuid.v4(),
         surahId: surah.id,
         ayahCount: surah.ayahCount,
-      ),
+        plan: resolvedPlan,
+      );
+      await learning.saveState(started);
+      return started;
+    }
+    if (!existing.isCompleted) {
+      if (existing.plan != resolvedPlan) {
+        throw StateError('An active learning plan must be changed explicitly.');
+      }
+      return existing;
+    }
+    final restarted = machine.restart(
+      existing,
+      plan: resolvedPlan,
+      eventId: uuid.v4(),
+      reason: 'returned_to_learning',
     );
+    await learning.saveOutcome(restarted);
+    return restarted.state;
+  }
+
+  Future<LearningSurahState> changeLearningPlan({
+    required LearningSurahState state,
+    required LearningPlan plan,
+  }) async {
+    if (state.plan == plan) return state;
+    final outcome = LearningStateMachine(timeProvider: timeProvider).restart(
+      state,
+      plan: plan,
+      eventId: uuid.v4(),
+      reason: 'user_changed_learning_plan',
+      planChanged: true,
+    );
+    await learning.saveOutcome(outcome);
+    return outcome.state;
   }
 
   Future<LearningActionOutcome> markRepeated(LearningSurahState state) async {
@@ -880,31 +922,51 @@ final class AppActions {
   Future<void> completeLearning({
     required LearningSurahState state,
     required SurahDescriptor surah,
+    bool addToRotation = true,
   }) async {
     await database.transaction(() async {
+      final machine = LearningStateMachine(timeProvider: timeProvider);
+      if (!state.isFullSurahTarget) {
+        await learning.saveOutcome(machine.complete(state, eventId: uuid.v4()));
+        return;
+      }
       final snapshot = await surahs.getRotationSnapshot();
-      final service = LearningCompletionService(
-        learningStateMachine: LearningStateMachine(timeProvider: timeProvider),
-      );
+      final service = LearningCompletionService(learningStateMachine: machine);
       final outcome = service.completeAndAddToRotation(
         learningState: state,
         surah: surah,
         rotationSnapshot: snapshot,
         completionEventId: uuid.v4(),
         displayOrder: snapshot.surahs.length,
+        addToRotation: addToRotation,
+        rotationSchemeId: uuid.v4(),
       );
       await learning.saveOutcome(outcome.learning);
-      final alreadyMastered = snapshot.surahs.any(
-        (mastered) => mastered.id == surah.id,
-      );
-      if (!alreadyMastered) {
+      MasteredSurah? existing;
+      for (final mastered in snapshot.surahs) {
+        if (mastered.id == surah.id) {
+          existing = mastered;
+          break;
+        }
+      }
+      if (existing == null) {
         await surahs.addMastered(
           surah.id,
-          activate: surah.isRotationEligible,
+          activate: addToRotation && surah.isRotationEligible,
           displayOrder: snapshot.surahs.length,
+        );
+      } else if (!existing.isCurrentlyMastered) {
+        await surahs.restoreMastery(
+          surah.id,
+          activate: addToRotation && surah.isRotationEligible,
+          rotationSchemeId: uuid.v4(),
         );
       }
     });
+  }
+
+  Future<void> returnToLearning(String surahId) async {
+    await surahs.returnToLearning(surahId);
   }
 
   Future<RotationSnapshot> adjustBalance({
@@ -1046,9 +1108,7 @@ final class _AppWidgetSyncDriver {
         surahId: learningState.surahId,
         surahNumber: descriptor.surahNumber,
         displayName: descriptor.displayName,
-        stageLabel: learningState.stage.kind == LearningStageKind.newAyah
-            ? l10n.newAyah(learningState.stage.ayahNumber)
-            : l10n.cumulativeRange(learningState.stage.endAyah),
+        stageLabel: learningState.stage.label(l10n),
         startAyah: startAyah,
         endAyah: endAyah,
         ayahLines: readingLines,

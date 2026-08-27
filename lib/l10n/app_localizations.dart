@@ -1215,6 +1215,144 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Не удалось отметить. Показаны актуальные данные.'**
   String get widgetActionNotCompleted;
+
+  /// No description provided for @learningHow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как учить?'**
+  String get learningHow;
+
+  /// No description provided for @learningClassic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Классически'**
+  String get learningClassic;
+
+  /// No description provided for @learningChunked.
+  ///
+  /// In ru, this message translates to:
+  /// **'По частям'**
+  String get learningChunked;
+
+  /// No description provided for @learningChunkedRecommended.
+  ///
+  /// In ru, this message translates to:
+  /// **'Для длинной суры удобнее учить по частям. Выбор можно изменить.'**
+  String get learningChunkedRecommended;
+
+  /// No description provided for @learningTargetRange.
+  ///
+  /// In ru, this message translates to:
+  /// **'Диапазон обучения'**
+  String get learningTargetRange;
+
+  /// No description provided for @learningTargetStart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Первый аят'**
+  String get learningTargetStart;
+
+  /// No description provided for @learningTargetEnd.
+  ///
+  /// In ru, this message translates to:
+  /// **'Последний аят'**
+  String get learningTargetEnd;
+
+  /// No description provided for @learningBlockSize.
+  ///
+  /// In ru, this message translates to:
+  /// **'Размер блока'**
+  String get learningBlockSize;
+
+  /// No description provided for @learningCustomBlockSize.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свой размер'**
+  String get learningCustomBlockSize;
+
+  /// No description provided for @changeLearningPlan.
+  ///
+  /// In ru, this message translates to:
+  /// **'Изменить план'**
+  String get changeLearningPlan;
+
+  /// No description provided for @confirmPlanChangeTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Начать новый цикл?'**
+  String get confirmPlanChangeTitle;
+
+  /// No description provided for @confirmPlanChangeBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текущий прогресс будет начат заново по новому плану. История обучения сохранится.'**
+  String get confirmPlanChangeBody;
+
+  /// No description provided for @learningReviewRange.
+  ///
+  /// In ru, this message translates to:
+  /// **'Повторение аятов {start}–{end}'**
+  String learningReviewRange(int start, int end);
+
+  /// No description provided for @learningBridgeRange.
+  ///
+  /// In ru, this message translates to:
+  /// **'Связка блоков · аяты {start}–{end}'**
+  String learningBridgeRange(int start, int end);
+
+  /// No description provided for @learningSectionReview.
+  ///
+  /// In ru, this message translates to:
+  /// **'Повторить раздел · аяты {start}–{end}'**
+  String learningSectionReview(int start, int end);
+
+  /// No description provided for @learningFinalReview.
+  ///
+  /// In ru, this message translates to:
+  /// **'Итоговое повторение · аяты {start}–{end}'**
+  String learningFinalReview(int start, int end);
+
+  /// No description provided for @rangeCompletedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Диапазон завершён'**
+  String get rangeCompletedTitle;
+
+  /// No description provided for @rangeCompletedBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Изученный диапазон сохранён. Вся сура не отмечена как выученная.'**
+  String get rangeCompletedBody;
+
+  /// No description provided for @completeWithoutRotation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Завершить без ротации'**
+  String get completeWithoutRotation;
+
+  /// No description provided for @addToRotationQuestion.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить в ротацию?'**
+  String get addToRotationQuestion;
+
+  /// No description provided for @returnToLearning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать из выученных'**
+  String get returnToLearning;
+
+  /// No description provided for @returnToLearningTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вернуть суру в обучение?'**
+  String get returnToLearningTitle;
+
+  /// No description provided for @returnToLearningBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сура выйдет из ротации. История, статистика, разбиение и прежние оценки сохранятся.'**
+  String get returnToLearningBody;
 }
 
 class _AppLocalizationsDelegate

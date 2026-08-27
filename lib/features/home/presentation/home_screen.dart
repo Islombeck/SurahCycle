@@ -837,9 +837,7 @@ final class _CurrentLearningCard extends ConsumerWidget {
         .toList(growable: false);
     final descriptor = matches.isEmpty ? null : matches.first.surah;
     final name = descriptor?.displayName ?? context.l10n.selectSurah;
-    final stage = state.stage.kind == LearningStageKind.newAyah
-        ? context.l10n.newAyah(state.stage.ayahNumber)
-        : context.l10n.cumulativeRange(state.stage.endAyah);
+    final stage = state.stage.label(context.l10n);
     final reading = descriptor == null
         ? null
         : ref

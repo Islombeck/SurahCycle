@@ -199,4 +199,31 @@
   ,"@widgetAutomaticPrayerStart": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}}}
   ,"widgetSelectPrayerInApp": "Choose a prayer in Murajaah"
   ,"widgetActionNotCompleted": "Could not mark. Current data restored."
+  ,"learningHow": "How do you want to learn?"
+  ,"learningClassic": "Classic"
+  ,"learningChunked": "In chunks"
+  ,"learningChunkedRecommended": "Chunks are usually easier for a long surah. You can change this choice."
+  ,"learningTargetRange": "Learning range"
+  ,"learningTargetStart": "First ayah"
+  ,"learningTargetEnd": "Last ayah"
+  ,"learningBlockSize": "Block size"
+  ,"learningCustomBlockSize": "Custom size"
+  ,"changeLearningPlan": "Change plan"
+  ,"confirmPlanChangeTitle": "Start a new cycle?"
+  ,"confirmPlanChangeBody": "Current progress will restart with the new plan. Learning history will be preserved."
+  ,"learningReviewRange": "Review ayahs {start}–{end}"
+  ,"@learningReviewRange": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"learningBridgeRange": "Bridge blocks · ayahs {start}–{end}"
+  ,"@learningBridgeRange": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"learningSectionReview": "Review section · ayahs {start}–{end}"
+  ,"@learningSectionReview": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"learningFinalReview": "Final review · ayahs {start}–{end}"
+  ,"@learningFinalReview": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"rangeCompletedTitle": "Range completed"
+  ,"rangeCompletedBody": "The learned range was saved. The whole surah was not marked as mastered."
+  ,"completeWithoutRotation": "Complete without rotation"
+  ,"addToRotationQuestion": "Add to rotation?"
+  ,"returnToLearning": "Remove from mastered"
+  ,"returnToLearningTitle": "Return this surah to learning?"
+  ,"returnToLearningBody": "The surah will leave rotation. History, statistics, segmentation, and previous scores will remain."
 }

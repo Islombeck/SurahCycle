@@ -85,6 +85,7 @@ final class RotationProjectionStore {
             ayahCount: metadata.ayahCount,
             alias: row.alias,
           ),
+          isCurrentlyMastered: row.isCurrentlyMastered,
           isActive: row.isActive,
           hasEnteredRotation: row.hasEnteredRotation,
           displayOrder: row.displayOrder,
@@ -154,6 +155,7 @@ final class RotationProjectionStore {
             database.masteredSurahs,
           )..where((MasteredSurahs row) => row.surahId.equals(surah.id))).write(
             MasteredSurahsCompanion(
+              isCurrentlyMastered: Value<bool>(surah.isCurrentlyMastered),
               isActive: Value<bool>(surah.isActive),
               hasEnteredRotation: Value<bool>(surah.hasEnteredRotation),
               cachedRotationScore: Value<int>(surah.rotationScore),
@@ -237,13 +239,22 @@ final class RotationProjectionStore {
       _SchemeCarry? carry;
       for (var index = 0; index < schemes.length; index += 1) {
         final scheme = schemes[index];
-        final baseline =
-            carry ??
-            _SchemeCarry(
-              score: scheme.baselineScore,
-              total: scheme.baselineTotalRecitations,
-              lastUsedAtUtc: scheme.baselineLastUsedAtUtc?.toUtc(),
-            );
+        final storedBaseline = _SchemeCarry(
+          score: scheme.baselineScore,
+          total: scheme.baselineTotalRecitations,
+          lastUsedAtUtc: scheme.baselineLastUsedAtUtc?.toUtc(),
+        );
+        final baseline = carry == null
+            ? storedBaseline
+            : scheme.resetsRotationBaseline
+            ? _SchemeCarry(
+                // Remastery intentionally discards old score debt. Historical
+                // totals and last-used time still follow journal rebuilds.
+                score: storedBaseline.score,
+                total: carry.total,
+                lastUsedAtUtc: carry.lastUsedAtUtc,
+              )
+            : carry;
         if (index > 0) {
           await (database.update(
             database.rotationSchemes,
@@ -394,6 +405,7 @@ final class RotationProjectionStore {
     baselineRotationScore: scheme.baselineScore,
     baselineTotalRecitations: scheme.baselineTotalRecitations,
     baselineLastUsedAtUtc: scheme.baselineLastUsedAtUtc?.toUtc(),
+    resetsRotationBaseline: scheme.resetsRotationBaseline,
     parts: <SurahRotationPart>[
       for (final part in parts)
         SurahRotationPart(

@@ -199,4 +199,31 @@
   ,"@widgetAutomaticPrayerStart": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}}}
   ,"widgetSelectPrayerInApp": "Murajaah’da namozni tanlang"
   ,"widgetActionNotCompleted": "Belgilab bo‘lmadi. Joriy ma’lumotlar tiklandi."
+  ,"learningHow": "Qanday yodlaysiz?"
+  ,"learningClassic": "Klassik"
+  ,"learningChunked": "Qismlarga bo‘lib"
+  ,"learningChunkedRecommended": "Uzun surani qismlarga bo‘lib yodlash qulayroq. Tanlovni o‘zgartirish mumkin."
+  ,"learningTargetRange": "Yodlash oralig‘i"
+  ,"learningTargetStart": "Birinchi oyat"
+  ,"learningTargetEnd": "Oxirgi oyat"
+  ,"learningBlockSize": "Blok hajmi"
+  ,"learningCustomBlockSize": "Boshqa hajm"
+  ,"changeLearningPlan": "Rejani o‘zgartirish"
+  ,"confirmPlanChangeTitle": "Yangi davr boshlansinmi?"
+  ,"confirmPlanChangeBody": "Joriy progress yangi reja bo‘yicha qayta boshlanadi. Yodlash tarixi saqlanadi."
+  ,"learningReviewRange": "{start}–{end}-oyatlarni takrorlash"
+  ,"@learningReviewRange": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"learningBridgeRange": "Bloklarni bog‘lash · {start}–{end}-oyatlar"
+  ,"@learningBridgeRange": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"learningSectionReview": "Bo‘limni takrorlash · {start}–{end}-oyatlar"
+  ,"@learningSectionReview": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"learningFinalReview": "Yakuniy takrorlash · {start}–{end}-oyatlar"
+  ,"@learningFinalReview": {"placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}}
+  ,"rangeCompletedTitle": "Oraliq yakunlandi"
+  ,"rangeCompletedBody": "Yodlangan oraliq saqlandi. Butun sura yodlangan deb belgilanmadi."
+  ,"completeWithoutRotation": "Aylanishsiz yakunlash"
+  ,"addToRotationQuestion": "Aylanishga qo‘shilsinmi?"
+  ,"returnToLearning": "Yodlanganlardan olib tashlash"
+  ,"returnToLearningTitle": "Surani yodlashga qaytarasizmi?"
+  ,"returnToLearningBody": "Sura aylanishdan chiqadi. Tarix, statistika, bo‘linish va avvalgi ballar saqlanadi."
 }

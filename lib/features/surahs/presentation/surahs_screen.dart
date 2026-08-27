@@ -208,6 +208,7 @@ final class _CatalogListState extends ConsumerState<_CatalogList> {
     item: item,
     busy: _busy.contains(item.surah.id),
     onToggle: (value) => _setActive(item, value),
+    onReturnToLearning: () => _returnToLearning(item),
     onOpen: () => context.push('/surah/${item.surah.id}'),
   );
 
@@ -222,6 +223,30 @@ final class _CatalogListState extends ConsumerState<_CatalogList> {
       await ref
           .read(surahRepositoryProvider)
           .setActive(item.surah.id, isActive: value);
+    });
+  }
+
+  Future<void> _returnToLearning(CatalogSurah item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.returnToLearningTitle),
+        content: Text(context.l10n.returnToLearningBody),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(context.l10n.returnToLearning),
+          ),
+        ],
+      ),
+    );
+    if (!(confirmed ?? false)) return;
+    await _guard(item.surah.id, () async {
+      await ref.read(appActionsProvider).returnToLearning(item.surah.id);
     });
   }
 
@@ -248,12 +273,14 @@ final class _MasteredTile extends StatelessWidget {
     required this.item,
     required this.busy,
     required this.onToggle,
+    required this.onReturnToLearning,
     required this.onOpen,
   });
 
   final CatalogSurah item;
   final bool busy;
   final ValueChanged<bool> onToggle;
+  final VoidCallback onReturnToLearning;
   final VoidCallback onOpen;
 
   @override
@@ -272,9 +299,30 @@ final class _MasteredTile extends StatelessWidget {
               dimension: 24,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : Switch(
-              value: item.isActive,
-              onChanged: item.surah.isRotationEligible ? onToggle : null,
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Switch(
+                  value: item.isActive,
+                  onChanged: item.surah.isRotationEligible ? onToggle : null,
+                ),
+                PopupMenuButton<String>(
+                  tooltip: context.l10n.returnToLearning,
+                  onSelected: (_) => onReturnToLearning(),
+                  itemBuilder: (context) => <PopupMenuEntry<String>>[
+                    PopupMenuItem<String>(
+                      value: 'return-to-learning',
+                      child: Row(
+                        children: <Widget>[
+                          const Icon(Icons.school_outlined),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(context.l10n.returnToLearning)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
     );
   }

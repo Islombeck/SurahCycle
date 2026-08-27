@@ -655,4 +655,85 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get widgetActionNotCompleted =>
       'Belgilab bo‘lmadi. Joriy ma’lumotlar tiklandi.';
+
+  @override
+  String get learningHow => 'Qanday yodlaysiz?';
+
+  @override
+  String get learningClassic => 'Klassik';
+
+  @override
+  String get learningChunked => 'Qismlarga bo‘lib';
+
+  @override
+  String get learningChunkedRecommended =>
+      'Uzun surani qismlarga bo‘lib yodlash qulayroq. Tanlovni o‘zgartirish mumkin.';
+
+  @override
+  String get learningTargetRange => 'Yodlash oralig‘i';
+
+  @override
+  String get learningTargetStart => 'Birinchi oyat';
+
+  @override
+  String get learningTargetEnd => 'Oxirgi oyat';
+
+  @override
+  String get learningBlockSize => 'Blok hajmi';
+
+  @override
+  String get learningCustomBlockSize => 'Boshqa hajm';
+
+  @override
+  String get changeLearningPlan => 'Rejani o‘zgartirish';
+
+  @override
+  String get confirmPlanChangeTitle => 'Yangi davr boshlansinmi?';
+
+  @override
+  String get confirmPlanChangeBody =>
+      'Joriy progress yangi reja bo‘yicha qayta boshlanadi. Yodlash tarixi saqlanadi.';
+
+  @override
+  String learningReviewRange(int start, int end) {
+    return '$start–$end-oyatlarni takrorlash';
+  }
+
+  @override
+  String learningBridgeRange(int start, int end) {
+    return 'Bloklarni bog‘lash · $start–$end-oyatlar';
+  }
+
+  @override
+  String learningSectionReview(int start, int end) {
+    return 'Bo‘limni takrorlash · $start–$end-oyatlar';
+  }
+
+  @override
+  String learningFinalReview(int start, int end) {
+    return 'Yakuniy takrorlash · $start–$end-oyatlar';
+  }
+
+  @override
+  String get rangeCompletedTitle => 'Oraliq yakunlandi';
+
+  @override
+  String get rangeCompletedBody =>
+      'Yodlangan oraliq saqlandi. Butun sura yodlangan deb belgilanmadi.';
+
+  @override
+  String get completeWithoutRotation => 'Aylanishsiz yakunlash';
+
+  @override
+  String get addToRotationQuestion => 'Aylanishga qo‘shilsinmi?';
+
+  @override
+  String get returnToLearning => 'Yodlanganlardan olib tashlash';
+
+  @override
+  String get returnToLearningTitle => 'Surani yodlashga qaytarasizmi?';
+
+  @override
+  String get returnToLearningBody =>
+      'Sura aylanishdan chiqadi. Tarix, statistika, bo‘linish va avvalgi ballar saqlanadi.';
 }

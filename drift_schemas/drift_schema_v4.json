@@ -1,0 +1,1670 @@
+{
+  "_meta": {
+    "description": "This file contains a serialized version of schema entities for drift.",
+    "version": "1.3.0"
+  },
+  "options": {
+    "store_date_time_values_as_text": false
+  },
+  "entities": [
+    {
+      "id": 0,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "surah_metadata",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "surah_number",
+            "getter_name": "surahNumber",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "UNIQUE",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "UNIQUE"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "unique"
+            ]
+          },
+          {
+            "name": "official_name",
+            "getter_name": "officialName",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "ayah_count",
+            "getter_name": "ayahCount",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "source_id",
+            "getter_name": "sourceId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "source_version",
+            "getter_name": "sourceVersion",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (surah_number > 0)",
+          "CHECK (ayah_count > 0)",
+          "CHECK (length(official_name) > 0)"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "references": [
+        0
+      ],
+      "type": "table",
+      "data": {
+        "name": "mastered_surahs",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "surah_id",
+            "getter_name": "surahId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES surah_metadata (id) ON DELETE RESTRICT",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES surah_metadata (id) ON DELETE RESTRICT"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "surah_metadata",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": "restrict"
+                }
+              }
+            ]
+          },
+          {
+            "name": "is_currently_mastered",
+            "getter_name": "isCurrentlyMastered",
+            "moor_type": "bool",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "CHECK (\"is_currently_mastered\" IN (0, 1))",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "CHECK (\"is_currently_mastered\" IN (0, 1))"
+            },
+            "default_dart": "const CustomExpression('1')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "is_active",
+            "getter_name": "isActive",
+            "moor_type": "bool",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "CHECK (\"is_active\" IN (0, 1))",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "CHECK (\"is_active\" IN (0, 1))"
+            },
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "has_entered_rotation",
+            "getter_name": "hasEnteredRotation",
+            "moor_type": "bool",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "CHECK (\"has_entered_rotation\" IN (0, 1))",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "CHECK (\"has_entered_rotation\" IN (0, 1))"
+            },
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "activation_baseline_score",
+            "getter_name": "activationBaselineScore",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "cached_rotation_score",
+            "getter_name": "cachedRotationScore",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "cached_total_recitations",
+            "getter_name": "cachedTotalRecitations",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "cached_last_used_at_utc",
+            "getter_name": "cachedLastUsedAtUtc",
+            "moor_type": "dateTime",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "alias",
+            "getter_name": "alias",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "display_order",
+            "getter_name": "displayOrder",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (activation_baseline_score IS NULL OR activation_baseline_score >= 0)",
+          "CHECK (cached_rotation_score >= 0)",
+          "CHECK (cached_total_recitations >= 0)",
+          "CHECK (has_entered_rotation = 1 OR is_active = 0)",
+          "CHECK (is_currently_mastered = 1 OR is_active = 0)"
+        ],
+        "explicit_pk": [
+          "surah_id"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "rotation_states",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "singleton_id",
+            "getter_name": "singletonId",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('1')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "rotation_target",
+            "getter_name": "rotationTarget",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('1')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "last_journal_sequence",
+            "getter_name": "lastJournalSequence",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "projection_version",
+            "getter_name": "projectionVersion",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('1')",
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (singleton_id = 1)",
+          "CHECK (rotation_target >= 1)",
+          "CHECK (last_journal_sequence >= 0)",
+          "CHECK (projection_version > 0)"
+        ],
+        "explicit_pk": [
+          "singleton_id"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "references": [
+        1
+      ],
+      "type": "table",
+      "data": {
+        "name": "rotation_schemes",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "surah_id",
+            "getter_name": "surahId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES mastered_surahs (surah_id) ON DELETE RESTRICT",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES mastered_surahs (surah_id) ON DELETE RESTRICT"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "mastered_surahs",
+                    "column": "surah_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": "restrict"
+                }
+              }
+            ]
+          },
+          {
+            "name": "version",
+            "getter_name": "version",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "ayah_count_snapshot",
+            "getter_name": "ayahCountSnapshot",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "baseline_score",
+            "getter_name": "baselineScore",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "baseline_total_recitations",
+            "getter_name": "baselineTotalRecitations",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "baseline_last_used_at_utc",
+            "getter_name": "baselineLastUsedAtUtc",
+            "moor_type": "dateTime",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "resets_rotation_baseline",
+            "getter_name": "resetsRotationBaseline",
+            "moor_type": "bool",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "CHECK (\"resets_rotation_baseline\" IN (0, 1))",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "CHECK (\"resets_rotation_baseline\" IN (0, 1))"
+            },
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "activated_journal_sequence",
+            "getter_name": "activatedJournalSequence",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "superseded_journal_sequence",
+            "getter_name": "supersededJournalSequence",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (length(id) > 0)",
+          "CHECK (version > 0)",
+          "CHECK (ayah_count_snapshot > 0)",
+          "CHECK (baseline_score >= 0)",
+          "CHECK (baseline_total_recitations >= 0)",
+          "CHECK (activated_journal_sequence >= 0)",
+          "CHECK (superseded_journal_sequence IS NULL OR superseded_journal_sequence >= activated_journal_sequence)"
+        ],
+        "explicit_pk": [
+          "id"
+        ],
+        "unique_keys": [
+          [
+            "surah_id",
+            "version"
+          ],
+          [
+            "id",
+            "surah_id"
+          ]
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "references": [
+        3
+      ],
+      "type": "table",
+      "data": {
+        "name": "rotation_parts",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "scheme_id",
+            "getter_name": "schemeId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES rotation_schemes (id) ON DELETE CASCADE",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES rotation_schemes (id) ON DELETE CASCADE"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "rotation_schemes",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": "cascade"
+                }
+              }
+            ]
+          },
+          {
+            "name": "ordinal",
+            "getter_name": "ordinal",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "start_ayah",
+            "getter_name": "startAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "end_ayah",
+            "getter_name": "endAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "cached_score",
+            "getter_name": "cachedScore",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "cached_recitation_count",
+            "getter_name": "cachedRecitationCount",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "cached_last_used_at_utc",
+            "getter_name": "cachedLastUsedAtUtc",
+            "moor_type": "dateTime",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (length(id) > 0)",
+          "CHECK (ordinal >= 1)",
+          "CHECK (start_ayah > 0)",
+          "CHECK (end_ayah >= start_ayah)",
+          "CHECK (cached_score >= 0)",
+          "CHECK (cached_recitation_count >= 0)"
+        ],
+        "explicit_pk": [
+          "id"
+        ],
+        "unique_keys": [
+          [
+            "scheme_id",
+            "ordinal"
+          ],
+          [
+            "id",
+            "scheme_id"
+          ]
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "prayer_sessions",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "prayer_type",
+            "getter_name": "prayerType",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "is_qada",
+            "getter_name": "isQada",
+            "moor_type": "bool",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "CHECK (\"is_qada\" IN (0, 1))",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "CHECK (\"is_qada\" IN (0, 1))"
+            },
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "started_at_utc",
+            "getter_name": "startedAtUtc",
+            "moor_type": "dateTime",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "local_date",
+            "getter_name": "localDate",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (prayer_type IN ('fajr', 'dhuhr', 'asr', 'maghrib', 'isha', 'witr', 'nafl'))",
+          "CHECK (is_qada = 0 OR prayer_type != 'nafl')"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "references": [
+        1,
+        5,
+        3
+      ],
+      "type": "table",
+      "data": {
+        "name": "recitation_events",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "journal_sequence",
+            "getter_name": "journalSequence",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "UNIQUE",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "UNIQUE"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "unique"
+            ]
+          },
+          {
+            "name": "surah_id",
+            "getter_name": "surahId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES mastered_surahs (surah_id) ON DELETE RESTRICT",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES mastered_surahs (surah_id) ON DELETE RESTRICT"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "mastered_surahs",
+                    "column": "surah_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": "restrict"
+                }
+              }
+            ]
+          },
+          {
+            "name": "rotation_scheme_id",
+            "getter_name": "rotationSchemeId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "rakaat_span_count",
+            "getter_name": "rakaatSpanCount",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "prayer_session_id",
+            "getter_name": "prayerSessionId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES prayer_sessions (id) ON DELETE SET NULL",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES prayer_sessions (id) ON DELETE SET NULL"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "prayer_sessions",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": "setNull"
+                }
+              }
+            ]
+          },
+          {
+            "name": "created_at_utc",
+            "getter_name": "createdAtUtc",
+            "moor_type": "dateTime",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "local_date",
+            "getter_name": "localDate",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "prayer_type",
+            "getter_name": "prayerType",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "is_qada",
+            "getter_name": "isQada",
+            "moor_type": "bool",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "CHECK (\"is_qada\" IN (0, 1))",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "CHECK (\"is_qada\" IN (0, 1))"
+            },
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "deleted_at_utc",
+            "getter_name": "deletedAtUtc",
+            "moor_type": "dateTime",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (length(id) > 0)",
+          "CHECK (journal_sequence > 0)",
+          "CHECK (prayer_type IN ('fajr', 'dhuhr', 'asr', 'maghrib', 'isha', 'witr', 'nafl'))",
+          "CHECK (is_qada = 0 OR prayer_type != 'nafl')",
+          "CHECK (rakaat_span_count >= 1)",
+          "FOREIGN KEY (rotation_scheme_id, surah_id) REFERENCES rotation_schemes (id, surah_id) ON DELETE RESTRICT"
+        ],
+        "explicit_pk": [
+          "id"
+        ],
+        "unique_keys": [
+          [
+            "id",
+            "rotation_scheme_id"
+          ]
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "references": [
+        6,
+        4
+      ],
+      "type": "table",
+      "data": {
+        "name": "recitation_event_parts",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "event_id",
+            "getter_name": "eventId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "scheme_id",
+            "getter_name": "schemeId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "part_id",
+            "getter_name": "partId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "FOREIGN KEY (event_id, scheme_id) REFERENCES recitation_events (id, rotation_scheme_id) ON DELETE CASCADE",
+          "FOREIGN KEY (part_id, scheme_id) REFERENCES rotation_parts (id, scheme_id) ON DELETE RESTRICT"
+        ],
+        "explicit_pk": [
+          "event_id",
+          "part_id"
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "references": [
+        1,
+        3
+      ],
+      "type": "table",
+      "data": {
+        "name": "rotation_adjustments",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "journal_sequence",
+            "getter_name": "journalSequence",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "UNIQUE",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "UNIQUE"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "unique"
+            ]
+          },
+          {
+            "name": "surah_id",
+            "getter_name": "surahId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES mastered_surahs (surah_id) ON DELETE RESTRICT",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES mastered_surahs (surah_id) ON DELETE RESTRICT"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "mastered_surahs",
+                    "column": "surah_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": "restrict"
+                }
+              }
+            ]
+          },
+          {
+            "name": "rotation_scheme_id",
+            "getter_name": "rotationSchemeId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "delta",
+            "getter_name": "delta",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "reason",
+            "getter_name": "reason",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at_utc",
+            "getter_name": "createdAtUtc",
+            "moor_type": "dateTime",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "deleted_at_utc",
+            "getter_name": "deletedAtUtc",
+            "moor_type": "dateTime",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (length(id) > 0)",
+          "CHECK (journal_sequence > 0)",
+          "CHECK (delta != 0)",
+          "CHECK (length(reason) > 0)",
+          "FOREIGN KEY (rotation_scheme_id, surah_id) REFERENCES rotation_schemes (id, surah_id) ON DELETE RESTRICT"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "references": [
+        0
+      ],
+      "type": "table",
+      "data": {
+        "name": "learning_surahs",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "surah_id",
+            "getter_name": "surahId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "UNIQUE REFERENCES surah_metadata (id) ON DELETE RESTRICT",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "UNIQUE REFERENCES surah_metadata (id) ON DELETE RESTRICT"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "unique",
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "surah_metadata",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": "restrict"
+                }
+              }
+            ]
+          },
+          {
+            "name": "ayah_count",
+            "getter_name": "ayahCount",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "plan_kind",
+            "getter_name": "planKind",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'classicCumulative\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "stage_kind",
+            "getter_name": "stageKind",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "stage_start_ayah",
+            "getter_name": "stageStartAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "stage_end_ayah",
+            "getter_name": "stageEndAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "target_start_ayah",
+            "getter_name": "targetStartAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "target_end_ayah",
+            "getter_name": "targetEndAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "block_size",
+            "getter_name": "blockSize",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "learning_cycle",
+            "getter_name": "learningCycle",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('1')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "status",
+            "getter_name": "status",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "last_learning_activity_at_utc",
+            "getter_name": "lastLearningActivityAtUtc",
+            "moor_type": "dateTime",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "inactivity_rollback_for_activity_at_utc",
+            "getter_name": "inactivityRollbackForActivityAtUtc",
+            "moor_type": "dateTime",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (ayah_count > 0)",
+          "CHECK (target_start_ayah > 0 AND target_end_ayah >= target_start_ayah AND target_end_ayah <= ayah_count)",
+          "CHECK (stage_start_ayah >= target_start_ayah AND stage_end_ayah >= stage_start_ayah AND stage_end_ayah <= target_end_ayah)",
+          "CHECK (plan_kind IN ('classicCumulative', 'chunked'))",
+          "CHECK (stage_kind IN ('newAyah', 'cumulative', 'reviewRange', 'bridge', 'sectionReview', 'finalReview'))",
+          "CHECK (block_size IS NULL OR block_size > 0)",
+          "CHECK (plan_kind = 'chunked' OR block_size IS NULL)",
+          "CHECK (plan_kind = 'classicCumulative' OR block_size IS NOT NULL)",
+          "CHECK (learning_cycle > 0)",
+          "CHECK (status IN ('active', 'completed'))"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "references": [
+        9
+      ],
+      "type": "table",
+      "data": {
+        "name": "learning_events",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "sequence",
+            "getter_name": "sequence",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "PRIMARY KEY AUTOINCREMENT",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "PRIMARY KEY AUTOINCREMENT"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "auto-increment"
+            ]
+          },
+          {
+            "name": "learning_surah_id",
+            "getter_name": "learningSurahId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES learning_surahs (id) ON DELETE CASCADE",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES learning_surahs (id) ON DELETE CASCADE"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "learning_surahs",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": "cascade"
+                }
+              }
+            ]
+          },
+          {
+            "name": "type",
+            "getter_name": "type",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at_utc",
+            "getter_name": "createdAtUtc",
+            "moor_type": "dateTime",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "learning_cycle",
+            "getter_name": "learningCycle",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('1')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "from_plan_kind",
+            "getter_name": "fromPlanKind",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "from_target_start_ayah",
+            "getter_name": "fromTargetStartAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "from_target_end_ayah",
+            "getter_name": "fromTargetEndAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "from_block_size",
+            "getter_name": "fromBlockSize",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "from_stage_kind",
+            "getter_name": "fromStageKind",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "from_stage_start_ayah",
+            "getter_name": "fromStageStartAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "from_stage_end_ayah",
+            "getter_name": "fromStageEndAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "to_plan_kind",
+            "getter_name": "toPlanKind",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "to_target_start_ayah",
+            "getter_name": "toTargetStartAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "to_target_end_ayah",
+            "getter_name": "toTargetEndAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "to_block_size",
+            "getter_name": "toBlockSize",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "to_stage_kind",
+            "getter_name": "toStageKind",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "to_stage_start_ayah",
+            "getter_name": "toStageStartAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "to_stage_end_ayah",
+            "getter_name": "toStageEndAyah",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "reason",
+            "getter_name": "reason",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (length(id) > 0)",
+          "CHECK (type IN ('repeated', 'learned', 'inactivityRollback', 'completed', 'restarted', 'planChanged'))",
+          "CHECK (learning_cycle > 0)",
+          "CHECK (from_plan_kind IN ('classicCumulative', 'chunked'))",
+          "CHECK (to_plan_kind IN ('classicCumulative', 'chunked'))",
+          "CHECK (from_target_start_ayah > 0 AND from_target_end_ayah >= from_target_start_ayah)",
+          "CHECK (to_target_start_ayah > 0 AND to_target_end_ayah >= to_target_start_ayah)",
+          "CHECK (from_plan_kind = 'chunked' OR from_block_size IS NULL)",
+          "CHECK (to_plan_kind = 'chunked' OR to_block_size IS NULL)",
+          "CHECK (from_plan_kind = 'classicCumulative' OR from_block_size IS NOT NULL)",
+          "CHECK (to_plan_kind = 'classicCumulative' OR to_block_size IS NOT NULL)",
+          "CHECK (from_stage_kind IN ('newAyah', 'cumulative', 'reviewRange', 'bridge', 'sectionReview', 'finalReview'))",
+          "CHECK (to_stage_kind IN ('newAyah', 'cumulative', 'reviewRange', 'bridge', 'sectionReview', 'finalReview'))",
+          "CHECK (from_stage_start_ayah > 0 AND from_stage_end_ayah >= from_stage_start_ayah)",
+          "CHECK (to_stage_start_ayah > 0 AND to_stage_end_ayah >= to_stage_start_ayah)",
+          "CHECK (reason IS NULL OR length(reason) > 0)"
+        ],
+        "unique_keys": [
+          [
+            "id"
+          ]
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "app_settings",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "key",
+            "getter_name": "key",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "value",
+            "getter_name": "value",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "value_type",
+            "getter_name": "valueType",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at_utc",
+            "getter_name": "updatedAtUtc",
+            "moor_type": "dateTime",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (value_type IN ('string', 'bool', 'int', 'double'))"
+        ],
+        "explicit_pk": [
+          "key"
+        ]
+      }
+    }
+  ],
+  "fixed_sql": [
+    {
+      "name": "surah_metadata",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"surah_metadata\" (\"id\" TEXT NOT NULL, \"surah_number\" INTEGER NOT NULL UNIQUE, \"official_name\" TEXT NOT NULL, \"ayah_count\" INTEGER NOT NULL, \"source_id\" TEXT NULL, \"source_version\" TEXT NULL, PRIMARY KEY (\"id\"), CHECK (surah_number > 0), CHECK (ayah_count > 0), CHECK (length(official_name) > 0));"
+        }
+      ]
+    },
+    {
+      "name": "mastered_surahs",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"mastered_surahs\" (\"surah_id\" TEXT NOT NULL REFERENCES surah_metadata (id) ON DELETE RESTRICT, \"is_currently_mastered\" INTEGER NOT NULL DEFAULT 1 CHECK (\"is_currently_mastered\" IN (0, 1)), \"is_active\" INTEGER NOT NULL DEFAULT 0 CHECK (\"is_active\" IN (0, 1)), \"has_entered_rotation\" INTEGER NOT NULL DEFAULT 0 CHECK (\"has_entered_rotation\" IN (0, 1)), \"activation_baseline_score\" INTEGER NULL, \"cached_rotation_score\" INTEGER NOT NULL DEFAULT 0, \"cached_total_recitations\" INTEGER NOT NULL DEFAULT 0, \"cached_last_used_at_utc\" INTEGER NULL, \"alias\" TEXT NULL, \"display_order\" INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (\"surah_id\"), CHECK (activation_baseline_score IS NULL OR activation_baseline_score >= 0), CHECK (cached_rotation_score >= 0), CHECK (cached_total_recitations >= 0), CHECK (has_entered_rotation = 1 OR is_active = 0), CHECK (is_currently_mastered = 1 OR is_active = 0));"
+        }
+      ]
+    },
+    {
+      "name": "rotation_states",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"rotation_states\" (\"singleton_id\" INTEGER NOT NULL DEFAULT 1, \"rotation_target\" INTEGER NOT NULL DEFAULT 1, \"last_journal_sequence\" INTEGER NOT NULL DEFAULT 0, \"projection_version\" INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (\"singleton_id\"), CHECK (singleton_id = 1), CHECK (rotation_target >= 1), CHECK (last_journal_sequence >= 0), CHECK (projection_version > 0));"
+        }
+      ]
+    },
+    {
+      "name": "rotation_schemes",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"rotation_schemes\" (\"id\" TEXT NOT NULL, \"surah_id\" TEXT NOT NULL REFERENCES mastered_surahs (surah_id) ON DELETE RESTRICT, \"version\" INTEGER NOT NULL, \"ayah_count_snapshot\" INTEGER NOT NULL, \"baseline_score\" INTEGER NOT NULL, \"baseline_total_recitations\" INTEGER NOT NULL, \"baseline_last_used_at_utc\" INTEGER NULL, \"resets_rotation_baseline\" INTEGER NOT NULL DEFAULT 0 CHECK (\"resets_rotation_baseline\" IN (0, 1)), \"activated_journal_sequence\" INTEGER NOT NULL, \"superseded_journal_sequence\" INTEGER NULL, PRIMARY KEY (\"id\"), UNIQUE (\"surah_id\", \"version\"), UNIQUE (\"id\", \"surah_id\"), CHECK (length(id) > 0), CHECK (version > 0), CHECK (ayah_count_snapshot > 0), CHECK (baseline_score >= 0), CHECK (baseline_total_recitations >= 0), CHECK (activated_journal_sequence >= 0), CHECK (superseded_journal_sequence IS NULL OR superseded_journal_sequence >= activated_journal_sequence));"
+        }
+      ]
+    },
+    {
+      "name": "rotation_parts",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"rotation_parts\" (\"id\" TEXT NOT NULL, \"scheme_id\" TEXT NOT NULL REFERENCES rotation_schemes (id) ON DELETE CASCADE, \"ordinal\" INTEGER NOT NULL, \"start_ayah\" INTEGER NOT NULL, \"end_ayah\" INTEGER NOT NULL, \"cached_score\" INTEGER NOT NULL, \"cached_recitation_count\" INTEGER NOT NULL, \"cached_last_used_at_utc\" INTEGER NULL, PRIMARY KEY (\"id\"), UNIQUE (\"scheme_id\", \"ordinal\"), UNIQUE (\"id\", \"scheme_id\"), CHECK (length(id) > 0), CHECK (ordinal >= 1), CHECK (start_ayah > 0), CHECK (end_ayah >= start_ayah), CHECK (cached_score >= 0), CHECK (cached_recitation_count >= 0));"
+        }
+      ]
+    },
+    {
+      "name": "prayer_sessions",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"prayer_sessions\" (\"id\" TEXT NOT NULL, \"prayer_type\" TEXT NOT NULL, \"is_qada\" INTEGER NOT NULL DEFAULT 0 CHECK (\"is_qada\" IN (0, 1)), \"started_at_utc\" INTEGER NOT NULL, \"local_date\" TEXT NULL, PRIMARY KEY (\"id\"), CHECK (prayer_type IN ('fajr', 'dhuhr', 'asr', 'maghrib', 'isha', 'witr', 'nafl')), CHECK (is_qada = 0 OR prayer_type != 'nafl'));"
+        }
+      ]
+    },
+    {
+      "name": "recitation_events",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"recitation_events\" (\"id\" TEXT NOT NULL, \"journal_sequence\" INTEGER NOT NULL UNIQUE, \"surah_id\" TEXT NOT NULL REFERENCES mastered_surahs (surah_id) ON DELETE RESTRICT, \"rotation_scheme_id\" TEXT NOT NULL, \"rakaat_span_count\" INTEGER NOT NULL, \"prayer_session_id\" TEXT NULL REFERENCES prayer_sessions (id) ON DELETE SET NULL, \"created_at_utc\" INTEGER NOT NULL, \"local_date\" TEXT NOT NULL, \"prayer_type\" TEXT NOT NULL, \"is_qada\" INTEGER NOT NULL DEFAULT 0 CHECK (\"is_qada\" IN (0, 1)), \"deleted_at_utc\" INTEGER NULL, PRIMARY KEY (\"id\"), UNIQUE (\"id\", \"rotation_scheme_id\"), CHECK (length(id) > 0), CHECK (journal_sequence > 0), CHECK (prayer_type IN ('fajr', 'dhuhr', 'asr', 'maghrib', 'isha', 'witr', 'nafl')), CHECK (is_qada = 0 OR prayer_type != 'nafl'), CHECK (rakaat_span_count >= 1), FOREIGN KEY (rotation_scheme_id, surah_id) REFERENCES rotation_schemes (id, surah_id) ON DELETE RESTRICT);"
+        }
+      ]
+    },
+    {
+      "name": "recitation_event_parts",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"recitation_event_parts\" (\"event_id\" TEXT NOT NULL, \"scheme_id\" TEXT NOT NULL, \"part_id\" TEXT NOT NULL, PRIMARY KEY (\"event_id\", \"part_id\"), FOREIGN KEY (event_id, scheme_id) REFERENCES recitation_events (id, rotation_scheme_id) ON DELETE CASCADE, FOREIGN KEY (part_id, scheme_id) REFERENCES rotation_parts (id, scheme_id) ON DELETE RESTRICT);"
+        }
+      ]
+    },
+    {
+      "name": "rotation_adjustments",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"rotation_adjustments\" (\"id\" TEXT NOT NULL, \"journal_sequence\" INTEGER NOT NULL UNIQUE, \"surah_id\" TEXT NOT NULL REFERENCES mastered_surahs (surah_id) ON DELETE RESTRICT, \"rotation_scheme_id\" TEXT NOT NULL, \"delta\" INTEGER NOT NULL, \"reason\" TEXT NOT NULL, \"created_at_utc\" INTEGER NOT NULL, \"deleted_at_utc\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (length(id) > 0), CHECK (journal_sequence > 0), CHECK (delta != 0), CHECK (length(reason) > 0), FOREIGN KEY (rotation_scheme_id, surah_id) REFERENCES rotation_schemes (id, surah_id) ON DELETE RESTRICT);"
+        }
+      ]
+    },
+    {
+      "name": "learning_surahs",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"learning_surahs\" (\"id\" TEXT NOT NULL, \"surah_id\" TEXT NOT NULL UNIQUE REFERENCES surah_metadata (id) ON DELETE RESTRICT, \"ayah_count\" INTEGER NOT NULL, \"plan_kind\" TEXT NOT NULL DEFAULT 'classicCumulative', \"stage_kind\" TEXT NOT NULL, \"stage_start_ayah\" INTEGER NOT NULL, \"stage_end_ayah\" INTEGER NOT NULL, \"target_start_ayah\" INTEGER NOT NULL, \"target_end_ayah\" INTEGER NOT NULL, \"block_size\" INTEGER NULL, \"learning_cycle\" INTEGER NOT NULL DEFAULT 1, \"status\" TEXT NOT NULL, \"last_learning_activity_at_utc\" INTEGER NULL, \"inactivity_rollback_for_activity_at_utc\" INTEGER NULL, PRIMARY KEY (\"id\"), CHECK (ayah_count > 0), CHECK (target_start_ayah > 0 AND target_end_ayah >= target_start_ayah AND target_end_ayah <= ayah_count), CHECK (stage_start_ayah >= target_start_ayah AND stage_end_ayah >= stage_start_ayah AND stage_end_ayah <= target_end_ayah), CHECK (plan_kind IN ('classicCumulative', 'chunked')), CHECK (stage_kind IN ('newAyah', 'cumulative', 'reviewRange', 'bridge', 'sectionReview', 'finalReview')), CHECK (block_size IS NULL OR block_size > 0), CHECK (plan_kind = 'chunked' OR block_size IS NULL), CHECK (plan_kind = 'classicCumulative' OR block_size IS NOT NULL), CHECK (learning_cycle > 0), CHECK (status IN ('active', 'completed')));"
+        }
+      ]
+    },
+    {
+      "name": "learning_events",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"learning_events\" (\"id\" TEXT NOT NULL, \"sequence\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"learning_surah_id\" TEXT NOT NULL REFERENCES learning_surahs (id) ON DELETE CASCADE, \"type\" TEXT NOT NULL, \"created_at_utc\" INTEGER NOT NULL, \"learning_cycle\" INTEGER NOT NULL DEFAULT 1, \"from_plan_kind\" TEXT NOT NULL, \"from_target_start_ayah\" INTEGER NOT NULL, \"from_target_end_ayah\" INTEGER NOT NULL, \"from_block_size\" INTEGER NULL, \"from_stage_kind\" TEXT NOT NULL, \"from_stage_start_ayah\" INTEGER NOT NULL, \"from_stage_end_ayah\" INTEGER NOT NULL, \"to_plan_kind\" TEXT NOT NULL, \"to_target_start_ayah\" INTEGER NOT NULL, \"to_target_end_ayah\" INTEGER NOT NULL, \"to_block_size\" INTEGER NULL, \"to_stage_kind\" TEXT NOT NULL, \"to_stage_start_ayah\" INTEGER NOT NULL, \"to_stage_end_ayah\" INTEGER NOT NULL, \"reason\" TEXT NULL, UNIQUE (\"id\"), CHECK (length(id) > 0), CHECK (type IN ('repeated', 'learned', 'inactivityRollback', 'completed', 'restarted', 'planChanged')), CHECK (learning_cycle > 0), CHECK (from_plan_kind IN ('classicCumulative', 'chunked')), CHECK (to_plan_kind IN ('classicCumulative', 'chunked')), CHECK (from_target_start_ayah > 0 AND from_target_end_ayah >= from_target_start_ayah), CHECK (to_target_start_ayah > 0 AND to_target_end_ayah >= to_target_start_ayah), CHECK (from_plan_kind = 'chunked' OR from_block_size IS NULL), CHECK (to_plan_kind = 'chunked' OR to_block_size IS NULL), CHECK (from_plan_kind = 'classicCumulative' OR from_block_size IS NOT NULL), CHECK (to_plan_kind = 'classicCumulative' OR to_block_size IS NOT NULL), CHECK (from_stage_kind IN ('newAyah', 'cumulative', 'reviewRange', 'bridge', 'sectionReview', 'finalReview')), CHECK (to_stage_kind IN ('newAyah', 'cumulative', 'reviewRange', 'bridge', 'sectionReview', 'finalReview')), CHECK (from_stage_start_ayah > 0 AND from_stage_end_ayah >= from_stage_start_ayah), CHECK (to_stage_start_ayah > 0 AND to_stage_end_ayah >= to_stage_start_ayah), CHECK (reason IS NULL OR length(reason) > 0));"
+        }
+      ]
+    },
+    {
+      "name": "app_settings",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"app_settings\" (\"key\" TEXT NOT NULL, \"value\" TEXT NOT NULL, \"value_type\" TEXT NOT NULL, \"updated_at_utc\" INTEGER NOT NULL, PRIMARY KEY (\"key\"), CHECK (value_type IN ('string', 'bool', 'int', 'double')));"
+        }
+      ]
+    }
+  ]
+}

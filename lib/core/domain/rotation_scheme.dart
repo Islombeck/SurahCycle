@@ -167,6 +167,7 @@ final class SurahRotationScheme {
     int baselineRotationScore = 0,
     int baselineTotalRecitations = 0,
     DateTime? baselineLastUsedAtUtc,
+    bool resetsRotationBaseline = false,
   }) {
     if (id.isEmpty) {
       throw ArgumentError.value(id, 'id', 'Must not be empty.');
@@ -212,6 +213,7 @@ final class SurahRotationScheme {
       baselineRotationScore: baselineRotationScore,
       baselineTotalRecitations: baselineTotalRecitations,
       baselineLastUsedAtUtc: baselineLastUsedAtUtc,
+      resetsRotationBaseline: resetsRotationBaseline,
       parts: immutableParts,
     );
   }
@@ -225,6 +227,7 @@ final class SurahRotationScheme {
     int baselineRotationScore = 0,
     int baselineTotalRecitations = 0,
     DateTime? baselineLastUsedAtUtc,
+    bool resetsRotationBaseline = false,
   }) {
     final immutableRanges = List<AyahRange>.unmodifiable(ranges);
     return SurahRotationScheme(
@@ -235,6 +238,7 @@ final class SurahRotationScheme {
       baselineRotationScore: baselineRotationScore,
       baselineTotalRecitations: baselineTotalRecitations,
       baselineLastUsedAtUtc: baselineLastUsedAtUtc,
+      resetsRotationBaseline: resetsRotationBaseline,
       parts: <SurahRotationPart>[
         for (var index = 0; index < immutableRanges.length; index += 1)
           SurahRotationPart(
@@ -258,6 +262,7 @@ final class SurahRotationScheme {
     int baselineRotationScore = 0,
     int baselineTotalRecitations = 0,
     DateTime? baselineLastUsedAtUtc,
+    bool resetsRotationBaseline = false,
   }) => SurahRotationScheme.fromRanges(
     id: id,
     surahId: surahId,
@@ -267,6 +272,7 @@ final class SurahRotationScheme {
     baselineRotationScore: baselineRotationScore,
     baselineTotalRecitations: baselineTotalRecitations,
     baselineLastUsedAtUtc: baselineLastUsedAtUtc,
+    resetsRotationBaseline: resetsRotationBaseline,
   );
 
   factory SurahRotationScheme.evenlySplit({
@@ -278,6 +284,7 @@ final class SurahRotationScheme {
     int baselineRotationScore = 0,
     int baselineTotalRecitations = 0,
     DateTime? baselineLastUsedAtUtc,
+    bool resetsRotationBaseline = false,
   }) => SurahRotationScheme.fromRanges(
     id: id,
     surahId: surahId,
@@ -287,6 +294,7 @@ final class SurahRotationScheme {
     baselineRotationScore: baselineRotationScore,
     baselineTotalRecitations: baselineTotalRecitations,
     baselineLastUsedAtUtc: baselineLastUsedAtUtc,
+    resetsRotationBaseline: resetsRotationBaseline,
   );
 
   const SurahRotationScheme._({
@@ -297,6 +305,7 @@ final class SurahRotationScheme {
     required this.baselineRotationScore,
     required this.baselineTotalRecitations,
     required this.baselineLastUsedAtUtc,
+    required this.resetsRotationBaseline,
     required this.parts,
   });
 
@@ -307,6 +316,10 @@ final class SurahRotationScheme {
   final int baselineRotationScore;
   final int baselineTotalRecitations;
   final DateTime? baselineLastUsedAtUtc;
+
+  /// True only when this scheme begins a new mastery lifecycle. Journal
+  /// rebuilds preserve its score baseline instead of inheriting old debt.
+  final bool resetsRotationBaseline;
   final List<SurahRotationPart> parts;
 
   bool get isSplit => parts.length > 1;
@@ -351,6 +364,7 @@ final class SurahRotationScheme {
     int? baselineRotationScore,
     int? baselineTotalRecitations,
     Object? baselineLastUsedAtUtc = _notProvided,
+    bool? resetsRotationBaseline,
   }) => SurahRotationScheme(
     id: id,
     surahId: surahId,
@@ -362,6 +376,8 @@ final class SurahRotationScheme {
     baselineLastUsedAtUtc: identical(baselineLastUsedAtUtc, _notProvided)
         ? this.baselineLastUsedAtUtc
         : baselineLastUsedAtUtc as DateTime?,
+    resetsRotationBaseline:
+        resetsRotationBaseline ?? this.resetsRotationBaseline,
     parts: parts ?? this.parts,
   );
 
@@ -379,6 +395,7 @@ final class SurahRotationScheme {
     baselineRotationScore: rotationScore,
     baselineTotalRecitations: totalRecitations,
     baselineLastUsedAtUtc: lastUsedAtUtc,
+    resetsRotationBaseline: resetsRotationBaseline,
     parts: <SurahRotationPart>[
       for (final part in parts)
         SurahRotationPart(
@@ -417,6 +434,7 @@ final class SurahRotationScheme {
           baselineRotationScore == other.baselineRotationScore &&
           baselineTotalRecitations == other.baselineTotalRecitations &&
           baselineLastUsedAtUtc == other.baselineLastUsedAtUtc &&
+          resetsRotationBaseline == other.resetsRotationBaseline &&
           _sameList(parts, other.parts);
 
   @override
@@ -428,6 +446,7 @@ final class SurahRotationScheme {
     baselineRotationScore,
     baselineTotalRecitations,
     baselineLastUsedAtUtc,
+    resetsRotationBaseline,
     Object.hashAll(parts),
   );
 }
