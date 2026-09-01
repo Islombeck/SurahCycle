@@ -11,7 +11,13 @@ layers уже не являются backlog.
 5. Ramadan calendar и Hijri calendar.
 6. Полноценный Quran reader.
 7. Word-by-word translation.
-8. Quran audio и выбор чтеца.
+8. Optional per-surah offline audio with explicit storage size, integrity metadata, and removal controls.
+
+## After Sprint 5D audio
+
+- Persist the preferred reciter/moshaf only after defining behavior when the live catalog removes or changes it.
+- Optional configurable silence between finite learning repeats.
+- Device matrix validation for Bluetooth/headset interruption, Android Auto, and OEM battery restrictions.
 9. Tajweed highlighting.
 10. Более читабельная transliteration от нового документированного provider;
     источник с client secret требует backend proxy.

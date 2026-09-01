@@ -204,6 +204,10 @@ persisted mode. Native widget не подписан на этот provider.
 - UUID создаётся через инъецируемый генератор;
 - изменение timezone после записи не меняет историческую локальную дату.
 
+## Quran learning audio
+
+Quran audio is a provider-neutral feature under `features/quran/audio`. MP3Quran v3 is the current validated adapter; the application consumes only the domain contract. A single `just_audio` player with `just_audio_background` owns media playback and Android system controls. Exact clips come only from provider timing, and lifecycle cancellation prevents stale Learning stages from continuing. See `QURAN_AUDIO_ARCHITECTURE.md` and `QURAN_AUDIO_SOURCE_AUDIT.md`.
+
 ## Quran provider boundary
 
 `QuranContentRepository` возвращает типизированные результаты и

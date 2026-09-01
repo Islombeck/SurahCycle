@@ -71,6 +71,25 @@ final httpClientProvider = Provider<http.Client>((ref) {
   return client;
 });
 
+final quranAudioProvider = Provider<QuranAudioProvider>((ref) {
+  return Mp3QuranAudioProvider(client: ref.watch(httpClientProvider));
+});
+
+final quranAudioCatalogProvider = FutureProvider<List<QuranReciter>>((ref) {
+  return ref.watch(quranAudioProvider).listHafsReciters();
+});
+
+final learningAudioControllerProvider = Provider<LearningAudioController>((
+  ref,
+) {
+  final controller = LearningAudioController(
+    ref.watch(quranAudioProvider),
+    JustAudioQuranPlayback(),
+  );
+  ref.onDispose(controller.dispose);
+  return controller;
+});
+
 final quranEncProvider = Provider<QuranEncProvider>(
   (ref) => QuranEncProvider(
     client: ref.watch(httpClientProvider),

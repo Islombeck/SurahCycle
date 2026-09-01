@@ -6,6 +6,7 @@ import '../../../app/localization_extensions.dart';
 import '../../../core/data/data.dart';
 import '../../../core/domain/domain.dart';
 import '../../quran/quran.dart';
+import '../../quran/audio/presentation/learning_audio_controls.dart';
 
 final class LearningScreen extends ConsumerStatefulWidget {
   const LearningScreen({super.key, this.initialSurahId});
@@ -478,6 +479,14 @@ final class _LearningCard extends ConsumerWidget {
                 ),
               ),
             const SizedBox(height: 16),
+            if (isSelected && descriptor != null) ...[
+              LearningAudioControls(
+                key: ValueKey<String>('learning-audio-${state.id}'),
+                learningState: state,
+                surahNumber: descriptor!.surahNumber,
+              ),
+              const SizedBox(height: 16),
+            ],
             Row(
               children: <Widget>[
                 Expanded(

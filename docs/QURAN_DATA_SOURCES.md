@@ -1,5 +1,9 @@
 # Источники Quran content
 
+## Quran audio — Sprint 5D
+
+Learning audio streams unchanged recordings from the documented MP3Quran.net API v3. The runtime catalog is limited explicitly to Hafs (`rewaya_id = 1`); exact learning clips are enabled only where the timing-read catalog supplies validated millisecond boundaries. See [QURAN_AUDIO_SOURCE_AUDIT.md](QURAN_AUDIO_SOURCE_AUDIT.md) and [QURAN_AUDIO_ARCHITECTURE.md](QURAN_AUDIO_ARCHITECTURE.md).
+
 ## Реализация Sprint 5C
 
 Язык каталога перевода отделён от UI locale и от закреплённого выбора

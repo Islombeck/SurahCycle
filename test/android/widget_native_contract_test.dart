@@ -86,6 +86,28 @@ void main() {
       );
     },
   );
+
+  test('Quran audio owns a separate Android media service contract', () {
+    final manifest = _read('android/app/src/main/AndroidManifest.xml');
+    final activity = _read(
+      'android/app/src/main/kotlin/dev/murajaah/murajaah/MainActivity.kt',
+    );
+
+    expect(
+      manifest,
+      contains('android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK'),
+    );
+    expect(manifest, contains('android.permission.POST_NOTIFICATIONS'));
+    expect(manifest, contains('com.ryanheise.audioservice.AudioService'));
+    expect(manifest, contains('android:foregroundServiceType="mediaPlayback"'));
+    expect(
+      manifest,
+      contains('com.ryanheise.audioservice.MediaButtonReceiver'),
+    );
+    expect(activity, contains('class MainActivity : AudioServiceActivity()'));
+    expect(activity, contains('requestMediaNotifications'));
+    expect(activity, contains('Manifest.permission.POST_NOTIFICATIONS'));
+  });
 }
 
 String _read(String relativePath) {

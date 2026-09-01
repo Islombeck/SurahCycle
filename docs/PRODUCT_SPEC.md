@@ -89,6 +89,10 @@ split-row отмечает только показанную часть и ис�
 pre-action snapshot. History Delete требует подтверждения, сохраняет tombstone
 event ID и не позволяет старому widget action создать событие повторно.
 
+## Learning audio
+
+The selected Learning card can stream its current stage from a dynamic Hafs catalog. The user chooses a reciter/moshaf and repeat count (1, 3, 5, 10, or explicit infinity), can play, pause/resume, and stop, and sees the riwaya and timing capability. With verified timing, a new-ayah stage plays that ayah and a review stage plays its exact range. Without verified timing, the product says so and offers only the full surah. Background playback exposes Android media controls and never reuses the ordinary Learning notification as a media session.
+
 ## Quran content
 
 ### Источники
