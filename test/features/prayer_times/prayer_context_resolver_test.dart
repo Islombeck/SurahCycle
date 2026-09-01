@@ -232,6 +232,7 @@ void main() {
       final now = _utcForTashkent(2026, 8, 25, 17, 9, 0);
       final settings = PrayerTimeSettings(
         location: testTashkentLocation(),
+        locationConfirmed: true,
         contextSelectionMode: PrayerContextSelectionMode.automatic,
       );
       final resolver = PrayerExecutionTimeResolver(
@@ -270,6 +271,7 @@ void main() {
       );
       final settings = PrayerTimeSettings(
         location: testTashkentLocation(),
+        locationConfirmed: true,
         contextSelectionMode: PrayerContextSelectionMode.automatic,
         adjustments: PrayerTimeAdjustments(asrMinutes: 1),
       );

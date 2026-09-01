@@ -56,7 +56,7 @@ void main() {
 
   group('PrayerTimeSettingsRepository', () {
     test(
-      'defaults to explicit manual Tashkent without calculated fallback',
+      'fresh settings are unconfirmed and ready for automatic context',
       () async {
         final database = AppDatabase(NativeDatabase.memory());
         addTearDown(database.close);
@@ -72,7 +72,12 @@ void main() {
           value.locationSelectionMode,
           PrayerLocationSelectionMode.manualRegion,
         );
-        expect(value.contextSelectionMode, PrayerContextSelectionMode.manual);
+        expect(value.locationConfirmed, isFalse);
+        expect(
+          value.contextSelectionMode,
+          PrayerContextSelectionMode.automatic,
+        );
+        expect(value.contextModeExplicitlyChosen, isFalse);
         expect(value.allowCalculatedFallback, isFalse);
         expect(value.calculationSettings.asrSchool, PrayerAsrSchool.hanafi);
       },
@@ -88,8 +93,10 @@ void main() {
         );
         final expected = PrayerTimeSettings(
           location: UzbekistanPrayerLocations.bySlug('chirchiq')!,
+          locationConfirmed: true,
           locationSelectionMode: PrayerLocationSelectionMode.userCoordinates,
           contextSelectionMode: PrayerContextSelectionMode.automatic,
+          contextModeExplicitlyChosen: true,
           adjustments: PrayerTimeAdjustments(
             fajrMinutes: -2,
             dhuhrMinutes: 1,
@@ -116,7 +123,88 @@ void main() {
       },
     );
 
-    test('rejects incomplete coordinates and unknown schemas', () {
+    test(
+      'preserves a Sprint 4 selected prayer when settings were never saved',
+      () async {
+        final database = AppDatabase(NativeDatabase.memory());
+        addTearDown(database.close);
+        final repository = PrayerTimeSettingsRepository(
+          AppSettingsRepository(database),
+        );
+
+        final migrated = await repository.load(
+          legacyManualContextExists: () => true,
+        );
+
+        expect(migrated.locationConfirmed, isFalse);
+        expect(
+          migrated.contextSelectionMode,
+          PrayerContextSelectionMode.manual,
+        );
+        expect(migrated.contextModeExplicitlyChosen, isTrue);
+        expect(
+          await repository.watch(legacyManualContextExists: () => true).first,
+          migrated,
+        );
+      },
+    );
+
+    test('migrates schema v1 as an explicit confirmed choice', () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final settingsRepository = AppSettingsRepository(database);
+      final repository = PrayerTimeSettingsRepository(settingsRepository);
+      final legacy = PrayerTimeSettingsRepository.encode(
+        PrayerTimeSettings(
+          location: UzbekistanPrayerLocations.bySlug('chirchiq')!,
+          contextSelectionMode: PrayerContextSelectionMode.manual,
+        ),
+      );
+      legacy['schemaVersion'] = 1;
+      legacy.remove('locationConfirmed');
+      legacy.remove('contextModeExplicitlyChosen');
+      await settingsRepository.setString(
+        PrayerTimeSettingsRepository.settingKey,
+        jsonEncode(legacy),
+        updatedAtUtc: DateTime.utc(2026, 8, 26),
+      );
+
+      final migrated = await repository.load();
+
+      expect(migrated.location.providerSlug, 'chirchiq');
+      expect(migrated.locationConfirmed, isTrue);
+      expect(migrated.contextSelectionMode, PrayerContextSelectionMode.manual);
+      expect(migrated.contextModeExplicitlyChosen, isTrue);
+    });
+
+    test('keeps the schema v1 Tashkent placeholder unconfirmed', () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final settingsRepository = AppSettingsRepository(database);
+      final repository = PrayerTimeSettingsRepository(settingsRepository);
+      final legacy = PrayerTimeSettingsRepository.encode(
+        PrayerTimeSettings(
+          location: UzbekistanPrayerLocations.bySlug('toshkent-shahri')!,
+          contextSelectionMode: PrayerContextSelectionMode.manual,
+        ),
+      );
+      legacy['schemaVersion'] = 1;
+      legacy.remove('locationConfirmed');
+      legacy.remove('contextModeExplicitlyChosen');
+      await settingsRepository.setString(
+        PrayerTimeSettingsRepository.settingKey,
+        jsonEncode(legacy),
+        updatedAtUtc: DateTime.utc(2026, 8, 26),
+      );
+
+      final migrated = await repository.load();
+
+      expect(migrated.locationConfirmed, isFalse);
+      expect(migrated.contextSelectionMode, PrayerContextSelectionMode.manual);
+      expect(migrated.contextModeExplicitlyChosen, isTrue);
+    });
+
+    test('rejects incomplete schema v2 data and unknown schemas', () {
       final encoded = PrayerTimeSettingsRepository.encode(
         PrayerTimeSettings(location: testTashkentLocation()),
       );
@@ -128,8 +216,22 @@ void main() {
         throwsStateError,
       );
 
+      for (final marker in <String>[
+        'locationConfirmed',
+        'contextModeExplicitlyChosen',
+      ]) {
+        final missingMarker =
+            jsonDecode(jsonEncode(encoded)) as Map<String, Object?>;
+        missingMarker.remove(marker);
+        expect(
+          () => PrayerTimeSettingsRepository.decode(jsonEncode(missingMarker)),
+          throwsStateError,
+          reason: 'schema v2 must persist $marker',
+        );
+      }
+
       final unknown = jsonDecode(jsonEncode(encoded)) as Map<String, Object?>;
-      unknown['schemaVersion'] = 2;
+      unknown['schemaVersion'] = 3;
       expect(
         () => PrayerTimeSettingsRepository.decode(jsonEncode(unknown)),
         throwsStateError,

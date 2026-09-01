@@ -212,6 +212,82 @@ void main() {
       expect(await recitations.getHistory(), isEmpty);
     },
   );
+
+  test(
+    'historical app registration separates entry time from occurrence day',
+    () async {
+      var nextId = 100;
+      final service = RecitationApplicationService(
+        surahs: surahs,
+        recitations: recitations,
+        prayerContextResolver: _FixedPrayerContextResolver(
+          PrayerContext(prayerType: PrayerType.asr),
+        ),
+        timeProvider: const _FixedTimeProvider(),
+        localDates: const _FixedLocalDateProvider(),
+        createEventId: () => _token(nextId++),
+      );
+
+      final witr = await service.registerFromApp(
+        surahId: 'test-a',
+        prayerContext: PrayerContext(prayerType: PrayerType.witr),
+        occurrenceLocalDate: LocalDate(2026, 8, 25),
+      );
+      final fajr = await service.registerFromApp(
+        surahId: 'test-a',
+        prayerContext: PrayerContext(prayerType: PrayerType.fajr),
+        occurrenceLocalDate: LocalDate(2026, 8, 24),
+      );
+      final qada = await service.registerFromApp(
+        surahId: 'test-a',
+        prayerContext: PrayerContext(prayerType: PrayerType.fajr, isQada: true),
+        occurrenceLocalDate: LocalDate(2026, 8, 23),
+      );
+
+      for (final registration in <RecitationRegistration>[witr, fajr, qada]) {
+        expect(registration.event.createdAtUtc, DateTime.utc(2026, 8, 26, 10));
+      }
+      expect(witr.event.localDate, LocalDate(2026, 8, 25));
+      expect(witr.event.prayerType, PrayerType.witr);
+      expect(witr.event.isQada, isFalse);
+      expect(fajr.event.localDate, LocalDate(2026, 8, 24));
+      expect(fajr.event.isQada, isFalse);
+      expect(qada.event.localDate, LocalDate(2026, 8, 23));
+      expect(qada.event.isQada, isTrue);
+
+      final history = await recitations.getHistory();
+      expect(history, hasLength(3));
+      expect(history.map((entry) => entry.event.localDate).toSet(), <LocalDate>{
+        LocalDate(2026, 8, 23),
+        LocalDate(2026, 8, 24),
+        LocalDate(2026, 8, 25),
+      });
+      expect(
+        history.map((entry) => entry.event.createdAtUtc).toSet(),
+        <DateTime>{DateTime.utc(2026, 8, 26, 10)},
+      );
+    },
+  );
+
+  test('app registration remains backward-compatible with today', () async {
+    final service = RecitationApplicationService(
+      surahs: surahs,
+      recitations: recitations,
+      prayerContextResolver: _FixedPrayerContextResolver(
+        PrayerContext(prayerType: PrayerType.asr),
+      ),
+      timeProvider: const _FixedTimeProvider(),
+      localDates: const _FixedLocalDateProvider(),
+      createEventId: () => _token(200),
+    );
+
+    final registration = await service.registerFromApp(
+      surahId: 'test-a',
+      prayerContext: PrayerContext(prayerType: PrayerType.dhuhr),
+    );
+
+    expect(registration.event.localDate, LocalDate(2026, 8, 26));
+  });
 }
 
 RecitationApplicationService _service(

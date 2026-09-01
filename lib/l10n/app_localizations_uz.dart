@@ -736,4 +736,45 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get returnToLearningBody =>
       'Sura aylanishdan chiqadi. Tarix, statistika, bo‘linish va avvalgi ballar saqlanadi.';
+
+  @override
+  String historyAddedAt(String dateTime) {
+    return 'Qo‘shildi: $dateTime';
+  }
+
+  @override
+  String get historyDetailsTitle => 'Qiroat tafsilotlari';
+
+  @override
+  String get historyOpenDetails => 'Qiroat tafsilotlarini ochish';
+
+  @override
+  String get historyOccurrenceLabel => 'Qachon va qaysi namozda o‘qilgan';
+
+  @override
+  String get historyCoverageLabel => 'O‘qilgan qism';
+
+  @override
+  String get historyRakaatSpanExplanation =>
+      'Bu faqat qiroat qamrab olgan rakaatlar soni. Oyatlar alohida rakaatlarga bog‘lanmagan.';
+
+  @override
+  String get registrationWhenTitle => 'Qachon va qaysi namozda o‘qilgan';
+
+  @override
+  String get registrationNow => 'Hozir';
+
+  @override
+  String get registrationPreviousPrayer => 'Oldingi namoz';
+
+  @override
+  String get registrationYesterday => 'Kecha';
+
+  @override
+  String get registrationChooseDatePrayer => 'Sana va namozni tanlash';
+
+  @override
+  String registrationOccurrenceDate(String date) {
+    return 'Qiroat sanasi: $date';
+  }
 }

@@ -30,7 +30,11 @@ final class _PrayerTimeSettingsCardState
         title: Text(context.l10n.prayerTimesTitle),
         subtitle: settings.valueOrNull == null
             ? null
-            : Text(settings.valueOrNull!.location.displayName),
+            : Text(
+                settings.valueOrNull!.locationConfirmed
+                    ? settings.valueOrNull!.location.displayName
+                    : context.l10n.selectPrayerRegion,
+              ),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: <Widget>[
           settings.when(
@@ -54,8 +58,9 @@ final class _PrayerTimeSettingsCardState
   ) {
     final canCalculate = settings.location.coordinates != null;
     final selectedSlug =
-        settings.locationSelectionMode ==
-            PrayerLocationSelectionMode.manualRegion
+        settings.locationConfirmed &&
+            settings.locationSelectionMode ==
+                PrayerLocationSelectionMode.manualRegion
         ? settings.location.providerSlug
         : null;
     return Column(
@@ -96,8 +101,13 @@ final class _PrayerTimeSettingsCardState
                     _save(
                       settings.copyWith(
                         location: location,
+                        locationConfirmed: true,
                         locationSelectionMode:
                             PrayerLocationSelectionMode.manualRegion,
+                        contextSelectionMode:
+                            settings.contextModeExplicitlyChosen
+                            ? settings.contextSelectionMode
+                            : PrayerContextSelectionMode.automatic,
                         allowCalculatedFallback: location.coordinates == null
                             ? false
                             : settings.allowCalculatedFallback,
@@ -139,7 +149,10 @@ final class _PrayerTimeSettingsCardState
           onSelectionChanged: _busy
               ? null
               : (selection) => _save(
-                  settings.copyWith(contextSelectionMode: selection.single),
+                  settings.copyWith(
+                    contextSelectionMode: selection.single,
+                    contextModeExplicitlyChosen: true,
+                  ),
                   refresh: false,
                 ),
         ),
@@ -253,15 +266,17 @@ final class _PrayerTimeSettingsCardState
           ],
         ),
         const SizedBox(height: 12),
-        today.when(
-          loading: () => const LinearProgressIndicator(),
-          error: (error, stackTrace) =>
-              _ScheduleError(onRetry: _busy ? null : () => _refresh(settings)),
-          data: (value) => _ScheduleDetails(
-            value: value,
-            onRefresh: _busy ? null : () => _refresh(settings),
+        if (settings.locationConfirmed)
+          today.when(
+            loading: () => const LinearProgressIndicator(),
+            error: (error, stackTrace) => _ScheduleError(
+              onRetry: _busy ? null : () => _refresh(settings),
+            ),
+            data: (value) => _ScheduleDetails(
+              value: value,
+              onRefresh: _busy ? null : () => _refresh(settings),
+            ),
           ),
-        ),
         if (_busy) ...<Widget>[
           const SizedBox(height: 8),
           const LinearProgressIndicator(),
@@ -305,8 +320,12 @@ final class _PrayerTimeSettingsCardState
             .save(
               settings.copyWith(
                 location: location,
+                locationConfirmed: true,
                 locationSelectionMode:
                     PrayerLocationSelectionMode.userCoordinates,
+                contextSelectionMode: settings.contextModeExplicitlyChosen
+                    ? settings.contextSelectionMode
+                    : PrayerContextSelectionMode.automatic,
                 allowCalculatedFallback: true,
               ),
               refresh: false,

@@ -790,8 +790,10 @@ enum PrayerContextSelectionMode { manual, automatic }
 final class PrayerTimeSettings {
   const PrayerTimeSettings({
     required this.location,
+    this.locationConfirmed = false,
     this.locationSelectionMode = PrayerLocationSelectionMode.manualRegion,
     this.contextSelectionMode = PrayerContextSelectionMode.manual,
+    this.contextModeExplicitlyChosen = false,
     this.adjustments,
     this.calculationSettings =
         const PrayerCalculationSettings.uzbekistanFallback(),
@@ -799,8 +801,10 @@ final class PrayerTimeSettings {
   });
 
   final PrayerLocation location;
+  final bool locationConfirmed;
   final PrayerLocationSelectionMode locationSelectionMode;
   final PrayerContextSelectionMode contextSelectionMode;
+  final bool contextModeExplicitlyChosen;
   final PrayerTimeAdjustments? adjustments;
   final PrayerCalculationSettings calculationSettings;
   final bool allowCalculatedFallback;
@@ -810,15 +814,20 @@ final class PrayerTimeSettings {
 
   PrayerTimeSettings copyWith({
     PrayerLocation? location,
+    bool? locationConfirmed,
     PrayerLocationSelectionMode? locationSelectionMode,
     PrayerContextSelectionMode? contextSelectionMode,
+    bool? contextModeExplicitlyChosen,
     PrayerTimeAdjustments? adjustments,
     PrayerCalculationSettings? calculationSettings,
     bool? allowCalculatedFallback,
   }) => PrayerTimeSettings(
     location: location ?? this.location,
+    locationConfirmed: locationConfirmed ?? this.locationConfirmed,
     locationSelectionMode: locationSelectionMode ?? this.locationSelectionMode,
     contextSelectionMode: contextSelectionMode ?? this.contextSelectionMode,
+    contextModeExplicitlyChosen:
+        contextModeExplicitlyChosen ?? this.contextModeExplicitlyChosen,
     adjustments: adjustments ?? this.adjustments,
     calculationSettings: calculationSettings ?? this.calculationSettings,
     allowCalculatedFallback:
@@ -830,8 +839,10 @@ final class PrayerTimeSettings {
       identical(this, other) ||
       other is PrayerTimeSettings &&
           location == other.location &&
+          locationConfirmed == other.locationConfirmed &&
           locationSelectionMode == other.locationSelectionMode &&
           contextSelectionMode == other.contextSelectionMode &&
+          contextModeExplicitlyChosen == other.contextModeExplicitlyChosen &&
           effectiveAdjustments == other.effectiveAdjustments &&
           calculationSettings == other.calculationSettings &&
           allowCalculatedFallback == other.allowCalculatedFallback;
@@ -839,8 +850,10 @@ final class PrayerTimeSettings {
   @override
   int get hashCode => Object.hash(
     location,
+    locationConfirmed,
     locationSelectionMode,
     contextSelectionMode,
+    contextModeExplicitlyChosen,
     effectiveAdjustments,
     calculationSettings,
     allowCalculatedFallback,

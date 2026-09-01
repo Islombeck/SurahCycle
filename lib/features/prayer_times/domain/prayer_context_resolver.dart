@@ -47,6 +47,7 @@ final class PrayerContextResolver {
     bool previousDayScheduleIsReliable = false,
     PrayerDaySchedule? nextDaySchedule,
     bool nextDayScheduleIsReliable = false,
+    DateTime? nowUtc,
   }) {
     if (mode == PrayerContextSelectionMode.manual) {
       return PrayerContextResolution(
@@ -67,12 +68,12 @@ final class PrayerContextResolver {
       );
     }
 
-    final nowUtc = timeProvider.nowUtc();
-    if (!nowUtc.isUtc) {
+    final effectiveNowUtc = nowUtc ?? timeProvider.nowUtc();
+    if (!effectiveNowUtc.isUtc) {
       throw StateError('TimeProvider.nowUtc() must return a UTC DateTime.');
     }
     final offset = automaticSchedule.utcOffsetMinutes;
-    final localNow = nowUtc.add(Duration(minutes: offset));
+    final localNow = effectiveNowUtc.add(Duration(minutes: offset));
     final localDate = LocalDate.fromLocalDateTime(localNow);
     if (localDate != automaticSchedule.date) {
       return const PrayerContextResolution(

@@ -53,10 +53,15 @@ abstract interface class RecitationLocalDateProvider {
 
 final class SystemRecitationLocalDateProvider
     implements RecitationLocalDateProvider {
-  const SystemRecitationLocalDateProvider();
+  const SystemRecitationLocalDateProvider([
+    this.timeProvider = const SystemTimeProvider(),
+  ]);
+
+  final TimeProvider timeProvider;
 
   @override
-  LocalDate today() => LocalDate.fromLocalDateTime(DateTime.now());
+  LocalDate today() =>
+      LocalDate.fromLocalDateTime(timeProvider.nowUtc().toLocal());
 }
 
 enum WidgetRecitationRejection {
@@ -113,6 +118,7 @@ final class RecitationApplicationService {
     required PrayerContext prayerContext,
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
+    LocalDate? occurrenceLocalDate,
   }) async {
     final snapshot = await surahs.getRotationSnapshot();
     final mastered = snapshot.surahById(surahId);
@@ -123,7 +129,11 @@ final class RecitationApplicationService {
         surahId: surahId,
         prayerContext: prayerContext,
         createdAtUtc: timeProvider.nowUtc(),
-        localDate: localDates.today(),
+        // The journal keeps two deliberately separate facts: when the user
+        // entered the record and the local prayer day on which it occurred.
+        // Choosing a past day does not imply Qada; that remains an explicit
+        // property of [prayerContext].
+        localDate: occurrenceLocalDate ?? localDates.today(),
         rotationSchemeId: explicitPartIds == null
             ? null
             : mastered.rotationScheme.id,

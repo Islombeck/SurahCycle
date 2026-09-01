@@ -232,4 +232,18 @@
   ,"returnToLearning": "Убрать из выученных"
   ,"returnToLearningTitle": "Вернуть суру в обучение?"
   ,"returnToLearningBody": "Сура выйдет из ротации. История, статистика, разбиение и прежние оценки сохранятся."
+  ,"historyAddedAt": "Добавлено {dateTime}"
+  ,"@historyAddedAt": {"placeholders": {"dateTime": {"type": "String"}}}
+  ,"historyDetailsTitle": "Детали прочтения"
+  ,"historyOpenDetails": "Открыть детали прочтения"
+  ,"historyOccurrenceLabel": "Когда и в каком намазе прочитано"
+  ,"historyCoverageLabel": "Прочитанный отрывок"
+  ,"historyRakaatSpanExplanation": "Это только число ракаатов, которые заняло прочтение. Отдельные аяты не привязаны к конкретным ракаатам."
+  ,"registrationWhenTitle": "Когда и в каком намазе прочитано"
+  ,"registrationNow": "Сейчас"
+  ,"registrationPreviousPrayer": "Предыдущий намаз"
+  ,"registrationYesterday": "Вчера"
+  ,"registrationChooseDatePrayer": "Выбрать дату и намаз"
+  ,"registrationOccurrenceDate": "Дата прочтения: {date}"
+  ,"@registrationOccurrenceDate": {"placeholders": {"date": {"type": "String"}}}
 }

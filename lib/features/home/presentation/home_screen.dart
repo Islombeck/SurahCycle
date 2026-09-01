@@ -78,14 +78,19 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     final learning = ref.watch(activeLearningProvider);
     final catalog = ref.watch(fullCatalogProvider);
     final manualPrayer = ref.watch(selectedPrayerProvider);
-    final prayerResolution = ref
-        .watch(prayerContextResolutionProvider)
-        .valueOrNull;
-    final scheduleResolution = ref
-        .watch(prayerScheduleContextResolutionProvider)
-        .valueOrNull;
-    final prayerSettings = ref.watch(prayerTimeSettingsProvider).valueOrNull;
-    final prayerSchedule = ref.watch(prayerTodayScheduleProvider).valueOrNull;
+    final prayerResolution = _settledAsyncValue(
+      ref.watch(prayerContextResolutionProvider),
+    );
+    final scheduleResolution = _settledAsyncValue(
+      ref.watch(prayerScheduleContextResolutionProvider),
+    );
+    final prayerSettings = _settledAsyncValue(
+      ref.watch(prayerTimeSettingsProvider),
+    );
+    final prayerSchedule = _matchingPrayerSchedule(
+      ref.watch(prayerTodayScheduleProvider),
+      prayerSettings,
+    );
     final selectedLearningSurahId = ref.watch(selectedLearningSurahProvider);
     final rollbackQueue = ref.watch(learningRollbackQueueProvider);
 
@@ -121,7 +126,9 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                       scheduleResolution: scheduleResolution,
                       settings: prayerSettings,
                       schedule: prayerSchedule,
-                      onTap: () => _showPrayerPicker(manualPrayer),
+                      onTap: () => _showPrayerPicker(
+                        manualPrayer ?? prayerResolution?.context,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     if (rollbackQueue.isNotEmpty)
@@ -135,11 +142,9 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                       data: (snapshot) => _RotationContent(
                         snapshot: snapshot,
                         busyIds: _busySurahIds,
-                        onMarkRequested: (surah) => _handleMarkRequest(
-                          surah,
-                          prayerResolution?.context,
-                          manualPrayer,
-                        ),
+                        onMarkRequested: (surah) => _handleMarkRequest(surah),
+                        onAdvancedMarkRequested: (surah) =>
+                            _handleMarkRequest(surah, advanced: true),
                       ),
                       loading: () => const Center(
                         child: Padding(
@@ -174,38 +179,126 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   /// The one UI entry point for marking a surah.
   Future<void> _handleMarkRequest(
-    MasteredSurah surah,
-    PrayerContext? prayer,
-    PrayerContext manualPrayer,
-  ) async {
-    if (prayer == null) {
-      await _showPrayerPicker(manualPrayer);
-      return;
+    MasteredSurah surah, {
+    bool advanced = false,
+  }) async {
+    var actionPrayer = await _resolvePrayerForAction();
+    if (!mounted) return;
+    if (actionPrayer == null) {
+      final selected = await _showPrayerPicker(
+        ref.read(selectedPrayerProvider),
+      );
+      if (selected == null || !mounted) return;
+      actionPrayer = _ActionPrayerContext(
+        context: selected,
+        isAutomatic: false,
+      );
     }
-    if (!surah.rotationScheme.isSplit) {
-      return _registerRecitation(surah, prayer);
+    if (!surah.rotationScheme.isSplit && !advanced) {
+      return _registerRecitation(surah, actionPrayer.context);
     }
     if (_busySurahIds.contains(surah.id) ||
         !_openCoverageSheetSurahIds.add(surah.id)) {
       return;
     }
     try {
+      final prayerSettings = await _loadPrayerTimeSettings();
+      if (!mounted) return;
       final selection = await showModalBottomSheet<_RecitationSelection>(
         context: context,
         showDragHandle: true,
         isScrollControlled: true,
-        builder: (context) => _RecitationCoverageSheet(surah: surah),
+        builder: (context) => _RecitationCoverageSheet(
+          surah: surah,
+          initialPrayerContext: actionPrayer!.context,
+          initialPrayerIsAutomatic: actionPrayer.isAutomatic,
+          initialOccurrenceLocalDate: ref.read(localDateProvider).today(),
+          timeProvider: ref.read(timeProviderProvider),
+          localDates: ref.read(localDateProvider),
+          utcOffsetMinutes: prayerSettings.locationConfirmed
+              ? prayerSettings.location.utcOffsetMinutes
+              : null,
+          todaySchedule: prayerSettings.locationConfirmed
+              ? _matchingPrayerSchedule(
+                  ref.read(prayerTodayScheduleProvider),
+                  prayerSettings,
+                )
+              : null,
+        ),
       );
       if (selection == null || !mounted) return;
+      var prayerContext = selection.prayerContext;
+      var occurrenceLocalDate = selection.occurrenceLocalDate;
+      if (actionPrayer.isAutomatic &&
+          selection.shortcut == PrayerRegistrationShortcut.now) {
+        var latest = await _resolvePrayerForAction();
+        if (!mounted) return;
+        if (latest == null) {
+          final selected = await _showPrayerPicker(
+            ref.read(selectedPrayerProvider),
+          );
+          if (selected == null || !mounted) return;
+          latest = _ActionPrayerContext(context: selected, isAutomatic: false);
+        }
+        prayerContext = latest.context;
+        occurrenceLocalDate = ref.read(localDateProvider).today();
+      }
       await _registerRecitation(
         surah,
-        prayer,
+        prayerContext,
         coveredPartIds: selection.coveredPartIds,
         rakaatSpanCount: selection.rakaatSpanCount,
+        occurrenceLocalDate: occurrenceLocalDate,
       );
     } finally {
       _openCoverageSheetSurahIds.remove(surah.id);
     }
+  }
+
+  /// Automatic attribution is resolved at the action boundary. A timer keeps
+  /// Home current for presentation, but a delayed rebuild can never authorize
+  /// a write with an old prayer or an expired schedule.
+  Future<_ActionPrayerContext?> _resolvePrayerForAction() async {
+    final settings = await _loadPrayerTimeSettings();
+    if (settings.contextSelectionMode == PrayerContextSelectionMode.manual) {
+      final selected =
+          ref.read(selectedPrayerProvider) ??
+          await ref.read(prayerRepositoryProvider).getSelectedContext();
+      return selected == null
+          ? null
+          : _ActionPrayerContext(context: selected, isAutomatic: false);
+    }
+
+    final override = ref.read(prayerContextOverrideProvider);
+    if (override != null) {
+      return _ActionPrayerContext(context: override, isAutomatic: false);
+    }
+    if (!settings.locationConfirmed) return null;
+    final today = _matchingPrayerSchedule(
+      ref.read(prayerTodayScheduleProvider),
+      settings,
+    );
+    if (today == null) return null;
+    final resolution = today.resolveAutomaticContext(
+      ref.read(timeProviderProvider),
+    );
+    final context = resolution.context;
+    return context == null
+        ? null
+        : _ActionPrayerContext(context: context, isAutomatic: true);
+  }
+
+  Future<PrayerTimeSettings> _loadPrayerTimeSettings() async {
+    final state = ref.read(prayerTimeSettingsProvider);
+    final settled = _settledAsyncValue(state);
+    if (settled != null) return settled;
+    final prayerRepository = ref.read(prayerRepositoryProvider);
+    return ref
+        .read(prayerTimeSettingsRepositoryProvider)
+        .load(
+          legacyManualContextExists: () async =>
+              await prayerRepository.getSelectedContext() != null,
+        );
   }
 
   Future<void> _registerRecitation(
@@ -213,6 +306,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     PrayerContext prayer, {
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
+    LocalDate? occurrenceLocalDate,
   }) async {
     if (_busySurahIds.contains(surah.id)) return;
     setState(() => _busySurahIds.add(surah.id));
@@ -224,7 +318,11 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
             prayerContext: prayer,
             coveredPartIds: coveredPartIds,
             rakaatSpanCount: rakaatSpanCount,
+            occurrenceLocalDate: occurrenceLocalDate,
           );
+      if (ref.read(prayerContextOverrideProvider) != null) {
+        ref.read(prayerContextOverrideProvider.notifier).state = null;
+      }
       if (!mounted || !_isPrimaryHomeSectionActive) return;
       final messenger = ScaffoldMessenger.of(context);
       // An action makes SnackBar persistent by default in current Flutter.
@@ -258,9 +356,9 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  Future<void> _showPrayerPicker(PrayerContext current) async {
-    var prayerType = current.prayerType;
-    var isQada = current.isQada;
+  Future<PrayerContext?> _showPrayerPicker(PrayerContext? current) async {
+    var prayerType = current?.prayerType;
+    var isQada = current?.isQada ?? false;
     final selected = await showModalBottomSheet<PrayerContext>(
       context: context,
       showDragHandle: true,
@@ -293,7 +391,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                   ],
                 ),
-                if (prayerType.supportsQada) ...<Widget>[
+                if (prayerType?.supportsQada ?? false) ...<Widget>[
                   const SizedBox(height: 12),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
@@ -304,9 +402,14 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
                 const SizedBox(height: 12),
                 FilledButton(
-                  onPressed: () => Navigator.of(
-                    context,
-                  ).pop(PrayerContext(prayerType: prayerType, isQada: isQada)),
+                  onPressed: prayerType == null
+                      ? null
+                      : () => Navigator.of(context).pop(
+                          PrayerContext(
+                            prayerType: prayerType!,
+                            isQada: isQada,
+                          ),
+                        ),
                   child: Text(context.l10n.confirm),
                 ),
               ],
@@ -316,22 +419,15 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
     if (selected != null) {
-      await ref.read(selectedPrayerProvider.notifier).select(selected);
-      final prayerTimeSettings = await ref
-          .read(prayerTimeSettingsRepositoryProvider)
-          .load();
-      if (prayerTimeSettings.contextSelectionMode !=
+      final prayerTimeSettings = await _loadPrayerTimeSettings();
+      if (prayerTimeSettings.contextSelectionMode ==
           PrayerContextSelectionMode.manual) {
-        await ref
-            .read(prayerTimeSettingsControllerProvider)
-            .save(
-              prayerTimeSettings.copyWith(
-                contextSelectionMode: PrayerContextSelectionMode.manual,
-              ),
-              refresh: false,
-            );
+        await ref.read(selectedPrayerProvider.notifier).select(selected);
+      } else {
+        ref.read(prayerContextOverrideProvider.notifier).state = selected;
       }
     }
+    return selected;
   }
 
   Future<void> _undoLearningRollback(LearningActionOutcome outcome) async {
@@ -349,20 +445,52 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
+final class _ActionPrayerContext {
+  const _ActionPrayerContext({
+    required this.context,
+    required this.isAutomatic,
+  });
+
+  final PrayerContext context;
+  final bool isAutomatic;
+}
+
 final class _RecitationSelection {
   const _RecitationSelection({
     required this.coveredPartIds,
     required this.rakaatSpanCount,
+    required this.prayerContext,
+    required this.occurrenceLocalDate,
+    required this.shortcut,
   });
 
   final List<String> coveredPartIds;
   final int rakaatSpanCount;
+  final PrayerContext prayerContext;
+  final LocalDate occurrenceLocalDate;
+  final PrayerRegistrationShortcut shortcut;
 }
 
 final class _RecitationCoverageSheet extends StatefulWidget {
-  const _RecitationCoverageSheet({required this.surah});
+  const _RecitationCoverageSheet({
+    required this.surah,
+    required this.initialPrayerContext,
+    required this.initialPrayerIsAutomatic,
+    required this.initialOccurrenceLocalDate,
+    required this.timeProvider,
+    required this.localDates,
+    required this.utcOffsetMinutes,
+    required this.todaySchedule,
+  });
 
   final MasteredSurah surah;
+  final PrayerContext initialPrayerContext;
+  final bool initialPrayerIsAutomatic;
+  final LocalDate initialOccurrenceLocalDate;
+  final TimeProvider timeProvider;
+  final LocalDateProvider localDates;
+  final int? utcOffsetMinutes;
+  final PrayerTodaySchedule? todaySchedule;
 
   @override
   State<_RecitationCoverageSheet> createState() =>
@@ -373,6 +501,10 @@ final class _RecitationCoverageSheetState
     extends State<_RecitationCoverageSheet> {
   late Set<String> _selectedPartIds;
   int _rakaatSpanCount = 1;
+  late PrayerContext _prayerContext;
+  late LocalDate _occurrenceLocalDate;
+  PrayerRegistrationShortcut _registrationShortcut =
+      PrayerRegistrationShortcut.now;
 
   @override
   void initState() {
@@ -380,10 +512,37 @@ final class _RecitationCoverageSheetState
     _selectedPartIds = widget.surah.rotationScheme.parts
         .map((part) => part.id)
         .toSet();
+    _prayerContext = widget.initialPrayerContext;
+    _occurrenceLocalDate = widget.initialOccurrenceLocalDate;
   }
 
   bool get _isWhole =>
       _selectedPartIds.length == widget.surah.rotationScheme.parts.length;
+
+  Future<void> _selectPrayerOccurrence() async {
+    final selected = await showModalBottomSheet<PrayerRegistrationSelection>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => _PrayerOccurrenceSheet(
+        initialPrayerContext: _prayerContext,
+        initialOccurrenceLocalDate: _occurrenceLocalDate,
+        currentPrayerContext: widget.initialPrayerContext,
+        currentPrayerIsAutomatic: widget.initialPrayerIsAutomatic,
+        currentLocalDate: widget.initialOccurrenceLocalDate,
+        timeProvider: widget.timeProvider,
+        localDates: widget.localDates,
+        utcOffsetMinutes: widget.utcOffsetMinutes,
+        todaySchedule: widget.todaySchedule,
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      _prayerContext = selected.prayerContext;
+      _occurrenceLocalDate = selected.occurrenceLocalDate;
+      _registrationShortcut = selected.shortcut;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -395,9 +554,29 @@ final class _RecitationCoverageSheetState
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Text(
-                widget.surah.surah.displayName,
-                style: Theme.of(context).textTheme.titleLarge,
+              Stack(
+                clipBehavior: Clip.none,
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 48),
+                    child: Text(
+                      widget.surah.surah.displayName,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  PositionedDirectional(
+                    top: -12,
+                    end: 0,
+                    child: IconButton(
+                      key: const ValueKey<String>(
+                        'select-registration-occurrence',
+                      ),
+                      tooltip: context.l10n.registrationWhenTitle,
+                      onPressed: _selectPrayerOccurrence,
+                      icon: const Icon(Icons.event_outlined),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
               Text(context.l10n.selectCoverage),
@@ -463,6 +642,9 @@ final class _RecitationCoverageSheetState
                           _RecitationSelection(
                             coveredPartIds: List<String>.unmodifiable(selected),
                             rakaatSpanCount: _rakaatSpanCount,
+                            prayerContext: _prayerContext,
+                            occurrenceLocalDate: _occurrenceLocalDate,
+                            shortcut: _registrationShortcut,
                           ),
                         );
                       },
@@ -475,6 +657,322 @@ final class _RecitationCoverageSheetState
     );
   }
 }
+
+final class _PrayerOccurrenceSheet extends StatefulWidget {
+  const _PrayerOccurrenceSheet({
+    required this.initialPrayerContext,
+    required this.initialOccurrenceLocalDate,
+    required this.currentPrayerContext,
+    required this.currentPrayerIsAutomatic,
+    required this.currentLocalDate,
+    required this.timeProvider,
+    required this.localDates,
+    required this.utcOffsetMinutes,
+    required this.todaySchedule,
+  });
+
+  final PrayerContext initialPrayerContext;
+  final LocalDate initialOccurrenceLocalDate;
+  final PrayerContext currentPrayerContext;
+  final bool currentPrayerIsAutomatic;
+  final LocalDate currentLocalDate;
+  final TimeProvider timeProvider;
+  final LocalDateProvider localDates;
+  final int? utcOffsetMinutes;
+  final PrayerTodaySchedule? todaySchedule;
+
+  @override
+  State<_PrayerOccurrenceSheet> createState() => _PrayerOccurrenceSheetState();
+}
+
+final class _PrayerOccurrenceSheetState extends State<_PrayerOccurrenceSheet> {
+  late PrayerContext _prayerContext;
+  late LocalDate _occurrenceLocalDate;
+  late PrayerRegistrationShortcut _shortcut;
+
+  @override
+  void initState() {
+    super.initState();
+    _prayerContext = widget.initialPrayerContext;
+    _occurrenceLocalDate = widget.initialOccurrenceLocalDate;
+    _shortcut =
+        _occurrenceLocalDate == widget.currentLocalDate &&
+            _prayerContext == widget.currentPrayerContext
+        ? PrayerRegistrationShortcut.now
+        : PrayerRegistrationShortcut.customDateAndPrayer;
+  }
+
+  PrayerRegistrationShortcutResult get _previousPrayer {
+    final today = widget.todaySchedule;
+    final nowUtc = widget.timeProvider.nowUtc();
+    return PrayerRegistrationShortcutResolver(
+      widget.timeProvider,
+    ).resolvePreviousPrayer(
+      currentDaySchedule: today?.day,
+      currentDayScheduleIsReliable:
+          today?.currentDayIsReliableAt(nowUtc) ?? false,
+      previousDaySchedule: today?.previousDay,
+      previousDayScheduleIsReliable:
+          today?.previousDayIsReliableAt(nowUtc) ?? false,
+    );
+  }
+
+  PrayerRegistrationShortcutResult get _now {
+    if (!widget.currentPrayerIsAutomatic) {
+      return PrayerRegistrationShortcutResult.resolved(
+        PrayerRegistrationSelection(
+          shortcut: PrayerRegistrationShortcut.now,
+          occurrenceLocalDate: widget.localDates.today(),
+          prayerContext: widget.currentPrayerContext,
+        ),
+      );
+    }
+    final today = widget.todaySchedule;
+    if (today == null) {
+      return const PrayerRegistrationShortcutResult.unavailable(
+        PrayerRegistrationShortcutStatus.missingSchedule,
+      );
+    }
+    return PrayerRegistrationShortcutResolver(widget.timeProvider).resolveNow(
+      currentResolution: today.resolveAutomaticContext(widget.timeProvider),
+      utcOffsetMinutes: today.day.utcOffsetMinutes,
+    );
+  }
+
+  void _selectNow() {
+    final selection = _now.selection;
+    if (selection == null) return;
+    setState(() {
+      _shortcut = selection.shortcut;
+      _occurrenceLocalDate = selection.occurrenceLocalDate;
+      _prayerContext = selection.prayerContext;
+    });
+  }
+
+  void _selectPreviousPrayer() {
+    final selection = _previousPrayer.selection;
+    if (selection == null) return;
+    setState(() {
+      _shortcut = selection.shortcut;
+      _occurrenceLocalDate = selection.occurrenceLocalDate;
+      _prayerContext = selection.prayerContext;
+    });
+  }
+
+  void _selectYesterday() => setState(() {
+    _shortcut = PrayerRegistrationShortcut.yesterday;
+    final offset = widget.utcOffsetMinutes;
+    if (offset != null) {
+      final selection = PrayerRegistrationShortcutResolver(widget.timeProvider)
+          .resolveYesterday(
+            prayerContext: _prayerContext,
+            utcOffsetMinutes: offset,
+          )
+          .selection!;
+      _occurrenceLocalDate = selection.occurrenceLocalDate;
+      return;
+    }
+    _occurrenceLocalDate = _shiftLocalDate(widget.localDates.today(), -1);
+  });
+
+  Future<void> _selectCustomDate() async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _asDateTime(_occurrenceLocalDate),
+      firstDate: DateTime(2000),
+      lastDate: _asDateTime(widget.localDates.today()),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      _shortcut = PrayerRegistrationShortcut.customDateAndPrayer;
+      _occurrenceLocalDate = LocalDate.fromLocalDateTime(selected);
+    });
+  }
+
+  void _selectPrayerType(PrayerType type) => setState(() {
+    if (_shortcut == PrayerRegistrationShortcut.now ||
+        _shortcut == PrayerRegistrationShortcut.previousPrayer) {
+      _shortcut = PrayerRegistrationShortcut.customDateAndPrayer;
+    }
+    _prayerContext = PrayerContext(
+      prayerType: type,
+      isQada: type.supportsQada ? _prayerContext.isQada : false,
+    );
+  });
+
+  void _selectQada(bool value) => setState(() {
+    if (_shortcut == PrayerRegistrationShortcut.now ||
+        _shortcut == PrayerRegistrationShortcut.previousPrayer) {
+      _shortcut = PrayerRegistrationShortcut.customDateAndPrayer;
+    }
+    _prayerContext = PrayerContext(
+      prayerType: _prayerContext.prayerType,
+      isQada: value,
+    );
+  });
+
+  PrayerRegistrationSelection _yesterdaySelection() {
+    final offset = widget.utcOffsetMinutes;
+    if (offset != null) {
+      return PrayerRegistrationShortcutResolver(widget.timeProvider)
+          .resolveYesterday(
+            prayerContext: _prayerContext,
+            utcOffsetMinutes: offset,
+          )
+          .selection!;
+    }
+    return PrayerRegistrationSelection(
+      shortcut: PrayerRegistrationShortcut.yesterday,
+      occurrenceLocalDate: _shiftLocalDate(widget.localDates.today(), -1),
+      prayerContext: _prayerContext,
+    );
+  }
+
+  PrayerRegistrationSelection? _selectionForConfirmation() =>
+      switch (_shortcut) {
+        PrayerRegistrationShortcut.now => _now.selection,
+        PrayerRegistrationShortcut.previousPrayer => _previousPrayer.selection,
+        PrayerRegistrationShortcut.yesterday => _yesterdaySelection(),
+        PrayerRegistrationShortcut.customDateAndPrayer =>
+          PrayerRegistrationShortcutResolver(widget.timeProvider)
+              .resolveCustom(
+                occurrenceLocalDate: _occurrenceLocalDate,
+                prayerContext: _prayerContext,
+              )
+              .selection,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final now = _now.selection;
+    final previous = _previousPrayer.selection;
+    final canConfirm = _selectionForConfirmation() != null;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                context.l10n.registrationWhenTitle,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  ChoiceChip(
+                    key: const ValueKey<String>('registration-now'),
+                    label: Text(context.l10n.registrationNow),
+                    selected: _shortcut == PrayerRegistrationShortcut.now,
+                    onSelected: now == null ? null : (_) => _selectNow(),
+                  ),
+                  ChoiceChip(
+                    key: const ValueKey<String>('registration-previous-prayer'),
+                    label: Text(context.l10n.registrationPreviousPrayer),
+                    selected:
+                        _shortcut == PrayerRegistrationShortcut.previousPrayer,
+                    onSelected: previous == null
+                        ? null
+                        : (_) => _selectPreviousPrayer(),
+                  ),
+                  ChoiceChip(
+                    key: const ValueKey<String>('registration-yesterday'),
+                    label: Text(context.l10n.registrationYesterday),
+                    selected: _shortcut == PrayerRegistrationShortcut.yesterday,
+                    onSelected: (_) => _selectYesterday(),
+                  ),
+                  ActionChip(
+                    key: const ValueKey<String>('registration-custom-date'),
+                    label: Text(context.l10n.registrationChooseDatePrayer),
+                    onPressed: _selectCustomDate,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                context.l10n.registrationOccurrenceDate(
+                  MaterialLocalizations.of(
+                    context,
+                  ).formatMediumDate(_asDateTime(_occurrenceLocalDate)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  for (final type in PrayerType.values)
+                    ChoiceChip(
+                      key: ValueKey<String>('registration-prayer-${type.name}'),
+                      label: Text(type.label(context.l10n)),
+                      selected: _prayerContext.prayerType == type,
+                      onSelected: (_) => _selectPrayerType(type),
+                    ),
+                ],
+              ),
+              if (_prayerContext.prayerType.supportsQada)
+                SwitchListTile(
+                  key: const ValueKey<String>('registration-qada'),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(context.l10n.isQadaLabel),
+                  value: _prayerContext.isQada,
+                  onChanged: _selectQada,
+                ),
+              const SizedBox(height: 16),
+              FilledButton(
+                key: const ValueKey<String>('confirm-registration-occurrence'),
+                onPressed: !canConfirm
+                    ? null
+                    : () {
+                        final selection = _selectionForConfirmation();
+                        if (selection != null) {
+                          Navigator.of(context).pop(selection);
+                        }
+                      },
+                child: Text(context.l10n.confirm),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+DateTime _asDateTime(LocalDate date) =>
+    DateTime(date.year, date.month, date.day);
+
+LocalDate _shiftLocalDate(LocalDate date, int days) {
+  final shifted = DateTime.utc(
+    date.year,
+    date.month,
+    date.day,
+  ).add(Duration(days: days));
+  return LocalDate.fromLocalDateTime(shifted);
+}
+
+PrayerTodaySchedule? _matchingPrayerSchedule(
+  AsyncValue<PrayerTodaySchedule> state,
+  PrayerTimeSettings? settings,
+) {
+  final value = state.valueOrNull;
+  if (settings == null ||
+      !settings.locationConfirmed ||
+      state.isLoading ||
+      state.hasError ||
+      value == null ||
+      !value.matchesSettings(settings)) {
+    return null;
+  }
+  return value;
+}
+
+T? _settledAsyncValue<T>(AsyncValue<T> state) =>
+    state.isLoading || state.hasError ? null : state.valueOrNull;
 
 final class _PrayerContextCard extends StatelessWidget {
   const _PrayerContextCard({
@@ -580,11 +1078,13 @@ final class _RotationContent extends StatelessWidget {
     required this.snapshot,
     required this.busyIds,
     required this.onMarkRequested,
+    required this.onAdvancedMarkRequested,
   });
 
   final RotationSnapshot snapshot;
   final Set<String> busyIds;
   final ValueChanged<MasteredSurah> onMarkRequested;
+  final ValueChanged<MasteredSurah> onAdvancedMarkRequested;
 
   @override
   Widget build(BuildContext context) {
@@ -672,6 +1172,9 @@ final class _RotationContent extends StatelessWidget {
                   remaining: snapshot.remainingFor(active[index].id),
                   isBusy: busyIds.contains(active[index].id),
                   onMarkRequested: () => onMarkRequested(active[index]),
+                  onAdvancedMarkRequested: active[index].rotationScheme.isSplit
+                      ? null
+                      : () => onAdvancedMarkRequested(active[index]),
                 ),
                 if (index != active.length - 1) const Divider(height: 1),
               ],
@@ -689,12 +1192,14 @@ final class _SurahRotationTile extends StatelessWidget {
     required this.remaining,
     required this.isBusy,
     required this.onMarkRequested,
+    required this.onAdvancedMarkRequested,
   });
 
   final MasteredSurah surah;
   final int remaining;
   final bool isBusy;
   final VoidCallback onMarkRequested;
+  final VoidCallback? onAdvancedMarkRequested;
 
   @override
   Widget build(BuildContext context) {
@@ -732,6 +1237,14 @@ final class _SurahRotationTile extends StatelessWidget {
         ),
       ),
       title: Text(surah.surah.displayName),
+      trailing: onAdvancedMarkRequested == null
+          ? null
+          : IconButton(
+              key: ValueKey<String>('advanced-mark-surah-${surah.id}'),
+              tooltip: context.l10n.selectCoverage,
+              onPressed: isBusy ? null : onAdvancedMarkRequested,
+              icon: const Icon(Icons.tune),
+            ),
       subtitle: Text(
         '${context.l10n.surahNumber(surah.surah.surahNumber)} · '
         '${context.l10n.ayahCount(surah.surah.ayahCount)}',

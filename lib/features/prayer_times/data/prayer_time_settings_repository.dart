@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import '../../../core/data/repositories/settings_repository.dart';
@@ -9,25 +10,61 @@ import 'uzbekistan_prayer_locations.dart';
 final class PrayerTimeSettingsRepository {
   const PrayerTimeSettingsRepository(this._settings);
 
+  // Keep the original key so existing installations can read and migrate the
+  // schema-v1 payload in place.
   static const String settingKey = 'prayer_time_settings_v1';
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
 
   final AppSettingsRepository _settings;
 
   PrayerTimeSettings get defaultValue => PrayerTimeSettings(
     location: UzbekistanPrayerLocations.bySlug('toshkent-shahri')!,
+    locationConfirmed: false,
+    contextSelectionMode: PrayerContextSelectionMode.automatic,
+    contextModeExplicitlyChosen: false,
   );
 
-  Future<PrayerTimeSettings> load() async {
+  Future<PrayerTimeSettings> load({
+    FutureOr<bool> Function()? legacyManualContextExists,
+  }) async {
     final value = await _settings.getString(settingKey);
-    return value == null ? defaultValue : decode(value);
+    return _resolveMissingLegacyManual(
+      value,
+      legacyManualContextExists: legacyManualContextExists,
+    );
   }
 
-  Stream<PrayerTimeSettings> watch() async* {
-    yield await load();
+  Stream<PrayerTimeSettings> watch({
+    FutureOr<bool> Function()? legacyManualContextExists,
+  }) async* {
+    yield await load(legacyManualContextExists: legacyManualContextExists);
     yield* _settings
         .watchString(settingKey)
-        .map((value) => value == null ? defaultValue : decode(value));
+        .asyncMap(
+          (value) => _resolveMissingLegacyManual(
+            value,
+            legacyManualContextExists: legacyManualContextExists,
+          ),
+        );
+  }
+
+  Future<PrayerTimeSettings> _resolveMissingLegacyManual(
+    String? encoded, {
+    required FutureOr<bool> Function()? legacyManualContextExists,
+  }) async {
+    if (encoded != null) return decode(encoded);
+    if (legacyManualContextExists != null &&
+        await legacyManualContextExists()) {
+      // Sprint 4 persisted the selected prayer independently and did not
+      // necessarily persist the then-default manual settings. That explicit
+      // prayer selection is a durable legacy marker: preserve manual mode,
+      // while keeping the old placeholder region unconfirmed.
+      return defaultValue.copyWith(
+        contextSelectionMode: PrayerContextSelectionMode.manual,
+        contextModeExplicitlyChosen: true,
+      );
+    }
+    return defaultValue;
   }
 
   Future<void> save(
@@ -52,7 +89,9 @@ final class PrayerTimeSettingsRepository {
           'longitude': value.location.coordinates?.longitude,
         },
         'locationSelectionMode': value.locationSelectionMode.name,
+        'locationConfirmed': value.locationConfirmed,
         'contextSelectionMode': value.contextSelectionMode.name,
+        'contextModeExplicitlyChosen': value.contextModeExplicitlyChosen,
         'adjustments': <String, Object?>{
           'fajr': value.effectiveAdjustments.fajrMinutes,
           'dhuhr': value.effectiveAdjustments.dhuhrMinutes,
@@ -71,7 +110,8 @@ final class PrayerTimeSettingsRepository {
   static PrayerTimeSettings decode(String encoded) {
     try {
       final root = _map(jsonDecode(encoded));
-      if (_int(root['schemaVersion']) != schemaVersion) {
+      final storedSchemaVersion = _int(root['schemaVersion']);
+      if (storedSchemaVersion != 1 && storedSchemaVersion != schemaVersion) {
         throw const FormatException('Unsupported settings schema.');
       }
       final locationMap = _map(root['location']);
@@ -96,14 +136,26 @@ final class PrayerTimeSettingsRepository {
       if (allowFallback is! bool) {
         throw const FormatException('Invalid fallback flag.');
       }
+      final locationSelectionMode = PrayerLocationSelectionMode.values.byName(
+        _string(root['locationSelectionMode']),
+      );
       return PrayerTimeSettings(
         location: location,
-        locationSelectionMode: PrayerLocationSelectionMode.values.byName(
-          _string(root['locationSelectionMode']),
-        ),
+        // Schema v1 could be persisted by an unrelated adjustment while its
+        // old Tashkent default was still only a placeholder. A non-default
+        // region or coordinates are durable evidence of location choice; the
+        // placeholder must remain unconfirmed and must not trigger network or
+        // automatic attribution after migration.
+        locationConfirmed: storedSchemaVersion == 1
+            ? _legacyLocationWasExplicit(location, locationSelectionMode)
+            : _bool(root['locationConfirmed']),
+        locationSelectionMode: locationSelectionMode,
         contextSelectionMode: PrayerContextSelectionMode.values.byName(
           _string(root['contextSelectionMode']),
         ),
+        contextModeExplicitlyChosen: storedSchemaVersion == 1
+            ? true
+            : _bool(root['contextModeExplicitlyChosen']),
         adjustments: PrayerTimeAdjustments(
           fajrMinutes: _int(adjustments['fajr']),
           dhuhrMinutes: _int(adjustments['dhuhr']),
@@ -155,11 +207,28 @@ final class PrayerTimeSettingsRepository {
     return value.toInt();
   }
 
+  static bool _bool(Object? value) {
+    if (value is! bool) {
+      throw const FormatException('Expected boolean.');
+    }
+    return value;
+  }
+
   static double? _nullableDouble(Object? value) {
     if (value == null) return null;
     if (value is! num || !value.isFinite) {
       throw const FormatException('Expected finite coordinate.');
     }
     return value.toDouble();
+  }
+
+  static bool _legacyLocationWasExplicit(
+    PrayerLocation location,
+    PrayerLocationSelectionMode selectionMode,
+  ) {
+    if (selectionMode == PrayerLocationSelectionMode.userCoordinates) {
+      return location.coordinates != null;
+    }
+    return location.providerSlug != 'toshkent-shahri';
   }
 }

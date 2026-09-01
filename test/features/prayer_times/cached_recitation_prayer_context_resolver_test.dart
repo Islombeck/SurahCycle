@@ -53,6 +53,7 @@ void main() {
       ) => CachedRecitationPrayerContextResolver(
         settings: PrayerTimeSettings(
           location: testTashkentLocation(),
+          locationConfirmed: true,
           contextSelectionMode: PrayerContextSelectionMode.automatic,
           calculationSettings: PrayerCalculationSettings(
             method: method,
@@ -100,6 +101,7 @@ void main() {
       final resolver = CachedRecitationPrayerContextResolver(
         settings: PrayerTimeSettings(
           location: UzbekistanPrayerLocations.bySlug('olmazor')!,
+          locationConfirmed: true,
           contextSelectionMode: PrayerContextSelectionMode.automatic,
           allowCalculatedFallback: true,
         ),

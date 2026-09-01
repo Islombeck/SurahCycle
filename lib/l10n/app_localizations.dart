@@ -1353,6 +1353,78 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Сура выйдет из ротации. История, статистика, разбиение и прежние оценки сохранятся.'**
   String get returnToLearningBody;
+
+  /// No description provided for @historyAddedAt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавлено {dateTime}'**
+  String historyAddedAt(String dateTime);
+
+  /// No description provided for @historyDetailsTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Детали прочтения'**
+  String get historyDetailsTitle;
+
+  /// No description provided for @historyOpenDetails.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть детали прочтения'**
+  String get historyOpenDetails;
+
+  /// No description provided for @historyOccurrenceLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Когда и в каком намазе прочитано'**
+  String get historyOccurrenceLabel;
+
+  /// No description provided for @historyCoverageLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прочитанный отрывок'**
+  String get historyCoverageLabel;
+
+  /// No description provided for @historyRakaatSpanExplanation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это только число ракаатов, которые заняло прочтение. Отдельные аяты не привязаны к конкретным ракаатам.'**
+  String get historyRakaatSpanExplanation;
+
+  /// No description provided for @registrationWhenTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Когда и в каком намазе прочитано'**
+  String get registrationWhenTitle;
+
+  /// No description provided for @registrationNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сейчас'**
+  String get registrationNow;
+
+  /// No description provided for @registrationPreviousPrayer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Предыдущий намаз'**
+  String get registrationPreviousPrayer;
+
+  /// No description provided for @registrationYesterday.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вчера'**
+  String get registrationYesterday;
+
+  /// No description provided for @registrationChooseDatePrayer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать дату и намаз'**
+  String get registrationChooseDatePrayer;
+
+  /// No description provided for @registrationOccurrenceDate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дата прочтения: {date}'**
+  String registrationOccurrenceDate(String date);
 }
 
 class _AppLocalizationsDelegate

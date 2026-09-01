@@ -57,6 +57,9 @@ void main() {
         saved.locationSelectionMode,
         PrayerLocationSelectionMode.manualRegion,
       );
+      expect(saved.locationConfirmed, isTrue);
+      expect(saved.contextSelectionMode, PrayerContextSelectionMode.automatic);
+      expect(saved.contextModeExplicitlyChosen, isFalse);
       expect(saved.allowCalculatedFallback, isFalse);
       expect(location.calls, 0);
     },

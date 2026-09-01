@@ -21,10 +21,30 @@ abstract interface class LocalDateProvider
     implements RecitationLocalDateProvider {}
 
 final class SystemLocalDateProvider implements LocalDateProvider {
-  const SystemLocalDateProvider();
+  const SystemLocalDateProvider([
+    this.timeProvider = const SystemTimeProvider(),
+  ]);
+
+  final TimeProvider timeProvider;
 
   @override
-  LocalDate today() => LocalDate.fromLocalDateTime(DateTime.now());
+  LocalDate today() =>
+      LocalDate.fromLocalDateTime(timeProvider.nowUtc().toLocal());
+}
+
+final class PrayerRegionLocalDateProvider implements LocalDateProvider {
+  const PrayerRegionLocalDateProvider({
+    required this.timeProvider,
+    required this.utcOffsetMinutes,
+  });
+
+  final TimeProvider timeProvider;
+  final int utcOffsetMinutes;
+
+  @override
+  LocalDate today() => LocalDate.fromLocalDateTime(
+    timeProvider.nowUtc().add(Duration(minutes: utcOffsetMinutes)),
+  );
 }
 
 enum AppThemePreference { system, light, dark }
@@ -243,7 +263,13 @@ final prayerTimeSettingsRepositoryProvider =
     });
 
 final prayerTimeSettingsProvider = StreamProvider<PrayerTimeSettings>((ref) {
-  return ref.watch(prayerTimeSettingsRepositoryProvider).watch();
+  final prayerRepository = ref.watch(prayerRepositoryProvider);
+  return ref
+      .watch(prayerTimeSettingsRepositoryProvider)
+      .watch(
+        legacyManualContextExists: () async =>
+            await prayerRepository.getSelectedContext() != null,
+      );
 });
 
 final devicePrayerLocationServiceProvider =
@@ -307,6 +333,9 @@ final prayerTodayScheduleProvider = FutureProvider<PrayerTodaySchedule>((
   ref,
 ) async {
   final settings = await ref.watch(prayerTimeSettingsProvider.future);
+  if (!settings.locationConfirmed) {
+    throw StateError('Prayer location has not been confirmed.');
+  }
   final timeProvider = ref.watch(timeProviderProvider);
   final nextLocalDayRefresh = Timer(
     _durationUntilNextLocalDay(
@@ -326,6 +355,7 @@ final prayerTimeSettingsControllerProvider =
         repository: ref.watch(prayerTimeSettingsRepositoryProvider),
         timeProvider: ref.watch(timeProviderProvider),
         refreshSchedules: (settings) async {
+          if (!settings.locationConfirmed) return;
           final useCases = await ref.read(
             prayerScheduleUseCasesProvider.future,
           );
@@ -339,9 +369,17 @@ final timeProviderProvider = Provider<TimeProvider>(
   (ref) => const SystemTimeProvider(),
 );
 
-final localDateProvider = Provider<LocalDateProvider>(
-  (ref) => const SystemLocalDateProvider(),
-);
+final localDateProvider = Provider<LocalDateProvider>((ref) {
+  final timeProvider = ref.watch(timeProviderProvider);
+  final settings = _settledValue(ref.watch(prayerTimeSettingsProvider));
+  if (settings?.locationConfirmed ?? false) {
+    return PrayerRegionLocalDateProvider(
+      timeProvider: timeProvider,
+      utcOffsetMinutes: settings!.location.utcOffsetMinutes,
+    );
+  }
+  return SystemLocalDateProvider(timeProvider);
+});
 
 final uuidProvider = Provider<Uuid>((ref) => const Uuid());
 
@@ -423,7 +461,9 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
   final catalog = ref.watch(fullCatalogProvider).valueOrNull;
   final storedPrayer = ref.watch(storedPrayerContextProvider);
   final prayerTimeSettings = ref.watch(prayerTimeSettingsProvider);
-  final automaticPrayerResolution = ref.watch(prayerContextResolutionProvider);
+  final automaticPrayerResolution = ref.watch(
+    prayerScheduleContextResolutionProvider,
+  );
   final displayPreferences =
       ref.watch(quranDisplayPreferencesProvider).valueOrNull ??
       QuranDisplayPreferences.defaults;
@@ -431,24 +471,21 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
       .watch(selectedQuranTranslationProvider)
       .valueOrNull;
   final selectedLearningSurahId = ref.watch(selectedLearningSurahProvider);
-  if (rotation == null ||
-      learning == null ||
-      catalog == null ||
-      storedPrayer.isLoading ||
-      prayerTimeSettings.isLoading) {
+  if (rotation == null || learning == null || catalog == null) {
     return;
   }
-  final settings = prayerTimeSettings.valueOrNull;
-  if (settings == null) return;
-  final widgetPrayerResolution =
-      settings.contextSelectionMode == PrayerContextSelectionMode.manual
+  final settings = _settledValue(prayerTimeSettings);
+  final storedContext = _settledValue(storedPrayer);
+  final widgetPrayerResolution = settings == null
+      ? null
+      : settings.contextSelectionMode == PrayerContextSelectionMode.manual
       ? PrayerContextResolution(
-          status: storedPrayer.valueOrNull == null
+          status: storedContext == null
               ? PrayerContextResolutionStatus.missingManualContext
               : PrayerContextResolutionStatus.manual,
-          context: storedPrayer.valueOrNull,
+          context: storedContext,
         )
-      : automaticPrayerResolution.valueOrNull;
+      : _settledValue(automaticPrayerResolution);
   ref
       .watch(widgetSyncDriverProvider)
       .update(
@@ -464,16 +501,22 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
 });
 
 final selectedPrayerProvider =
-    StateNotifierProvider<SelectedPrayerController, PrayerContext>((ref) {
+    StateNotifierProvider<SelectedPrayerController, PrayerContext?>((ref) {
       return SelectedPrayerController(
         repository: ref.watch(prayerRepositoryProvider),
         timeProvider: ref.watch(timeProviderProvider),
       );
     });
 
+/// A full-app, one-event manual choice while persisted settings remain in
+/// automatic mode. Native widgets deliberately ignore this override.
+final prayerContextOverrideProvider = StateProvider<PrayerContext?>((ref) {
+  return null;
+});
+
 final prayerContextResolutionProvider = StreamProvider<PrayerContextResolution>(
   (ref) {
-    final settings = ref.watch(prayerTimeSettingsProvider).valueOrNull;
+    final settings = _settledValue(ref.watch(prayerTimeSettingsProvider));
     if (settings == null) {
       return Stream<PrayerContextResolution>.value(
         const PrayerContextResolution(
@@ -481,17 +524,40 @@ final prayerContextResolutionProvider = StreamProvider<PrayerContextResolution>(
         ),
       );
     }
+    final override = ref.watch(prayerContextOverrideProvider);
+    if (settings.contextSelectionMode == PrayerContextSelectionMode.automatic &&
+        override != null) {
+      return Stream<PrayerContextResolution>.value(
+        PrayerContextResolution(
+          status: PrayerContextResolutionStatus.manual,
+          context: override,
+        ),
+      );
+    }
     final manualContext = ref.watch(selectedPrayerProvider);
     if (settings.contextSelectionMode == PrayerContextSelectionMode.manual) {
       return Stream<PrayerContextResolution>.value(
         PrayerContextResolution(
-          status: PrayerContextResolutionStatus.manual,
+          status: manualContext == null
+              ? PrayerContextResolutionStatus.missingManualContext
+              : PrayerContextResolutionStatus.manual,
           context: manualContext,
         ),
       );
     }
-    final today = ref.watch(prayerTodayScheduleProvider).valueOrNull;
-    if (today == null) {
+    if (!settings.locationConfirmed) {
+      return Stream<PrayerContextResolution>.value(
+        const PrayerContextResolution(
+          status: PrayerContextResolutionStatus.missingSchedule,
+        ),
+      );
+    }
+    final todayState = ref.watch(prayerTodayScheduleProvider);
+    final today = todayState.valueOrNull;
+    if (todayState.isLoading ||
+        todayState.hasError ||
+        today == null ||
+        !today.matchesSettings(settings)) {
       return Stream<PrayerContextResolution>.value(
         const PrayerContextResolution(
           status: PrayerContextResolutionStatus.missingSchedule,
@@ -499,7 +565,6 @@ final prayerContextResolutionProvider = StreamProvider<PrayerContextResolution>(
       );
     }
     return _watchPrayerContextResolution(
-      settings: settings,
       today: today,
       timeProvider: ref.watch(timeProviderProvider),
     );
@@ -510,9 +575,20 @@ final prayerContextResolutionProvider = StreamProvider<PrayerContextResolution>(
 /// while the user keeps recitation attribution in manual mode.
 final prayerScheduleContextResolutionProvider =
     StreamProvider<PrayerContextResolution>((ref) {
-      final settings = ref.watch(prayerTimeSettingsProvider).valueOrNull;
-      final today = ref.watch(prayerTodayScheduleProvider).valueOrNull;
-      if (settings == null || today == null) {
+      final settings = _settledValue(ref.watch(prayerTimeSettingsProvider));
+      if (settings == null || !settings.locationConfirmed) {
+        return Stream<PrayerContextResolution>.value(
+          const PrayerContextResolution(
+            status: PrayerContextResolutionStatus.missingSchedule,
+          ),
+        );
+      }
+      final todayState = ref.watch(prayerTodayScheduleProvider);
+      final today = todayState.valueOrNull;
+      if (todayState.isLoading ||
+          todayState.hasError ||
+          today == null ||
+          !today.matchesSettings(settings)) {
         return Stream<PrayerContextResolution>.value(
           const PrayerContextResolution(
             status: PrayerContextResolutionStatus.missingSchedule,
@@ -520,7 +596,6 @@ final prayerScheduleContextResolutionProvider =
         );
       }
       return _watchPrayerContextResolution(
-        settings: settings,
         today: today,
         timeProvider: ref.watch(timeProviderProvider),
       );
@@ -666,10 +741,11 @@ final class PrayerTimeSettingsController {
 
   Future<void> save(PrayerTimeSettings value, {bool refresh = true}) async {
     await repository.save(value, updatedAtUtc: timeProvider.nowUtc());
-    if (refresh) await refreshSchedules(value);
+    if (refresh && value.locationConfirmed) await refreshSchedules(value);
   }
 
-  Future<void> refresh(PrayerTimeSettings value) => refreshSchedules(value);
+  Future<void> refresh(PrayerTimeSettings value) =>
+      value.locationConfirmed ? refreshSchedules(value) : Future<void>.value();
 }
 
 const String _rotationExclusionsMarker = 'rotation_exclusions_v1_normalized';
@@ -693,23 +769,26 @@ Future<void> _normalizeRotationExclusions(Ref ref) async {
   );
 }
 
-final class SelectedPrayerController extends StateNotifier<PrayerContext> {
+final class SelectedPrayerController extends StateNotifier<PrayerContext?> {
   SelectedPrayerController({
     required this._repository,
     required this._timeProvider,
-  }) : super(PrayerContext(prayerType: PrayerType.fajr)) {
+  }) : super(null) {
     unawaited(_load());
   }
 
   final PrayerRepository _repository;
   final TimeProvider _timeProvider;
+  int _selectionRevision = 0;
 
   Future<void> _load() async {
+    final revision = _selectionRevision;
     final stored = await _repository.getSelectedContext();
-    if (stored != null) state = stored;
+    if (revision == _selectionRevision && stored != null) state = stored;
   }
 
   Future<void> select(PrayerContext value) async {
+    _selectionRevision += 1;
     state = value;
     await _repository.saveSelectedContext(
       value,
@@ -819,12 +898,14 @@ final class AppActions {
     required PrayerContext prayerContext,
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
+    LocalDate? occurrenceLocalDate,
   }) {
     return recitationService.registerFromApp(
       surahId: surahId,
       prayerContext: prayerContext,
       coveredPartIds: coveredPartIds,
       rakaatSpanCount: rakaatSpanCount,
+      occurrenceLocalDate: occurrenceLocalDate,
     );
   }
 
@@ -1182,45 +1263,46 @@ Duration _durationUntilNextLocalDay({
 }
 
 Stream<PrayerContextResolution> _watchPrayerContextResolution({
-  required PrayerTimeSettings settings,
   required PrayerTodaySchedule today,
   required TimeProvider timeProvider,
 }) => Stream<PrayerContextResolution>.multi((controller) {
+  Timer? boundaryTimer;
+  var isCancelled = false;
+
   void emit() {
-    final nowUtc = timeProvider.nowUtc();
-    final localNow = nowUtc.add(
-      Duration(minutes: settings.location.utcOffsetMinutes),
-    );
-    final date = LocalDate.fromLocalDateTime(localNow);
-    final month = today.loadResult.schedule;
-    final current = month.day(date);
-    final previousDateTime = DateTime.utc(
-      date.year,
-      date.month,
-      date.day,
-    ).subtract(const Duration(days: 1));
-    final nextDateTime = DateTime.utc(
-      date.year,
-      date.month,
-      date.day,
-    ).add(const Duration(days: 1));
-    final reliable = today.loadResult.isReliableForAutomaticContext;
-    controller.add(
-      PrayerContextResolver(timeProvider).resolve(
-        mode: PrayerContextSelectionMode.automatic,
-        automaticSchedule: current,
-        automaticScheduleIsReliable: reliable,
-        previousDaySchedule: month.day(
-          LocalDate.fromLocalDateTime(previousDateTime),
-        ),
-        previousDayScheduleIsReliable: reliable,
-        nextDaySchedule: month.day(LocalDate.fromLocalDateTime(nextDateTime)),
-        nextDayScheduleIsReliable: reliable,
-      ),
-    );
+    controller.add(today.resolveAutomaticContext(timeProvider));
   }
 
+  void scheduleNextBoundary() {
+    if (isCancelled) return;
+    boundaryTimer = Timer(_durationUntilNextMinute(timeProvider.nowUtc()), () {
+      if (isCancelled) return;
+      emit();
+      // Recompute after every callback so app suspension or event-loop
+      // delay cannot permanently shift future updates off :00.
+      scheduleNextBoundary();
+    });
+  }
+
+  controller.onCancel = () {
+    isCancelled = true;
+    boundaryTimer?.cancel();
+  };
   emit();
-  final timer = Timer.periodic(const Duration(minutes: 1), (_) => emit());
-  controller.onCancel = timer.cancel;
+  scheduleNextBoundary();
 });
+
+Duration _durationUntilNextMinute(DateTime now) {
+  final microsecondsIntoMinute =
+      now.second * Duration.microsecondsPerSecond +
+      now.millisecond * Duration.microsecondsPerMillisecond +
+      now.microsecond;
+  return Duration(
+    microseconds:
+        Duration.microsecondsPerSecond * Duration.secondsPerMinute -
+        microsecondsIntoMinute,
+  );
+}
+
+T? _settledValue<T>(AsyncValue<T> state) =>
+    state.isLoading || state.hasError ? null : state.valueOrNull;

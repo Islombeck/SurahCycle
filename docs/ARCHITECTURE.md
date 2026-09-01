@@ -1,4 +1,4 @@
-# Архитектура Murajaah — Sprint 4
+# Архитектура Murajaah — Sprint 5
 
 ## Эволюция архитектуры
 
@@ -12,7 +12,24 @@ Android widget. Sprint 4 расширяет те же границы, не ме�
 - prayer schedules разделены на published provider, local calculation, external cache и чистый Prayer Context resolver;
 - Android-виджеты получают готовый versioned JSON snapshot через `home_widget`; Kotlin/Glance не открывает Drift и не повторяет доменные алгоритмы, а интерактивный circle только транспортирует versioned action обратно в Dart.
 
+Sprint 5 переводит пользовательскую базу на Drift schema v4 для mastery и
+learning lifecycle. Изменения Sprint 5B в Prayer Context используют уже
+существующие поля события и отдельный versioned settings JSON schema 2:
+
+- `createdAtUtc` остаётся фактическим моментом записи, а `localDate` становится
+  явно выбираемым occurrence prayer day;
+- startup и automatic resolution имеют null/loading state и не создают
+  фиктивный Prayer Context;
+- исторические shortcuts реализованы чистым application resolver и доступны
+  только полному приложению;
+- native widget остаётся current-context/current-date boundary и fail-closed.
+
 Одна пользовательская отметка создаёт один `RecitationEvent`, а выбранные части записываются отношением `recitation_event_parts` в той же транзакции. `rakaatSpanCount` описывает, на сколько ракаатов распространялось это действие, но не моделирует каждый ракаат отдельно. Смена разбиения создаёт новую схему; прежняя схема и coverage истории не переписываются.
+
+Default `rakaatSpanCount=1`. Compact History скрывает это значение только для
+обычной unsplit whole-surah регистрации; split/partial/multiple span остаётся
+видимым, а details всегда показывает число и пояснение об отсутствии per-rakaat
+ayah mapping.
 
 Все записи из UI и direct widget action проходят через один
 `RecitationApplicationService`/repository boundary. Этот же поток
@@ -73,7 +90,8 @@ UI не выполняет SQL, не меняет счётчики напрям�
 
 1. application use case валидирует активную суру, текущую схему, непустое coverage, 1–4 ракаата и Prayer Context;
 2. сохраняет снимок состояния непосредственно перед действием для краткоживущего Undo;
-3. добавляет `RecitationEvent` с UUID/UTC-временем и все строки coverage;
+3. добавляет `RecitationEvent` с UUID, фактическим `createdAtUtc`, выбранным
+   occurrence `localDate` и всеми строками coverage;
 4. `RotationEngine` атомарно применяет событие к выбранным частям;
 5. сохраняются новый snapshot и версия проекции;
 6. наблюдаемые Riverpod-состояния обновляют главный экран, рекомендации и статистику, а coordinator после commit публикует widget snapshot.
@@ -110,7 +128,7 @@ Snapshot хранит номер схемы/алгоритма и позицию
 | `RotationState` | singleton/id, `rotationTarget` (начально `1`), projection version | глобальная проекция цикла |
 | `RotationAdjustmentEvent` | id, `surahId`, signed `delta`, reason, UTC time | ручной перенос баланса без изменения истории чтений |
 | `PrayerSession` | id, `prayerType`, `isQada`, UTC/local time | контекст одного или нескольких чтений; может быть упрощён до snapshot контекста в событии |
-| `RecitationEvent` | UUID, `surahId`, `rotationSchemeId`, `rakaatSpanCount`, prayer snapshot, UTC/local time, deletion marker | неизменяемый факт одного пользовательского действия |
+| `RecitationEvent` | UUID, `surahId`, `rotationSchemeId`, `rakaatSpanCount`, prayer snapshot, `createdAtUtc`, occurrence `localDate`, deletion marker | неизменяемый факт одного пользовательского действия |
 | `RecitationEventPart` | `eventId`, `schemeId`, `partId` | точное историческое coverage одного события |
 | `LearningSurah` | `surahId`, status, stage kind, current ayah/range, `lastUserActivityAtUtc`, inactivity guard | текущая проекция независимого прогресса |
 | `LearningEvent` | UUID, `surahId`, type, before/after stage, UTC time, metadata | `repeated`, `learned`, inactivity rollback, undo, completion |
@@ -153,6 +171,10 @@ assets и доступны offline без записи в Quran cache. QuranEnc 
   повторно.
 - Automatic Prayer Context не создаётся из stale/missing schedule и не
   подменяется молитвой по умолчанию.
+- Прошлая `localDate` не означает каза: `isQada` изменяется только явным
+  выбором и проверяется через `PrayerType.supportsQada`.
+- `rakaatSpanCount` по умолчанию равен 1 и не создаёт соответствия между
+  отдельными ракаатами и аятами.
 
 ## Prayer Context
 
@@ -160,10 +182,24 @@ assets и доступны offline без записи в Quran cache. QuranEnc 
 
 Событие хранит snapshot контекста (`prayerType`, `isQada`), даже если есть ссылка на `PrayerSession`. Поэтому последующее изменение UI-настройки не переписывает историю.
 
+`PrayerRegistrationShortcutResolver` формирует полную пару
+`PrayerContext + occurrenceLocalDate` для четырёх app-only сценариев:
+
+- Now использует доступный current resolution;
+- Previous prayer использует только пять schedule-derived молитв и требует
+  reliable current/adjacent day;
+- Yesterday оставляет prayer type ручным, поэтому поддерживает Витр;
+- Custom date and prayer принимает обе координаты явно.
+
+Витр и Нафль не выводятся из расписания. В automatic mode ручной выбор в UI
+создаёт transient override для одной регистрации и затем очищается, не меняя
+persisted mode. Native widget не подписан на этот provider.
+
 ## Время и идентификаторы
 
-- `createdAt` сохраняется в UTC;
-- `localDate` сохраняется отдельно для исходной календарной статистики;
+- `createdAtUtc` сохраняется как фактический UTC-момент ввода записи;
+- `localDate` сохраняется отдельно как occurrence prayer day и может быть
+  явно прошлой датой;
 - доменные решения получают время через `Clock`/`TimeProvider`;
 - UUID создаётся через инъецируемый генератор;
 - изменение timezone после записи не меняет историческую локальную дату.
@@ -196,6 +232,24 @@ Raw и effective adjusted times хранятся раздельно.
 автоматически. Stale/future/mismatched schedule даёт null context и отключает
 direct mark. Детали: [PRAYER_TIME_ARCHITECTURE.md](PRAYER_TIME_ARCHITECTURE.md).
 
+Новая установка содержит только неподтверждённый placeholder location. После
+явного выбора региона/location включается automatic mode, если пользователь ещё
+не выбирал mode сам; до reliable schedule resolver и widget остаются
+fail-closed. Settings JSON schema 2 хранит `locationConfirmed` и
+`contextModeExplicitlyChosen`.
+
+Legacy migration не меняет намерение пользователя. JSON schema 1 сохраняет
+mode как явно выбранный; non-default region/user coordinates подтверждают
+location, но старый default Toshkent остаётся безопасным unconfirmed
+placeholder. Если settings JSON вообще отсутствует, но отдельно сохранён
+Prayer Context, repository возвращает manual mode с
+`contextModeExplicitlyChosen=true`, также не подтверждая placeholder.
+
+Minute timer поддерживает presentation, но write boundary не доверяет
+захваченному UI-state: current automatic context и cache freshness повторно
+разрешаются непосредственно перед регистрацией. Now/Previous в открытой
+historical sheet тоже пересчитываются при выборе и подтверждении.
+
 ## Interactive widget boundary
 
 Snapshot schema 3 содержит display-ready rows и необязательные action schema 1.
@@ -206,7 +260,11 @@ Prayer Context, затем вызывает тот же `RecitationApplicationSe
 закрывается только после awaited transaction/refresh. Детали:
 [INTERACTIVE_ANDROID_WIDGET.md](INTERACTIVE_ANDROID_WIDGET.md).
 
-## Расширения вне Sprint 4
+Widget action не принимает historical occurrence и не читает transient
+app override. Дата и Prayer Context определяются заново на execution time из
+persisted current settings; при недоказанном контексте действие отклоняется.
+
+## Расширения вне Sprint 5
 
 - `RecitationRuleService` — точка подключения будущих подтверждённых правил; сейчас разрешает любой выбор.
 - интерфейс export/sync отделён от Drift DAO, чтобы позже передавать пользовательские события серверу;
@@ -220,7 +278,7 @@ Prayer Context, затем вызывает тот же `RecitationApplicationSe
 - секреты поставщиков, keystore, Apple certificates и credential-файлы не входят в репозиторий или APK/IPA;
 - API, требующий client secret, в будущем вызывается только через backend proxy;
 - запрещены scraping HTML и неофициальные private endpoints;
-- пользовательские события не отправляются наружу в Sprint 4;
+- пользовательские события не отправляются наружу в Sprint 5;
 - координаты запрашиваются только по явному tap, не сохраняются как
   background-location history и не отправляются Namoz-vaqti.uz;
 - в логах не должны появляться полная история пользователя, токены или полный payload Quran API;

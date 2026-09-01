@@ -226,4 +226,18 @@
   ,"returnToLearning": "Yodlanganlardan olib tashlash"
   ,"returnToLearningTitle": "Surani yodlashga qaytarasizmi?"
   ,"returnToLearningBody": "Sura aylanishdan chiqadi. Tarix, statistika, bo‘linish va avvalgi ballar saqlanadi."
+  ,"historyAddedAt": "Qo‘shildi: {dateTime}"
+  ,"@historyAddedAt": {"placeholders": {"dateTime": {"type": "String"}}}
+  ,"historyDetailsTitle": "Qiroat tafsilotlari"
+  ,"historyOpenDetails": "Qiroat tafsilotlarini ochish"
+  ,"historyOccurrenceLabel": "Qachon va qaysi namozda o‘qilgan"
+  ,"historyCoverageLabel": "O‘qilgan qism"
+  ,"historyRakaatSpanExplanation": "Bu faqat qiroat qamrab olgan rakaatlar soni. Oyatlar alohida rakaatlarga bog‘lanmagan."
+  ,"registrationWhenTitle": "Qachon va qaysi namozda o‘qilgan"
+  ,"registrationNow": "Hozir"
+  ,"registrationPreviousPrayer": "Oldingi namoz"
+  ,"registrationYesterday": "Kecha"
+  ,"registrationChooseDatePrayer": "Sana va namozni tanlash"
+  ,"registrationOccurrenceDate": "Qiroat sanasi: {date}"
+  ,"@registrationOccurrenceDate": {"placeholders": {"date": {"type": "String"}}}
 }

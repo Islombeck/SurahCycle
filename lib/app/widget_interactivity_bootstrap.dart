@@ -58,7 +58,7 @@ Future<RotationWidgetInteractionOutcome> runRotationWidgetBackgroundAction(
     if (customPrayerResolver != null) {
       prayerResolver = await customPrayerResolver(database);
       effectiveLocalDates =
-          localDates ?? const SystemRecitationLocalDateProvider();
+          localDates ?? SystemRecitationLocalDateProvider(timeProvider);
     } else {
       final context = await _createBackgroundPrayerContext(
         database: database,
@@ -112,16 +112,28 @@ _createBackgroundPrayerContext({
   required TimeProvider timeProvider,
 }) async {
   final manualContexts = PrayerRepository(database);
-  final settings = await PrayerTimeSettingsRepository(
+  final settingsRepository = PrayerTimeSettingsRepository(
     AppSettingsRepository(database),
-  ).load();
-  final localDates = PrayerSettingsLocalDateProvider(
-    timeProvider: timeProvider,
-    utcOffsetMinutes: settings.location.utcOffsetMinutes,
   );
+  final settings = await settingsRepository.load(
+    legacyManualContextExists: () async =>
+        await manualContexts.getSelectedContext() != null,
+  );
+  final localDates = settings.locationConfirmed
+      ? PrayerSettingsLocalDateProvider(
+          timeProvider: timeProvider,
+          utcOffsetMinutes: settings.location.utcOffsetMinutes,
+        )
+      : _DeviceLocalDateProvider(timeProvider);
   if (settings.contextSelectionMode == PrayerContextSelectionMode.manual) {
     return (
       resolver: StoredManualRecitationPrayerContextResolver(manualContexts),
+      localDates: localDates,
+    );
+  }
+  if (!settings.locationConfirmed) {
+    return (
+      resolver: const _UnavailablePrayerContextResolver(),
       localDates: localDates,
     );
   }
@@ -141,4 +153,22 @@ _createBackgroundPrayerContext({
     ),
     localDates: localDates,
   );
+}
+
+final class _UnavailablePrayerContextResolver
+    implements RecitationPrayerContextResolver {
+  const _UnavailablePrayerContextResolver();
+
+  @override
+  Future<PrayerContext?> resolve() async => null;
+}
+
+final class _DeviceLocalDateProvider implements RecitationLocalDateProvider {
+  const _DeviceLocalDateProvider(this.timeProvider);
+
+  final TimeProvider timeProvider;
+
+  @override
+  LocalDate today() =>
+      LocalDate.fromLocalDateTime(timeProvider.nowUtc().toLocal());
 }

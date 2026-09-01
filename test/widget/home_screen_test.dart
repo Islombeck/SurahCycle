@@ -10,6 +10,8 @@ import 'package:murajaah/core/data/data.dart';
 import 'package:murajaah/core/domain/domain.dart';
 import 'package:murajaah/features/prayer_times/prayer_times.dart';
 
+import '../features/prayer_times/prayer_test_fixtures.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -146,6 +148,212 @@ void main() {
     expect(entry.coveredParts, hasLength(1));
     expect(entry.event.coveredPartIds, <String>[entry.coveredParts.single.id]);
     expect(entry.isWholeSurah, isTrue);
+    await _disposeWidgetTree(tester);
+  });
+
+  testWidgets('one-tap resolves automatic prayer at action time', (
+    tester,
+  ) async {
+    tester.binding.platformDispatcher.localeTestValue = const Locale('en');
+    addTearDown(tester.binding.platformDispatcher.clearLocaleTestValue);
+    final fixture = await _WidgetFixture.create();
+    addTearDown(fixture.close);
+    await fixture.addActiveSurah(
+      _descriptor(
+        id: 'boundary-surah',
+        number: 101,
+        name: 'Boundary Surah',
+        ayahCount: 12,
+      ),
+    );
+    final clock = _MutableTimeProvider(_utcForTashkent(2026, 8, 25, 17, 8, 59));
+    await fixture.pumpAutomaticApp(tester, clock);
+    await _pumpUntil(
+      tester,
+      () async => find.text('Dhuhr').evaluate().isNotEmpty,
+    );
+    final callback = tester
+        .widget<IconButton>(_markControl('boundary-surah'))
+        .onPressed!;
+
+    // Invoke the callback captured by the pre-boundary build without first
+    // allowing the presentation timer to rebuild Home.
+    clock.value = _utcForTashkent(2026, 8, 25, 17, 9);
+    callback();
+    await _pumpUntil(tester, () async => await fixture.eventCount() == 1);
+
+    final event = (await fixture.recitations.getHistory()).single.event;
+    expect(event.prayerContext.prayerType, PrayerType.asr);
+    expect(event.localDate, LocalDate(2026, 8, 25));
+    await _disposeWidgetTree(tester);
+  });
+
+  testWidgets('Previous prayer is recalculated while the sheet is open', (
+    tester,
+  ) async {
+    tester.binding.platformDispatcher.localeTestValue = const Locale('en');
+    addTearDown(tester.binding.platformDispatcher.clearLocaleTestValue);
+    final fixture = await _WidgetFixture.create();
+    addTearDown(fixture.close);
+    await fixture.addActiveSurah(
+      _descriptor(
+        id: 'previous-boundary-surah',
+        number: 101,
+        name: 'Previous Boundary Surah',
+        ayahCount: 12,
+      ),
+    );
+    final clock = _MutableTimeProvider(_utcForTashkent(2026, 8, 25, 17, 8, 50));
+    await fixture.pumpAutomaticApp(tester, clock);
+    await _pumpUntil(
+      tester,
+      () async => find.text('Dhuhr').evaluate().isNotEmpty,
+    );
+    await _openAdvancedCoverageSheet(tester, 'previous-boundary-surah');
+    await _openOccurrenceSheet(tester);
+
+    clock.value = _utcForTashkent(2026, 8, 25, 17, 9, 10);
+    await tester.tap(
+      find.byKey(const ValueKey<String>('registration-previous-prayer')),
+    );
+    await tester.pump();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('confirm-registration-occurrence')),
+      settle: true,
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('confirm-recitation-coverage')),
+    );
+    await _pumpUntil(tester, () async => await fixture.eventCount() == 1);
+
+    final event = (await fixture.recitations.getHistory()).single.event;
+    expect(event.prayerContext.prayerType, PrayerType.dhuhr);
+    expect(event.localDate, LocalDate(2026, 8, 25));
+    await _disposeWidgetTree(tester);
+  });
+
+  testWidgets('one-part advanced action opens recitation options', (
+    tester,
+  ) async {
+    final fixture = await _WidgetFixture.create();
+    addTearDown(fixture.close);
+    await fixture.addActiveSurah(
+      _descriptor(
+        id: 'unsplit-surah',
+        number: 101,
+        name: 'Unsplit Surah',
+        ayahCount: 12,
+      ),
+    );
+    await fixture.pumpApp(tester);
+
+    await _openAdvancedCoverageSheet(tester, 'unsplit-surah');
+
+    expect(
+      find.byKey(const ValueKey<String>('rakaat-span-selector')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('select-registration-occurrence')),
+      findsOneWidget,
+    );
+    expect(await fixture.eventCount(), 0);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(await fixture.eventCount(), 0);
+    await _disposeWidgetTree(tester);
+  });
+
+  testWidgets(
+    'Yesterday and Witr preserve occurrence day separately from entry time',
+    (tester) async {
+      final fixture = await _WidgetFixture.create();
+      addTearDown(fixture.close);
+      await fixture.addActiveSurah(
+        _descriptor(
+          id: 'historical-surah',
+          number: 101,
+          name: 'Historical Surah',
+          ayahCount: 12,
+        ),
+      );
+      await fixture.pumpApp(tester);
+      await _openAdvancedCoverageSheet(tester, 'historical-surah');
+      await _openOccurrenceSheet(tester);
+
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey<String>('registration-yesterday')),
+      );
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey<String>('registration-prayer-witr')),
+      );
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey<String>('confirm-registration-occurrence')),
+        settle: true,
+      );
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey<String>('confirm-recitation-coverage')),
+      );
+      await _pumpUntil(tester, () async => await fixture.eventCount() == 1);
+
+      final event = (await fixture.recitations.getHistory()).single.event;
+      expect(event.prayerContext.prayerType, PrayerType.witr);
+      expect(event.prayerContext.isQada, isFalse);
+      expect(event.localDate, LocalDate(2026, 8, 23));
+      expect(event.createdAtUtc, fixture.now);
+      expect(event.rakaatSpanCount, 1);
+      await _disposeWidgetTree(tester);
+    },
+  );
+
+  testWidgets('a past prayer is Qada only when explicitly selected', (
+    tester,
+  ) async {
+    final fixture = await _WidgetFixture.create();
+    addTearDown(fixture.close);
+    await fixture.addActiveSurah(
+      _descriptor(
+        id: 'qada-surah',
+        number: 101,
+        name: 'Qada Surah',
+        ayahCount: 12,
+      ),
+    );
+    await fixture.pumpApp(tester);
+    await _openAdvancedCoverageSheet(tester, 'qada-surah');
+    await _openOccurrenceSheet(tester);
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('registration-yesterday')),
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('registration-qada')),
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('confirm-registration-occurrence')),
+      settle: true,
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('confirm-recitation-coverage')),
+    );
+    await _pumpUntil(tester, () async => await fixture.eventCount() == 1);
+
+    final event = (await fixture.recitations.getHistory()).single.event;
+    expect(event.prayerContext.prayerType, PrayerType.fajr);
+    expect(event.prayerContext.isQada, isTrue);
+    expect(event.localDate, LocalDate(2026, 8, 23));
+    expect(event.createdAtUtc, fixture.now);
     await _disposeWidgetTree(tester);
   });
 
@@ -909,6 +1117,50 @@ Future<void> _openCoverageSheet(WidgetTester tester, String surahId) async {
   );
 }
 
+Future<void> _openAdvancedCoverageSheet(
+  WidgetTester tester,
+  String surahId,
+) async {
+  await _waitForMarkControl(tester, surahId);
+  await _tapVisible(
+    tester,
+    find.byKey(ValueKey<String>('advanced-mark-surah-$surahId')),
+    settle: true,
+  );
+  expect(
+    find.byKey(const ValueKey<String>('confirm-recitation-coverage')),
+    findsOneWidget,
+  );
+}
+
+Future<void> _openOccurrenceSheet(WidgetTester tester) async {
+  await _tapVisible(
+    tester,
+    find.byKey(const ValueKey<String>('select-registration-occurrence')),
+    settle: true,
+  );
+  expect(
+    find.byKey(const ValueKey<String>('confirm-registration-occurrence')),
+    findsOneWidget,
+  );
+}
+
+Future<void> _tapVisible(
+  WidgetTester tester,
+  Finder finder, {
+  bool settle = false,
+}) async {
+  expect(finder, findsOneWidget);
+  await tester.ensureVisible(finder);
+  await tester.pump();
+  await tester.tap(finder);
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+  }
+}
+
 Future<void> _selectRakaatSpan(WidgetTester tester, int count) async {
   final selector = find.byKey(const ValueKey<String>('rakaat-span-selector'));
   final segment = find.descendant(of: selector, matching: find.text('$count'));
@@ -961,6 +1213,10 @@ final class _WidgetFixture {
     );
     // Open and migrate before ProviderScope begins watching the database.
     await fixture.surahs.getRotationSnapshot();
+    await PrayerRepository(fixture.database).saveSelectedContext(
+      PrayerContext(prayerType: PrayerType.fajr),
+      updatedAtUtc: fixture.now,
+    );
     return fixture;
   }
 
@@ -1023,6 +1279,15 @@ final class _WidgetFixture {
           localDateProvider.overrideWithValue(
             _FixedLocalDateProvider(LocalDate(2026, 8, 24)),
           ),
+          prayerTimeSettingsProvider.overrideWith(
+            (ref) => Stream<PrayerTimeSettings>.value(
+              PrayerTimeSettings(
+                location: testTashkentLocation(),
+                contextSelectionMode: PrayerContextSelectionMode.manual,
+                contextModeExplicitlyChosen: true,
+              ),
+            ),
+          ),
           prayerContextResolutionProvider.overrideWith(
             (ref) => Stream<PrayerContextResolution>.value(
               PrayerContextResolution(
@@ -1034,6 +1299,55 @@ final class _WidgetFixture {
           prayerTodayScheduleProvider.overrideWith(
             (ref) async => throw StateError('Fixture schedule unavailable.'),
           ),
+        ],
+        child: const MurajaahApp(),
+      ),
+    );
+    await _pumpUntil(
+      tester,
+      () async => find
+          .byKey(const ValueKey<String>('home-screen'))
+          .evaluate()
+          .isNotEmpty,
+    );
+  }
+
+  Future<void> pumpAutomaticApp(
+    WidgetTester tester,
+    _MutableTimeProvider timeProvider,
+  ) async {
+    final settings = PrayerTimeSettings(
+      location: testTashkentLocation(),
+      locationConfirmed: true,
+      contextSelectionMode: PrayerContextSelectionMode.automatic,
+    );
+    final fetchedAtUtc = DateTime.utc(2026, 8, 25);
+    final today = PrayerTodaySchedule(
+      day: testPrayerDay(25, fetchedAtUtc: fetchedAtUtc),
+      previousDay: testPrayerDay(24, fetchedAtUtc: fetchedAtUtc),
+      previousDayIsReliable: true,
+      nextDay: testPrayerDay(26, fetchedAtUtc: fetchedAtUtc),
+      nextDayIsReliable: true,
+      loadResult: PrayerScheduleLoadResult(
+        schedule: testPrayerMonth(fetchedAtUtc: fetchedAtUtc),
+        origin: PrayerScheduleLoadOrigin.freshCache,
+        freshness: PrayerScheduleFreshness.fresh,
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          appDatabaseProvider.overrideWithValue(database),
+          quranCacheDatabaseProvider.overrideWithValue(quranCacheDatabase),
+          startupProvider.overrideWith((ref) async {}),
+          timeProviderProvider.overrideWithValue(timeProvider),
+          localDateProvider.overrideWithValue(
+            _TashkentLocalDateProvider(timeProvider),
+          ),
+          prayerTimeSettingsProvider.overrideWith(
+            (ref) => Stream<PrayerTimeSettings>.value(settings),
+          ),
+          prayerTodayScheduleProvider.overrideWith((ref) async => today),
         ],
         child: const MurajaahApp(),
       ),
@@ -1112,6 +1426,26 @@ final class _FixedTimeProvider implements TimeProvider {
   DateTime nowUtc() => value;
 }
 
+final class _MutableTimeProvider implements TimeProvider {
+  _MutableTimeProvider(this.value);
+
+  DateTime value;
+
+  @override
+  DateTime nowUtc() => value;
+}
+
+final class _TashkentLocalDateProvider implements LocalDateProvider {
+  const _TashkentLocalDateProvider(this.timeProvider);
+
+  final TimeProvider timeProvider;
+
+  @override
+  LocalDate today() => LocalDate.fromLocalDateTime(
+    timeProvider.nowUtc().add(const Duration(hours: 5)),
+  );
+}
+
 final class _FixedLocalDateProvider implements LocalDateProvider {
   const _FixedLocalDateProvider(this.value);
 
@@ -1120,3 +1454,19 @@ final class _FixedLocalDateProvider implements LocalDateProvider {
   @override
   LocalDate today() => value;
 }
+
+DateTime _utcForTashkent(
+  int year,
+  int month,
+  int day,
+  int hour,
+  int minute, [
+  int second = 0,
+]) => DateTime.utc(
+  year,
+  month,
+  day,
+  hour,
+  minute,
+  second,
+).subtract(const Duration(hours: 5));

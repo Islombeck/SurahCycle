@@ -20,6 +20,27 @@ final class PrayerScheduleLoadResult {
 
   bool get isReliableForAutomaticContext =>
       freshness == PrayerScheduleFreshness.fresh;
+
+  /// Revalidates freshness against the execution clock instead of trusting
+  /// the snapshot calculated when the month was loaded.
+  ///
+  /// A long-lived Home screen can otherwise keep treating a cache as fresh
+  /// after [PrayerScheduleCachePolicy.freshFor] has elapsed.
+  bool isReliableAt(
+    DateTime nowUtc, {
+    PrayerScheduleCachePolicy policy = const PrayerScheduleCachePolicy(),
+  }) {
+    if (!nowUtc.isUtc) {
+      throw ArgumentError.value(nowUtc, 'nowUtc', 'Must be UTC.');
+    }
+    return isReliableForAutomaticContext &&
+        policy.freshness(
+              fetchedAtUtc: schedule.provenance.fetchedAtUtc,
+              nowUtc: nowUtc,
+            ) ==
+            PrayerScheduleFreshness.fresh;
+  }
+
   bool get isOfflineCache =>
       origin == PrayerScheduleLoadOrigin.freshCache ||
       origin == PrayerScheduleLoadOrigin.staleCache;

@@ -30,6 +30,11 @@ final class PrayerExecutionTimeResolver {
         manualContext: manualContext,
       );
     }
+    if (!settings.locationConfirmed) {
+      return contextResolver.resolve(
+        mode: PrayerContextSelectionMode.automatic,
+      );
+    }
 
     final nowUtc = timeProvider.nowUtc();
     if (!nowUtc.isUtc) {

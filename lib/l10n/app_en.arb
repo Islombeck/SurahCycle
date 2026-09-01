@@ -226,4 +226,18 @@
   ,"returnToLearning": "Remove from mastered"
   ,"returnToLearningTitle": "Return this surah to learning?"
   ,"returnToLearningBody": "The surah will leave rotation. History, statistics, segmentation, and previous scores will remain."
+  ,"historyAddedAt": "Added {dateTime}"
+  ,"@historyAddedAt": {"placeholders": {"dateTime": {"type": "String"}}}
+  ,"historyDetailsTitle": "Recitation details"
+  ,"historyOpenDetails": "Open recitation details"
+  ,"historyOccurrenceLabel": "Recited during"
+  ,"historyCoverageLabel": "Recited passage"
+  ,"historyRakaatSpanExplanation": "This is only the number of rakaats spanned by the recitation. Individual ayahs are not mapped to specific rakaats."
+  ,"registrationWhenTitle": "When and during which prayer"
+  ,"registrationNow": "Now"
+  ,"registrationPreviousPrayer": "Previous prayer"
+  ,"registrationYesterday": "Yesterday"
+  ,"registrationChooseDatePrayer": "Choose date and prayer"
+  ,"registrationOccurrenceDate": "Recitation date: {date}"
+  ,"@registrationOccurrenceDate": {"placeholders": {"date": {"type": "String"}}}
 }

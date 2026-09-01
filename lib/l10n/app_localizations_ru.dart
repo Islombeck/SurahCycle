@@ -735,4 +735,45 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get returnToLearningBody =>
       'Сура выйдет из ротации. История, статистика, разбиение и прежние оценки сохранятся.';
+
+  @override
+  String historyAddedAt(String dateTime) {
+    return 'Добавлено $dateTime';
+  }
+
+  @override
+  String get historyDetailsTitle => 'Детали прочтения';
+
+  @override
+  String get historyOpenDetails => 'Открыть детали прочтения';
+
+  @override
+  String get historyOccurrenceLabel => 'Когда и в каком намазе прочитано';
+
+  @override
+  String get historyCoverageLabel => 'Прочитанный отрывок';
+
+  @override
+  String get historyRakaatSpanExplanation =>
+      'Это только число ракаатов, которые заняло прочтение. Отдельные аяты не привязаны к конкретным ракаатам.';
+
+  @override
+  String get registrationWhenTitle => 'Когда и в каком намазе прочитано';
+
+  @override
+  String get registrationNow => 'Сейчас';
+
+  @override
+  String get registrationPreviousPrayer => 'Предыдущий намаз';
+
+  @override
+  String get registrationYesterday => 'Вчера';
+
+  @override
+  String get registrationChooseDatePrayer => 'Выбрать дату и намаз';
+
+  @override
+  String registrationOccurrenceDate(String date) {
+    return 'Дата прочтения: $date';
+  }
 }

@@ -1,5 +1,6 @@
 export 'application/cached_recitation_prayer_context_resolver.dart';
 export 'application/prayer_execution_time_resolver.dart';
+export 'application/prayer_registration_shortcut_resolver.dart';
 export 'application/prayer_schedule_use_cases.dart';
 export 'data/adhan_prayer_time_calculator.dart';
 export 'data/caching_prayer_schedule_repository.dart';

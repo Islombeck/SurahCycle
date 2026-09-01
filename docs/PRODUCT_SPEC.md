@@ -1,4 +1,4 @@
-# Product Spec — Sprint 4
+# Product Spec — Sprint 5
 
 ## Продуктовая цель
 
@@ -12,9 +12,9 @@ content важнее количества функций.
 
 ## Реализованный объём
 
-Sprint 4 сохраняет весь объём Sprints 1–3:
+Sprint 5 сохраняет весь объём Sprints 1–4:
 
-- мигрируемая Drift schema v3 и локальный event journal;
+- мигрируемая Drift schema v4 и локальный event journal;
 - список выученных сур, aliases, порядок и active/inactive rotation;
 - versioned whole/split schemes, exact part coverage и 1–4 ракаата;
 - `RotationEngine`, due state, до восьми объяснимых ranked
@@ -28,7 +28,7 @@ Sprint 4 сохраняет весь объём Sprints 1–3:
 - Tanzil metadata v1.0 и exact Uthmani v1.1 Arabic offline;
 - явный QuranEnc translation selector и versioned offline cache.
 
-Sprint 4 добавляет:
+Ключевой объём Sprint 4:
 
 1. Геометрически стабильный recommendation rank badge 1–8. Один компонент
    используется при text scale 1.0, 1.3 и 1.5; rank не смешивается с номером
@@ -53,6 +53,21 @@ Sprint 4 добавляет:
 10. Manual/automatic Prayer Context с fail-closed поведением при stale/missing
     schedule и явным sunrise gap.
 
+Sprint 5B добавляет:
+
+1. Регистрацию чтения за текущий или прошлый prayer day без искажения момента,
+   когда запись была добавлена.
+2. Shortcuts Now, Previous prayer, Yesterday и Custom date and prayer с
+   fail-closed разрешением даты и контекста.
+3. Безопасный startup: новая установка не доверяет placeholder-региону и не
+   подставляет Фаджр до подтверждения location и reliable schedule.
+4. Совместимость с ранее выбранным manual mode, включая установку с сохранённым
+   Prayer Context, но без prayer-time settings JSON.
+5. One-event manual override в automatic mode только внутри приложения;
+   native widget остаётся current-context/current-date.
+6. Default один ракаат, advanced выбор 1–4 и менее шумное отображение ракаатов
+   в History без моделирования соответствия аятов отдельным ракаатам.
+
 Функции вне scope перечислены в [BACKLOG.md](BACKLOG.md).
 
 ## Главный сценарий ротации
@@ -63,10 +78,11 @@ Sprint 4 добавляет:
 не участвует в rotation.
 
 Home показывает до восьми рекомендаций с фиксированным rank badge, затем все
-active surahs. У whole row круглая кнопка создаёт одно событие. У split row
-кнопка в приложении открывает выбор одной/нескольких/всех частей и 1–4
-ракаатов. В Android widget каждая split-row отмечает только показанную часть
-и использует один ракаат.
+active surahs. У whole row круглая кнопка одним tap создаёт одно событие с
+одним ракаатом и без dialog; отдельная advanced-кнопка открывает historical,
+coverage и rakaat options. У split row основная кнопка в приложении открывает
+выбор одной/нескольких/всех частей и 1–4 ракаатов. В Android widget каждая
+split-row отмечает только показанную часть и использует один ракаат.
 
 После commit пересчитываются rotation и widgets. Undo восстанавливает точный
 pre-action snapshot. History Delete требует подтверждения, сохраняет tombstone
@@ -123,7 +139,8 @@ asset заблокирован до отдельного разрешения.
 
 ### Основной provider
 
-Пользователь вручную выбирает область, город или подтверждённый район.
+Пользователь явно подтверждает область, город или location. До этого выбранный
+в selector Toshkent остаётся только placeholder и не запускает загрузку.
 Namoz-vaqti.uz загружает полный текущий месяц, а явный refresh — текущий и
 следующий. UI показывает raw/effective times, source, provider region,
 fetched/cache state и attribution. Это расписание на основе официальных
@@ -160,6 +177,48 @@ Home Card показывает current interval, next prayer и причину d
 Widget вычисляет контекст на execution time только из persisted settings,
 локального cache или локального calculation; HTTP на tap отсутствует.
 
+У новой установки mode по умолчанию automatic, но он начинает работать только
+после явного подтверждения location и получения reliable schedule. До этого
+контекст отсутствует и direct mark выключен; fake Fajr не создаётся. Явный
+выбор manual/automatic запоминается и больше не меняется автоматически при
+выборе location.
+
+Миграция сохраняет поведение существующих пользователей. Settings JSON schema
+1 сохраняет mode; non-default region или user coordinates считаются явным
+выбором location, но старый default Toshkent остаётся неподтверждённым
+placeholder. Если settings JSON отсутствует, но отдельно сохранён Prayer
+Context, установка остаётся в manual mode без подтверждения placeholder.
+
+Ручной выбор во время automatic mode действует как one-event app-only
+override и очищается после успешной регистрации. Он не переключает persisted
+mode. Native widget override не видит и продолжает использовать только
+текущий контекст, доказанный persisted settings и schedule.
+
+### Историческая регистрация
+
+Каждая запись разделяет момент ввода и день события:
+
+- `createdAtUtc` — когда пользователь нажал подтверждение;
+- `localDate` — выбранный локальный prayer day чтения.
+
+Now использует доступный текущий контекст; Previous prayer — только предыдущую
+из пяти schedule-derived молитв и reliable соседний день при переходе через
+границу даты; Yesterday оставляет молитву ручным выбором; Custom позволяет
+явно выбрать дату и молитву. Витр не вычисляется и не подставляется расписанием,
+но доступен для Yesterday/Custom и ручного Now. Прошлая дата не включает каза:
+`isQada` остаётся отдельным явным выбором пользователя.
+
+History показывает prayer type и occurrence date отдельно от строки «Добавлено»
+с реальным временем ввода. В compact row значение «1 ракаат» скрывается только
+для обычного unsplit whole-surah one-tap; split/partial/multiple span виден.
+Details всегда показывает число и пояснение: приложение хранит span события,
+но не сопоставляет конкретные аяты конкретным ракаатам.
+
+Current automatic context повторно разрешается в момент действия, а freshness
+schedule пересчитывается по текущим часам. Поэтому запись не доверяет
+контексту, который был показан до смены молитвы или до истечения cache;
+панели Now/Previous также перепроверяют выбор при подтверждении.
+
 Подробности:
 
 - [PRAYER_TIME_SOURCE_AUDIT.md](PRAYER_TIME_SOURCE_AUDIT.md);
@@ -172,6 +231,8 @@ Dart callback; текст строки открывает app. `actionToken` с�
 event journal, поэтому redelivery и double tap exact-once. Перед записью
 повторно проверяются surah, active state, current scheme, part и execution-time
 Prayer Context. Stale action отклоняется и widget перестраивается из базы.
+Исторические shortcuts и transient app override в widget не передаются: его
+mark всегда относится к текущей локальной дате и execution-time контексту.
 
 Learning Widget показывает coordinate-bound Arabic/transliteration/translation.
 Kotlin/Glance не исполняет доменные правила и не открывает Drift.
@@ -199,7 +260,7 @@ monthly prayer schedule остаются offline. Сбой content/schedule prov
 - destructive History/reset actions требуют подтверждения;
 - нет рекламы, streaks, социальных функций и лишнего onboarding.
 
-## Критерии приёмки Sprint 4
+## Критерии приёмки Sprint 5
 
 Автоматически проверяются:
 
@@ -207,6 +268,9 @@ monthly prayer schedule остаются offline. Сбой content/schedule prov
 - три Quran layers и их combinations;
 - verified translation/transliteration integrity;
 - полный prayer provider/cache/calculator/resolver flow;
+- new-user и legacy bootstrap без fake default prayer;
+- historical shortcuts, past-date/non-Qada и Witr manual scenarios;
+- независимые occurrence/created timestamps и rakaat History presentation;
 - direct widget validation, exact-once и native contract;
 - Flutter analyzer, Kotlin tests/compile и debug APK build.
 

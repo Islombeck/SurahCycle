@@ -735,4 +735,45 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get returnToLearningBody =>
       'The surah will leave rotation. History, statistics, segmentation, and previous scores will remain.';
+
+  @override
+  String historyAddedAt(String dateTime) {
+    return 'Added $dateTime';
+  }
+
+  @override
+  String get historyDetailsTitle => 'Recitation details';
+
+  @override
+  String get historyOpenDetails => 'Open recitation details';
+
+  @override
+  String get historyOccurrenceLabel => 'Recited during';
+
+  @override
+  String get historyCoverageLabel => 'Recited passage';
+
+  @override
+  String get historyRakaatSpanExplanation =>
+      'This is only the number of rakaats spanned by the recitation. Individual ayahs are not mapped to specific rakaats.';
+
+  @override
+  String get registrationWhenTitle => 'When and during which prayer';
+
+  @override
+  String get registrationNow => 'Now';
+
+  @override
+  String get registrationPreviousPrayer => 'Previous prayer';
+
+  @override
+  String get registrationYesterday => 'Yesterday';
+
+  @override
+  String get registrationChooseDatePrayer => 'Choose date and prayer';
+
+  @override
+  String registrationOccurrenceDate(String date) {
+    return 'Recitation date: $date';
+  }
 }

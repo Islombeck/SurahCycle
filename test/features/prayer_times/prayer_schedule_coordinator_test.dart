@@ -183,6 +183,10 @@ void main() {
       );
 
       expect(today.day.date, LocalDate(2026, 9, 1));
+      expect(today.previousDay?.date, LocalDate(2026, 8, 31));
+      expect(today.previousDayIsReliable, isTrue);
+      expect(today.nextDay?.date, LocalDate(2026, 9, 2));
+      expect(today.nextDayIsReliable, isTrue);
       expect(refreshed, hasLength(2));
       expect(refreshed[0].schedule.month, 9);
       expect(refreshed[1].schedule.month, 10);
@@ -190,10 +194,35 @@ void main() {
         provider.requests
             .map((request) => '${request.year}-${request.month}')
             .toList(),
-        <String>['2026-9', '2026-9', '2026-10'],
+        <String>['2026-9', '2026-8', '2026-9', '2026-10'],
       );
     },
   );
+
+  test('loads the next month at the end-of-month prayer boundary', () async {
+    final localAugustLast = DateTime.utc(2026, 8, 31, 18, 30);
+    final provider = _FakePublishedProvider(
+      createSchedule: (request) => _publishedMonth(request, localAugustLast),
+    );
+    final useCases = PrayerScheduleUseCases(
+      coordinator: _coordinator(provider, _FakeCalculator(), localAugustLast),
+      timeProvider: FixedPrayerTimeProvider(localAugustLast),
+    );
+
+    final today = await useCases.loadToday(
+      settings: PrayerTimeSettings(location: testTashkentLocation()),
+    );
+
+    expect(today.day.date, LocalDate(2026, 8, 31));
+    expect(today.nextDay?.date, LocalDate(2026, 9, 1));
+    expect(today.nextDayIsReliable, isTrue);
+    expect(
+      provider.requests
+          .map((request) => '${request.year}-${request.month}')
+          .toList(),
+      <String>['2026-8', '2026-9'],
+    );
+  });
 }
 
 PrayerScheduleCoordinator _coordinator(

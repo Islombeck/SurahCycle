@@ -37,6 +37,12 @@ final class CachedRecitationPrayerContextResolver
         isAutomatic: false,
       );
     }
+    if (!settings.locationConfirmed) {
+      return const RecitationPrayerContextDetails(
+        context: null,
+        isAutomatic: true,
+      );
+    }
 
     final nowUtc = timeProvider.nowUtc();
     if (!nowUtc.isUtc) {
