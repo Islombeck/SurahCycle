@@ -26,7 +26,8 @@ Sprint 5 сохраняет весь объём Sprints 1–4:
 - RU/EN/UZ Material 3 UI;
 - Android Rotation/Learning widgets;
 - Tanzil metadata v1.0 и exact Uthmani v1.1 Arabic offline;
-- явный QuranEnc translation selector и versioned offline cache.
+- отдельный язык перевода, явный RU/UZ QuranEnc translation selector и versioned offline cache;
+- профиль `Latin — Tanzil`; Cyrillic видим, но недоступен до подключения полного проверенного источника.
 
 Ключевой объём Sprint 4:
 

@@ -1,5 +1,19 @@
 # Источники Quran content
 
+## Реализация Sprint 5C
+
+Язык каталога перевода отделён от UI locale и от закреплённого выбора
+перевода. Подключены проверенные русские и узбекские QuranEnc keys; полный
+список версий, provenance, corpus SHA-256 и политика выбора находятся в
+[MULTILINGUAL_QURAN.md](MULTILINGUAL_QURAN.md). `uzbek_mokhtasar` и
+`uzbek_moyassar` доказаны официальными browse pages, но их direct API пока не
+возвращает JSON-корпус, поэтому они явно показаны как недоступные и не
+используются в production.
+
+Транслитерация теперь выбирается через профиль. Единственный доступный профиль
+`Latin — Tanzil` сохраняет прежний exact asset; `Cyrillic` отключён до появления
+полного проверенного источника. Generated Cyrillic data отсутствуют.
+
 ## Реализация Sprint 4
 
 Пустой официальный RU catalog QuranEnc больше не означает автоматический
@@ -162,9 +176,11 @@ integrity checksum, если опубликован или вычислен пр
 ### `QuranEncProvider`
 
 Реализован adapter документированных публичных translation endpoints QuranEnc.
-Обычно он использует официальный catalog. Только для доказанно пустого RU
-catalog разрешён узкий hardcoded audit registry из двух официальных keys с
-runtime probe и SHA-256 pins; это не общий список угаданных идентификаторов.
+Обычно он использует официальный language-specific catalog. Для доказанно
+пустого RU catalog сохранён узкий registry из двух keys; UZ catalog может быть
+дополнен только отсутствующим `uzbek_sadiq` и другими полностью audited keys
+из Uzbek registry. Runtime probe и SHA-256 pins обязательны; это не общий
+список угаданных идентификаторов.
 Adapter ограничивает timeout/размер ответа, валидирует координаты и сохраняет
 строку перевода без изменений вместе с `translationKey`, языком,
 официальной version metadata, технической revision и attribution. Поле Arabic

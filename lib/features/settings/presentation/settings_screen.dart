@@ -19,15 +19,36 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String? _selectedSurahId;
   bool _adjusting = false;
   bool _savingTranslation = false;
+  bool _savingTranslationLanguage = false;
+  bool _savingTransliterationProfile = false;
   bool _savingQuranDisplayPreferences = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(themePreferenceProvider);
     final snapshot = ref.watch(rotationSnapshotProvider);
-    final translations = ref.watch(russianQuranTranslationsProvider);
     final selectedTranslation = ref.watch(selectedQuranTranslationProvider);
+    final translationLanguage = ref.watch(quranTranslationLanguageProvider);
+    final uiLanguageCode = Localizations.localeOf(context).languageCode;
+    final translationLanguageCode = resolveQuranTranslationLanguage(
+      uiLanguageCode: uiLanguageCode,
+      explicitlySelectedLanguageCode: translationLanguage.valueOrNull,
+      selectedTranslationLanguageCode:
+          selectedTranslation.valueOrNull?.languageCode,
+    );
+    final translations = ref.watch(
+      quranTranslationsProvider((
+        languageCode: translationLanguageCode,
+        localizationLanguageCode: uiLanguageCode,
+      )),
+    );
     final displayPreferences = ref.watch(quranDisplayPreferencesProvider);
+    final transliterationProfile = ref.watch(
+      selectedQuranTransliterationProfileProvider,
+    );
+    final transliterationProfileRegistry = ref.watch(
+      quranTransliterationProfileRegistryProvider,
+    );
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -83,7 +104,13 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: displayPreferences.when(
-                        data: _buildQuranDisplayPreferences,
+                        data: (preferences) => _buildQuranDisplayPreferences(
+                          preferences,
+                          transliterationProfile.valueOrNull ??
+                              transliterationProfileRegistry.defaultProfile,
+                          profileSettingInvalid:
+                              transliterationProfile.hasError,
+                        ),
                         loading: () => const Padding(
                           padding: EdgeInsets.all(16),
                           child: Center(child: CircularProgressIndicator()),
@@ -117,6 +144,11 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const SizedBox(height: 8),
+                          _buildTranslationLanguageChooser(
+                            translationLanguageCode,
+                            settingInvalid: translationLanguage.hasError,
+                          ),
+                          const SizedBox(height: 12),
                           Text(context.l10n.translationCachedOffline),
                           const SizedBox(height: 12),
                           _buildTranslationChooser(
@@ -124,6 +156,20 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             selectedTranslation.valueOrNull,
                             selectionInvalid: selectedTranslation.hasError,
                           ),
+                          if (translationLanguageCode ==
+                              QuranTranslationLanguageRepository
+                                  .uzbek) ...<Widget>[
+                            const SizedBox(height: 12),
+                            Text(
+                              context
+                                  .l10n
+                                  .additionalUzbekTranslationsUnavailable,
+                              key: const ValueKey<String>(
+                                'additional-uzbek-translations-unavailable',
+                              ),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -202,7 +248,60 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildQuranDisplayPreferences(QuranDisplayPreferences preferences) {
+  Widget _buildTranslationLanguageChooser(
+    String selectedLanguageCode, {
+    required bool settingInvalid,
+  }) {
+    return DropdownButtonFormField<String>(
+      key: const ValueKey<String>('quran-translation-language-selector'),
+      initialValue: selectedLanguageCode,
+      decoration: InputDecoration(
+        labelText: context.l10n.translationLanguage,
+        errorText: settingInvalid ? context.l10n.errorGeneric : null,
+      ),
+      items: <DropdownMenuItem<String>>[
+        DropdownMenuItem<String>(
+          value: QuranTranslationLanguageRepository.russian,
+          child: Text(context.l10n.translationLanguageRussian),
+        ),
+        DropdownMenuItem<String>(
+          value: QuranTranslationLanguageRepository.uzbek,
+          child: Text(context.l10n.translationLanguageUzbek),
+        ),
+      ],
+      onChanged: _savingTranslationLanguage
+          ? null
+          : (languageCode) {
+              if (languageCode != null &&
+                  languageCode != selectedLanguageCode) {
+                _selectTranslationLanguage(languageCode);
+              }
+            },
+    );
+  }
+
+  Future<void> _selectTranslationLanguage(String languageCode) async {
+    setState(() => _savingTranslationLanguage = true);
+    try {
+      await ref
+          .read(quranTranslationLanguageControllerProvider)
+          .select(languageCode);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.errorGeneric)));
+      }
+    } finally {
+      if (mounted) setState(() => _savingTranslationLanguage = false);
+    }
+  }
+
+  Widget _buildQuranDisplayPreferences(
+    QuranDisplayPreferences preferences,
+    QuranTransliterationProfile selectedProfile, {
+    required bool profileSettingInvalid,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -222,6 +321,55 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               : (value) => _saveQuranDisplayPreferences(
                   preferences.copyWith(showArabic: value),
                 ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: DropdownButtonFormField<String>(
+            key: const ValueKey<String>('quran-transliteration-profile'),
+            initialValue: selectedProfile.id,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: context.l10n.transliterationProfile,
+              errorText: profileSettingInvalid
+                  ? context.l10n.errorGeneric
+                  : null,
+            ),
+            items: <DropdownMenuItem<String>>[
+              for (final profile
+                  in QuranTransliterationProfileRegistry.profiles)
+                DropdownMenuItem<String>(
+                  value: profile.id,
+                  enabled: profile.isAvailableOffline,
+                  child: Text(
+                    _transliterationProfileLabel(profile),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: _savingTransliterationProfile
+                ? null
+                : (profileId) {
+                    if (profileId == null || profileId == selectedProfile.id) {
+                      return;
+                    }
+                    final profile = const QuranTransliterationProfileRegistry()
+                        .requireById(profileId);
+                    if (profile.isAvailableOffline) {
+                      _selectTransliterationProfile(profile);
+                    }
+                  },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(
+            context.l10n.transliterationProfileCyrillicUnavailable,
+            key: const ValueKey<String>(
+              'quran-transliteration-cyrillic-unavailable',
+            ),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ),
         SwitchListTile(
           key: const ValueKey<String>('show-transliteration-switch'),
@@ -246,6 +394,33 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ],
     );
+  }
+
+  String _transliterationProfileLabel(QuranTransliterationProfile profile) =>
+      switch (profile.script) {
+        QuranTransliterationScript.latin =>
+          context.l10n.transliterationProfileLatinTanzil,
+        QuranTransliterationScript.cyrillic =>
+          context.l10n.transliterationProfileCyrillicUnavailable,
+      };
+
+  Future<void> _selectTransliterationProfile(
+    QuranTransliterationProfile profile,
+  ) async {
+    setState(() => _savingTransliterationProfile = true);
+    try {
+      await ref
+          .read(quranTransliterationProfileControllerProvider)
+          .select(profile);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.errorGeneric)));
+      }
+    } finally {
+      if (mounted) setState(() => _savingTransliterationProfile = false);
+    }
   }
 
   Future<void> _saveQuranDisplayPreferences(
@@ -332,10 +507,10 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text(context.l10n.noRussianTranslations),
+          Text(context.l10n.noTranslationsForLanguage),
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: () => ref.invalidate(russianQuranTranslationsProvider),
+            onPressed: () => ref.invalidate(quranTranslationsProvider),
             icon: const Icon(Icons.refresh),
             label: Text(context.l10n.retry),
           ),
@@ -437,7 +612,7 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
       const SizedBox(height: 8),
       OutlinedButton.icon(
-        onPressed: () => ref.invalidate(russianQuranTranslationsProvider),
+        onPressed: () => ref.invalidate(quranTranslationsProvider),
         icon: const Icon(Icons.refresh),
         label: Text(context.l10n.retry),
       ),
@@ -461,10 +636,10 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   };
 
   String _translationIdentity(QuranTranslation value) =>
-      '${value.source}|${value.key}|${value.version}';
+      '${value.source}|${value.languageCode}|${value.key}|${value.version}';
 
   String _selectionIdentity(QuranTranslationSelection value) =>
-      '${value.source}|${value.key}|${value.version}';
+      '${value.source}|${value.languageCode}|${value.key}|${value.version}';
 
   Future<void> _selectTranslation(QuranTranslation translation) async {
     setState(() => _savingTranslation = true);

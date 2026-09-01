@@ -1,6 +1,24 @@
 # Quran transliteration audit
 
-Audit date: 2026-08-26.
+Audit date: 2026-09-02.
+
+## Profile architecture
+
+Sprint 5 exposes transliteration through `QuranTransliterationProfile` with a
+stable ID, display name, script, language, source, version, attribution, and
+availability. The persisted profile ID is consumed by the shared
+`QuranReadingRepository`, so Learning, Home Learning Card, and the Android
+Learning Widget use the same profile without surface-specific text conversion.
+
+`Latin — Tanzil` is the default and currently the only available profile. It
+maps directly to the exact repository described below; its text and integrity
+pin did not change.
+
+`Cyrillic` is visible but disabled. No complete 6,236-coordinate Cyrillic
+dataset with reliable provenance and acceptable usage terms has been approved.
+Murajaah contains no Arabic-to-Cyrillic algorithm, Latin-to-Cyrillic mapping,
+LLM output, or approximate phonetic fallback. The UI states that a verified
+source has not been connected yet.
 
 ## Accepted offline dataset
 

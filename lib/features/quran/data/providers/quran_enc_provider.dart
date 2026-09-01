@@ -39,7 +39,11 @@ void _logQuranEncDiagnostics(QuranEncCatalogDiagnostics diagnostics) {
   );
 }
 
-enum QuranEncDiscoveryOrigin { officialCatalog, knownOfficialDirectFallback }
+enum QuranEncDiscoveryOrigin {
+  officialCatalog,
+  officialCatalogAugmented,
+  knownOfficialDirectFallback,
+}
 
 enum QuranEncKnownProbeStatus {
   available,
@@ -198,8 +202,12 @@ final class QuranEncProvider implements QuranContentProvider {
     localizationLanguageCode: localizationLanguageCode,
   )).translations;
 
-  /// Discovers the normal catalog and, only for an empty Russian catalog,
-  /// runtime-probes the narrowly audited direct-key registry.
+  /// Discovers the normal catalog and runtime-probes only narrowly audited
+  /// direct keys that the language-specific policy permits.
+  ///
+  /// Russian keeps its original failover-only behavior: known keys are probed
+  /// only when its catalog is empty. Uzbek catalog results are augmented with
+  /// runtime-verified known keys that the current catalog omitted.
   ///
   /// Returning a fallback candidate never selects it. The caller still owns
   /// the explicit user choice. Response bodies and Quran strings are omitted
@@ -235,6 +243,7 @@ final class QuranEncProvider implements QuranContentProvider {
     }
 
     final translations = <QuranTranslation>[];
+    final seenKeys = <String>{};
     final keys = <String>{};
     for (final rawTranslation in rawTranslations) {
       final item = _asStringMap(
@@ -246,7 +255,7 @@ final class QuranEncProvider implements QuranContentProvider {
         'key',
         code: 'quranenc_translation_key_invalid',
       );
-      if (!keys.add(key)) {
+      if (!seenKeys.add(key)) {
         throw const QuranProviderException(
           failure: QuranProviderFailure.invalidResponse,
           code: 'quranenc_translation_key_duplicate',
@@ -263,40 +272,64 @@ final class QuranEncProvider implements QuranContentProvider {
           code: 'quranenc_translation_language_mismatch',
         );
       }
-      translations.add(
-        QuranTranslation(
-          source: sourceId,
-          key: key,
-          languageCode: entryLanguageCode,
-          version: _requiredString(
-            item,
-            'version',
-            code: 'quranenc_translation_version_invalid',
-          ),
-          title: _requiredString(
-            item,
-            'title',
-            code: 'quranenc_translation_title_invalid',
-          ),
-          description: _optionalString(
-            item,
-            'description',
-            code: 'quranenc_translation_description_invalid',
-          ),
-          direction: _optionalString(
-            item,
-            'direction',
-            code: 'quranenc_translation_direction_invalid',
-          ),
-          lastUpdateEpochSeconds: _optionalInteger(
-            item,
-            'last_update',
-            code: 'quranenc_translation_last_update_invalid',
-          ),
+      final version = _requiredString(
+        item,
+        'version',
+        code: 'quranenc_translation_version_invalid',
+      );
+      final translation = QuranTranslation(
+        source: sourceId,
+        key: key,
+        languageCode: entryLanguageCode,
+        version: version,
+        title: _requiredString(
+          item,
+          'title',
+          code: 'quranenc_translation_title_invalid',
+        ),
+        description: _optionalString(
+          item,
+          'description',
+          code: 'quranenc_translation_description_invalid',
+        ),
+        direction: _optionalString(
+          item,
+          'direction',
+          code: 'quranenc_translation_direction_invalid',
+        ),
+        lastUpdateEpochSeconds: _optionalInteger(
+          item,
+          'last_update',
+          code: 'quranenc_translation_last_update_invalid',
         ),
       );
+      final known = KnownOfficialQuranEncTranslations.byKey(key);
+      if (known != null) {
+        if (known.languageCode != entryLanguageCode) {
+          throw const QuranProviderException(
+            failure: QuranProviderFailure.invalidResponse,
+            code: 'quranenc_known_translation_language_mismatch',
+          );
+        }
+        // Never expose a known theological translation under a revision that
+        // has not completed the corpus audit. The direct runtime probe below
+        // may still expose the last pinned revision if its hashes are intact.
+        if (!known.matchesOfficialVersion(version)) continue;
+      }
+      keys.add(key);
+      translations.add(translation);
     }
-    if (translations.isNotEmpty || languageCode != 'ru') {
+    final shouldProbeKnown = switch (languageCode) {
+      'ru' => translations.isEmpty,
+      'uz' => true,
+      _ => false,
+    };
+    final missingKnown = shouldProbeKnown
+        ? KnownOfficialQuranEncTranslations.byLanguage(
+            languageCode!,
+          ).where((known) => !keys.contains(known.key)).toList(growable: false)
+        : const <KnownOfficialQuranEncTranslation>[];
+    if (missingKnown.isEmpty) {
       final discovery = QuranEncTranslationDiscovery(
         translations: translations,
         diagnostics: QuranEncCatalogDiagnostics(
@@ -313,15 +346,11 @@ final class QuranEncProvider implements QuranContentProvider {
       return discovery;
     }
 
-    final probes = await Future.wait(
-      KnownOfficialQuranEncTranslations.russian.map(_probeKnownTranslation),
-    );
-    final available = <QuranTranslation>[];
+    final probes = await Future.wait(missingKnown.map(_probeKnownTranslation));
+    final available = <QuranTranslation>[...translations];
     for (var index = 0; index < probes.length; index += 1) {
       if (probes[index].status == QuranEncKnownProbeStatus.available) {
-        available.add(
-          KnownOfficialQuranEncTranslations.russian[index].toTranslation(),
-        );
+        available.add(missingKnown[index].toTranslation());
       }
     }
     final discovery = QuranEncTranslationDiscovery(
@@ -331,8 +360,10 @@ final class QuranEncProvider implements QuranContentProvider {
         httpStatus: catalogResponse.statusCode,
         contentType: catalogResponse.contentType,
         responseByteLength: catalogResponse.byteLength,
-        parsedTranslationCount: 0,
-        origin: QuranEncDiscoveryOrigin.knownOfficialDirectFallback,
+        parsedTranslationCount: translations.length,
+        origin: translations.isEmpty
+            ? QuranEncDiscoveryOrigin.knownOfficialDirectFallback
+            : QuranEncDiscoveryOrigin.officialCatalogAugmented,
         knownProbes: probes,
       ),
     );
@@ -374,9 +405,16 @@ final class QuranEncProvider implements QuranContentProvider {
       translationVersion: translation.version,
     );
     final known = KnownOfficialQuranEncTranslations.byKey(translation.key);
-    if (translation.version.startsWith('quranenc-direct-')) {
+    final isPinnedDirectRevision = translation.version.startsWith(
+      'quranenc-direct-',
+    );
+    final isPinnedOfficialRevision =
+        known?.matchesOfficialVersion(translation.version) ?? false;
+    if (known != null || isPinnedDirectRevision) {
       if (known == null ||
-          translation.version != known.technicalRevision ||
+          (isPinnedDirectRevision &&
+              translation.version != known.technicalRevision) ||
+          (!isPinnedDirectRevision && !isPinnedOfficialRevision) ||
           translation.languageCode != known.languageCode ||
           parsed.sha256 != known.expectedSurahSha256(surahNumber)) {
         throw const QuranProviderException(

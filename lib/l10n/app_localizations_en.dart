@@ -396,11 +396,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quranTranslation => 'Quran translation';
 
   @override
+  String get translationLanguage => 'Translation language';
+
+  @override
+  String get translationLanguageRussian => 'Russian';
+
+  @override
+  String get translationLanguageUzbek => 'Uzbek';
+
+  @override
   String get chooseTranslation => 'Choose a translation in Settings';
 
   @override
-  String get noRussianTranslations =>
-      'QuranEnc currently has no available verified Russian translations. Arabic remains available offline.';
+  String get noTranslationsForLanguage =>
+      'QuranEnc currently has no available verified translations for this language. Arabic remains available offline.';
+
+  @override
+  String get additionalUzbekTranslationsUnavailable =>
+      'Al-Mukhtasar (uzbek_mokhtasar) and Al-Muyassar (uzbek_moyassar): official catalog keys are confirmed, but their API corpora are not currently available.';
 
   @override
   String get translationCatalogError =>
@@ -478,6 +491,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get showTransliteration => 'Show transliteration';
+
+  @override
+  String get transliterationProfile => 'Transliteration profile';
+
+  @override
+  String get transliterationProfileLatinTanzil => 'Latin — Tanzil';
+
+  @override
+  String get transliterationProfileCyrillic => 'Cyrillic';
+
+  @override
+  String get transliterationProfileCyrillicUnavailable =>
+      'Cyrillic — a verified source has not been connected yet';
 
   @override
   String get showTranslation => 'Show translation';

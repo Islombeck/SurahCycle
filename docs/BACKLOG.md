@@ -35,6 +35,10 @@ layers уже не являются backlog.
 22. Wearable integration.
 23. Дополнительная аналитика поверх full-equivalent/action/part-credit metrics.
 24. Streaks и социальные функции.
+25. Повторно проверить JSON API для официальных `uzbek_mokhtasar` и
+    `uzbek_moyassar`; подключать только после полного 114/6236/hash audit.
+26. Подключить Cyrillic transliteration только из полного coordinate-aligned
+    dataset с доказанными provenance и license; generated conversion запрещена.
 
 Отдельные release/operational gates, а не новые product features:
 

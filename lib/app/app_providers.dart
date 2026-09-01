@@ -103,9 +103,59 @@ final tanzilEnglishTransliterationRepositoryProvider =
       );
     });
 
+final quranTransliterationProfileRegistryProvider =
+    Provider<QuranTransliterationProfileRegistry>((ref) {
+      return const QuranTransliterationProfileRegistry();
+    });
+
+final quranTransliterationProfileSelectionRepositoryProvider =
+    Provider<QuranTransliterationProfileSelectionRepository>((ref) {
+      return QuranTransliterationProfileSelectionRepository(
+        ref.watch(settingsRepositoryProvider),
+        registry: ref.watch(quranTransliterationProfileRegistryProvider),
+      );
+    });
+
+final selectedQuranTransliterationProfileProvider =
+    StreamProvider<QuranTransliterationProfile>((ref) {
+      return ref
+          .watch(quranTransliterationProfileSelectionRepositoryProvider)
+          .watchSelected();
+    });
+
+final quranTransliterationProfileControllerProvider =
+    Provider<QuranTransliterationProfileController>((ref) {
+      return QuranTransliterationProfileController(
+        repository: ref.watch(
+          quranTransliterationProfileSelectionRepositoryProvider,
+        ),
+        timeProvider: ref.watch(timeProviderProvider),
+      );
+    });
+
+final quranTransliterationRepositoryProvider =
+    Provider<QuranTransliterationRepository?>((ref) {
+      final selection = ref.watch(selectedQuranTransliterationProfileProvider);
+      if (selection.hasError) return null;
+      final registry = ref.watch(quranTransliterationProfileRegistryProvider);
+      final profile = selection.valueOrNull ?? registry.defaultProfile;
+      if (!profile.isAvailableOffline) return null;
+      if (profile.id == QuranTransliterationProfileRegistry.tanzilLatinId) {
+        return ref.watch(tanzilEnglishTransliterationRepositoryProvider);
+      }
+      return null;
+    });
+
 final quranTranslationSelectionRepositoryProvider =
     Provider<QuranTranslationSelectionRepository>((ref) {
       return QuranTranslationSelectionRepository(
+        ref.watch(settingsRepositoryProvider),
+      );
+    });
+
+final quranTranslationLanguageRepositoryProvider =
+    Provider<QuranTranslationLanguageRepository>((ref) {
+      return QuranTranslationLanguageRepository(
         ref.watch(settingsRepositoryProvider),
       );
     });
@@ -138,11 +188,43 @@ final selectedQuranTranslationProvider =
           .watchSelected();
     });
 
-final russianQuranTranslationsProvider =
-    FutureProvider<QuranContentState<List<QuranTranslation>>>((ref) {
+final quranTranslationLanguageProvider = StreamProvider<String?>((ref) {
+  return ref.watch(quranTranslationLanguageRepositoryProvider).watchSelected();
+});
+
+typedef QuranTranslationsRequest = ({
+  String languageCode,
+  String localizationLanguageCode,
+});
+
+final quranTranslationsProvider =
+    FutureProvider.family<
+      QuranContentState<List<QuranTranslation>>,
+      QuranTranslationsRequest
+    >((ref, request) {
+      QuranTranslationLanguageRepository.requireSupported(request.languageCode);
+      final localizationLanguageCode =
+          const <String>{
+            'en',
+            'ru',
+            'uz',
+          }.contains(request.localizationLanguageCode)
+          ? request.localizationLanguageCode
+          : 'en';
       return ref
           .watch(quranContentRepositoryProvider)
-          .listTranslations(languageCode: 'ru', localizationLanguageCode: 'ru');
+          .listTranslations(
+            languageCode: request.languageCode,
+            localizationLanguageCode: localizationLanguageCode,
+          );
+    });
+
+final quranTranslationLanguageControllerProvider =
+    Provider<QuranTranslationLanguageController>((ref) {
+      return QuranTranslationLanguageController(
+        repository: ref.watch(quranTranslationLanguageRepositoryProvider),
+        timeProvider: ref.watch(timeProviderProvider),
+      );
     });
 
 final quranTranslationSelectionControllerProvider =
@@ -157,7 +239,7 @@ final quranReadingRepositoryProvider = Provider<QuranReadingRepository>((ref) {
   return QuranReadingRepository(
     arabic: ref.watch(tanzilUthmaniTextRepositoryProvider),
     translations: ref.watch(quranContentRepositoryProvider),
-    transliterations: ref.watch(tanzilEnglishTransliterationRepositoryProvider),
+    transliterations: ref.watch(quranTransliterationRepositoryProvider),
   );
 });
 
@@ -688,11 +770,13 @@ final class QuranTranslationSelectionController {
 
   Future<void> select(QuranTranslation translation) async {
     if (translation.source != QuranEncProvider.sourceId ||
-        translation.languageCode != 'ru') {
+        !QuranTranslationLanguageRepository.isSupported(
+          translation.languageCode,
+        )) {
       throw ArgumentError.value(
         '${translation.source}/${translation.languageCode}',
         'translation',
-        'Only Russian catalog entries returned by QuranEnc may be selected.',
+        'Only audited QuranEnc catalog entries may be selected.',
       );
     }
     final now = timeProvider.nowUtc();
@@ -710,6 +794,19 @@ final class QuranTranslationSelectionController {
   Future<void> clear() async {
     await repository.clear();
   }
+}
+
+final class QuranTranslationLanguageController {
+  const QuranTranslationLanguageController({
+    required this.repository,
+    required this.timeProvider,
+  });
+
+  final QuranTranslationLanguageRepository repository;
+  final TimeProvider timeProvider;
+
+  Future<void> select(String languageCode) =>
+      repository.save(languageCode, updatedAtUtc: timeProvider.nowUtc());
 }
 
 final class QuranDisplayPreferencesController {

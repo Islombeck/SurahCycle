@@ -130,6 +130,9 @@ try {
     $known = [ordered]@{
         russian_rwwad = 'c58986174045d030df67ec6b8f15ebe2fdeae74c092e73a7630c08acf742542a'
         russian_aboadel = 'ac9387c90b5cf90939f0a527702f4d1c5d025269cf705e2f6b2594b4f803a3ff'
+        uzbek_rwwad = 'f49a16d9e5079bd98722feef311d6cbb7afce53cc9186c1a034359ea8f979e72'
+        uzbek_sadiq = 'eb87e39c86411467df16fa0eabd1081d0c4426c9ec1a8e76706a80643fbc052f'
+        uzbek_mansour = '3922d6bc01370a67b6c33a65ffb8697cdcb497994c0ec16040b6b9b11a197a90'
     }
     $hashesByKey = [ordered]@{}
     foreach ($entry in $known.GetEnumerator()) {

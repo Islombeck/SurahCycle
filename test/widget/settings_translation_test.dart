@@ -34,11 +34,12 @@ void main() {
           timeProviderProvider.overrideWithValue(
             _FixedTimeProvider(DateTime.utc(2026, 8, 25, 12)),
           ),
-          russianQuranTranslationsProvider.overrideWith(
-            (ref) async => AvailableQuranContent<List<QuranTranslation>>(
-              value: <QuranTranslation>[translation],
-              fromCache: false,
-            ),
+          quranTranslationsProvider.overrideWith(
+            (ref, request) async =>
+                AvailableQuranContent<List<QuranTranslation>>(
+                  value: <QuranTranslation>[translation],
+                  fromCache: false,
+                ),
           ),
           prayerTodayScheduleProvider.overrideWith(
             (ref) async => throw StateError('Fixture schedule unavailable.'),
@@ -83,6 +84,105 @@ void main() {
 
     await _disposeWidgetTree(tester);
   });
+
+  testWidgets(
+    'catalog language selector persists independently of pinned translation',
+    (tester) async {
+      tester.binding.platformDispatcher.localesTestValue = const <Locale>[
+        Locale('ru'),
+      ];
+      addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      await SurahRepository(database).getRotationSnapshot();
+      final settings = AppSettingsRepository(database);
+      final selections = QuranTranslationSelectionRepository(settings);
+      final pinnedRussian = QuranTranslationSelection.fromCatalog(
+        translation: _translation(version: '1.0.0'),
+        fetchedAtUtc: DateTime.utc(2026, 8, 24),
+        attribution: QuranEncProvider.attribution,
+      );
+      await selections.save(
+        pinnedRussian,
+        updatedAtUtc: pinnedRussian.fetchedAtUtc,
+      );
+      final encodedSelectionBefore = await settings.getString(
+        QuranTranslationSelectionRepository.settingKey,
+      );
+      final requests = <QuranTranslationsRequest>[];
+      final uzbekTranslation = QuranTranslation(
+        source: QuranEncProvider.sourceId,
+        key: 'fixture-uzbek',
+        languageCode: 'uz',
+        version: '1.0.0',
+        title: 'Fixture Uzbek',
+      );
+
+      await _pumpSettings(
+        tester,
+        database,
+        const AvailableQuranContent<List<QuranTranslation>>(
+          value: <QuranTranslation>[],
+          fromCache: false,
+        ),
+        catalogLoader: (request) {
+          requests.add(request);
+          return AvailableQuranContent<List<QuranTranslation>>(
+            value: request.languageCode == 'uz'
+                ? <QuranTranslation>[uzbekTranslation]
+                : <QuranTranslation>[_translation(version: '1.0.0')],
+            fromCache: false,
+          );
+        },
+      );
+
+      final languageSelector = find.byKey(
+        const ValueKey<String>('quran-translation-language-selector'),
+      );
+      final translationSelector = find.byKey(
+        const ValueKey<String>('quran-translation-selector'),
+      );
+      expect(languageSelector, findsOneWidget);
+      expect(translationSelector, findsOneWidget);
+      expect(requests.last.languageCode, 'ru');
+      expect(requests.last.localizationLanguageCode, 'ru');
+
+      await tester.tap(languageSelector);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Узбекский').last);
+      await tester.pumpAndSettle();
+
+      expect(
+        await QuranTranslationLanguageRepository(settings).getSelected(),
+        'uz',
+      );
+      expect(requests.last.languageCode, 'uz');
+      expect(requests.last.localizationLanguageCode, 'ru');
+      expect(
+        find.byKey(
+          const ValueKey<String>('additional-uzbek-translations-unavailable'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('uzbek_mokhtasar'), findsOneWidget);
+      expect(find.textContaining('uzbek_moyassar'), findsOneWidget);
+      expect(
+        await settings.getString(
+          QuranTranslationSelectionRepository.settingKey,
+        ),
+        encodedSelectionBefore,
+      );
+      expect(await selections.getSelected(), pinnedRussian);
+      expect(find.textContaining('Fixture Russian'), findsOneWidget);
+
+      await tester.tap(translationSelector);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Fixture Uzbek'), findsWidgets);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await _disposeWidgetTree(tester);
+    },
+  );
 
   testWidgets('selected translation can be cleared with an empty catalog', (
     tester,
@@ -195,6 +295,66 @@ void main() {
     );
     await _disposeWidgetTree(tester);
   });
+
+  testWidgets('Settings exposes Latin and explains disabled Cyrillic profile', (
+    tester,
+  ) async {
+    tester.binding.platformDispatcher.localesTestValue = const <Locale>[
+      Locale('ru'),
+    ];
+    addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await SurahRepository(database).getRotationSnapshot();
+
+    await _pumpSettings(
+      tester,
+      database,
+      const AvailableQuranContent<List<QuranTranslation>>(
+        value: <QuranTranslation>[],
+        fromCache: false,
+      ),
+    );
+
+    final selector = find.byKey(
+      const ValueKey<String>('quran-transliteration-profile'),
+    );
+    final explanation = find.byKey(
+      const ValueKey<String>('quran-transliteration-cyrillic-unavailable'),
+    );
+    expect(selector, findsOneWidget);
+    expect(explanation, findsOneWidget);
+    expect(
+      tester.widget<Text>(explanation).data,
+      'Кириллица — проверенный источник пока не подключён',
+    );
+
+    await tester.ensureVisible(selector);
+    await tester.pumpAndSettle();
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Латиница — Tanzil'), findsWidgets);
+    final unavailableItem = find.ancestor(
+      of: find.text('Кириллица — проверенный источник пока не подключён'),
+      matching: find.byType(DropdownMenuItem<String>),
+    );
+    expect(unavailableItem, findsOneWidget);
+    expect(
+      tester.widget<DropdownMenuItem<String>>(unavailableItem).enabled,
+      isFalse,
+    );
+    expect(
+      await AppSettingsRepository(
+        database,
+      ).getString(QuranTransliterationProfileSelectionRepository.settingKey),
+      isNull,
+    );
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await _disposeWidgetTree(tester);
+  });
 }
 
 QuranTranslation _translation({required String version}) => QuranTranslation(
@@ -205,11 +365,17 @@ QuranTranslation _translation({required String version}) => QuranTranslation(
   title: 'Fixture Russian',
 );
 
+typedef _CatalogLoader =
+    QuranContentState<List<QuranTranslation>> Function(
+      QuranTranslationsRequest request,
+    );
+
 Future<void> _pumpSettings(
   WidgetTester tester,
   AppDatabase database,
-  QuranContentState<List<QuranTranslation>> catalog,
-) async {
+  QuranContentState<List<QuranTranslation>> catalog, {
+  _CatalogLoader? catalogLoader,
+}) async {
   final quranCache = QuranCacheDatabase(NativeDatabase.memory());
   addTearDown(quranCache.close);
   await tester.pumpWidget(
@@ -221,7 +387,9 @@ Future<void> _pumpSettings(
         timeProviderProvider.overrideWithValue(
           _FixedTimeProvider(DateTime.utc(2026, 8, 25, 12)),
         ),
-        russianQuranTranslationsProvider.overrideWith((ref) async => catalog),
+        quranTranslationsProvider.overrideWith(
+          (ref, request) async => catalogLoader?.call(request) ?? catalog,
+        ),
         prayerTodayScheduleProvider.overrideWith(
           (ref) async => throw StateError('Fixture schedule unavailable.'),
         ),

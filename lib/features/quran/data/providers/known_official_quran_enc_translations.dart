@@ -3,9 +3,8 @@ import 'quran_enc_provider.dart';
 
 part 'known_official_quran_enc_translations.g.dart';
 
-/// A QuranEnc translation that is currently omitted from the public RU list,
-/// but whose key, identity, public endpoint, and exact content were verified
-/// against official QuranEnc surfaces.
+/// A QuranEnc translation whose key, identity, public endpoint, and exact
+/// content were verified against official QuranEnc surfaces.
 ///
 /// [technicalRevision] is deliberately not presented as an upstream version.
 /// It pins the exact API corpus observed on [lastVerifiedDateIso8601].
@@ -43,6 +42,12 @@ final class KnownOfficialQuranEncTranslation {
   DateTime get lastVerifiedAtUtc =>
       DateTime.parse('${lastVerifiedDateIso8601}T00:00:00Z');
 
+  bool matchesOfficialVersion(String candidate) {
+    final version = officialVersion;
+    if (version == null) return false;
+    return _withoutVersionPrefix(version) == _withoutVersionPrefix(candidate);
+  }
+
   QuranTranslation toTranslation() => QuranTranslation(
     source: expectedSource,
     key: key,
@@ -68,6 +73,9 @@ final class KnownOfficialQuranEncTranslation {
     return hashes[surahNumber - 1];
   }
 }
+
+String _withoutVersionPrefix(String value) =>
+    value.startsWith('V') || value.startsWith('v') ? value.substring(1) : value;
 
 /// Audited direct keys only. This registry is discovery metadata, not a
 /// default or theological recommendation. A provider must runtime-revalidate
@@ -118,8 +126,72 @@ abstract final class KnownOfficialQuranEncTranslations {
     ],
   );
 
+  static final List<KnownOfficialQuranEncTranslation>
+  uzbek = List<KnownOfficialQuranEncTranslation>.unmodifiable(<
+    KnownOfficialQuranEncTranslation
+  >[
+    KnownOfficialQuranEncTranslation(
+      key: 'uzbek_rwwad',
+      languageCode: 'uz',
+      title: 'Uzbek Translation - Rowwad Translation Center',
+      translatorOrPublisher: 'Rowwad Translation Center',
+      expectedSource: QuranEncProvider.sourceId,
+      officialVersion: 'V1.0.4',
+      lastVerifiedDateIso8601: '2026-09-01',
+      provenance: Uri.parse('https://old.quranenc.com/en/browse/uzbek_rwwad/1'),
+      technicalRevision:
+          'quranenc-direct-2026-09-01-sha256-'
+          'f49a16d9e5079bd98722feef311d6cbb7afce53cc9186c1a034359ea8f979e72',
+      corpusSha256:
+          'f49a16d9e5079bd98722feef311d6cbb7afce53cc9186c1a034359ea8f979e72',
+    ),
+    KnownOfficialQuranEncTranslation(
+      key: 'uzbek_sadiq',
+      languageCode: 'uz',
+      title: 'Uzbek Translation - Muhammad Sadiq',
+      translatorOrPublisher: 'Muhammad Sadiq Muhammad Yusuf',
+      expectedSource: QuranEncProvider.sourceId,
+      officialVersion: 'V1.0.1',
+      lastVerifiedDateIso8601: '2026-09-01',
+      provenance: Uri.parse('https://old.quranenc.com/en/browse/uzbek_sadiq/1'),
+      technicalRevision:
+          'quranenc-direct-2026-09-01-sha256-'
+          'eb87e39c86411467df16fa0eabd1081d0c4426c9ec1a8e76706a80643fbc052f',
+      corpusSha256:
+          'eb87e39c86411467df16fa0eabd1081d0c4426c9ec1a8e76706a80643fbc052f',
+    ),
+    KnownOfficialQuranEncTranslation(
+      key: 'uzbek_mansour',
+      languageCode: 'uz',
+      title: 'Uzbek Translation - Alaauddin Mansour',
+      translatorOrPublisher: 'Alaauddin Mansour',
+      expectedSource: QuranEncProvider.sourceId,
+      officialVersion: 'V1.0.0',
+      lastVerifiedDateIso8601: '2026-09-01',
+      provenance: Uri.parse(
+        'https://old.quranenc.com/en/browse/uzbek_mansour/1',
+      ),
+      technicalRevision:
+          'quranenc-direct-2026-09-01-sha256-'
+          '3922d6bc01370a67b6c33a65ffb8697cdcb497994c0ec16040b6b9b11a197a90',
+      corpusSha256:
+          '3922d6bc01370a67b6c33a65ffb8697cdcb497994c0ec16040b6b9b11a197a90',
+    ),
+  ]);
+
+  static final List<KnownOfficialQuranEncTranslation> all =
+      List<KnownOfficialQuranEncTranslation>.unmodifiable(
+        <KnownOfficialQuranEncTranslation>[...russian, ...uzbek],
+      );
+
+  static List<KnownOfficialQuranEncTranslation> byLanguage(
+    String languageCode,
+  ) => List<KnownOfficialQuranEncTranslation>.unmodifiable(
+    all.where((translation) => translation.languageCode == languageCode),
+  );
+
   static KnownOfficialQuranEncTranslation? byKey(String key) {
-    for (final translation in russian) {
+    for (final translation in all) {
       if (translation.key == key) return translation;
     }
     return null;

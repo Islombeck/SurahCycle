@@ -1,6 +1,18 @@
 # Quran translation license and source audit
 
-Audit date: 2026-08-26.
+Audit date: 2026-09-02.
+
+## QuranEnc Uzbek discovery
+
+The official browse catalog proves five Uzbek identifiers. Three have usable
+documented JSON endpoints and passed the full 114-surah/6,236-ayah exact audit:
+`uzbek_rwwad`, `uzbek_sadiq`, and `uzbek_mansour`. Their corpus hashes and
+selection policy are recorded in [MULTILINGUAL_QURAN.md](MULTILINGUAL_QURAN.md).
+
+The browse identifiers `uzbek_mokhtasar` and `uzbek_moyassar` are also exact,
+but their direct API probes returned empty `text/html` bodies on the audit date.
+They are documented and shown as unavailable; no content from their HTML pages
+is scraped, cached, or represented as an API translation.
 
 ## QuranEnc Russian discovery
 

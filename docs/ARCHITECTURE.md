@@ -8,7 +8,7 @@ Android widget. Sprint 4 расширяет те же границы, не ме�
 
 - домен ротации использует версионируемые `SurahRotationScheme` и `SurahRotationPart`; эффективное состояние суры выводится из минимального состояния её частей;
 - Drift v3 хранит неизменяемую схему, части и coverage каждого события отдельно от текущей проекции;
-- Arabic, transliteration и translation приходят через независимые проверяемые repository boundaries и связываются только по координатам аята;
+- Arabic, transliteration и translation приходят через независимые проверяемые repository boundaries и связываются только по координатам аята; translation language отделён от UI locale и pinned translation, а transliteration выбирается через профиль;
 - prayer schedules разделены на published provider, local calculation, external cache и чистый Prayer Context resolver;
 - Android-виджеты получают готовый versioned JSON snapshot через `home_widget`; Kotlin/Glance не открывает Drift и не повторяет доменные алгоритмы, а интерактивный circle только транспортирует versioned action обратно в Dart.
 
@@ -211,13 +211,14 @@ provenance metadata. Arabic, transliteration и translation независимы
 `QuranAyahLayers` объединяет их только по exact
 `surahNumber/ayahNumber` и display preferences.
 
-QuranEnc adapter сначала читает документированный catalog. Пустой успешный RU
-catalog разрешает только audited
-`KnownOfficialQuranEncTranslations`. Каждый direct key обязан пройти
-runtime probe и pinned per-surah hash. Cache commit выполняется после проверки
-полного диапазона `1..ayahCount`; предыдущий verified cache переживает
-сетевую ошибку. HTML scraping, private endpoints и generated Quran strings
-запрещены.
+QuranEnc adapter сначала читает документированный language-specific catalog.
+Пустой успешный RU catalog разрешает только два прежних audited direct keys;
+UZ catalog дополняется лишь отсутствующими keys из отдельного audited Uzbek
+registry. Каждый direct fallback проходит runtime probe, а известные direct и
+official-catalog revisions — pinned per-surah hash. Cache commit выполняется
+после проверки полного диапазона `1..ayahCount`; предыдущий verified cache
+переживает сетевую ошибку. HTML scraping, private endpoints и generated Quran
+strings запрещены.
 
 ## Prayer-time boundary
 

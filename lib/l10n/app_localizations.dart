@@ -796,17 +796,41 @@ abstract class AppLocalizations {
   /// **'Перевод Корана'**
   String get quranTranslation;
 
+  /// No description provided for @translationLanguage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Язык перевода'**
+  String get translationLanguage;
+
+  /// No description provided for @translationLanguageRussian.
+  ///
+  /// In ru, this message translates to:
+  /// **'Русский'**
+  String get translationLanguageRussian;
+
+  /// No description provided for @translationLanguageUzbek.
+  ///
+  /// In ru, this message translates to:
+  /// **'Узбекский'**
+  String get translationLanguageUzbek;
+
   /// No description provided for @chooseTranslation.
   ///
   /// In ru, this message translates to:
   /// **'Выберите перевод в настройках'**
   String get chooseTranslation;
 
-  /// No description provided for @noRussianTranslations.
+  /// No description provided for @noTranslationsForLanguage.
   ///
   /// In ru, this message translates to:
-  /// **'У QuranEnc сейчас нет доступных проверенных русских переводов. Арабский текст остаётся доступен офлайн.'**
-  String get noRussianTranslations;
+  /// **'Для выбранного языка сейчас нет доступных проверенных переводов QuranEnc. Арабский текст остаётся доступен офлайн.'**
+  String get noTranslationsForLanguage;
+
+  /// No description provided for @additionalUzbekTranslationsUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Al-Mukhtasar (uzbek_mokhtasar) и Al-Muyassar (uzbek_moyassar): ключи официального каталога подтверждены, но API-корпусы пока недоступны.'**
+  String get additionalUzbekTranslationsUnavailable;
 
   /// No description provided for @translationCatalogError.
   ///
@@ -927,6 +951,30 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Показывать транскрипцию'**
   String get showTransliteration;
+
+  /// No description provided for @transliterationProfile.
+  ///
+  /// In ru, this message translates to:
+  /// **'Профиль транслитерации'**
+  String get transliterationProfile;
+
+  /// No description provided for @transliterationProfileLatinTanzil.
+  ///
+  /// In ru, this message translates to:
+  /// **'Латиница — Tanzil'**
+  String get transliterationProfileLatinTanzil;
+
+  /// No description provided for @transliterationProfileCyrillic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кириллица'**
+  String get transliterationProfileCyrillic;
+
+  /// No description provided for @transliterationProfileCyrillicUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кириллица — проверенный источник пока не подключён'**
+  String get transliterationProfileCyrillicUnavailable;
 
   /// No description provided for @showTranslation.
   ///

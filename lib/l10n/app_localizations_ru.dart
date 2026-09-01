@@ -397,11 +397,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get quranTranslation => 'Перевод Корана';
 
   @override
+  String get translationLanguage => 'Язык перевода';
+
+  @override
+  String get translationLanguageRussian => 'Русский';
+
+  @override
+  String get translationLanguageUzbek => 'Узбекский';
+
+  @override
   String get chooseTranslation => 'Выберите перевод в настройках';
 
   @override
-  String get noRussianTranslations =>
-      'У QuranEnc сейчас нет доступных проверенных русских переводов. Арабский текст остаётся доступен офлайн.';
+  String get noTranslationsForLanguage =>
+      'Для выбранного языка сейчас нет доступных проверенных переводов QuranEnc. Арабский текст остаётся доступен офлайн.';
+
+  @override
+  String get additionalUzbekTranslationsUnavailable =>
+      'Al-Mukhtasar (uzbek_mokhtasar) и Al-Muyassar (uzbek_moyassar): ключи официального каталога подтверждены, но API-корпусы пока недоступны.';
 
   @override
   String get translationCatalogError =>
@@ -479,6 +492,19 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get showTransliteration => 'Показывать транскрипцию';
+
+  @override
+  String get transliterationProfile => 'Профиль транслитерации';
+
+  @override
+  String get transliterationProfileLatinTanzil => 'Латиница — Tanzil';
+
+  @override
+  String get transliterationProfileCyrillic => 'Кириллица';
+
+  @override
+  String get transliterationProfileCyrillicUnavailable =>
+      'Кириллица — проверенный источник пока не подключён';
 
   @override
   String get showTranslation => 'Показывать перевод';

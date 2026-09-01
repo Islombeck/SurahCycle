@@ -397,11 +397,24 @@ class AppLocalizationsUz extends AppLocalizations {
   String get quranTranslation => 'Qur’on tarjimasi';
 
   @override
+  String get translationLanguage => 'Tarjima tili';
+
+  @override
+  String get translationLanguageRussian => 'Ruscha';
+
+  @override
+  String get translationLanguageUzbek => 'O‘zbekcha';
+
+  @override
   String get chooseTranslation => 'Sozlamalarda tarjimani tanlang';
 
   @override
-  String get noRussianTranslations =>
-      'QuranEnc’da hozir tekshirilgan ruscha tarjimalar mavjud emas. Arabcha matn oflayn mavjud.';
+  String get noTranslationsForLanguage =>
+      'Tanlangan til uchun hozir tasdiqlangan QuranEnc tarjimalari mavjud emas. Arabcha matn oflayn mavjud.';
+
+  @override
+  String get additionalUzbekTranslationsUnavailable =>
+      'Al-Mukhtasar (uzbek_mokhtasar) va Al-Muyassar (uzbek_moyassar): rasmiy katalog kalitlari tasdiqlangan, ammo API korpuslari hozircha mavjud emas.';
 
   @override
   String get translationCatalogError =>
@@ -479,6 +492,19 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get showTransliteration => 'Transliteratsiyani ko‘rsatish';
+
+  @override
+  String get transliterationProfile => 'Transliteratsiya profili';
+
+  @override
+  String get transliterationProfileLatinTanzil => 'Lotin — Tanzil';
+
+  @override
+  String get transliterationProfileCyrillic => 'Kirill';
+
+  @override
+  String get transliterationProfileCyrillicUnavailable =>
+      'Kirill — tasdiqlangan manba hali ulanmagan';
 
   @override
   String get showTranslation => 'Tarjimani ko‘rsatish';
