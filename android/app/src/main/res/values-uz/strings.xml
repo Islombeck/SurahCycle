@@ -16,6 +16,7 @@
     <string name="widget_open_app">Ilovani ochish</string>
     <string name="widget_recommendation_rank">&#9733; %1$d</string>
     <string name="widget_mark_recitation">O‘qishni belgilash</string>
+    <string name="widget_recitation_marked">O‘qish belgilandi</string>
     <string name="widget_error_title">Murajaah</string>
     <string name="widget_error_message">Vidjetni yangilab boʻlmadi.</string>
     <string name="widget_error_open_app">Ilovani oching</string>

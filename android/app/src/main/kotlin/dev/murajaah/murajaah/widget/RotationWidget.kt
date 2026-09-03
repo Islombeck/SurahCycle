@@ -14,6 +14,7 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
@@ -57,12 +58,13 @@ class RotationWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
         throwable: Throwable,
     ) {
         logWidgetCompositionError(
+            context = context,
             widgetType = "RotationWidget",
             appWidgetId = appWidgetId,
             throwable = throwable,
         )
         super.onCompositionError(context, glanceId, appWidgetId, throwable)
-        installWidgetErrorClick(context, appWidgetId)
+        installWidgetErrorClick(context, appWidgetId, Uri.parse("murajaah://app/home"))
     }
 
     @Composable
@@ -172,22 +174,36 @@ class RotationWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
             verticalAlignment = Alignment.Vertical.CenterVertically,
         ) {
             val markAction =
-                item.action?.let { action ->
+                if (item.canMark) item.action?.let { action ->
                     actionRunCallback<RotationWidgetMarkAction>(
                         actionParametersOf(rotationActionUriKey to action.uri.toString())
                     )
-                } ?: homeAction
+                } else null
             Image(
-                provider = ImageProvider(R.drawable.ic_widget_mark),
+                provider =
+                    ImageProvider(
+                        if (item.isMarkedInCurrentPart) {
+                            R.drawable.ic_widget_mark_checked
+                        } else {
+                            R.drawable.ic_widget_mark
+                        }
+                    ),
                 contentDescription =
                     context.getString(
-                        if (item.action == null) {
+                        if (item.isMarkedInCurrentPart) {
+                            R.string.widget_recitation_marked
+                        } else if (!item.canMark) {
                             R.string.widget_open_app
                         } else {
                             R.string.widget_mark_recitation
                         }
                     ),
-                modifier = GlanceModifier.size(30.dp).clickable(markAction),
+                modifier =
+                    if (markAction == null) {
+                        GlanceModifier.size(30.dp)
+                    } else {
+                        GlanceModifier.size(30.dp).clickable(markAction)
+                    },
             )
             Spacer(GlanceModifier.width(9.dp))
             Column(
@@ -259,6 +275,8 @@ class RotationWidgetMarkAction : ActionCallback {
         parameters: ActionParameters,
     ) {
         val actionUri = parameters[rotationActionUriKey] ?: return
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
+        logWidgetActionDispatch(context, appWidgetId, actionUri)
         HomeWidgetBackgroundIntent.getBroadcast(context, Uri.parse(actionUri)).send()
     }
 }

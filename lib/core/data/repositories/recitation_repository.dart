@@ -172,6 +172,7 @@ final class RecitationRepository {
       final persistedEvent = _engine.resolveRecitation(before, normalizedEvent);
       final after = _engine.registerRecitation(before, persistedEvent);
       final sequence = state.lastJournalSequence + 1;
+      final committedAfter = after.copyWith(revision: sequence);
 
       await database
           .into(database.recitationEvents)
@@ -200,7 +201,10 @@ final class RecitationRepository {
               ),
             );
       }
-      await _projection.writeSnapshot(after, lastJournalSequence: sequence);
+      await _projection.writeSnapshot(
+        committedAfter,
+        lastJournalSequence: sequence,
+      );
 
       final token = RecitationUndoToken._(
         owner: _undoOwner,
@@ -208,11 +212,11 @@ final class RecitationRepository {
         journalSequence: sequence,
         previousJournalSequence: state.lastJournalSequence,
         beforeSnapshot: before,
-        afterSnapshot: after,
+        afterSnapshot: committedAfter,
       );
       return RecitationRegistration(
         event: persistedEvent,
-        snapshot: after,
+        snapshot: committedAfter,
         undoToken: token,
       );
     });
@@ -406,6 +410,24 @@ final class RecitationRepository {
       ..limit(limit, offset: offset);
     final events = await query.get();
     return _mapHistory(events);
+  }
+
+  /// Covered rotation parts already committed for one local prayer context.
+  Future<Set<String>> getMarkedPartIds({
+    required PrayerContext context,
+    required LocalDate localDate,
+  }) async {
+    final entries = await getHistory(
+      limit: 10000,
+      prayerType: context.prayerType,
+      isQada: context.isQada,
+      from: localDate,
+      through: localDate,
+    );
+    return <String>{
+      for (final entry in entries)
+        for (final partId in entry.event.coveredPartIds) partId,
+    };
   }
 
   Stream<List<RecitationHistoryEntry>> watchHistory({int limit = 100}) =>

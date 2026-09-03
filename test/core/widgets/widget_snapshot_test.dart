@@ -7,7 +7,7 @@ import 'package:murajaah/core/widgets/widget_snapshot.dart';
 void main() {
   const codec = WidgetSnapshotCodec();
 
-  test('schema 3 snapshot round-trips exact coordinate-bound layers', () {
+  test('schema 4 snapshot round-trips revision and item state', () {
     const exactArabic = '  بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ  ';
     const exactTransliteration = 'Bismi All<u>a</u>hi  ';
     const exactTranslation = '  Во имя Аллаха';
@@ -28,6 +28,7 @@ void main() {
     final decoded = (result as WidgetSnapshotDecoded).snapshot;
     expect(decoded.sameProjectionAs(original), isTrue);
     expect(decoded.generatedAtUtc, original.generatedAtUtc);
+    expect(decoded.snapshotRevision, original.snapshotRevision);
     final line = decoded.learning.item!.ayahLines.single;
     expect(line.arabic, exactArabic);
     expect(line.transliteration, exactTransliteration);
@@ -58,8 +59,8 @@ void main() {
     for (final source in <String>[
       '{',
       '[]',
-      '{"schemaVersion":3}',
-      '{"schemaVersion":"3"}',
+      '{"schemaVersion":4}',
+      '{"schemaVersion":"4"}',
     ]) {
       expect(
         (codec.decode(source) as WidgetSnapshotRejected).error,
@@ -69,7 +70,7 @@ void main() {
   });
 
   test('unknown and previous schema versions are rejected safely in Dart', () {
-    for (final version in <int>[2, 99]) {
+    for (final version in <int>[2, 3, 99]) {
       final result = codec.decode('{"schemaVersion":$version}');
 
       expect(result, isA<WidgetSnapshotRejected>());
@@ -249,6 +250,31 @@ void main() {
       WidgetSnapshotDecodeError.malformed,
     );
   });
+
+  test('global debt and current-prayer checked state are independent', () {
+    final dueButMarked = RotationWidgetItem(
+      id: 'marked',
+      surahId: '2',
+      title: '2. Fixture',
+      remaining: 3,
+      isMarkedInCurrentPart: true,
+      canMark: false,
+      disabledReason: 'alreadyMarked',
+      deepLink: Uri.parse('murajaah://app/surah/2'),
+    );
+    final completeButUnmarked = RotationWidgetItem(
+      id: 'complete',
+      surahId: '3',
+      title: '3. Fixture',
+      remaining: 0,
+      deepLink: Uri.parse('murajaah://app/surah/3'),
+    );
+
+    expect(dueButMarked.remaining, 3);
+    expect(dueButMarked.isMarkedInCurrentPart, isTrue);
+    expect(completeButUnmarked.remaining, 0);
+    expect(completeButUnmarked.isMarkedInCurrentPart, isFalse);
+  });
 }
 
 LearningWidgetAyahLine _line(int ayah) => LearningWidgetAyahLine(
@@ -259,6 +285,7 @@ LearningWidgetAyahLine _line(int ayah) => LearningWidgetAyahLine(
 
 WidgetSnapshot _snapshot({LearningWidgetAyahLine? line}) => WidgetSnapshot(
   generatedAtUtc: DateTime.utc(2026, 8, 25, 10),
+  snapshotRevision: 7,
   locale: 'ru',
   rotation: RotationWidgetProjection(
     contextLabel: 'Аср · Ротация',

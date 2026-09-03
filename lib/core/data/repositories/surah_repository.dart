@@ -88,6 +88,9 @@ final class SurahRepository {
 
   Future<RotationSnapshot> getRotationSnapshot() => _projection.loadSnapshot();
 
+  Future<int> getRotationRevision() async =>
+      (await _projection.loadRotationState()).lastJournalSequence;
+
   Stream<RotationSnapshot> watchRotationSnapshot() =>
       _projection.watchSnapshot();
 

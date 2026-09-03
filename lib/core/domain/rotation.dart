@@ -158,6 +158,7 @@ bool _sameList<T>(List<T> left, List<T> right) {
 final class RotationSnapshot {
   factory RotationSnapshot({
     int rotationTarget = RotationEngine.initialRotationTarget,
+    int revision = 0,
     Iterable<MasteredSurah> surahs = const <MasteredSurah>[],
   }) {
     if (rotationTarget < RotationEngine.initialRotationTarget) {
@@ -166,6 +167,9 @@ final class RotationSnapshot {
         'rotationTarget',
         'Must be at least ${RotationEngine.initialRotationTarget}.',
       );
+    }
+    if (revision < 0) {
+      throw ArgumentError.value(revision, 'revision', 'Must not be negative.');
     }
     final immutableSurahs = List<MasteredSurah>.unmodifiable(surahs);
     final ids = <String>{};
@@ -180,16 +184,21 @@ final class RotationSnapshot {
     }
     return RotationSnapshot._(
       rotationTarget: rotationTarget,
+      revision: revision,
       surahs: immutableSurahs,
     );
   }
 
   const RotationSnapshot._({
     required this.rotationTarget,
+    required this.revision,
     required this.surahs,
   });
 
   final int rotationTarget;
+
+  /// Monotonic committed journal sequence backing external projections.
+  final int revision;
   final List<MasteredSurah> surahs;
 
   Iterable<MasteredSurah> get activeSurahs => surahs.where(
@@ -215,9 +224,11 @@ final class RotationSnapshot {
 
   RotationSnapshot copyWith({
     int? rotationTarget,
+    int? revision,
     Iterable<MasteredSurah>? surahs,
   }) => RotationSnapshot(
     rotationTarget: rotationTarget ?? this.rotationTarget,
+    revision: revision ?? this.revision,
     surahs: surahs ?? this.surahs,
   );
 

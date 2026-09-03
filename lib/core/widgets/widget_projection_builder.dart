@@ -30,6 +30,8 @@ final class RotationWidgetCandidate {
     required int displayOrder,
     DateTime? lastUsedAtUtc,
     WidgetRecitationAction? action,
+    bool isMarkedInCurrentPart = false,
+    String? disabledReason,
   }) => RotationWidgetCandidate._validated(
     id: id,
     surahId: surahId,
@@ -46,6 +48,8 @@ final class RotationWidgetCandidate {
     displayOrder: displayOrder,
     lastUsedAtUtc: lastUsedAtUtc,
     action: action,
+    isMarkedInCurrentPart: isMarkedInCurrentPart,
+    disabledReason: disabledReason,
   );
 
   factory RotationWidgetCandidate.part({
@@ -63,6 +67,8 @@ final class RotationWidgetCandidate {
     required int displayOrder,
     DateTime? lastUsedAtUtc,
     WidgetRecitationAction? action,
+    bool isMarkedInCurrentPart = false,
+    String? disabledReason,
   }) => RotationWidgetCandidate._validated(
     id: id,
     surahId: surahId,
@@ -79,6 +85,8 @@ final class RotationWidgetCandidate {
     displayOrder: displayOrder,
     lastUsedAtUtc: lastUsedAtUtc,
     action: action,
+    isMarkedInCurrentPart: isMarkedInCurrentPart,
+    disabledReason: disabledReason,
   );
 
   factory RotationWidgetCandidate._validated({
@@ -97,6 +105,8 @@ final class RotationWidgetCandidate {
     required int displayOrder,
     required DateTime? lastUsedAtUtc,
     required WidgetRecitationAction? action,
+    required bool isMarkedInCurrentPart,
+    required String? disabledReason,
   }) {
     if (id.isEmpty || surahId.isEmpty || displayName.isEmpty) {
       throw ArgumentError(
@@ -158,6 +168,8 @@ final class RotationWidgetCandidate {
       displayOrder: displayOrder,
       lastUsedAtUtc: lastUsedAtUtc,
       action: action,
+      isMarkedInCurrentPart: isMarkedInCurrentPart,
+      disabledReason: disabledReason,
     );
   }
 
@@ -177,6 +189,8 @@ final class RotationWidgetCandidate {
     required this.displayOrder,
     required this.lastUsedAtUtc,
     required this.action,
+    required this.isMarkedInCurrentPart,
+    required this.disabledReason,
   });
 
   final String id;
@@ -194,6 +208,8 @@ final class RotationWidgetCandidate {
   final int displayOrder;
   final DateTime? lastUsedAtUtc;
   final WidgetRecitationAction? action;
+  final bool isMarkedInCurrentPart;
+  final String? disabledReason;
 }
 
 final class LearningWidgetCandidate {
@@ -301,16 +317,12 @@ final class WidgetProjectionBuilder {
     String contextLabel = 'Rotation',
     String? statusMessage,
   }) {
-    final due =
-        candidates
-            .where((candidate) => candidate.remaining > 0)
-            .toList(growable: false)
-          ..sort(_compareRotation);
-    final visible = due.take(maxRotationWidgetItems);
+    final active = candidates.toList(growable: false)..sort(_compareRotation);
+    final visible = active.take(maxRotationWidgetItems);
     return RotationWidgetProjection(
       items: visible.map(_rotationItem),
-      omittedCount: due.length > maxRotationWidgetItems
-          ? due.length - maxRotationWidgetItems
+      omittedCount: active.length > maxRotationWidgetItems
+          ? active.length - maxRotationWidgetItems
           : 0,
       contextLabel: contextLabel,
       statusMessage: statusMessage,
@@ -361,13 +373,16 @@ final class WidgetProjectionBuilder {
           ? '${labels.part} ${candidate.partIndex}/${candidate.partCount} · '
                 '${labels.ayahs} ${candidate.startAyah}–${candidate.endAyah}'
           : null,
-      remaining: candidate.remaining,
+      remaining: candidate.remaining < 0 ? 0 : candidate.remaining,
       recommendationRank: candidate.recommendationRank,
       deepLink: WidgetSurahDeepLink(
         surahId: candidate.surahId,
         partId: candidate.partId,
       ).uri,
       action: candidate.action,
+      isMarkedInCurrentPart: candidate.isMarkedInCurrentPart,
+      canMark: candidate.action != null,
+      disabledReason: candidate.disabledReason,
     );
   }
 

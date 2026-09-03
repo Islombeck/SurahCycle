@@ -58,34 +58,52 @@ void main() {
     expect(drawable, contains('@android:color/transparent'));
   });
 
-  test(
-    'schema 3 learning lines are coordinate-bound with schema 2 fallback',
-    () {
-      final snapshot = _read(
-        'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
-        'WidgetSnapshot.kt',
-      );
-      final learning = _read(
-        'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
-        'LearningWidget.kt',
-      );
+  test('Learning widget root surfaces and fallback open Learning', () {
+    final learning = _read(
+      'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
+      'LearningWidget.kt',
+    );
+    final fallback = _read(
+      'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
+      'WidgetErrorFallback.kt',
+    );
 
-      expect(
-        snapshot,
-        contains('private const val PREVIOUS_SCHEMA_VERSION = 2'),
-      );
-      expect(snapshot, contains('private const val SCHEMA_VERSION = 3'));
-      expect(snapshot, contains('val ayahLines: List<NativeLearningAyahLine>'));
-      expect(snapshot, contains('val surahNumber: Int?'));
-      expect(snapshot, contains('val ayahNumber: Int?'));
-      expect(snapshot, contains('lineAyah > previousAyah'));
-      expect(learning, contains('LearningAyahBlock'));
-      expect(
-        learning,
-        contains('line.transliteration.withoutTanzilPresentationTags()'),
-      );
-    },
-  );
+    expect(learning, contains('Uri.parse("murajaah://app/learning")'));
+    expect(learning, contains('.clickable(learningAction)'));
+    expect(learning, contains('learningItem.deepLink'));
+    expect(learning, isNot(contains('Uri.parse("murajaah://app/home")')));
+    expect(fallback, contains('appWidgetId: Int, deepLink: Uri'));
+  });
+
+  test('schema 4 state is strict and preserves schema 2/3 fallback', () {
+    final snapshot = _read(
+      'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
+      'WidgetSnapshot.kt',
+    );
+    final learning = _read(
+      'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
+      'LearningWidget.kt',
+    );
+
+    expect(snapshot, contains('private const val LEGACY_SCHEMA_VERSION = 2'));
+    expect(snapshot, contains('private const val PREVIOUS_SCHEMA_VERSION = 3'));
+    expect(snapshot, contains('private const val SCHEMA_VERSION = 4'));
+    expect(snapshot, contains('root.getLong("snapshotRevision")'));
+    expect(snapshot, contains('requireOnlyKeys(root, rootKeys)'));
+    expect(snapshot, contains('require(remaining >= 0)'));
+    expect(snapshot, contains('debtLabel == if (remaining > 1)'));
+    expect(snapshot, contains('item.getBoolean("isMarkedInCurrentPart")'));
+    expect(snapshot, contains('item.getBoolean("canMark")'));
+    expect(snapshot, contains('val ayahLines: List<NativeLearningAyahLine>'));
+    expect(snapshot, contains('val surahNumber: Int?'));
+    expect(snapshot, contains('val ayahNumber: Int?'));
+    expect(snapshot, contains('lineAyah > previousAyah'));
+    expect(learning, contains('LearningAyahBlock'));
+    expect(
+      learning,
+      contains('line.transliteration.withoutTanzilPresentationTags()'),
+    );
+  });
 
   test('Quran audio owns a separate Android media service contract', () {
     final manifest = _read('android/app/src/main/AndroidManifest.xml');

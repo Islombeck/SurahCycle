@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -77,9 +79,11 @@ Future<RotationWidgetInteractionOutcome> runRotationWidgetBackgroundAction(
     );
     final refresher = InteractiveWidgetSnapshotRefresher(
       surahs: surahs,
+      recitations: recitations,
       prayerContextResolver: prayerResolver,
       timeProvider: timeProvider,
       createActionToken: eventIdFactory,
+      localDates: effectiveLocalDates,
       bridge: bridge,
     );
     return await RotationWidgetInteractionHandler(
@@ -95,6 +99,18 @@ Future<RotationWidgetInteractionOutcome> runRotationWidgetBackgroundAction(
               stackTrace: stackTrace,
             );
           },
+      onLog: (event, fields) {
+        if (!kDebugMode) return;
+        developer.log(
+          jsonEncode(<String, Object?>{
+            'event': event,
+            'widget': 'RotationWidget',
+            'appWidgetId': null,
+            ...fields,
+          }),
+          name: 'MurajaahWidget',
+        );
+      },
     ).handle(payload);
   } finally {
     await database.close();

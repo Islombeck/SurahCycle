@@ -59,6 +59,7 @@ final class RotationProjectionStore {
 
     return RotationSnapshot(
       rotationTarget: state.rotationTarget,
+      revision: state.lastJournalSequence,
       surahs: masteredRows.map((MasteredSurahRow row) {
         final metadata = metadataById[row.surahId];
         final scheme = schemeBySurahId[row.surahId];

@@ -18,6 +18,7 @@ const int maxLearningWidgetAyahLines = 3;
 final class WidgetSnapshot {
   factory WidgetSnapshot({
     required DateTime generatedAtUtc,
+    int snapshotRevision = 0,
     required String locale,
     required RotationWidgetProjection rotation,
     required LearningWidgetProjection learning,
@@ -30,8 +31,16 @@ final class WidgetSnapshot {
       );
     }
     _requireText(locale, 'locale', maxLength: 32);
+    if (snapshotRevision < 0) {
+      throw ArgumentError.value(
+        snapshotRevision,
+        'snapshotRevision',
+        'Must not be negative.',
+      );
+    }
     return WidgetSnapshot._(
       generatedAtUtc: generatedAtUtc,
+      snapshotRevision: snapshotRevision,
       locale: locale,
       rotation: rotation,
       learning: learning,
@@ -40,14 +49,16 @@ final class WidgetSnapshot {
 
   const WidgetSnapshot._({
     required this.generatedAtUtc,
+    required this.snapshotRevision,
     required this.locale,
     required this.rotation,
     required this.learning,
   });
 
-  static const int schemaVersion = 3;
+  static const int schemaVersion = 4;
 
   final DateTime generatedAtUtc;
+  final int snapshotRevision;
   final String locale;
   final RotationWidgetProjection rotation;
   final LearningWidgetProjection learning;
@@ -55,6 +66,7 @@ final class WidgetSnapshot {
   Map<String, Object?> toJson() => <String, Object?>{
     'schemaVersion': schemaVersion,
     'generatedAtUtc': generatedAtUtc.toIso8601String(),
+    'snapshotRevision': snapshotRevision,
     'locale': locale,
     'rotation': rotation.toJson(),
     'learning': learning.toJson(),
@@ -74,6 +86,7 @@ final class WidgetSnapshot {
     }
     return WidgetSnapshot(
       generatedAtUtc: generatedAtUtc,
+      snapshotRevision: _integer(json, 'snapshotRevision'),
       locale: _string(json, 'locale'),
       rotation: RotationWidgetProjection._fromJson(_map(json, 'rotation')),
       learning: LearningWidgetProjection._fromJson(_map(json, 'learning')),
@@ -206,14 +219,22 @@ final class RotationWidgetItem {
     int? recommendationRank,
     required Uri deepLink,
     WidgetRecitationAction? action,
+    bool isMarkedInCurrentPart = false,
+    bool isActionInProgress = false,
+    bool? canMark,
+    String? disabledReason,
   }) {
     _requireText(id, 'id', maxLength: 256);
     _requireText(surahId, 'surahId', maxLength: 128);
     if (partId != null) _requireText(partId, 'partId', maxLength: 128);
     _requireText(title, 'title', maxLength: 512);
     if (subtitle != null) _requireText(subtitle, 'subtitle', maxLength: 512);
-    if (remaining <= 0) {
-      throw ArgumentError.value(remaining, 'remaining', 'Must be positive.');
+    if (remaining < 0) {
+      throw ArgumentError.value(
+        remaining,
+        'remaining',
+        'Must not be negative.',
+      );
     }
     if (recommendationRank != null &&
         (recommendationRank < 0 ||
@@ -243,6 +264,14 @@ final class RotationWidgetItem {
         'Must target the projected surah and part.',
       );
     }
+    final effectiveCanMark = canMark ?? action != null;
+    if ((effectiveCanMark && action == null) ||
+        (isMarkedInCurrentPart && effectiveCanMark)) {
+      throw ArgumentError('Markability must match the committed item state.');
+    }
+    if (disabledReason != null) {
+      _requireText(disabledReason, 'disabledReason', maxLength: 256);
+    }
     return RotationWidgetItem._(
       id: id,
       surahId: surahId,
@@ -253,6 +282,10 @@ final class RotationWidgetItem {
       recommendationRank: recommendationRank,
       deepLink: deepLink,
       action: action,
+      isMarkedInCurrentPart: isMarkedInCurrentPart,
+      isActionInProgress: isActionInProgress,
+      canMark: effectiveCanMark,
+      disabledReason: disabledReason,
     );
   }
 
@@ -266,6 +299,10 @@ final class RotationWidgetItem {
     required this.recommendationRank,
     required this.deepLink,
     required this.action,
+    required this.isMarkedInCurrentPart,
+    required this.isActionInProgress,
+    required this.canMark,
+    required this.disabledReason,
   });
 
   final String id;
@@ -277,6 +314,10 @@ final class RotationWidgetItem {
   final int? recommendationRank;
   final Uri deepLink;
   final WidgetRecitationAction? action;
+  final bool isMarkedInCurrentPart;
+  final bool isActionInProgress;
+  final bool canMark;
+  final String? disabledReason;
 
   bool get isRecommended => recommendationRank != null;
 
@@ -294,6 +335,10 @@ final class RotationWidgetItem {
     if (recommendationRank != null) 'recommendationRank': recommendationRank,
     'deepLink': deepLink.toString(),
     if (action != null) 'action': action!.toJson(),
+    'isMarkedInCurrentPart': isMarkedInCurrentPart,
+    'isActionInProgress': isActionInProgress,
+    'canMark': canMark,
+    if (disabledReason != null) 'disabledReason': disabledReason,
   };
 
   static RotationWidgetItem _fromJson(Map<String, Object?> json) {
@@ -311,6 +356,10 @@ final class RotationWidgetItem {
       action: json.containsKey('action')
           ? WidgetRecitationAction.fromJson(_map(json, 'action'))
           : null,
+      isMarkedInCurrentPart: _boolean(json, 'isMarkedInCurrentPart'),
+      isActionInProgress: _boolean(json, 'isActionInProgress'),
+      canMark: _boolean(json, 'canMark'),
+      disabledReason: _nullableString(json, 'disabledReason'),
     );
     if (_string(json, 'debtLabel') != item.debtLabel) {
       throw const FormatException('debtLabel does not match remaining.');
@@ -330,7 +379,11 @@ final class RotationWidgetItem {
           remaining == other.remaining &&
           recommendationRank == other.recommendationRank &&
           deepLink == other.deepLink &&
-          action == other.action;
+          action == other.action &&
+          isMarkedInCurrentPart == other.isMarkedInCurrentPart &&
+          isActionInProgress == other.isActionInProgress &&
+          canMark == other.canMark &&
+          disabledReason == other.disabledReason;
 
   @override
   int get hashCode => Object.hash(
@@ -343,6 +396,10 @@ final class RotationWidgetItem {
     recommendationRank,
     deepLink,
     action,
+    isMarkedInCurrentPart,
+    isActionInProgress,
+    canMark,
+    disabledReason,
   );
 }
 

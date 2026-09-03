@@ -113,6 +113,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   void openWidgetLink(WidgetDeepLink link) {
     final location = switch (link) {
       WidgetHomeDeepLink() => '/',
+      WidgetLearningRootDeepLink() => '/learning',
       WidgetSurahDeepLink(:final surahId, :final partId) => Uri(
         path: '/surah/$surahId',
         queryParameters: partId == null

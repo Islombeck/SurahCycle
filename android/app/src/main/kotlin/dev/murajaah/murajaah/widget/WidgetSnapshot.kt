@@ -6,6 +6,7 @@ import org.json.JSONObject
 internal const val WIDGET_SNAPSHOT_KEY = "murajaah_widget_snapshot"
 
 internal data class NativeWidgetSnapshot(
+    val snapshotRevision: Long,
     val rotation: NativeRotationProjection,
     val learning: NativeLearningProjection,
 )
@@ -25,6 +26,10 @@ internal data class NativeRotationItem(
     val recommendationRank: Int?,
     val deepLink: Uri,
     val action: NativeRotationAction?,
+    val isMarkedInCurrentPart: Boolean,
+    val isActionInProgress: Boolean,
+    val canMark: Boolean,
+    val disabledReason: String?,
 )
 
 internal data class NativeRotationAction(
@@ -78,8 +83,9 @@ internal data class NativeLearningAyahLine(
  * fallback instead of throwing from a launcher process.
  */
 internal object NativeWidgetSnapshotParser {
-    private const val PREVIOUS_SCHEMA_VERSION = 2
-    private const val SCHEMA_VERSION = 3
+    private const val LEGACY_SCHEMA_VERSION = 2
+    private const val PREVIOUS_SCHEMA_VERSION = 3
+    private const val SCHEMA_VERSION = 4
     private const val MAX_ROTATION_ITEMS = 64
     private const val MAX_TEXT_LINES = 3
     // Mirrors Dart's domain-level maxRecommendationCount.
@@ -90,10 +96,24 @@ internal object NativeWidgetSnapshotParser {
         return runCatching {
             val root = JSONObject(raw)
             val schemaVersion = root.getInt("schemaVersion")
-            require(schemaVersion == PREVIOUS_SCHEMA_VERSION || schemaVersion == SCHEMA_VERSION)
+            require(
+                schemaVersion == LEGACY_SCHEMA_VERSION ||
+                    schemaVersion == PREVIOUS_SCHEMA_VERSION ||
+                    schemaVersion == SCHEMA_VERSION
+            )
+            val rootKeys =
+                mutableSetOf("schemaVersion", "generatedAtUtc", "locale", "rotation", "learning")
+            if (schemaVersion >= SCHEMA_VERSION) rootKeys += "snapshotRevision"
+            requireOnlyKeys(root, rootKeys)
             requireText(root.getString("generatedAtUtc"), 128)
             requireText(root.getString("locale"), 32)
             NativeWidgetSnapshot(
+                snapshotRevision =
+                    if (schemaVersion >= SCHEMA_VERSION) {
+                        root.getLong("snapshotRevision").also { require(it >= 0L) }
+                    } else {
+                        0L
+                    },
                 rotation = parseRotation(root.getJSONObject("rotation"), schemaVersion),
                 learning = parseLearning(root.getJSONObject("learning"), schemaVersion),
             )
@@ -121,9 +141,10 @@ internal object NativeWidgetSnapshotParser {
             val surahId = requireSafeId(item.getString("surahId"))
             val partId = item.optionalString("partId")?.let(::requireSafeId)
             val remaining = item.getInt("remaining")
-            require(remaining > 0)
+            require(remaining >= 0)
             val debtLabel = item.getString("debtLabel")
             require(debtLabel.length <= 32)
+            require(debtLabel == if (remaining > 1) "${remaining}×" else "")
             val recommendationRank =
                 if (item.has("recommendationRank")) {
                     require(!item.isNull("recommendationRank"))
@@ -137,7 +158,7 @@ internal object NativeWidgetSnapshotParser {
             val deepLink = Uri.parse(item.getString("deepLink"))
             require(isSafeRotationLink(deepLink, surahId, partId))
             val action =
-                if (schemaVersion >= SCHEMA_VERSION && item.has("action")) {
+                if (schemaVersion >= PREVIOUS_SCHEMA_VERSION && item.has("action")) {
                     require(!item.isNull("action"))
                     parseAction(item.getJSONObject("action"), surahId, partId).also {
                         require(actionTokens.add(it.actionToken))
@@ -145,6 +166,20 @@ internal object NativeWidgetSnapshotParser {
                 } else {
                     null
                 }
+            val isMarked =
+                if (schemaVersion >= SCHEMA_VERSION) item.getBoolean("isMarkedInCurrentPart") else false
+            val isProcessing =
+                if (schemaVersion >= SCHEMA_VERSION) item.getBoolean("isActionInProgress") else false
+            val canMark =
+                if (schemaVersion >= SCHEMA_VERSION) item.getBoolean("canMark") else action != null
+            val disabledReason =
+                if (schemaVersion >= SCHEMA_VERSION) {
+                    item.optionalString("disabledReason")?.let { requireText(it, 256) }
+                } else {
+                    null
+                }
+            require(!canMark || action != null)
+            require(!isMarked || !canMark)
             items +=
                 NativeRotationItem(
                     id = id,
@@ -154,19 +189,23 @@ internal object NativeWidgetSnapshotParser {
                     recommendationRank = recommendationRank,
                     deepLink = deepLink,
                     action = action,
+                    isMarkedInCurrentPart = isMarked,
+                    isActionInProgress = isProcessing,
+                    canMark = canMark,
+                    disabledReason = disabledReason,
                 )
         }
         return NativeRotationProjection(
             items = items,
             omittedCount = omittedCount,
             contextLabel =
-                if (schemaVersion >= SCHEMA_VERSION) {
+                if (schemaVersion >= PREVIOUS_SCHEMA_VERSION) {
                     requireText(json.getString("contextLabel"), 256)
                 } else {
                     null
                 },
             statusMessage =
-                if (schemaVersion >= SCHEMA_VERSION) {
+                if (schemaVersion >= PREVIOUS_SCHEMA_VERSION) {
                     json.optionalString("statusMessage")?.let { requireText(it, 512) }
                 } else {
                     null
@@ -213,7 +252,7 @@ internal object NativeWidgetSnapshotParser {
         val showArabic: Boolean
         val showTransliteration: Boolean
         val showTranslation: Boolean
-        if (schemaVersion == PREVIOUS_SCHEMA_VERSION) {
+        if (schemaVersion == LEGACY_SCHEMA_VERSION) {
             val linesJson = item.getJSONArray("verifiedTextLines")
             require(linesJson.length() <= MAX_TEXT_LINES)
             lines =

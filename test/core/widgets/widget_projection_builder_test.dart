@@ -12,7 +12,7 @@ void main() {
     ),
   );
 
-  test('rotation contains due only and puts recommendations first', () {
+  test('rotation keeps every active item and puts recommendations first', () {
     final result = builder.buildRotation(<RotationWidgetCandidate>[
       _whole(id: 'done', remaining: 0),
       _whole(id: 'ahead', remaining: -2),
@@ -30,7 +30,10 @@ void main() {
       'recommended',
       'due-3',
       'due-2',
+      'done',
+      'ahead',
     ]);
+    expect(result.items.where((item) => item.remaining == 0), hasLength(2));
   });
 
   test('equal debt uses never/oldest use then display order', () {
@@ -84,13 +87,16 @@ void main() {
     expect(item.deepLink.toString(), 'murajaah://app/surah/2?part=part-2');
   });
 
-  test('rotation empty state is represented by an empty due list', () {
-    expect(
-      builder.buildRotation(<RotationWidgetCandidate>[
-        _whole(id: 'done', remaining: 0),
-      ]).items,
-      isEmpty,
-    );
+  test('completed item remains in projection', () {
+    final item = builder
+        .buildRotation(<RotationWidgetCandidate>[
+          _whole(id: 'done', remaining: 0),
+        ])
+        .items
+        .single;
+
+    expect(item.remaining, 0);
+    expect(item.isMarkedInCurrentPart, isFalse);
   });
 
   test('keeps eight recommendations in exact rank order', () {

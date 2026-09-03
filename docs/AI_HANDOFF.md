@@ -2,14 +2,14 @@
 
 ## Current state
 
-- Baseline HEAD: `a640f50` (`Sprint 5D: Quran audio`), branch `main`.
-- Active checkpoint: project continuity protocol, before Sprint 5E1 widget reliability changes.
+- Current HEAD: `4528fce` (`Project: add Codex and Claude handoff protocol`), branch `main`.
+- Active checkpoint: Sprint 5E1 is fully implemented and verified in code; required checkpoint commit is pending.
 - Tracked tree was clean at baseline. The repository already contained one untracked photo and eight untracked historical videos; these are user-owned QA materials and must not be added, moved, renamed, or deleted implicitly.
 - Baseline Flutter and Android checks are green.
 
 ## Next exact action
 
-Commit only `AGENTS.md`, `CLAUDE.md`, and `docs/AI_HANDOFF.md` as `Project: add Codex and Claude handoff protocol`. Then record its hash here and add characterization tests for WidgetSnapshot revision ordering and Learning Widget deep links before modifying production widget synchronization.
+Review and stage only the Sprint 5E1 tracked changes/new source files, excluding user-owned media. Commit as `Sprint 5E1: stabilize interactive widgets`, record its hash, then begin Checkpoint B with schema-v5 characterization and migration tests.
 
 ## Scope and non-goals
 
@@ -28,8 +28,9 @@ Non-goals: cloud sync/accounts/server, gamification, Qibla, adhan alarms, full Q
 
 ## In progress
 
-- Continuity files are being introduced as an isolated checkpoint.
-- Sprint 5E1 diagnosis has not started. Do not implement prayer routines until widget marking has a monotonic committed revision and stale projections cannot overwrite newer ones.
+- Continuity files were committed in isolated checkpoint `4528fce`.
+- Sprint 5E1 implementation uses DB `lastJournalSequence` as snapshot revision, an inter-isolate file lock for atomic stale-write rejection, explicit marked/canMark state, resume/foreground reconciliation, stable headless row order, debug-gated structured logs, early callback registration, and Learning-root links.
+- Full Dart and Android regression is green. No physical-device matrix was run because ADB is unavailable on PATH in this session.
 - Relevant risk: foreground Drift streams may not observe a headless-isolate database write immediately; SharedPreferences snapshots currently have no DB-backed ordering revision.
 
 ## Decisions and reasons
@@ -61,11 +62,16 @@ Non-goals: cloud sync/accounts/server, gamification, Qibla, adhan alarms, full Q
 - 2026-09-03T09:45Z: `flutter test --no-pub --reporter compact` -> 389/389 passed.
 - 2026-09-03T09:45Z: `git diff --check` -> clean.
 - 2026-09-03T09:54Z: `cd /d M:\android && gradlew.bat testDebugUnitTest` -> `BUILD SUCCESSFUL` in 1m 19s; 190 actionable tasks (4 executed, 186 up-to-date). `:app:testDebugUnitTest` reported `NO-SOURCE`.
+- 2026-09-03: Sprint 5E1 interim `flutter analyze --no-pub` -> no issues; targeted widget/action/native-contract suite -> 47/47 passed.
+- 2026-09-03T10:12Z: final `flutter analyze --no-pub` -> no issues; full `flutter test --no-pub --reporter compact` -> 395/395 passed.
+- 2026-09-03T10:13Z: `gradlew.bat :app:compileDebugKotlin` -> `BUILD SUCCESSFUL` (14s).
+- 2026-09-03T10:13Z: `gradlew.bat testDebugUnitTest assembleDebug` -> `BUILD SUCCESSFUL` (45s; 352 tasks). App Android unit task remains `NO-SOURCE`; debug APK built at `build/app/outputs/flutter-apk/app-debug.apk` (228,894,889 bytes).
 
 ## Manual/device QA
 
 - No Android device or ADB session has been used in this continuation session.
-- User-provided photo/video files exist locally but have not yet been visually reviewed.
+- User photo `photo_2026-09-03_10-59-07.jpg` was visually reviewed: it shows the foreground Home recommendations/context screen, not the launcher widget or the reported click/rollback sequence.
+- The specifically requested `video_2026-09-03_10-58-46.mp4` and `video_2026-09-03_10-59-16.mp4` were not found. Eight older MP4 files remain available but no video decoder is installed on PATH in this session.
 - The required foreground/background/Back/swipe-away/double-tap/immediate-open/offline/stale-context matrix remains pending. Do not claim physical verification from unit tests or APK compilation.
 
 ## Sources and licensing
@@ -79,9 +85,8 @@ Non-goals: cloud sync/accounts/server, gamification, Qibla, adhan alarms, full Q
 
 ## Uncommitted changes
 
-- `AGENTS.md`: Codex/agent continuity pointer.
-- `CLAUDE.md`: Claude Code continuity pointer.
-- `docs/AI_HANDOFF.md`: shared operational state and decision log.
+- Sprint 5E1 Dart/Kotlin widget implementation and tests are uncommitted; inspect `git status --short` for the exact tracked-file list.
+- `docs/AI_HANDOFF.md`: current checkpoint state.
 - Pre-existing user-owned files, excluded from commits: `photo_2026-09-03_10-59-07.jpg` and eight MP4 files under `Скринсейверы до v5/`.
 
 ## Decision log
@@ -89,3 +94,7 @@ Non-goals: cloud sync/accounts/server, gamification, Qibla, adhan alarms, full Q
 - 2026-09-03: Adopted one shared handoff file for Codex and Claude; no parallel divergent journal.
 - 2026-09-03: Reconciled baseline `a640f50`; recorded user-owned untracked QA media instead of cleaning or committing it.
 - 2026-09-03: Confirmed checkpoint order: widget reliability precedes schema v5 prayer routines and all later feature work.
+- 2026-09-03: Committed shared continuity protocol as `4528fce`; started Sprint 5E1 with tests-first diagnosis.
+- 2026-09-03: Chose existing DB journal sequence as the monotonic widget revision; no schema migration or second source of truth is needed for Sprint 5E1.
+- 2026-09-03: Schema 4 explicitly separates rotation debt, recommendation, and current-prayer marking. Learning root surfaces use `/learning`; selected content retains `/learning/:surahId`. Rotation footer remains Home.
+- 2026-09-03: Android force-stop remains an OS delivery boundary; no broadcast delivery after true force-stop is promised or claimed.

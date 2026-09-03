@@ -6,3 +6,4 @@ export 'widget_deep_link.dart';
 export 'widget_projection_builder.dart';
 export 'widget_snapshot.dart';
 export 'widget_sync_coordinator.dart';
+export 'widget_resume_reconciler.dart';

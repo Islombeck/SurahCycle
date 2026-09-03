@@ -92,10 +92,44 @@ void main() {
 
     expect(bridge.savedJson, isEmpty);
   });
+
+  test(
+    'older foreground snapshot cannot overwrite newer headless state',
+    () async {
+      final bridge = _RecordingBridge(initialSnapshot: _snapshot(revision: 8));
+      final coordinator = WidgetSyncCoordinator(bridge: bridge);
+
+      await coordinator.syncNow(_snapshot(locale: 'ru', revision: 7));
+
+      expect(bridge.savedJson, isEmpty);
+      expect(bridge.rotationUpdates, 0);
+      expect(bridge.currentSnapshot.snapshotRevision, 8);
+      coordinator.dispose();
+    },
+  );
+
+  test(
+    'greater committed revision persists even with equal projection',
+    () async {
+      final bridge = _RecordingBridge();
+      final coordinator = WidgetSyncCoordinator(bridge: bridge);
+
+      await coordinator.syncNow(_snapshot(revision: 1));
+      await coordinator.syncNow(_snapshot(revision: 2));
+
+      expect(bridge.savedJson, hasLength(2));
+      expect(bridge.currentSnapshot.snapshotRevision, 2);
+      coordinator.dispose();
+    },
+  );
 }
 
 final class _RecordingBridge implements WidgetBridge {
-  _RecordingBridge({this.firstSaveGate, this.failNextSave = false});
+  _RecordingBridge({
+    this.firstSaveGate,
+    this.failNextSave = false,
+    WidgetSnapshot? initialSnapshot,
+  }) : _currentSnapshot = initialSnapshot;
 
   final Future<void>? firstSaveGate;
   bool failNextSave;
@@ -103,16 +137,28 @@ final class _RecordingBridge implements WidgetBridge {
   final List<String> savedJson = <String>[];
   int rotationUpdates = 0;
   int learningUpdates = 0;
+  WidgetSnapshot? _currentSnapshot;
+
+  WidgetSnapshot get currentSnapshot => _currentSnapshot!;
 
   @override
-  Future<void> saveSnapshotJson(String json) async {
+  Future<bool> saveSnapshotIfCurrent(
+    WidgetSnapshot snapshot,
+    String json,
+  ) async {
     if (!firstSaveStarted.isCompleted) firstSaveStarted.complete();
     if (firstSaveGate != null && savedJson.isEmpty) await firstSaveGate;
     if (failNextSave) {
       failNextSave = false;
       throw StateError('write failed');
     }
+    if ((_currentSnapshot?.snapshotRevision ?? -1) >
+        snapshot.snapshotRevision) {
+      return false;
+    }
     savedJson.add(json);
+    _currentSnapshot = snapshot;
+    return true;
   }
 
   @override
@@ -126,10 +172,14 @@ final class _RecordingBridge implements WidgetBridge {
   }
 }
 
-WidgetSnapshot _snapshot({String locale = 'en', DateTime? generatedAtUtc}) =>
-    WidgetSnapshot(
-      generatedAtUtc: generatedAtUtc ?? DateTime.utc(2026, 8, 25),
-      locale: locale,
-      rotation: RotationWidgetProjection(items: const <RotationWidgetItem>[]),
-      learning: const LearningWidgetProjection.empty(),
-    );
+WidgetSnapshot _snapshot({
+  String locale = 'en',
+  DateTime? generatedAtUtc,
+  int revision = 0,
+}) => WidgetSnapshot(
+  generatedAtUtc: generatedAtUtc ?? DateTime.utc(2026, 8, 25),
+  snapshotRevision: revision,
+  locale: locale,
+  rotation: RotationWidgetProjection(items: const <RotationWidgetItem>[]),
+  learning: const LearningWidgetProjection.empty(),
+);

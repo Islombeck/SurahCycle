@@ -3,7 +3,8 @@ import 'dart:async';
 import 'widget_snapshot.dart';
 
 abstract interface class WidgetBridge {
-  Future<void> saveSnapshotJson(String json);
+  /// Atomically rejects an older projection. Returns true when persisted.
+  Future<bool> saveSnapshotIfCurrent(WidgetSnapshot snapshot, String json);
 
   Future<void> updateRotationWidget();
 
@@ -104,9 +105,16 @@ final class WidgetSyncCoordinator {
     while (!_disposed && _pending != null) {
       final snapshot = _pending!;
       _pending = null;
-      if (_lastWritten?.sameProjectionAs(snapshot) ?? false) continue;
+      if ((_lastWritten?.sameProjectionAs(snapshot) ?? false) &&
+          _lastWritten!.snapshotRevision == snapshot.snapshotRevision) {
+        continue;
+      }
       try {
-        await _bridge.saveSnapshotJson(_codec.encode(snapshot));
+        final saved = await _bridge.saveSnapshotIfCurrent(
+          snapshot,
+          _codec.encode(snapshot),
+        );
+        if (!saved) continue;
         await Future.wait<void>(<Future<void>>[
           _bridge.updateRotationWidget(),
           _bridge.updateLearningWidget(),

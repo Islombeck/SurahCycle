@@ -543,6 +543,22 @@ final widgetSyncCoordinatorProvider = Provider<WidgetSyncCoordinator>((ref) {
   return coordinator;
 });
 
+final widgetResumeReconcilerProvider = Provider<WidgetResumeReconciler>((ref) {
+  return WidgetResumeReconciler(
+    bridge: const HomeWidgetBridge(),
+    loadDatabaseRevision: ref
+        .watch(surahRepositoryProvider)
+        .getRotationRevision,
+    currentProjectionRevision: () =>
+        ref.read(rotationSnapshotProvider).valueOrNull?.revision,
+    invalidateProviders: () {
+      ref.invalidate(rotationSnapshotProvider);
+      ref.invalidate(recitationHistoryProvider);
+      ref.invalidate(recitationStatsProvider);
+    },
+  );
+});
+
 final widgetSyncDriverProvider = Provider<_AppWidgetSyncDriver>((ref) {
   return _AppWidgetSyncDriver(
     coordinator: ref.watch(widgetSyncCoordinatorProvider),
@@ -560,6 +576,7 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
   final rotation = ref.watch(rotationSnapshotProvider).valueOrNull;
   final learning = ref.watch(allLearningProvider).valueOrNull;
   final catalog = ref.watch(fullCatalogProvider).valueOrNull;
+  final history = ref.watch(recitationHistoryProvider).valueOrNull;
   final storedPrayer = ref.watch(storedPrayerContextProvider);
   final prayerTimeSettings = ref.watch(prayerTimeSettingsProvider);
   final automaticPrayerResolution = ref.watch(
@@ -572,7 +589,10 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
       .watch(selectedQuranTranslationProvider)
       .valueOrNull;
   final selectedLearningSurahId = ref.watch(selectedLearningSurahProvider);
-  if (rotation == null || learning == null || catalog == null) {
+  if (rotation == null ||
+      learning == null ||
+      catalog == null ||
+      history == null) {
     return;
   }
   final settings = _settledValue(prayerTimeSettings);
@@ -594,6 +614,8 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
         rotation: rotation,
         learning: learning,
         catalog: catalog,
+        history: history,
+        localDate: ref.watch(localDateProvider).today(),
         prayerResolution: widgetPrayerResolution,
         displayPreferences: displayPreferences,
         translationSelection: translationSelection,
@@ -1203,6 +1225,8 @@ final class _AppWidgetSyncDriver {
     required RotationSnapshot rotation,
     required List<LearningSurahState> learning,
     required List<CatalogSurah> catalog,
+    required List<RecitationHistoryEntry> history,
+    required LocalDate localDate,
     required PrayerContextResolution? prayerResolution,
     required QuranDisplayPreferences displayPreferences,
     required QuranTranslationSelection? translationSelection,
@@ -1215,6 +1239,8 @@ final class _AppWidgetSyncDriver {
             rotation: rotation,
             learning: List<LearningSurahState>.of(learning),
             catalog: List<CatalogSurah>.of(catalog),
+            history: List<RecitationHistoryEntry>.of(history),
+            localDate: localDate,
             prayerResolution: prayerResolution,
             displayPreferences: displayPreferences,
             translationSelection: translationSelection,
@@ -1238,6 +1264,8 @@ final class _AppWidgetSyncDriver {
     required RotationSnapshot rotation,
     required List<LearningSurahState> learning,
     required List<CatalogSurah> catalog,
+    required List<RecitationHistoryEntry> history,
+    required LocalDate localDate,
     required PrayerContextResolution? prayerResolution,
     required QuranDisplayPreferences displayPreferences,
     required QuranTranslationSelection? translationSelection,
@@ -1249,6 +1277,14 @@ final class _AppWidgetSyncDriver {
     final l10n = lookupAppLocalizations(Locale(localeCode));
     final widgetLocalization = WidgetLocalization.forLanguageCode(localeCode);
     final prayerContext = prayerResolution?.context;
+    final markedPartIds = prayerContext == null
+        ? const <String>{}
+        : <String>{
+            for (final entry in history)
+              if (entry.event.localDate == localDate &&
+                  entry.event.prayerContext == prayerContext)
+                ...entry.event.coveredPartIds,
+          };
     final rotationProjection =
         RotationWidgetProjectionFactory(
           labels: widgetLocalization.projectionLabels,
@@ -1264,6 +1300,7 @@ final class _AppWidgetSyncDriver {
           ),
           createActionToken: uuid.v4,
           actionsEnabled: prayerResolution?.canMarkDirectly ?? false,
+          markedPartIds: markedPartIds,
         );
 
     final activeLearning = learning
@@ -1317,6 +1354,7 @@ final class _AppWidgetSyncDriver {
 
     return WidgetSnapshot(
       generatedAtUtc: timeProvider.nowUtc(),
+      snapshotRevision: rotation.revision,
       locale: localeCode,
       rotation: rotationProjection,
       learning: WidgetProjectionBuilder(

@@ -21,6 +21,10 @@ sealed class WidgetDeepLink {
       if (uri.path != '/home' || query.isNotEmpty) return null;
       return const WidgetHomeDeepLink();
     }
+    if (segments.length == 1 && segments.single == 'learning') {
+      if (uri.path != '/learning' || query.isNotEmpty) return null;
+      return const WidgetLearningRootDeepLink();
+    }
     if (segments.length == 2 && segments.first == 'surah') {
       if (query.keys.any((key) => key != 'part')) return null;
       final surahId = segments.last;
@@ -43,6 +47,23 @@ sealed class WidgetDeepLink {
     if (source == null) return null;
     return parse(Uri.tryParse(source));
   }
+}
+
+final class WidgetLearningRootDeepLink extends WidgetDeepLink {
+  const WidgetLearningRootDeepLink();
+
+  @override
+  Uri get uri => Uri(
+    scheme: 'murajaah',
+    host: 'app',
+    pathSegments: const <String>['learning'],
+  );
+
+  @override
+  bool operator ==(Object other) => other is WidgetLearningRootDeepLink;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
 }
 
 final class WidgetHomeDeepLink extends WidgetDeepLink {

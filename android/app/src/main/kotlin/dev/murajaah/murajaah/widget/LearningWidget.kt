@@ -48,12 +48,13 @@ class LearningWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
         throwable: Throwable,
     ) {
         logWidgetCompositionError(
+            context = context,
             widgetType = "LearningWidget",
             appWidgetId = appWidgetId,
             throwable = throwable,
         )
         super.onCompositionError(context, glanceId, appWidgetId, throwable)
-        installWidgetErrorClick(context, appWidgetId)
+        installWidgetErrorClick(context, appWidgetId, Uri.parse("murajaah://app/learning"))
     }
 
     @Composable
@@ -62,8 +63,8 @@ class LearningWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
             NativeWidgetSnapshotParser.parse(
                 state.preferences.getString(WIDGET_SNAPSHOT_KEY, null)
             )
-        val homeAction =
-            actionStartActivity<MainActivity>(context, Uri.parse("murajaah://app/home"))
+        val learningAction =
+            actionStartActivity<MainActivity>(context, Uri.parse("murajaah://app/learning"))
         val learningItem = snapshot?.learning?.item
 
         LazyColumn(
@@ -78,7 +79,7 @@ class LearningWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                     context.getString(R.string.learning_widget_title),
                     modifier =
                         GlanceModifier.fillMaxWidth()
-                            .clickable(homeAction)
+                            .clickable(learningAction)
                             .padding(vertical = 7.dp),
                     style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold),
                     maxLines = 1,
@@ -90,14 +91,14 @@ class LearningWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                     item {
                         FallbackRow(
                             text = context.getString(R.string.widget_open_murajaah),
-                            onClick = homeAction,
+                            onClick = learningAction,
                         )
                     }
                 learningItem == null ->
                     item {
                         FallbackRow(
                             text = context.getString(R.string.learning_widget_empty),
-                            onClick = homeAction,
+                            onClick = learningAction,
                         )
                     }
                 else -> {
@@ -152,7 +153,7 @@ class LearningWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                     context.getString(R.string.widget_open_app),
                     modifier =
                         GlanceModifier.fillMaxWidth()
-                            .clickable(homeAction)
+                            .clickable(learningAction)
                             .padding(vertical = 10.dp),
                     style = TextStyle(fontSize = 12.sp),
                     maxLines = 1,

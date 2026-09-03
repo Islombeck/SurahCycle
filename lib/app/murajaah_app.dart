@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -48,13 +50,65 @@ final class MurajaahApp extends ConsumerWidget {
   }
 }
 
-final class _StartupGate extends ConsumerWidget {
+final class _StartupGate extends ConsumerStatefulWidget {
   const _StartupGate({required this.child});
 
   final Widget? child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_StartupGate> createState() => _StartupGateState();
+}
+
+final class _StartupGateState extends ConsumerState<_StartupGate>
+    with WidgetsBindingObserver {
+  Timer? _revisionTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      _startRevisionMonitor();
+    }
+  }
+
+  @override
+  void dispose() {
+    _revisionTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    if (state == AppLifecycleState.resumed) {
+      _startRevisionMonitor();
+      unawaited(_reconcile());
+    } else {
+      _revisionTimer?.cancel();
+      _revisionTimer = null;
+    }
+  }
+
+  void _startRevisionMonitor() {
+    _revisionTimer?.cancel();
+    _revisionTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => unawaited(_reconcile()),
+    );
+  }
+
+  Future<void> _reconcile() async {
+    try {
+      await ref.read(widgetResumeReconcilerProvider).reconcile();
+    } on Object {
+      // Best-effort lifecycle reconciliation must never block app rendering.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final startup = ref.watch(startupProvider);
     return startup.when(
       data: (_) {
@@ -65,7 +119,7 @@ final class _StartupGate extends ConsumerWidget {
             ),
           );
         }
-        return child ?? const SizedBox.shrink();
+        return widget.child ?? const SizedBox.shrink();
       },
       loading: () => const ColoredBox(
         color: Colors.transparent,

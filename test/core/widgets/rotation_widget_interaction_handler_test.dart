@@ -53,20 +53,14 @@ void main() {
     expect(bridge.learningUpdates, 2);
 
     final afterDuplicate = _decode(bridge.savedJson.last);
+    expect(afterDuplicate.snapshotRevision, 1);
     expect(afterDuplicate.learning, initial.learning);
-    final refreshedAction = afterDuplicate.rotation.items.single.action!;
-    expect(refreshedAction.actionToken, isNot(initialAction.actionToken));
+    final refreshedItem = afterDuplicate.rotation.items.single;
+    expect(refreshedItem.isMarkedInCurrentPart, isTrue);
+    expect(refreshedItem.canMark, isFalse);
+    expect(refreshedItem.action, isNull);
     expect(afterDuplicate.rotation.statusMessage, isNull);
-
-    final intentional = await handler.handle(refreshedAction.uri);
-
-    expect(intentional.status, RotationWidgetInteractionStatus.registered);
-    expect(await recitations.getHistory(), hasLength(2));
-    final afterIntentional = _decode(bridge.savedJson.last);
-    expect(
-      afterIntentional.rotation.items.single.action!.actionToken,
-      isNot(refreshedAction.actionToken),
-    );
+    expect(await recitations.getHistory(), hasLength(1));
   });
 
   test('stale action is rejected and replaced from current DB state', () async {
@@ -129,11 +123,13 @@ void main() {
       );
       final refresher = InteractiveWidgetSnapshotRefresher(
         surahs: surahs,
+        recitations: recitations,
         prayerContextResolver: _FixedPrayerResolver(
           PrayerContext(prayerType: PrayerType.asr),
         ),
         timeProvider: const _FixedTimeProvider(),
         createActionToken: () => _token(nextToken++),
+        localDates: const _FixedLocalDateProvider(),
         bridge: bridge,
       );
       final handler = RotationWidgetInteractionHandler(
@@ -240,9 +236,11 @@ RotationWidgetInteractionHandler _handler({
     ),
     refresher: InteractiveWidgetSnapshotRefresher(
       surahs: surahs,
+      recitations: recitations,
       prayerContextResolver: resolver,
       timeProvider: const _FixedTimeProvider(),
       createActionToken: nextToken,
+      localDates: const _FixedLocalDateProvider(),
       bridge: bridge,
     ),
   );
@@ -332,9 +330,18 @@ final class _MemoryWidgetBridge implements WidgetSnapshotBridge {
   Future<String?> loadSnapshotJson() async => _currentJson;
 
   @override
-  Future<void> saveSnapshotJson(String json) async {
+  Future<bool> saveSnapshotIfCurrent(
+    WidgetSnapshot snapshot,
+    String json,
+  ) async {
+    final current = const WidgetSnapshotCodec().decode(_currentJson);
+    if (current is WidgetSnapshotDecoded &&
+        current.snapshot.snapshotRevision > snapshot.snapshotRevision) {
+      return false;
+    }
     _currentJson = json;
     savedJson.add(json);
+    return true;
   }
 
   @override

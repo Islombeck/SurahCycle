@@ -8,6 +8,10 @@ void main() {
       const WidgetHomeDeepLink(),
     );
     expect(
+      WidgetDeepLink.tryParse('murajaah://app/learning'),
+      const WidgetLearningRootDeepLink(),
+    );
+    expect(
       WidgetDeepLink.tryParse('murajaah://app/surah/2'),
       WidgetSurahDeepLink(surahId: '2'),
     );

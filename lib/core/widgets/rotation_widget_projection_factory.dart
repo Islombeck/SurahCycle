@@ -14,6 +14,7 @@ final class RotationWidgetProjectionFactory {
     required String contextLabel,
     required String Function() createActionToken,
     required bool actionsEnabled,
+    Set<String> markedPartIds = const <String>{},
     String? statusMessage,
   }) {
     final recommendations = const SurahSuggestionService().suggest(rotation);
@@ -29,6 +30,10 @@ final class RotationWidgetProjectionFactory {
     for (final surah in rotation.activeSurahs) {
       final scheme = surah.rotationScheme;
       if (!scheme.isSplit) {
+        final isMarked = scheme.parts.every(
+          (part) => markedPartIds.contains(part.id),
+        );
+        final canMark = actionsEnabled && !isMarked;
         candidates.add(
           RotationWidgetCandidate.whole(
             id: scheme.id,
@@ -36,22 +41,32 @@ final class RotationWidgetProjectionFactory {
             surahNumber: surah.surah.surahNumber,
             displayName: surah.surah.displayName,
             ayahCount: surah.surah.ayahCount,
-            remaining: rotation.rotationTarget - surah.rotationScore,
+            remaining: _nonNegative(
+              rotation.rotationTarget - surah.rotationScore,
+            ),
             recommendationRank: recommendationRanks[surah.id],
             displayOrder: surah.displayOrder,
             lastUsedAtUtc: surah.lastUsedAtUtc,
-            action: actionsEnabled
+            action: canMark
                 ? WidgetRecitationAction(
                     actionToken: createActionToken(),
                     surahId: surah.id,
                     rotationSchemeId: scheme.id,
                   )
                 : null,
+            isMarkedInCurrentPart: isMarked,
+            disabledReason: isMarked
+                ? 'alreadyMarked'
+                : actionsEnabled
+                ? null
+                : 'prayerContextUnavailable',
           ),
         );
         continue;
       }
       for (final part in scheme.parts) {
+        final isMarked = markedPartIds.contains(part.id);
+        final canMark = actionsEnabled && !isMarked;
         candidates.add(
           RotationWidgetCandidate.part(
             id: part.id,
@@ -63,13 +78,15 @@ final class RotationWidgetProjectionFactory {
             partCount: scheme.parts.length,
             startAyah: part.ayahRange.startAyah,
             endAyah: part.ayahRange.endAyah,
-            remaining: rotation.rotationTarget - part.rotationScore,
+            remaining: _nonNegative(
+              rotation.rotationTarget - part.rotationScore,
+            ),
             recommendationRank: recommendedPartIds[surah.id] == part.id
                 ? recommendationRanks[surah.id]
                 : null,
             displayOrder: surah.displayOrder,
             lastUsedAtUtc: part.lastUsedAtUtc,
-            action: actionsEnabled
+            action: canMark
                 ? WidgetRecitationAction(
                     actionToken: createActionToken(),
                     surahId: surah.id,
@@ -77,6 +94,12 @@ final class RotationWidgetProjectionFactory {
                     partId: part.id,
                   )
                 : null,
+            isMarkedInCurrentPart: isMarked,
+            disabledReason: isMarked
+                ? 'alreadyMarked'
+                : actionsEnabled
+                ? null
+                : 'prayerContextUnavailable',
           ),
         );
       }
@@ -88,3 +111,5 @@ final class RotationWidgetProjectionFactory {
     );
   }
 }
+
+int _nonNegative(int value) => value < 0 ? 0 : value;

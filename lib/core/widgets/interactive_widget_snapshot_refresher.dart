@@ -1,5 +1,6 @@
 import '../application/recitation_application_service.dart';
 import '../data/repositories/surah_repository.dart';
+import '../data/repositories/recitation_repository.dart';
 import '../domain/domain.dart';
 import '../../app/widget_localization.dart';
 import 'home_widget_bridge.dart';
@@ -12,17 +13,21 @@ import 'widget_sync_coordinator.dart';
 final class InteractiveWidgetSnapshotRefresher {
   const InteractiveWidgetSnapshotRefresher({
     required this.surahs,
+    required this.recitations,
     required this.prayerContextResolver,
     required this.timeProvider,
     required this.createActionToken,
+    required this.localDates,
     required this.bridge,
     this.codec = const WidgetSnapshotCodec(),
   });
 
   final SurahRepository surahs;
+  final RecitationRepository recitations;
   final RecitationPrayerContextResolver prayerContextResolver;
   final TimeProvider timeProvider;
   final String Function() createActionToken;
+  final RecitationLocalDateProvider localDates;
   final WidgetSnapshotBridge bridge;
   final WidgetSnapshotCodec codec;
 
@@ -45,26 +50,35 @@ final class InteractiveWidgetSnapshotRefresher {
           );
     final prayerContext = details.context;
     final rotation = await surahs.getRotationSnapshot();
+    final markedPartIds = prayerContext == null
+        ? const <String>{}
+        : await recitations.getMarkedPartIds(
+            context: prayerContext,
+            localDate: localDates.today(),
+          );
+    final rebuiltRotation =
+        RotationWidgetProjectionFactory(
+          labels: localization.projectionLabels,
+        ).build(
+          rotation: rotation,
+          contextLabel: localization.prayerContextLabel(
+            prayerContext,
+            isAutomatic: details.isAutomatic,
+            startsAt: details.startsAt,
+            endsAt: details.endsAt,
+          ),
+          createActionToken: createActionToken,
+          actionsEnabled: prayerContext != null,
+          markedPartIds: markedPartIds,
+          statusMessage: actionFailed
+              ? localization.l10n.widgetActionNotCompleted
+              : null,
+        );
     final snapshot = WidgetSnapshot(
       generatedAtUtc: timeProvider.nowUtc(),
+      snapshotRevision: rotation.revision,
       locale: localization.languageCode,
-      rotation:
-          RotationWidgetProjectionFactory(
-            labels: localization.projectionLabels,
-          ).build(
-            rotation: rotation,
-            contextLabel: localization.prayerContextLabel(
-              prayerContext,
-              isAutomatic: details.isAutomatic,
-              startsAt: details.startsAt,
-              endsAt: details.endsAt,
-            ),
-            createActionToken: createActionToken,
-            actionsEnabled: prayerContext != null,
-            statusMessage: actionFailed
-                ? localization.l10n.widgetActionNotCompleted
-                : null,
-          ),
+      rotation: _preserveVisibleOrder(previous?.rotation, rebuiltRotation),
       // The interaction path does not need Quran content. Preserve the last
       // verified Learning projection verbatim while refreshing rotation.
       learning: previous?.learning ?? const LearningWidgetProjection.empty(),
@@ -80,4 +94,28 @@ final class InteractiveWidgetSnapshotRefresher {
     }
     return snapshot;
   }
+}
+
+RotationWidgetProjection _preserveVisibleOrder(
+  RotationWidgetProjection? previous,
+  RotationWidgetProjection current,
+) {
+  if (previous == null || previous.items.isEmpty || current.items.isEmpty) {
+    return current;
+  }
+  final byId = <String, RotationWidgetItem>{
+    for (final item in current.items) item.id: item,
+  };
+  final ordered = <RotationWidgetItem>[];
+  for (final oldItem in previous.items) {
+    final replacement = byId.remove(oldItem.id);
+    if (replacement != null) ordered.add(replacement);
+  }
+  ordered.addAll(current.items.where((item) => byId.containsKey(item.id)));
+  return RotationWidgetProjection(
+    items: ordered,
+    omittedCount: current.omittedCount,
+    contextLabel: current.contextLabel,
+    statusMessage: current.statusMessage,
+  );
 }

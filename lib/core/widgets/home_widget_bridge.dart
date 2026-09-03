@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:home_widget/home_widget.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'widget_deep_link.dart';
 import 'widget_snapshot.dart';
@@ -21,13 +24,35 @@ final class HomeWidgetBridge implements WidgetSnapshotBridge {
       HomeWidget.getWidgetData<String>(widgetSnapshotStorageKey);
 
   @override
-  Future<void> saveSnapshotJson(String json) async {
-    final saved = await HomeWidget.saveWidgetData<String>(
-      widgetSnapshotStorageKey,
-      json,
+  Future<bool> saveSnapshotIfCurrent(
+    WidgetSnapshot snapshot,
+    String json,
+  ) async {
+    final support = await getApplicationSupportDirectory();
+    final lockFile = File(
+      '${support.path}${Platform.pathSeparator}murajaah_widget_snapshot.lock',
     );
-    if (saved == false) {
-      throw StateError('The platform rejected the widget snapshot write.');
+    final lock = await lockFile.open(mode: FileMode.append);
+    await lock.lock(FileLock.exclusive);
+    try {
+      final current = const WidgetSnapshotCodec().decode(
+        await loadSnapshotJson(),
+      );
+      if (current is WidgetSnapshotDecoded &&
+          current.snapshot.snapshotRevision > snapshot.snapshotRevision) {
+        return false;
+      }
+      final saved = await HomeWidget.saveWidgetData<String>(
+        widgetSnapshotStorageKey,
+        json,
+      );
+      if (saved == false) {
+        throw StateError('The platform rejected the widget snapshot write.');
+      }
+      return true;
+    } finally {
+      await lock.unlock();
+      await lock.close();
     }
   }
 
