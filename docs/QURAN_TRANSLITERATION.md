@@ -20,6 +20,16 @@ Murajaah contains no Arabic-to-Cyrillic algorithm, Latin-to-Cyrillic mapping,
 LLM output, or approximate phonetic fallback. The UI states that a verified
 source has not been connected yet.
 
+A dedicated source audit
+([QURAN_CYRILLIC_TRANSLITERATION_AUDIT.md](QURAN_CYRILLIC_TRANSLITERATION_AUDIT.md),
+2026-09-04) checked twenty candidates across open datasets, official Quran
+APIs, Central Asian/Russian religious authorities, and community
+transcription sites; none passed the checklist below, several claimed
+"Cyrillic" but turned out to be meaning translations, and the one
+API-hosted candidate with a real license contained corrupted text. The
+audit also surfaced a plausible religious-policy reason no official
+authority publishes one — see that document for details.
+
 ## Accepted offline dataset
 
 Sprint 4 uses Tanzil's official **English Transliteration** dataset with ID

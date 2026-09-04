@@ -54,6 +54,9 @@ screensaver уже не являются backlog.
     `uzbek_moyassar`; подключать только после полного 114/6236/hash audit.
 26. Подключить Cyrillic transliteration только из полного coordinate-aligned
     dataset с доказанными provenance и license; generated conversion запрещена.
+    Аудит 20 кандидатов (2026-09-04) не нашёл ни одного проходящего source;
+    подробности и что могло бы изменить решение —
+    [QURAN_CYRILLIC_TRANSLITERATION_AUDIT.md](QURAN_CYRILLIC_TRANSLITERATION_AUDIT.md).
 
 Отдельные release/operational gates, а не новые product features:
 
