@@ -9,7 +9,43 @@ internal data class NativeWidgetSnapshot(
     val snapshotRevision: Long,
     val rotation: NativeRotationProjection,
     val learning: NativeLearningProjection,
+    val prayer: NativePrayerProjection,
 )
+
+internal data class NativePrayerProjection(
+    val isAvailable: Boolean,
+    val messageLabel: String?,
+    val dateLabel: String?,
+    val regionLabel: String?,
+    val providerLabel: String?,
+    val entries: List<NativePrayerEntry>,
+    val currentLabel: String?,
+    val nextLabel: String?,
+    val isStale: Boolean,
+    val staleLabel: String?,
+)
+
+internal data class NativePrayerEntry(
+    val label: String,
+    val timeLabel: String,
+    val isBoundaryOnly: Boolean,
+    val isCurrent: Boolean,
+    val isNext: Boolean,
+)
+
+private val EMPTY_PRAYER_PROJECTION =
+    NativePrayerProjection(
+        isAvailable = false,
+        messageLabel = null,
+        dateLabel = null,
+        regionLabel = null,
+        providerLabel = null,
+        entries = emptyList(),
+        currentLabel = null,
+        nextLabel = null,
+        isStale = false,
+        staleLabel = null,
+    )
 
 internal data class NativeRotationProjection(
     val items: List<NativeRotationItem>,
@@ -95,9 +131,11 @@ internal object NativeWidgetSnapshotParser {
     private const val LEGACY_SCHEMA_VERSION = 2
     private const val PREVIOUS_SCHEMA_VERSION = 3
     private const val INTERACTIVE_SCHEMA_VERSION = 4
-    private const val SCHEMA_VERSION = 5
+    private const val PRAYER_SCHEMA_VERSION = 6
+    private const val SCHEMA_VERSION = 6
     private const val MAX_ROTATION_ITEMS = 64
     private const val MAX_TEXT_LINES = 3
+    private const val PRAYER_ENTRY_COUNT = 6
     // Mirrors Dart's domain-level maxRecommendationCount.
     private const val MAX_RECOMMENDATION_COUNT = 8
 
@@ -110,11 +148,13 @@ internal object NativeWidgetSnapshotParser {
                     schemaVersion == LEGACY_SCHEMA_VERSION ||
                     schemaVersion == PREVIOUS_SCHEMA_VERSION ||
                     schemaVersion == INTERACTIVE_SCHEMA_VERSION ||
+                    schemaVersion == 5 ||
                     schemaVersion == SCHEMA_VERSION
             )
             val rootKeys =
                 mutableSetOf("schemaVersion", "generatedAtUtc", "locale", "rotation", "learning")
             if (schemaVersion >= INTERACTIVE_SCHEMA_VERSION) rootKeys += "snapshotRevision"
+            if (schemaVersion >= PRAYER_SCHEMA_VERSION) rootKeys += "prayer"
             requireOnlyKeys(root, rootKeys)
             requireText(root.getString("generatedAtUtc"), 128)
             requireText(root.getString("locale"), 32)
@@ -127,8 +167,96 @@ internal object NativeWidgetSnapshotParser {
                     },
                 rotation = parseRotation(root.getJSONObject("rotation"), schemaVersion),
                 learning = parseLearning(root.getJSONObject("learning"), schemaVersion),
+                prayer =
+                    if (schemaVersion >= PRAYER_SCHEMA_VERSION) {
+                        parsePrayer(root.getJSONObject("prayer"))
+                    } else {
+                        EMPTY_PRAYER_PROJECTION
+                    },
             )
         }.getOrNull()
+    }
+
+    private fun parsePrayer(json: JSONObject): NativePrayerProjection {
+        val isAvailable = json.getBoolean("isAvailable")
+        if (!isAvailable) {
+            requireOnlyKeys(json, setOf("isAvailable", "messageLabel", "entries", "isStale"))
+            require(json.getJSONArray("entries").length() == 0)
+            require(!json.getBoolean("isStale"))
+            return NativePrayerProjection(
+                isAvailable = false,
+                messageLabel = requireText(json.getString("messageLabel"), 256),
+                dateLabel = null,
+                regionLabel = null,
+                providerLabel = null,
+                entries = emptyList(),
+                currentLabel = null,
+                nextLabel = null,
+                isStale = false,
+                staleLabel = null,
+            )
+        }
+        requireOnlyKeys(
+            json,
+            setOf(
+                "isAvailable",
+                "dateLabel",
+                "regionLabel",
+                "providerLabel",
+                "entries",
+                "currentLabel",
+                "nextLabel",
+                "isStale",
+                "staleLabel",
+            ),
+        )
+        val entriesJson = json.getJSONArray("entries")
+        require(entriesJson.length() == PRAYER_ENTRY_COUNT)
+        var currentCount = 0
+        var nextCount = 0
+        val entries = ArrayList<NativePrayerEntry>(entriesJson.length())
+        for (index in 0 until entriesJson.length()) {
+            val entry = entriesJson.getJSONObject(index)
+            requireOnlyKeys(
+                entry,
+                setOf("label", "timeLabel", "isBoundaryOnly", "isCurrent", "isNext"),
+            )
+            val isBoundaryOnly = entry.getBoolean("isBoundaryOnly")
+            val isCurrent = entry.getBoolean("isCurrent")
+            val isNext = entry.getBoolean("isNext")
+            require(!(isBoundaryOnly && (isCurrent || isNext)))
+            require(!(isCurrent && isNext))
+            if (isCurrent) currentCount += 1
+            if (isNext) nextCount += 1
+            entries +=
+                NativePrayerEntry(
+                    label = requireText(entry.getString("label"), 64),
+                    timeLabel = requireText(entry.getString("timeLabel"), 16),
+                    isBoundaryOnly = isBoundaryOnly,
+                    isCurrent = isCurrent,
+                    isNext = isNext,
+                )
+        }
+        require(currentCount <= 1 && nextCount <= 1)
+        val isStale = json.getBoolean("isStale")
+        return NativePrayerProjection(
+            isAvailable = true,
+            messageLabel = null,
+            dateLabel = requireText(json.getString("dateLabel"), 128),
+            regionLabel = requireText(json.getString("regionLabel"), 256),
+            providerLabel = requireText(json.getString("providerLabel"), 256),
+            entries = entries,
+            currentLabel = json.optionalString("currentLabel")?.let { requireText(it, 128) },
+            nextLabel = json.optionalString("nextLabel")?.let { requireText(it, 128) },
+            isStale = isStale,
+            staleLabel =
+                if (isStale) {
+                    requireText(json.getString("staleLabel"), 256)
+                } else {
+                    require(!json.has("staleLabel") || json.isNull("staleLabel"))
+                    null
+                },
+        )
     }
 
     private fun parseRotation(

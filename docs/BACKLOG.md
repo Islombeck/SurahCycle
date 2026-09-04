@@ -1,9 +1,17 @@
-# Backlog после Sprint 6B
+# Backlog после Sprint 5E2
 
 Ниже только осознанно не реализованные функции. Автоматическое расписание
 намаза, добровольная location, Android direct widget mark, Quran display
-layers, configurable prayer routines и contextual prayer recommendations
-(включая Isha → Witr transition) уже не являются backlog.
+layers, configurable prayer routines, contextual prayer recommendations
+(включая Isha → Witr transition), Home prayer schedule strip, Prayer Times
+widget, opt-in Learning notification и опциональный `MurajaahDreamService`
+screensaver уже не являются backlog.
+
+Полноценный lock-screen widget (в стиле pre-API-21 keyguard widgets) не
+входит в backlog как *невыполненная* задача: современный Android не
+предоставляет для этого публичный, не обходящий lock screen API, поэтому
+это задокументированное платформенное ограничение, а не элемент, который
+можно запланировать. См. [LOCK_SCREEN_LEARNING.md](LOCK_SCREEN_LEARNING.md).
 
 1. Prayer notifications и системные alarms.
 2. Adhan audio.

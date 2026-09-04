@@ -408,6 +408,73 @@ void main() {
     await _disposeWidgetTree(tester);
   });
 
+  testWidgets(
+    'the Today schedule strip shows all six boundaries and highlights '
+    'current/next distinctly',
+    (tester) async {
+      tester.binding.platformDispatcher.localeTestValue = const Locale('en');
+      addTearDown(tester.binding.platformDispatcher.clearLocaleTestValue);
+      final fixture = await _WidgetFixture.create();
+      addTearDown(fixture.close);
+      final clock = _MutableTimeProvider(_utcForTashkent(2026, 8, 25, 13, 0));
+      await fixture.pumpAutomaticApp(tester, clock);
+      final titleFinder = find.byKey(
+        const ValueKey<String>('prayer-context-title'),
+      );
+      await _pumpUntil(tester, () async {
+        if (find
+            .byKey(const ValueKey<String>('prayer-schedule-entry-Dhuhr'))
+            .evaluate()
+            .isEmpty) {
+          return false;
+        }
+        final titleElements = titleFinder.evaluate();
+        if (titleElements.isEmpty) return false;
+        return tester.widget<Text>(titleFinder).data == 'Dhuhr';
+      });
+
+      for (final label in <String>[
+        'Fajr',
+        'Sunrise',
+        'Dhuhr',
+        'Asr',
+        'Maghrib',
+        'Isha',
+      ]) {
+        expect(
+          find.byKey(ValueKey<String>('prayer-schedule-entry-$label')),
+          findsOneWidget,
+        );
+      }
+      expect(find.text('04:17'), findsOneWidget);
+      expect(find.text('05:42'), findsOneWidget);
+      expect(find.text('12:25'), findsOneWidget);
+      expect(find.text('17:09'), findsOneWidget);
+      expect(find.text('19:11'), findsOneWidget);
+      expect(find.text('20:32'), findsOneWidget);
+
+      final current = tester.widget<Container>(
+        find.byKey(const ValueKey<String>('prayer-schedule-entry-Dhuhr')),
+      );
+      final next = tester.widget<Container>(
+        find.byKey(const ValueKey<String>('prayer-schedule-entry-Asr')),
+      );
+      final neither = tester.widget<Container>(
+        find.byKey(const ValueKey<String>('prayer-schedule-entry-Maghrib')),
+      );
+      final currentDecoration = current.decoration! as BoxDecoration;
+      final nextDecoration = next.decoration! as BoxDecoration;
+      final neitherDecoration = neither.decoration! as BoxDecoration;
+
+      expect(currentDecoration.color, isNotNull);
+      expect(nextDecoration.color, isNull);
+      expect(nextDecoration.border, isNotNull);
+      expect(neitherDecoration.color, isNull);
+      expect(neitherDecoration.border, isNull);
+      await _disposeWidgetTree(tester);
+    },
+  );
+
   testWidgets('Friday Dhuhr offers an explicit one-event Jumuah override', (
     tester,
   ) async {
@@ -430,7 +497,7 @@ void main() {
     );
     await _pumpUntil(tester, () async => override.evaluate().isNotEmpty);
 
-    expect(find.text('Dhuhr'), findsOneWidget);
+    expect(_prayerContextTitleText(tester), 'Dhuhr');
     await tester.tap(override);
     await _pumpUntil(
       tester,
@@ -446,7 +513,7 @@ void main() {
     expect(event.prayerContext, PrayerContext(prayerType: PrayerType.jumuah));
 
     await _pumpUntil(tester, () async => override.evaluate().isNotEmpty);
-    expect(find.text('Dhuhr'), findsOneWidget);
+    expect(_prayerContextTitleText(tester), 'Dhuhr');
     await _disposeWidgetTree(tester);
   });
 
@@ -560,7 +627,7 @@ void main() {
         tester,
         () async => find.text('Witr').evaluate().isNotEmpty,
       );
-      expect(find.text('Isha'), findsNothing);
+      expect(_prayerContextTitleText(tester), 'Witr');
 
       // No Witr recitation/rotation credit and no fake Witr event exist yet;
       // only the two real Isha events were ever written.
@@ -645,7 +712,7 @@ void main() {
       () async => find.text('Isha').evaluate().isNotEmpty,
     );
 
-    expect(find.text('Isha'), findsOneWidget);
+    expect(_prayerContextTitleText(tester), 'Isha');
     expect(find.text('Witr'), findsNothing);
     await _disposeWidgetTree(tester);
   });
@@ -691,7 +758,7 @@ void main() {
         () async => find.text('Isha').evaluate().isNotEmpty,
       );
 
-      expect(find.text('Isha'), findsOneWidget);
+      expect(_prayerContextTitleText(tester), 'Isha');
       expect(find.text('Witr'), findsNothing);
       await _disposeWidgetTree(tester);
     },
@@ -1628,6 +1695,12 @@ Finder _recommendationBadge(String surahId) => find.descendant(
   of: find.byKey(ValueKey<String>('active-surah-$surahId')),
   matching: find.byType(RecommendationRankBadge),
 );
+
+/// The current-prayer headline text, scoped by key so it never collides with
+/// the same prayer name also appearing as a row in the schedule strip.
+String? _prayerContextTitleText(WidgetTester tester) => tester
+    .widget<Text>(find.byKey(const ValueKey<String>('prayer-context-title')))
+    .data;
 
 Finder _markIcon(String surahId, IconData icon) =>
     find.descendant(of: _markControl(surahId), matching: find.byIcon(icon));

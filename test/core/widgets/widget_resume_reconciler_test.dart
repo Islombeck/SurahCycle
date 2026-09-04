@@ -38,6 +38,7 @@ WidgetSnapshot _snapshot(int revision) => WidgetSnapshot(
   locale: 'ru',
   rotation: RotationWidgetProjection(items: const <RotationWidgetItem>[]),
   learning: const LearningWidgetProjection.empty(),
+  prayer: PrayerWidgetProjection.unavailable(messageLabel: 'Open app'),
 );
 
 final class _Bridge implements WidgetSnapshotBridge {

@@ -381,6 +381,65 @@ final settingsRepositoryProvider = Provider<AppSettingsRepository>(
   (ref) => AppSettingsRepository(ref.watch(appDatabaseProvider)),
 );
 
+const _learningNotificationEnabledKey = 'learningNotificationEnabled';
+
+final learningNotificationChannelProvider =
+    Provider<LearningNotificationChannel>(
+      (ref) => const MethodChannelLearningNotifications(),
+    );
+
+/// Off by default: absent setting resolves to `false`.
+final learningNotificationEnabledProvider = StreamProvider<bool>((ref) {
+  return ref
+      .watch(settingsRepositoryProvider)
+      .watchBool(_learningNotificationEnabledKey)
+      .map((bool? value) => value ?? false);
+});
+
+final learningNotificationControllerProvider =
+    Provider<LearningNotificationController>((ref) {
+      return LearningNotificationController(
+        repository: ref.watch(settingsRepositoryProvider),
+        channel: ref.watch(learningNotificationChannelProvider),
+        timeProvider: ref.watch(timeProviderProvider),
+      );
+    });
+
+/// Persists the opt-in state and requests `POST_NOTIFICATIONS` only at the
+/// moment the user turns the feature on. A denial (or any non-Android
+/// platform) leaves the feature safely off rather than retrying silently.
+final class LearningNotificationController {
+  const LearningNotificationController({
+    required this.repository,
+    required this.channel,
+    required this.timeProvider,
+  });
+
+  final AppSettingsRepository repository;
+  final LearningNotificationChannel channel;
+  final TimeProvider timeProvider;
+
+  Future<bool> setEnabled(bool value) async {
+    if (!value) {
+      await repository.setBool(
+        _learningNotificationEnabledKey,
+        false,
+        updatedAtUtc: timeProvider.nowUtc(),
+      );
+      await channel.cancel();
+      return false;
+    }
+    final granted = await channel.requestPermission();
+    await repository.setBool(
+      _learningNotificationEnabledKey,
+      granted,
+      updatedAtUtc: timeProvider.nowUtc(),
+    );
+    if (!granted) await channel.cancel();
+    return granted;
+  }
+}
+
 final prayerTimeSettingsRepositoryProvider =
     Provider<PrayerTimeSettingsRepository>((ref) {
       return PrayerTimeSettingsRepository(
@@ -656,6 +715,7 @@ final widgetSyncDriverProvider = Provider<_AppWidgetSyncDriver>((ref) {
     quranReading: ref.watch(quranReadingRepositoryProvider),
     timeProvider: ref.watch(timeProviderProvider),
     uuid: ref.watch(uuidProvider),
+    learningNotificationChannel: ref.watch(learningNotificationChannelProvider),
   );
 });
 
@@ -688,6 +748,10 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
   }
   final settings = _settledValue(prayerTimeSettings);
   final storedContext = _settledValue(storedPrayer);
+  final prayerTodaySchedule = ref
+      .watch(prayerTodayScheduleProvider)
+      .valueOrNull;
+  final settledScheduleResolution = _settledValue(automaticPrayerResolution);
   final rawWidgetPrayerResolution = settings == null
       ? null
       : settings.contextSelectionMode == PrayerContextSelectionMode.manual
@@ -738,6 +802,8 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
             localDate: localDate,
           )),
         );
+  final learningNotificationEnabled =
+      ref.watch(learningNotificationEnabledProvider).valueOrNull ?? false;
   ref
       .watch(widgetSyncDriverProvider)
       .update(
@@ -754,6 +820,10 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
         translationSelection: translationSelection,
         selectedLearningSurahId: selectedLearningSurahId,
         contextualInputs: contextualInputs,
+        prayerTodaySchedule: prayerTodaySchedule,
+        prayerScheduleResolution: settledScheduleResolution,
+        prayerLocationDisplayName: settings?.location.displayName,
+        learningNotificationEnabled: learningNotificationEnabled,
       );
 });
 
@@ -1417,12 +1487,15 @@ final class _AppWidgetSyncDriver {
     required this.quranReading,
     required this.timeProvider,
     required this.uuid,
+    this.learningNotificationChannel =
+        const MethodChannelLearningNotifications(),
   });
 
   final WidgetSyncCoordinator coordinator;
   final QuranReadingRepository quranReading;
   final TimeProvider timeProvider;
   final Uuid uuid;
+  final LearningNotificationChannel learningNotificationChannel;
 
   int _revision = 0;
   bool _hasCompletedStartupSync = false;
@@ -1442,6 +1515,10 @@ final class _AppWidgetSyncDriver {
     required String? selectedLearningSurahId,
     ContextualRecommendationInputs contextualInputs =
         ContextualRecommendationInputs.empty,
+    PrayerTodaySchedule? prayerTodaySchedule,
+    PrayerContextResolution? prayerScheduleResolution,
+    String? prayerLocationDisplayName,
+    bool learningNotificationEnabled = false,
   }) {
     final revision = ++_revision;
     unawaited(
@@ -1459,6 +1536,9 @@ final class _AppWidgetSyncDriver {
             translationSelection: translationSelection,
             selectedLearningSurahId: selectedLearningSurahId,
             contextualInputs: contextualInputs,
+            prayerTodaySchedule: prayerTodaySchedule,
+            prayerScheduleResolution: prayerScheduleResolution,
+            prayerLocationDisplayName: prayerLocationDisplayName,
           )
           .then((snapshot) async {
             if (revision != _revision || coordinator.isDisposed) return;
@@ -1468,8 +1548,26 @@ final class _AppWidgetSyncDriver {
             } else {
               coordinator.schedule(snapshot);
             }
+            await _syncLearningNotification(
+              enabled: learningNotificationEnabled,
+              item: snapshot.learning.item,
+            );
           })
           .catchError((Object _) {}),
+    );
+  }
+
+  Future<void> _syncLearningNotification({
+    required bool enabled,
+    required LearningWidgetItem? item,
+  }) async {
+    if (!enabled || item == null) {
+      await learningNotificationChannel.cancel();
+      return;
+    }
+    await learningNotificationChannel.show(
+      title: item.title,
+      text: '${item.stageLabel} · ${item.rangeLabel}',
     );
   }
 
@@ -1488,6 +1586,9 @@ final class _AppWidgetSyncDriver {
     required String? selectedLearningSurahId,
     ContextualRecommendationInputs contextualInputs =
         ContextualRecommendationInputs.empty,
+    PrayerTodaySchedule? prayerTodaySchedule,
+    PrayerContextResolution? prayerScheduleResolution,
+    String? prayerLocationDisplayName,
   }) async {
     final localeCode = const <String>{'ru', 'en', 'uz'}.contains(languageCode)
         ? languageCode
@@ -1591,6 +1692,79 @@ final class _AppWidgetSyncDriver {
       learning: WidgetProjectionBuilder(
         widgetLocalization.projectionLabels,
       ).buildLearning(learningCandidate),
+      prayer: _buildPrayerProjection(
+        l10n: l10n,
+        localDate: localDate,
+        todaySchedule: prayerTodaySchedule,
+        scheduleResolution: prayerScheduleResolution,
+        locationDisplayName: prayerLocationDisplayName,
+      ),
+    );
+  }
+
+  PrayerWidgetProjection _buildPrayerProjection({
+    required AppLocalizations l10n,
+    required LocalDate localDate,
+    required PrayerTodaySchedule? todaySchedule,
+    required PrayerContextResolution? scheduleResolution,
+    required String? locationDisplayName,
+  }) {
+    const factory = PrayerWidgetProjectionFactory();
+    if (todaySchedule == null || locationDisplayName == null) {
+      return factory.unavailable(l10n.prayerScheduleUnavailable);
+    }
+    final times = todaySchedule.day.times;
+    final boundaries = <PrayerWidgetBoundary>[
+      PrayerWidgetBoundary(
+        label: PrayerType.fajr.label(l10n),
+        hour: times.fajr.effective.hour,
+        minute: times.fajr.effective.minute,
+        prayerType: PrayerType.fajr,
+      ),
+      PrayerWidgetBoundary(
+        label: l10n.sunrise,
+        hour: times.sunrise.effective.hour,
+        minute: times.sunrise.effective.minute,
+      ),
+      PrayerWidgetBoundary(
+        label: PrayerType.dhuhr.label(l10n),
+        hour: times.dhuhr.effective.hour,
+        minute: times.dhuhr.effective.minute,
+        prayerType: PrayerType.dhuhr,
+      ),
+      PrayerWidgetBoundary(
+        label: PrayerType.asr.label(l10n),
+        hour: times.asr.effective.hour,
+        minute: times.asr.effective.minute,
+        prayerType: PrayerType.asr,
+      ),
+      PrayerWidgetBoundary(
+        label: PrayerType.maghrib.label(l10n),
+        hour: times.maghrib.effective.hour,
+        minute: times.maghrib.effective.minute,
+        prayerType: PrayerType.maghrib,
+      ),
+      PrayerWidgetBoundary(
+        label: PrayerType.isha.label(l10n),
+        hour: times.isha.effective.hour,
+        minute: times.isha.effective.minute,
+        prayerType: PrayerType.isha,
+      ),
+    ];
+    final isStale = !todaySchedule.loadResult.isReliableForAutomaticContext;
+    final currentPrayerType = scheduleResolution?.context?.prayerType;
+    final nextPrayerType = scheduleResolution?.nextPrayerType;
+    return factory.available(
+      dateLabel: localDate.toString(),
+      regionLabel: locationDisplayName,
+      providerLabel: todaySchedule.day.provenance.source.displayName,
+      boundaries: boundaries,
+      currentPrayerType: currentPrayerType,
+      nextPrayerType: nextPrayerType,
+      currentLabel: currentPrayerType?.label(l10n),
+      nextLabel: nextPrayerType?.label(l10n),
+      isStale: isStale,
+      staleLabel: isStale ? l10n.prayerScheduleStale : null,
     );
   }
 

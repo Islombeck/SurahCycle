@@ -1355,6 +1355,7 @@ final class _PrayerContextCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           title,
+                          key: const ValueKey<String>('prayer-context-title'),
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 2),
@@ -1370,6 +1371,14 @@ final class _PrayerContextCard extends StatelessWidget {
               ),
             ),
           ),
+          if (schedule case final loaded?)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: _PrayerScheduleStrip(
+                schedule: loaded,
+                scheduleResolution: scheduleResolution,
+              ),
+            ),
           if (onJumuahOverride != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -1400,6 +1409,121 @@ final class _PrayerContextCard extends StatelessWidget {
       context.l10n.prayerScheduleUnavailable,
     _ => context.l10n.selectPrayer,
   };
+}
+
+/// A compact "Today" strip of the six daily boundaries. Sunrise is rendered
+/// as an informational boundary, never as a selectable [PrayerType]. Current
+/// and next are visually distinct; every other configured context (Witr,
+/// Nafl, Qada, Jumuah) stays reachable through the header tap above, since
+/// none of those has a schedule-derived time to show here.
+final class _PrayerScheduleStrip extends StatelessWidget {
+  const _PrayerScheduleStrip({
+    required this.schedule,
+    required this.scheduleResolution,
+  });
+
+  final PrayerTodaySchedule schedule;
+  final PrayerContextResolution? scheduleResolution;
+
+  @override
+  Widget build(BuildContext context) {
+    final times = schedule.day.times;
+    final currentType = scheduleResolution?.context?.prayerType;
+    final nextType = scheduleResolution?.nextPrayerType;
+    final entries = <(String label, String time, PrayerType? type)>[
+      (
+        PrayerType.fajr.label(context.l10n),
+        '${times.fajr.effective}',
+        PrayerType.fajr,
+      ),
+      (context.l10n.sunrise, '${times.sunrise.effective}', null),
+      (
+        PrayerType.dhuhr.label(context.l10n),
+        '${times.dhuhr.effective}',
+        PrayerType.dhuhr,
+      ),
+      (
+        PrayerType.asr.label(context.l10n),
+        '${times.asr.effective}',
+        PrayerType.asr,
+      ),
+      (
+        PrayerType.maghrib.label(context.l10n),
+        '${times.maghrib.effective}',
+        PrayerType.maghrib,
+      ),
+      (
+        PrayerType.isha.label(context.l10n),
+        '${times.isha.effective}',
+        PrayerType.isha,
+      ),
+    ];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: <Widget>[
+          for (final entry in entries) ...<Widget>[
+            _PrayerScheduleEntry(
+              label: entry.$1,
+              timeLabel: entry.$2,
+              isCurrent: entry.$3 != null && entry.$3 == currentType,
+              isNext: entry.$3 != null && entry.$3 == nextType,
+            ),
+            const SizedBox(width: 6),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+final class _PrayerScheduleEntry extends StatelessWidget {
+  const _PrayerScheduleEntry({
+    required this.label,
+    required this.timeLabel,
+    required this.isCurrent,
+    required this.isNext,
+  });
+
+  final String label;
+  final String timeLabel;
+  final bool isCurrent;
+  final bool isNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      key: ValueKey<String>('prayer-schedule-entry-$label'),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isCurrent ? scheme.primaryContainer : null,
+        border: isNext && !isCurrent
+            ? Border.all(color: scheme.primary, width: 1.5)
+            : null,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontWeight: isCurrent ? FontWeight.bold : null,
+              color: isCurrent ? scheme.onPrimaryContainer : null,
+            ),
+          ),
+          Text(
+            timeLabel,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: (isCurrent || isNext) ? FontWeight.bold : null,
+              color: isCurrent ? scheme.onPrimaryContainer : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 final class _RotationContent extends StatelessWidget {

@@ -274,6 +274,30 @@ abstract class AppLocalizations {
   /// **'Прочитано в этой части'**
   String get recitedInCurrentPart;
 
+  /// No description provided for @notificationsTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Уведомления'**
+  String get notificationsTitle;
+
+  /// No description provided for @learningNotificationTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тихое напоминание о заучивании'**
+  String get learningNotificationTitle;
+
+  /// No description provided for @learningNotificationSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Беззвучное уведомление о том, что повторить дальше. По умолчанию выключено.'**
+  String get learningNotificationSubtitle;
+
+  /// No description provided for @learningNotificationPermissionDenied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разрешение на уведомления не выдано, напоминание остаётся выключенным.'**
+  String get learningNotificationPermissionDenied;
+
   /// No description provided for @recitationsRemaining.
   ///
   /// In ru, this message translates to:

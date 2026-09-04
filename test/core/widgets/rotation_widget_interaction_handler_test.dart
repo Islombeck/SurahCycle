@@ -407,6 +407,7 @@ WidgetSnapshot _snapshot(
       deepLink: Uri.parse('murajaah://app/learning/112'),
     ),
   ),
+  prayer: PrayerWidgetProjection.unavailable(messageLabel: 'Open app'),
 );
 
 WidgetSnapshot _decode(String source) {

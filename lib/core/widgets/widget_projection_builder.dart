@@ -303,6 +303,7 @@ final class WidgetProjectionBuilder {
     String? rotationCurrentPartLabel,
     String? rotationSlotProgressLabel,
     String? rotationStatusMessage,
+    PrayerWidgetProjection? prayer,
   }) => WidgetSnapshot(
     generatedAtUtc: generatedAtUtc,
     locale: locale,
@@ -314,6 +315,11 @@ final class WidgetProjectionBuilder {
       statusMessage: rotationStatusMessage,
     ),
     learning: buildLearning(learningCandidate),
+    prayer:
+        prayer ??
+        PrayerWidgetProjection.unavailable(
+          messageLabel: labels.openAppToLoadText,
+        ),
   );
 
   RotationWidgetProjection buildRotation(

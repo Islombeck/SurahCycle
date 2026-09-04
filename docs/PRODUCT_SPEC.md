@@ -1,4 +1,4 @@
-# Product Spec — Sprint 6B
+# Product Spec — Sprint 5E2
 
 ## Продуктовая цель
 
@@ -101,6 +101,29 @@ Sprint 6B добавляет:
    активный context для отметки чтения переключается на Witr без выдуманного
    времени или события. Расписание по-прежнему показывает Isha на всё её
    реальное окно; Qada Isha и past registration переход не затрагивает.
+
+Sprint 5E2 добавляет:
+
+1. Компактную ленту сегодняшнего расписания на Home внутри карточки Prayer
+   Context: Фаджр, восход, Зухр, Аср, Магриб, Иша с визуально отличимыми
+   текущим и следующим намазом, построенную на уже существующем
+   `PrayerScheduleContextResolutionProvider` без второго resolver.
+2. Третий Android-виджет «Время намаза» (compact/medium/large,
+   `SizeMode.Responsive`), который показывает те же шесть границ и
+   современный/следующий намаз; tap открывает Home, виджет ничего не
+   записывает и не решает бизнес-правила в Kotlin.
+3. Тихое опциональное Learning notification, выключенное по умолчанию:
+   `POST_NOTIFICATIONS` запрашивается только после явного включения в
+   Settings, отказ не повторяется автоматически, канал без звука, вибрации
+   и подсветки.
+4. Опциональный system-controlled screensaver `MurajaahDreamService`,
+   выбираемый только через Settings > Display > Screen saver, без
+   встроенного переключателя в приложении, без обхода lock screen, без
+   full-screen intent и без Accessibility/Device Admin.
+5. Честно задокументированное отсутствие полноценного lock-screen виджета:
+   современный Android не предоставляет keyguard-widget API, поэтому
+   продукт не имитирует эту возможность вместо неё. Подробности:
+   [LOCK_SCREEN_LEARNING.md](LOCK_SCREEN_LEARNING.md).
 
 Функции вне scope перечислены в [BACKLOG.md](BACKLOG.md).
 
@@ -303,12 +326,16 @@ widget перестраивается из базы. Cached schema-1 action до
 mark всегда относится к текущей локальной дате и execution-time контексту.
 
 Learning Widget показывает coordinate-bound Arabic/transliteration/translation.
-Kotlin/Glance не исполняет доменные правила и не открывает Drift.
+Prayer Widget показывает шесть суточных границ с current/next выделением на
+трёх адаптивных размерах. Kotlin/Glance не исполняет доменные правила и не
+открывает Drift ни в одном из трёх виджетов.
 
 Контракты:
 
 - [ANDROID_WIDGETS.md](ANDROID_WIDGETS.md);
-- [INTERACTIVE_ANDROID_WIDGET.md](INTERACTIVE_ANDROID_WIDGET.md).
+- [INTERACTIVE_ANDROID_WIDGET.md](INTERACTIVE_ANDROID_WIDGET.md);
+- [PRAYER_WIDGET.md](PRAYER_WIDGET.md);
+- [LOCK_SCREEN_LEARNING.md](LOCK_SCREEN_LEARNING.md).
 
 ## Offline и сохранность
 
@@ -327,6 +354,22 @@ monthly prayer schedule остаются offline. Сбой content/schedule prov
 - source/provenance видимы;
 - destructive History/reset actions требуют подтверждения;
 - нет рекламы, streaks, социальных функций и лишнего onboarding.
+
+## Критерии приёмки Sprint 5E2
+
+Дополнительно к критериям Sprint 6B ниже:
+
+- Home prayer schedule strip и Prayer Widget показывают идентичный
+  current/next намаз без второго resolver;
+- unavailable/stale prayer projection не создаёт выдуманное время и
+  блокирует Rotation Widget auto-mark;
+- Learning notification остаётся выключенным без явного действия
+  пользователя, запрашивает permission ровно один раз за попытку включения
+  и не повторяет запрос после отказа;
+- `MurajaahDreamService` не запрашивает и не использует
+  `showWhenLocked`/full-screen intent/Accessibility/Device Admin/wakelock;
+- Flutter analyzer, полный Flutter test suite, Kotlin
+  `testDebugUnitTest`/`compileDebugKotlin` и debug APK build зелёные вместе.
 
 ## Критерии приёмки Sprint 6B
 

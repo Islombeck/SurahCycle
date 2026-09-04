@@ -182,4 +182,5 @@ WidgetSnapshot _snapshot({
   locale: locale,
   rotation: RotationWidgetProjection(items: const <RotationWidgetItem>[]),
   learning: const LearningWidgetProjection.empty(),
+  prayer: PrayerWidgetProjection.unavailable(messageLabel: 'Open app'),
 );

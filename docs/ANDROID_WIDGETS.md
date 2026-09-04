@@ -2,7 +2,7 @@
 
 ## Status
 
-Murajaah ships two native Android home-screen widgets:
+Murajaah ships three native Android home-screen widgets:
 
 - **Rotation** — a scrollable due-only list. Up to eight ranked
   recommendations appear first, followed by other due rows and an
@@ -10,10 +10,14 @@ Murajaah ships two native Android home-screen widgets:
 - **Learning** — selected surah, stage, cumulative range and up to three
   coordinate-bound ayah blocks with Arabic, transliteration and translation
   according to the same three display settings as the app.
+- **Prayer Times** — today's six daily boundaries (Fajr, Sunrise, Dhuhr, Asr,
+  Maghrib, Isha) with the current and next boundary visually distinct,
+  size-responsive across compact/medium/large. See
+  [PRAYER_WIDGET.md](PRAYER_WIDGET.md) for its contract in full.
 
 Rotation has a direct mark control. The circular control marks in a headless
 Dart callback without opening the app; the row text still opens the appropriate
-surah/part. Learning remains navigation-only.
+surah/part. Learning and Prayer Times remain navigation-only.
 
 The project pins `home_widget 0.9.3` and
 `androidx.glance:glance-appwidget:1.1.1`. Kotlin 2.3.20 uses the
@@ -29,14 +33,14 @@ Drift/domain/Quran/prayer streams
        Dart projection builders
                  |
                  v
-       WidgetSnapshot schema 5
+       WidgetSnapshot schema 6
                  |
                  v
  home_widget SharedPreferences bridge
-          |                    |
-          v                    v
- Rotation Glance        Learning Glance
- display + transport      display only
+          |               |               |
+          v               v               v
+ Rotation Glance   Learning Glance   Prayer Glance
+ display + transport  display only    display only
           |
           v
  official home_widget background callback
@@ -46,17 +50,18 @@ Drift/domain/Quran/prayer streams
 ```
 
 Dart owns sorting, rank, debt, eligible actions, localized labels, Quran layer
-selection, Prayer Context and all mutation rules. Kotlin validates a
-denormalized snapshot, renders it and transports a prebuilt action. It never
-opens Drift or reimplements `RotationEngine`.
+selection, Prayer Context, the prayer schedule projection and all mutation
+rules. Kotlin validates a denormalized snapshot, renders it and transports a
+prebuilt action. It never opens Drift or reimplements `RotationEngine` or a
+schedule resolver.
 
 The shared snapshot key is `murajaah_widget_snapshot`. Malformed JSON,
 unknown schema, unsafe deep links, duplicate IDs/tokens, unreasonable payloads
 or native composition errors fail closed to localized fallback UI.
 
-## Snapshot schema 5
+## Snapshot schema 6
 
-The current contract adds:
+Schema 5 added:
 
 - optional structured action per Rotation row;
 - localized current prayer-part and slot-progress labels;
@@ -67,11 +72,17 @@ The current contract adds:
   `showTranslation` flags;
 - exact transliteration/translation fields without generated substitutes.
 
+Schema 6 adds a required `prayer` projection: today's six daily boundaries
+(Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha) each carrying a formatted time
+label and `isBoundaryOnly`/`isCurrent`/`isNext` flags, or an `unavailable`
+state with a localized message when no confirmed location/reliable schedule
+exists yet. See [PRAYER_WIDGET.md](PRAYER_WIDGET.md) for the full contract.
+
 Abbreviated example:
 
 ```json
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "generatedAtUtc": "2026-08-26T10:00:00.000Z",
   "snapshotRevision": 42,
   "locale": "ru",
@@ -123,6 +134,23 @@ Abbreviated example:
       }],
       "deepLink": "murajaah://app/learning/112"
     }
+  },
+  "prayer": {
+    "isAvailable": true,
+    "dateLabel": "4 сентября",
+    "regionLabel": "Ташкент",
+    "providerLabel": "Namoz-vaqti.uz",
+    "currentLabel": "Зухр",
+    "nextLabel": "Аср",
+    "isStale": false,
+    "entries": [
+      {"label": "Фаджр", "timeLabel": "05:12", "isCurrent": false, "isNext": false},
+      {"label": "Восход", "timeLabel": "06:34", "isBoundaryOnly": true},
+      {"label": "Зухр", "timeLabel": "12:41", "isCurrent": true, "isNext": false},
+      {"label": "Аср", "timeLabel": "16:05", "isCurrent": false, "isNext": true},
+      {"label": "Магриб", "timeLabel": "19:02", "isCurrent": false, "isNext": false},
+      {"label": "Иша", "timeLabel": "20:22", "isCurrent": false, "isNext": false}
+    ]
   }
 }
 ```
@@ -132,10 +160,11 @@ from the pinned Tanzil Uthmani corpus, transliteration from the pinned Tanzil
 English Transliteration asset, and translation only from the selected verified
 QuranEnc cache. Missing layers remain absent.
 
-Native decoder accepts schema 2/3/4 as display-compatible migration input and
-schema 5 as current. Dart reads/writes schema 5. Older snapshots receive no
-invented routine target. Action schema 1 is accepted as cached legacy
-transport, but Dart rejects it when an active routine requires an exact slot.
+Native decoder accepts schema 2/3/4/5 as display-compatible migration input
+and schema 6 as current. Dart reads/writes schema 6. Older snapshots receive
+no invented routine target and no invented prayer schedule. Action schema 1
+is accepted as cached legacy transport, but Dart rejects it when an active
+routine requires an exact slot.
 Dynamic Glance IDs are masked outside the reserved range and checked for
 collisions.
 
@@ -156,21 +185,21 @@ interactive refresh cannot initialize Quran repositories.
 
 The Rotation circle uses Glance `actionRunCallback` and
 `HomeWidgetBackgroundIntent`. The body uses explicit
-`actionStartActivity<MainActivity>` deep links. Headers, footer and
-Learning content also open the app. `flutter_deeplinking_enabled=false`
-prevents duplicate Flutter routing.
+`actionStartActivity<MainActivity>` deep links. Headers, footer, Learning
+content and the entire Prayer Times surface also open the app.
+`flutter_deeplinking_enabled=false` prevents duplicate Flutter routing.
 
 Exact-once semantics, stale validation and the no-network execution path are
 specified in
 [INTERACTIVE_ANDROID_WIDGET.md](INTERACTIVE_ANDROID_WIDGET.md).
 
-Both provider receivers are exported only for `APPWIDGET_UPDATE`.
+All three provider receivers are exported only for `APPWIDGET_UPDATE`.
 The background receiver is supplied by home_widget. No browsable custom-scheme
 intent filter exposes MainActivity.
 
 ## Composition fallback
 
-Both widgets override Glance `onCompositionError`, log the widget type,
+All three widgets override Glance `onCompositionError`, log the widget type,
 appWidgetId and throwable under `MurajaahWidget`, and render the local
 `widget_error.xml` fallback. The fallback opens Murajaah but does not
 mutate data.
@@ -216,10 +245,19 @@ When ADB exposes a device, verify:
 9. exact current routine part/slot progression and completed-routine disable;
 10. malformed/unknown snapshot and forced composition fallbacks;
 11. RU/EN/UZ native strings;
-12. tap → database → launcher refresh latency.
+12. tap → database → launcher refresh latency;
+13. Prayer Times widget at all three sizes, current/next highlighting and
+    stale-schedule warning;
+14. Learning notification opt-in/permission-deny/opt-out flow and its
+    lock-screen visibility under the OS's own notification privacy setting;
+15. `MurajaahDreamService` picked from Settings > Display > Screen saver
+    actually starts, is touch-dismissible, and shows current Learning content.
 
 If no physical device appears in `adb devices`, these items remain
 unverified; desktop tests and APK compilation are not reported as device QA.
+See [PRAYER_WIDGET.md](PRAYER_WIDGET.md) and
+[LOCK_SCREEN_LEARNING.md](LOCK_SCREEN_LEARNING.md) for the Prayer Times
+widget and lock-screen-adjacent Learning surfaces in full.
 
 ## Primary references
 

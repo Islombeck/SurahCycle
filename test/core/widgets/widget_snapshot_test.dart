@@ -7,7 +7,7 @@ import 'package:murajaah/core/widgets/widget_snapshot.dart';
 void main() {
   const codec = WidgetSnapshotCodec();
 
-  test('schema 5 snapshot round-trips routine labels and item state', () {
+  test('schema 6 snapshot round-trips routine labels and item state', () {
     const exactArabic = '  بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ  ';
     const exactTransliteration = 'Bismi All<u>a</u>hi  ';
     const exactTranslation = '  Во имя Аллаха';
@@ -61,8 +61,8 @@ void main() {
     for (final source in <String>[
       '{',
       '[]',
-      '{"schemaVersion":5}',
-      '{"schemaVersion":"5"}',
+      '{"schemaVersion":6}',
+      '{"schemaVersion":"6"}',
     ]) {
       expect(
         (codec.decode(source) as WidgetSnapshotRejected).error,
@@ -72,7 +72,7 @@ void main() {
   });
 
   test('unknown and previous schema versions are rejected safely in Dart', () {
-    for (final version in <int>[2, 3, 4, 99]) {
+    for (final version in <int>[2, 3, 4, 5, 99]) {
       final result = codec.decode('{"schemaVersion":$version}');
 
       expect(result, isA<WidgetSnapshotRejected>());
@@ -326,4 +326,5 @@ WidgetSnapshot _snapshot({LearningWidgetAyahLine? line}) => WidgetSnapshot(
       deepLink: Uri.parse('murajaah://app/learning/112'),
     ),
   ),
+  prayer: PrayerWidgetProjection.unavailable(messageLabel: 'Open app'),
 );

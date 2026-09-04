@@ -100,6 +100,20 @@ class AppLocalizationsUz extends AppLocalizations {
   String get recitedInCurrentPart => 'Ushbu qismda o\'qildi';
 
   @override
+  String get notificationsTitle => 'Bildirishnomalar';
+
+  @override
+  String get learningNotificationTitle => 'Sokin yodlash eslatmasi';
+
+  @override
+  String get learningNotificationSubtitle =>
+      'Keyingi takrorlash haqida ovozsiz bildirishnoma. Sukut boʻyicha oʻchirilgan.';
+
+  @override
+  String get learningNotificationPermissionDenied =>
+      'Bildirishnoma ruxsati berilmadi, eslatma oʻchirilgan holda qoladi.';
+
+  @override
   String recitationsRemaining(int count) {
     return '$count×';
   }

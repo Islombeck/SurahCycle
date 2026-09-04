@@ -1,4 +1,4 @@
-# Архитектура Murajaah — Sprint 6A
+# Архитектура Murajaah — Sprint 5E2
 
 ## Эволюция архитектуры
 
@@ -365,6 +365,35 @@ app override. Дата и Prayer Context определяются заново �
 persisted current settings; при недоказанном контексте действие отклоняется.
 Legacy action schema 1 остаётся parseable для launcher cache, но slotless
 payload fail-closed, если пользователь уже включил routine.
+
+## Snapshot schema 6 и Sprint 5E2 Android-поверхности
+
+Snapshot schema 6 добавляет обязательную `PrayerWidgetProjection` — те же
+шесть суточных границ (Фаджр, восход, Зухр, Аср, Магриб, Иша), что уже
+показывает `PrayerScheduleContextResolutionProvider`, переформатированные
+чистым `PrayerWidgetProjectionFactory` без нового resolver и без второго
+источника расписания. Третий Glance-виджет (`PrayerWidget.kt`,
+`SizeMode.Responsive`) только отображает уже готовые current/next флаги;
+tap открывает Home, никакого `actionRunCallback` и никакой записи в Drift.
+Подробности: [PRAYER_WIDGET.md](PRAYER_WIDGET.md).
+
+Learning-контент вне launcher home screen получает два независимых opt-in
+пути, оба выключены по умолчанию и не создают второй источник данных —
+оба читают тот же `WidgetSnapshot.learning`:
+
+- тихое notification (`IMPORTANCE_LOW`, `setSilent(true)`), которое
+  `LearningNotificationController.setEnabled` включает только явным
+  действием пользователя и только тогда запрашивает `POST_NOTIFICATIONS`;
+  отказ оставляет функцию выключенной без повторных попыток;
+- `MurajaahDreamService` — обычный system-controlled screensaver без
+  in-app переключателя, без `showWhenLocked`, full-screen intent или любого
+  overlay поверх lock screen, без Accessibility/Device Admin и без
+  self-triggered wake.
+
+Ни один из двух путей не является заменой отсутствующей на современном
+Android keyguard-widget API; честная граница возможностей задокументирована
+в [LOCK_SCREEN_LEARNING.md](LOCK_SCREEN_LEARNING.md), а не реализована как
+имитация.
 
 ## Расширения вне Sprint 6A
 

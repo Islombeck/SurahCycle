@@ -1,5 +1,7 @@
 export 'home_widget_bridge.dart';
 export 'interactive_widget_snapshot_refresher.dart';
+export 'learning_notification_channel.dart';
+export 'prayer_widget_projection_factory.dart';
 export 'rotation_widget_projection_factory.dart';
 export 'rotation_widget_interaction_handler.dart';
 export 'widget_deep_link.dart';

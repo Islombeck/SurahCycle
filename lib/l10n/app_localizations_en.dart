@@ -100,6 +100,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recitedInCurrentPart => 'Recited in this part';
 
   @override
+  String get notificationsTitle => 'Notifications';
+
+  @override
+  String get learningNotificationTitle => 'Quiet Learning reminder';
+
+  @override
+  String get learningNotificationSubtitle =>
+      'A silent notification showing what to review next. Off by default.';
+
+  @override
+  String get learningNotificationPermissionDenied =>
+      'Notification permission was not granted, so the reminder stays off.';
+
+  @override
   String recitationsRemaining(int count) {
     return '$count×';
   }

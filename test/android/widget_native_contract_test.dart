@@ -75,7 +75,7 @@ void main() {
     expect(fallback, contains('appWidgetId: Int, deepLink: Uri'));
   });
 
-  test('schema 5 routine state is strict and preserves older fallback', () {
+  test('schema 6 routine state is strict and preserves older fallback', () {
     final snapshot = _read(
       'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
       'WidgetSnapshot.kt',
@@ -95,7 +95,8 @@ void main() {
       snapshot,
       contains('private const val INTERACTIVE_SCHEMA_VERSION = 4'),
     );
-    expect(snapshot, contains('private const val SCHEMA_VERSION = 5'));
+    expect(snapshot, contains('private const val SCHEMA_VERSION = 6'));
+    expect(snapshot, contains('private const val PRAYER_SCHEMA_VERSION = 6'));
     expect(
       snapshot,
       contains('internal const val LEGACY_ACTION_SCHEMA_VERSION = 1'),
@@ -127,7 +128,105 @@ void main() {
     );
     expect(rotation, contains('snapshot?.rotation?.currentPartLabel'));
     expect(rotation, contains('snapshot?.rotation?.slotProgressLabel'));
+    expect(
+      snapshot,
+      contains('require(entriesJson.length() == PRAYER_ENTRY_COUNT)'),
+    );
+    expect(
+      snapshot,
+      contains('require(!(isBoundaryOnly && (isCurrent || isNext)))'),
+    );
+    expect(snapshot, contains('require(!(isCurrent && isNext))'));
+    expect(snapshot, contains('require(currentCount <= 1 && nextCount <= 1)'));
+    expect(
+      snapshot,
+      contains('require(!json.has("staleLabel") || json.isNull("staleLabel"))'),
+    );
   });
+
+  test(
+    'Prayer widget is a read-only, size-responsive, projection-only surface',
+    () {
+      final prayer = _read(
+        'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
+        'PrayerWidget.kt',
+      );
+      final manifest = _read('android/app/src/main/AndroidManifest.xml');
+      final info = _read('android/app/src/main/res/xml/prayer_widget_info.xml');
+
+      expect(prayer, isNot(contains('.core.')));
+      expect(prayer, isNot(contains('RecitationRepository')));
+      expect(prayer, isNot(contains('ActionCallback')));
+      expect(prayer, isNot(contains('actionRunCallback')));
+      expect(prayer, contains('SizeMode.Responsive'));
+      expect(prayer, contains('Uri.parse("murajaah://app/home")'));
+      expect(prayer, contains('.clickable(homeAction)'));
+      expect(manifest, contains('android:name=".widget.PrayerWidgetReceiver"'));
+      expect(manifest, contains('@xml/prayer_widget_info'));
+      expect(info, contains('android:resizeMode="horizontal|vertical"'));
+    },
+  );
+
+  test(
+    'DreamService is opt-in, read-only, and never bypasses the lock screen',
+    () {
+      final dream = _read(
+        'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
+        'MurajaahDreamService.kt',
+      );
+      final manifest = _read('android/app/src/main/AndroidManifest.xml');
+
+      expect(dream, contains('class MurajaahDreamService : DreamService()'));
+      expect(dream, contains('isInteractive = false'));
+      expect(dream, isNot(contains('showWhenLocked')));
+      expect(dream, isNot(contains('FLAG_SHOW_WHEN_LOCKED')));
+      expect(dream, isNot(contains('setFullScreenIntent')));
+      expect(dream, isNot(contains('WAKE_LOCK')));
+      expect(dream, isNot(contains('PowerManager')));
+      expect(dream, isNot(contains('RecitationRepository')));
+      expect(dream, contains('WIDGET_SNAPSHOT_KEY'));
+      expect(manifest, contains('android:name=".widget.MurajaahDreamService"'));
+      expect(
+        manifest,
+        contains('android:permission="android.permission.BIND_DREAM_SERVICE"'),
+      );
+      expect(manifest, contains('android.service.dreams.DreamService'));
+      expect(manifest, contains('@xml/dream_info'));
+    },
+  );
+
+  test(
+    'the Learning notification is silent, opt-in, and never posts on its own',
+    () {
+      final manager = _read(
+        'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
+        'LearningNotificationManager.kt',
+      );
+      final activity = _read(
+        'android/app/src/main/kotlin/dev/murajaah/murajaah/MainActivity.kt',
+      );
+      final channelDart = _read(
+        'lib/core/widgets/learning_notification_channel.dart',
+      );
+
+      expect(manager, contains('NotificationManager.IMPORTANCE_LOW'));
+      expect(manager, contains('.setSilent(true)'));
+      expect(manager, contains('enableVibration(false)'));
+      expect(manager, contains('enableLights(false)'));
+      expect(manager, isNot(contains('FLAG_SHOW_WHEN_LOCKED')));
+      expect(manager, isNot(contains('setFullScreenIntent')));
+      expect(
+        activity,
+        contains('"dev.murajaah.murajaah/learning_notifications"'),
+      );
+      expect(activity, contains('"requestPermission" ->'));
+      expect(
+        channelDart,
+        contains("'dev.murajaah.murajaah/learning_notifications'"),
+      );
+      expect(channelDart, contains('requestPermission'));
+    },
+  );
 
   test('Quran audio owns a separate Android media service contract', () {
     final manifest = _read('android/app/src/main/AndroidManifest.xml');

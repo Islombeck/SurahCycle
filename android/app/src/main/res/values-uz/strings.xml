@@ -12,6 +12,13 @@
     <string name="learning_widget_title">Yodlash</string>
     <string name="learning_widget_empty">Yodlash boʻlimida surani tanlang.</string>
     <string name="learning_widget_preview_sample">112. Ixlos · 1–3</string>
+    <string name="prayer_widget_name">Murajaah namoz vaqtlari</string>
+    <string name="prayer_widget_description">Bugungi Bomdod, Peshin, Asr, Shom va Xufton</string>
+    <string name="prayer_widget_title">Namoz vaqtlari</string>
+    <string name="prayer_widget_stale">Yangilash kerak</string>
+    <string name="prayer_widget_between">Namozlar oralig‘ida</string>
+    <string name="prayer_widget_next_at">Keyingi: %1$s, %2$s</string>
+    <string name="prayer_widget_preview_sample">Peshin · 12:30</string>
     <string name="widget_open_murajaah">Murajaahʼni oching</string>
     <string name="widget_open_app">Ilovani ochish</string>
     <string name="widget_recommendation_rank">&#9733; %1$d</string>
@@ -20,4 +27,8 @@
     <string name="widget_error_title">Murajaah</string>
     <string name="widget_error_message">Vidjetni yangilab boʻlmadi.</string>
     <string name="widget_error_open_app">Ilovani oching</string>
+    <string name="learning_notification_channel_name">Yodlash eslatmasi</string>
+    <string name="learning_notification_channel_description">Keyingi takrorlash haqida sokin, ovozsiz eslatma. Sukut boʻyicha oʻchirilgan.</string>
+    <string name="dream_service_name">Murajaah</string>
+    <string name="dream_service_empty">Murajaahʼni oching va Yodlash boʻlimida sura tanlang</string>
 </resources>

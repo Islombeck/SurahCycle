@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import com.ryanheise.audioservice.AudioServiceActivity
+import dev.murajaah.murajaah.widget.LearningNotificationManager
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -20,23 +21,61 @@ class MainActivity : AudioServiceActivity() {
                 result.notImplemented()
                 return@setMethodCallHandler
             }
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
-                    PackageManager.PERMISSION_GRANTED
-            ) {
-                result.success(true)
-                return@setMethodCallHandler
-            }
-            if (pendingNotificationPermissionResult != null) {
-                result.success(false)
-                return@setMethodCallHandler
-            }
-            pendingNotificationPermissionResult = result
-            requestPermissions(
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                NOTIFICATION_PERMISSION_REQUEST,
-            )
+            requestNotificationPermission(result) { granted, res -> res.success(granted) }
         }
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "dev.murajaah.murajaah/learning_notifications",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "requestPermission" ->
+                    requestNotificationPermission(result) { granted, res ->
+                        res.success(granted)
+                    }
+                "show" -> {
+                    val title = call.argument<String>("title")
+                    val text = call.argument<String>("text")
+                    if (title.isNullOrEmpty() || text.isNullOrEmpty()) {
+                        result.error("invalid_argument", "title/text required", null)
+                        return@setMethodCallHandler
+                    }
+                    LearningNotificationManager.show(applicationContext, title, text)
+                    result.success(null)
+                }
+                "cancel" -> {
+                    LearningNotificationManager.cancel(applicationContext)
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    /**
+     * Shared POST_NOTIFICATIONS flow: on API < 33 or already-granted, resolves
+     * immediately. Otherwise prompts once; a second call while one prompt is
+     * pending resolves `false` rather than queuing a duplicate prompt.
+     */
+    private fun requestNotificationPermission(
+        result: MethodChannel.Result,
+        onResolved: (Boolean, MethodChannel.Result) -> Unit,
+    ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+        ) {
+            onResolved(true, result)
+            return
+        }
+        if (pendingNotificationPermissionResult != null) {
+            onResolved(false, result)
+            return
+        }
+        pendingNotificationPermissionResult = result
+        requestPermissions(
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            NOTIFICATION_PERMISSION_REQUEST,
+        )
     }
 
     override fun onRequestPermissionsResult(

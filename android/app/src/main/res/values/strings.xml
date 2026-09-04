@@ -12,6 +12,13 @@
     <string name="learning_widget_title">Learning</string>
     <string name="learning_widget_empty">Choose a surah in Learning.</string>
     <string name="learning_widget_preview_sample">112. Al-Ikhlas · 1–3</string>
+    <string name="prayer_widget_name">Murajaah prayer times</string>
+    <string name="prayer_widget_description">Today\'s Fajr, Dhuhr, Asr, Maghrib and Isha</string>
+    <string name="prayer_widget_title">Prayer times</string>
+    <string name="prayer_widget_stale">Needs an update</string>
+    <string name="prayer_widget_between">Between prayers</string>
+    <string name="prayer_widget_next_at">Next: %1$s at %2$s</string>
+    <string name="prayer_widget_preview_sample">Dhuhr · 12:30</string>
     <string name="widget_open_murajaah">Open Murajaah</string>
     <string name="widget_open_app">Open app</string>
     <string name="widget_recommendation_rank">&#9733; %1$d</string>
@@ -20,4 +27,8 @@
     <string name="widget_error_title">Murajaah</string>
     <string name="widget_error_message">Couldn\'t update the widget.</string>
     <string name="widget_error_open_app">Open the app</string>
+    <string name="learning_notification_channel_name">Learning reminder</string>
+    <string name="learning_notification_channel_description">A quiet, silent reminder of what to review next. Off by default.</string>
+    <string name="dream_service_name">Murajaah</string>
+    <string name="dream_service_empty">Open Murajaah and choose a surah in Learning</string>
 </resources>

@@ -95,8 +95,13 @@ final class InteractiveWidgetSnapshotRefresher {
       locale: localization.languageCode,
       rotation: _preserveVisibleOrder(previous?.rotation, rebuiltRotation),
       // The interaction path does not need Quran content. Preserve the last
-      // verified Learning projection verbatim while refreshing rotation.
+      // verified Learning/Prayer projections verbatim while refreshing rotation.
       learning: previous?.learning ?? const LearningWidgetProjection.empty(),
+      prayer:
+          previous?.prayer ??
+          PrayerWidgetProjection.unavailable(
+            messageLabel: localization.l10n.widgetOpenAppToLoadText,
+          ),
     );
     final coordinator = WidgetSyncCoordinator(
       bridge: bridge,

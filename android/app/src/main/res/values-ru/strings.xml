@@ -12,6 +12,13 @@
     <string name="learning_widget_title">Заучивание</string>
     <string name="learning_widget_empty">Выберите суру в разделе «Заучивание».</string>
     <string name="learning_widget_preview_sample">112. Ихляс · 1–3</string>
+    <string name="prayer_widget_name">Время намаза Murajaah</string>
+    <string name="prayer_widget_description">Фаджр, Зухр, Аср, Магриб и Иша на сегодня</string>
+    <string name="prayer_widget_title">Время намаза</string>
+    <string name="prayer_widget_stale">Требуется обновление</string>
+    <string name="prayer_widget_between">Между намазами</string>
+    <string name="prayer_widget_next_at">Далее: %1$s в %2$s</string>
+    <string name="prayer_widget_preview_sample">Зухр · 12:30</string>
     <string name="widget_open_murajaah">Откройте Murajaah</string>
     <string name="widget_open_app">Открыть приложение</string>
     <string name="widget_recommendation_rank">&#9733; %1$d</string>
@@ -20,4 +27,8 @@
     <string name="widget_error_title">Murajaah</string>
     <string name="widget_error_message">Не удалось обновить виджет.</string>
     <string name="widget_error_open_app">Откройте приложение</string>
+    <string name="learning_notification_channel_name">Напоминание о заучивании</string>
+    <string name="learning_notification_channel_description">Тихое, беззвучное напоминание о том, что повторить дальше. По умолчанию выключено.</string>
+    <string name="dream_service_name">Murajaah</string>
+    <string name="dream_service_empty">Откройте Murajaah и выберите суру в разделе «Заучивание»</string>
 </resources>

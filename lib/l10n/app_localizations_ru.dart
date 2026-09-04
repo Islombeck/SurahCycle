@@ -100,6 +100,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String get recitedInCurrentPart => 'Прочитано в этой части';
 
   @override
+  String get notificationsTitle => 'Уведомления';
+
+  @override
+  String get learningNotificationTitle => 'Тихое напоминание о заучивании';
+
+  @override
+  String get learningNotificationSubtitle =>
+      'Беззвучное уведомление о том, что повторить дальше. По умолчанию выключено.';
+
+  @override
+  String get learningNotificationPermissionDenied =>
+      'Разрешение на уведомления не выдано, напоминание остаётся выключенным.';
+
+  @override
   String recitationsRemaining(int count) {
     return '$count×';
   }

@@ -63,6 +63,33 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/learning_widget_info" />
         </receiver>
+        <receiver
+            android:name=".widget.PrayerWidgetReceiver"
+            android:exported="true"
+            android:label="@string/prayer_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/prayer_widget_info" />
+        </receiver>
+        <!-- Optional screensaver. Only starts when the user explicitly picks
+             it under Settings > Display > Screen saver; nothing here enables
+             or schedules it, and it never covers the lock screen. -->
+        <service
+            android:name=".widget.MurajaahDreamService"
+            android:exported="true"
+            android:permission="android.permission.BIND_DREAM_SERVICE"
+            android:label="@string/dream_service_name">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.dream"
+                android:resource="@xml/dream_info" />
+        </service>
         <!-- Required by home_widget 0.9.3 for headless interactive callbacks. -->
         <receiver
             android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver"
