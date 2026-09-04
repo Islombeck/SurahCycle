@@ -82,8 +82,11 @@ final class RotationWidgetProjectionFactory {
     Set<String> markedPartIds = const <String>{},
     RotationWidgetPrayerPartProjection? prayerPart,
     String? statusMessage,
+    ContextualRecommendationInputs contextualInputs =
+        ContextualRecommendationInputs.empty,
   }) {
-    final recommendations = const SurahSuggestionService().suggest(rotation);
+    final recommendations = const ContextualSurahSuggestionService()
+        .suggestWith(rotation, contextualInputs);
     final recommendationRanks = <String, int>{
       for (var index = 0; index < recommendations.length; index += 1)
         recommendations[index].surah.id: index,

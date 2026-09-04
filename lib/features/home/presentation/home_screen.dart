@@ -80,7 +80,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     final catalog = ref.watch(fullCatalogProvider);
     final manualPrayer = ref.watch(selectedPrayerProvider);
     final prayerResolution = _settledAsyncValue(
-      ref.watch(prayerContextResolutionProvider),
+      ref.watch(homePrayerContextResolutionProvider),
     );
     final scheduleResolution = _settledAsyncValue(
       ref.watch(prayerScheduleContextResolutionProvider),
@@ -104,6 +104,14 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? null
         : ref.watch(
             currentPrayerRoutineProvider((
+              context: resolvedPrayerContext,
+              localDate: localDate,
+            )),
+          );
+    final contextualInputs = resolvedPrayerContext == null
+        ? ContextualRecommendationInputs.empty
+        : ref.watch(
+            contextualRecommendationInputsProvider((
               context: resolvedPrayerContext,
               localDate: localDate,
             )),
@@ -194,6 +202,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                         snapshot: snapshot,
                         busyIds: _busySurahIds,
                         markingEnabled: routineMarkingEnabled,
+                        contextualInputs: contextualInputs,
                         onMarkRequested: (surah) => _handleMarkRequest(surah),
                         onAdvancedMarkRequested: (surah) =>
                             _handleMarkRequest(surah, advanced: true),
@@ -1398,6 +1407,7 @@ final class _RotationContent extends StatelessWidget {
     required this.snapshot,
     required this.busyIds,
     required this.markingEnabled,
+    required this.contextualInputs,
     required this.onMarkRequested,
     required this.onAdvancedMarkRequested,
   });
@@ -1405,12 +1415,16 @@ final class _RotationContent extends StatelessWidget {
   final RotationSnapshot snapshot;
   final Set<String> busyIds;
   final bool markingEnabled;
+  final ContextualRecommendationInputs contextualInputs;
   final ValueChanged<MasteredSurah> onMarkRequested;
   final ValueChanged<MasteredSurah> onAdvancedMarkRequested;
 
   @override
   Widget build(BuildContext context) {
-    final suggestions = const SurahSuggestionService().suggest(snapshot);
+    final suggestions = const ContextualSurahSuggestionService().suggestWith(
+      snapshot,
+      contextualInputs,
+    );
     final active = const SurahOperationalOrderService().order(
       snapshot,
       recommendations: suggestions,
@@ -1432,38 +1446,13 @@ final class _RotationContent extends StatelessWidget {
     final dueSurahCount = active
         .where((surah) => snapshot.remainingFor(surah.id) > 0)
         .length;
+    final ranks = <String, int>{
+      for (final suggestion in suggestions)
+        suggestion.surah.id: suggestion.recommendationRank,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        if (suggestions.isNotEmpty) ...<Widget>[
-          Text(
-            context.l10n.recommendedTitle,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: <Widget>[
-                  for (final suggestion in suggestions)
-                    RecommendationChip(
-                      rank: suggestion.recommendationRank + 1,
-                      label:
-                          suggestion.recommendedPart == null ||
-                              !suggestion.surah.rotationScheme.isSplit
-                          ? suggestion.surah.surah.displayName
-                          : '${suggestion.surah.surah.displayName} · '
-                                '${context.l10n.ayahRange(suggestion.recommendedPart!.ayahRange.startAyah, suggestion.recommendedPart!.ayahRange.endAyah)}',
-                    ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
         Row(
           children: <Widget>[
             Expanded(
@@ -1494,6 +1483,10 @@ final class _RotationContent extends StatelessWidget {
                   remaining: snapshot.remainingFor(active[index].id),
                   isBusy: busyIds.contains(active[index].id),
                   isEnabled: markingEnabled,
+                  recommendationRank: ranks[active[index].id],
+                  isRecitedInCurrentPart: contextualInputs
+                      .alreadyFilledInCurrentPartSurahIds
+                      .contains(active[index].id),
                   onMarkRequested: () => onMarkRequested(active[index]),
                   onAdvancedMarkRequested: active[index].rotationScheme.isSplit
                       ? null
@@ -1515,6 +1508,8 @@ final class _SurahRotationTile extends StatelessWidget {
     required this.remaining,
     required this.isBusy,
     required this.isEnabled,
+    required this.recommendationRank,
+    required this.isRecitedInCurrentPart,
     required this.onMarkRequested,
     required this.onAdvancedMarkRequested,
   });
@@ -1523,6 +1518,8 @@ final class _SurahRotationTile extends StatelessWidget {
   final int remaining;
   final bool isBusy;
   final bool isEnabled;
+  final int? recommendationRank;
+  final bool isRecitedInCurrentPart;
   final VoidCallback onMarkRequested;
   final VoidCallback? onAdvancedMarkRequested;
 
@@ -1561,7 +1558,32 @@ final class _SurahRotationTile extends StatelessWidget {
           ),
         ),
       ),
-      title: Text(surah.surah.displayName),
+      title: Row(
+        children: <Widget>[
+          if (recommendationRank != null) ...<Widget>[
+            RecommendationRankBadge(rank: recommendationRank! + 1),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Text(
+              surah.surah.displayName,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (isRecitedInCurrentPart) ...<Widget>[
+            const SizedBox(width: 6),
+            Tooltip(
+              message: context.l10n.recitedInCurrentPart,
+              child: Icon(
+                Icons.check_circle,
+                key: ValueKey<String>('recited-in-current-part-${surah.id}'),
+                size: 16,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ],
+        ],
+      ),
       trailing: onAdvancedMarkRequested == null
           ? null
           : IconButton(

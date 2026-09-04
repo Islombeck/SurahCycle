@@ -30,9 +30,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyTitle => 'History';
 
   @override
-  String get recommendedTitle => 'Recommended';
-
-  @override
   String recommendationRank(int rank) {
     return 'Recommendation $rank';
   }
@@ -98,6 +95,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get doneForCycle => 'Complete';
+
+  @override
+  String get recitedInCurrentPart => 'Recited in this part';
 
   @override
   String recitationsRemaining(int count) {

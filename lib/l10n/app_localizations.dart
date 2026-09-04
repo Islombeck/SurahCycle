@@ -142,12 +142,6 @@ abstract class AppLocalizations {
   /// **'История'**
   String get historyTitle;
 
-  /// No description provided for @recommendedTitle.
-  ///
-  /// In ru, this message translates to:
-  /// **'Рекомендуется'**
-  String get recommendedTitle;
-
   /// No description provided for @recommendationRank.
   ///
   /// In ru, this message translates to:
@@ -273,6 +267,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Выполнено'**
   String get doneForCycle;
+
+  /// No description provided for @recitedInCurrentPart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прочитано в этой части'**
+  String get recitedInCurrentPart;
 
   /// No description provided for @recitationsRemaining.
   ///

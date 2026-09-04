@@ -30,9 +30,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get historyTitle => 'История';
 
   @override
-  String get recommendedTitle => 'Рекомендуется';
-
-  @override
   String recommendationRank(int rank) {
     return 'Рекомендация $rank';
   }
@@ -98,6 +95,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get doneForCycle => 'Выполнено';
+
+  @override
+  String get recitedInCurrentPart => 'Прочитано в этой части';
 
   @override
   String recitationsRemaining(int count) {

@@ -1,8 +1,9 @@
-# Backlog после Sprint 6A
+# Backlog после Sprint 6B
 
 Ниже только осознанно не реализованные функции. Автоматическое расписание
 намаза, добровольная location, Android direct widget mark, Quran display
-layers и configurable prayer routines уже не являются backlog.
+layers, configurable prayer routines и contextual prayer recommendations
+(включая Isha → Witr transition) уже не являются backlog.
 
 1. Prayer notifications и системные alarms.
 2. Adhan audio.
@@ -45,12 +46,6 @@ layers и configurable prayer routines уже не являются backlog.
     `uzbek_moyassar`; подключать только после полного 114/6236/hash audit.
 26. Подключить Cyrillic transliteration только из полного coordinate-aligned
     dataset с доказанными provenance и license; generated conversion запрещена.
-
-Следующий запланированный checkpoint, но ещё не реализованный Sprint 6A:
-
-- contextual prayer/session-part statistics and deterministic recommendations;
-- единый Home/Widget ranking без отдельного recommendation block;
-- idempotent current-day Isha → Witr transition после настроенного completion.
 
 Отдельные release/operational gates, а не новые product features:
 

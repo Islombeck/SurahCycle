@@ -1,4 +1,4 @@
-# Product Spec — Sprint 6A
+# Product Spec — Sprint 6B
 
 ## Продуктовая цель
 
@@ -85,6 +85,23 @@ Sprint 6A добавляет:
 6. Отдельный Jumuah Prayer Context и History/Statistics bucket. Solar resolver
    не придумывает Jumuah; на Friday Dhuhr Home даёт one-event override.
 
+Sprint 6B добавляет:
+
+1. `ContextualSurahSuggestionService`: та же глобальная неотложность
+   (`remaining`), что и раньше, но с двумя новыми tie-break уровнями —
+   давность чтения именно в текущей part намаза, затем давность чтения в
+   этом типе намаза вообще — перед прежним хвостом сравнения. Без активного
+   prayer part результат не отличается от прежнего глобального порядка.
+2. Единый список Home: отдельный блок «Рекомендуется» убран, rank badge
+   теперь стоит прямо в строке активной суры вместе со значком «прочитано в
+   этой части сегодня». Rotation Widget получает тот же rank из того же
+   входа, поэтому badges в Home и в widget всегда совпадают.
+3. Автопереход Isha → Witr: когда сегодняшние Fard и Sunnah Isha (включая
+   followed-imam) завершены и у пользователя настроен и включён Witr,
+   активный context для отметки чтения переключается на Witr без выдуманного
+   времени или события. Расписание по-прежнему показывает Isha на всё её
+   реальное окно; Qada Isha и past registration переход не затрагивает.
+
 Функции вне scope перечислены в [BACKLOG.md](BACKLOG.md).
 
 ## Главный сценарий ротации
@@ -94,8 +111,9 @@ Sprint 6A добавляет:
 теряет прежний score. Аль-Фатиха остаётся в catalog, Learning и History, но
 не участвует в rotation.
 
-Home показывает до восьми рекомендаций с фиксированным rank badge, затем все
-active surahs. У whole row круглая кнопка одним tap создаёт одно событие с
+Home показывает один список всех active surahs; у первых восьми в порядке
+рекомендации есть rank badge прямо в строке, остальные видны без badge, но
+так же доступны. У whole row круглая кнопка одним tap создаёт одно событие с
 одним ракаатом и без dialog; отдельная advanced-кнопка открывает historical,
 coverage и rakaat options. У split row основная кнопка в приложении открывает
 выбор одной/нескольких/всех частей и 1–4 ракаатов. В Android widget каждая
@@ -310,7 +328,7 @@ monthly prayer schedule остаются offline. Сбой content/schedule prov
 - destructive History/reset actions требуют подтверждения;
 - нет рекламы, streaks, социальных функций и лишнего onboarding.
 
-## Критерии приёмки Sprint 6A
+## Критерии приёмки Sprint 6B
 
 Автоматически проверяются:
 
@@ -326,6 +344,11 @@ monthly prayer schedule остаются offline. Сбой content/schedule prov
 - manual routine CRUD/reorder, immutable sessions, exact slot progression,
   completed-routine rejection и followed-imam/Undo;
 - Jumuah отдельно от Dhuhr и отсутствие automatic Jumuah resolution/Qada;
+- contextual ranking совпадает с global order без активного prayer part;
+- exact-part/prayer-type recency tie-break и Qada-изоляция статистики;
+- единый Home/Widget rank без отдельного recommendation block;
+- completed Isha (fard+sunnah/followed-imam) даёт ровно один переход к Witr,
+  неполная Isha или выключенный/пустой Witr его не дают;
 - Flutter analyzer, Kotlin tests/compile и debug APK build.
 
 На физическом Android отдельно проверяются launcher rendering, circle/text

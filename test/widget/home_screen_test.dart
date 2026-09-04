@@ -8,6 +8,7 @@ import 'package:murajaah/app/app_providers.dart';
 import 'package:murajaah/app/murajaah_app.dart';
 import 'package:murajaah/core/data/data.dart';
 import 'package:murajaah/core/domain/domain.dart';
+import 'package:murajaah/features/home/presentation/widgets/recommendation_rank_badge.dart';
 import 'package:murajaah/features/prayer_times/prayer_times.dart';
 
 import '../features/prayer_times/prayer_test_fixtures.dart';
@@ -63,10 +64,6 @@ void main() {
     final markSize = tester.getSize(markControl);
     expect(markSize.width, greaterThanOrEqualTo(48));
     expect(markSize.height, greaterThanOrEqualTo(48));
-
-    await tester.tap(find.widgetWithText(Chip, 'Test Surah A'));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(await fixture.eventCount(), 0);
 
     final tile = find.byKey(const ValueKey<String>('active-surah-surah-a'));
     await tester.tap(
@@ -476,6 +473,229 @@ void main() {
       await _disposeWidgetTree(tester);
     });
   }
+
+  testWidgets(
+    'completed Isha fard and sunnah transition the active context to Witr '
+    'exactly once',
+    (tester) async {
+      final fixture = await _WidgetFixture.create();
+      addTearDown(fixture.close);
+      await fixture.addActiveSurah(
+        _descriptor(id: 'isha-surah', number: 101, name: 'Isha Surah'),
+      );
+      await fixture.replaceRoutine(PrayerType.isha, <PrayerRoutinePartTemplate>[
+        _routinePart(
+          id: 'isha-fard',
+          stableKey: 'fard',
+          orderIndex: 0,
+          kind: PrayerRoutinePartKind.fard,
+        ),
+        _routinePart(
+          id: 'isha-sunnah',
+          stableKey: 'sunnah-after',
+          orderIndex: 1,
+          kind: PrayerRoutinePartKind.sunnah,
+        ),
+      ]);
+      await fixture.replaceRoutine(PrayerType.witr, <PrayerRoutinePartTemplate>[
+        _routinePart(
+          id: 'witr-fard',
+          stableKey: 'fard',
+          orderIndex: 0,
+          kind: PrayerRoutinePartKind.fard,
+        ),
+      ]);
+      final clock = _MutableTimeProvider(_utcForTashkent(2026, 8, 25, 21, 0));
+      await fixture.pumpAutomaticApp(tester, clock);
+      await _pumpUntil(
+        tester,
+        () async => find.text('Isha').evaluate().isNotEmpty,
+      );
+      expect(find.text('Witr'), findsNothing);
+
+      final localDate = LocalDate(2026, 8, 25);
+      var routine = await fixture.routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.isha),
+        localDate: localDate,
+        startedAtUtc: clock.nowUtc(),
+      );
+      await fixture.recitations.register(
+        SurahRecitationEvent(
+          id: 'isha-fard-event',
+          surahId: 'isha-surah',
+          prayerContext: PrayerContext(prayerType: PrayerType.isha),
+          createdAtUtc: clock.nowUtc(),
+          localDate: localDate,
+          prayerSessionId: routine!.session.id,
+          prayerSessionPartId: routine.currentPart!.part.id,
+          slotIndex: 0,
+        ),
+      );
+      routine = await fixture.routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.isha),
+        localDate: localDate,
+        startedAtUtc: clock.nowUtc(),
+      );
+      expect(routine!.currentPart!.part.stableKey, 'sunnah-after');
+      await fixture.recitations.register(
+        SurahRecitationEvent(
+          id: 'isha-sunnah-event',
+          surahId: 'isha-surah',
+          prayerContext: PrayerContext(prayerType: PrayerType.isha),
+          createdAtUtc: clock.nowUtc(),
+          localDate: localDate,
+          prayerSessionId: routine.session.id,
+          prayerSessionPartId: routine.currentPart!.part.id,
+          slotIndex: 0,
+        ),
+      );
+      routine = await fixture.routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.isha),
+        localDate: localDate,
+        startedAtUtc: clock.nowUtc(),
+      );
+      expect(routine!.isCompleted, isTrue);
+
+      await _pumpUntil(
+        tester,
+        () async => find.text('Witr').evaluate().isNotEmpty,
+      );
+      expect(find.text('Isha'), findsNothing);
+
+      // No Witr recitation/rotation credit and no fake Witr event exist yet;
+      // only the two real Isha events were ever written.
+      expect(await fixture.eventCount(), 2);
+
+      // Re-reading the resolved context again (as re-opening the screen
+      // would) is a pure re-derivation, not a repeated transition: the same
+      // Witr session keeps being reused rather than duplicated.
+      final firstWitrSession = await fixture.routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.witr),
+        localDate: localDate,
+        startedAtUtc: clock.nowUtc(),
+      );
+      final secondWitrSession = await fixture.routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.witr),
+        localDate: localDate,
+        startedAtUtc: clock.nowUtc(),
+      );
+      expect(firstWitrSession!.session.id, secondWitrSession!.session.id);
+
+      await _disposeWidgetTree(tester);
+    },
+  );
+
+  testWidgets('an incomplete Isha routine does not transition to Witr', (
+    tester,
+  ) async {
+    final fixture = await _WidgetFixture.create();
+    addTearDown(fixture.close);
+    await fixture.addActiveSurah(
+      _descriptor(id: 'isha-surah', number: 101, name: 'Isha Surah'),
+    );
+    await fixture.replaceRoutine(PrayerType.isha, <PrayerRoutinePartTemplate>[
+      _routinePart(
+        id: 'isha-fard',
+        stableKey: 'fard',
+        orderIndex: 0,
+        kind: PrayerRoutinePartKind.fard,
+      ),
+      _routinePart(
+        id: 'isha-sunnah',
+        stableKey: 'sunnah-after',
+        orderIndex: 1,
+        kind: PrayerRoutinePartKind.sunnah,
+      ),
+    ]);
+    await fixture.replaceRoutine(PrayerType.witr, <PrayerRoutinePartTemplate>[
+      _routinePart(
+        id: 'witr-fard',
+        stableKey: 'fard',
+        orderIndex: 0,
+        kind: PrayerRoutinePartKind.fard,
+      ),
+    ]);
+    final clock = _MutableTimeProvider(_utcForTashkent(2026, 8, 25, 21, 0));
+    await fixture.pumpAutomaticApp(tester, clock);
+    await _pumpUntil(
+      tester,
+      () async => find.text('Isha').evaluate().isNotEmpty,
+    );
+
+    final localDate = LocalDate(2026, 8, 25);
+    final routine = await fixture.routines.ensureCurrentSession(
+      context: PrayerContext(prayerType: PrayerType.isha),
+      localDate: localDate,
+      startedAtUtc: clock.nowUtc(),
+    );
+    await fixture.recitations.register(
+      SurahRecitationEvent(
+        id: 'isha-fard-only-event',
+        surahId: 'isha-surah',
+        prayerContext: PrayerContext(prayerType: PrayerType.isha),
+        createdAtUtc: clock.nowUtc(),
+        localDate: localDate,
+        prayerSessionId: routine!.session.id,
+        prayerSessionPartId: routine.currentPart!.part.id,
+        slotIndex: 0,
+      ),
+    );
+    await _pumpUntil(
+      tester,
+      () async => find.text('Isha').evaluate().isNotEmpty,
+    );
+
+    expect(find.text('Isha'), findsOneWidget);
+    expect(find.text('Witr'), findsNothing);
+    await _disposeWidgetTree(tester);
+  });
+
+  testWidgets(
+    'a disabled Witr routine keeps a completed Isha session on Isha',
+    (tester) async {
+      final fixture = await _WidgetFixture.create();
+      addTearDown(fixture.close);
+      await fixture.addActiveSurah(
+        _descriptor(id: 'isha-surah', number: 101, name: 'Isha Surah'),
+      );
+      await fixture.replaceRoutine(PrayerType.isha, <PrayerRoutinePartTemplate>[
+        _routinePart(
+          id: 'isha-fard',
+          stableKey: 'fard',
+          orderIndex: 0,
+          kind: PrayerRoutinePartKind.fard,
+          allowsFollowingImam: true,
+        ),
+      ]);
+      // Witr is left with its default: enabled but without any configured
+      // parts, so it has no runtime effect (continuation-prompt 7.4).
+      final clock = _MutableTimeProvider(_utcForTashkent(2026, 8, 25, 21, 0));
+      await fixture.pumpAutomaticApp(tester, clock);
+      await _pumpUntil(
+        tester,
+        () async => find.text('Isha').evaluate().isNotEmpty,
+      );
+
+      final localDate = LocalDate(2026, 8, 25);
+      final routine = await fixture.routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.isha),
+        localDate: localDate,
+        startedAtUtc: clock.nowUtc(),
+      );
+      await fixture.routines.completeByFollowingImam(
+        prayerSessionPartId: routine!.currentPart!.part.id,
+        completedAtUtc: clock.nowUtc(),
+      );
+      await _pumpUntil(
+        tester,
+        () async => find.text('Isha').evaluate().isNotEmpty,
+      );
+
+      expect(find.text('Isha'), findsOneWidget);
+      expect(find.text('Witr'), findsNothing);
+      await _disposeWidgetTree(tester);
+    },
+  );
 
   testWidgets('Previous prayer is recalculated while the sheet is open', (
     tester,
@@ -1103,17 +1323,17 @@ void main() {
     await _waitForMarkControl(tester, 'surah-a');
 
     expect(_dueCountText(tester), contains('2'));
-    expect(find.widgetWithText(Chip, 'Test Surah A'), findsOneWidget);
-    expect(find.widgetWithText(Chip, 'Test Surah B'), findsOneWidget);
+    expect(_recommendationBadge('surah-a'), findsOneWidget);
+    expect(_recommendationBadge('surah-b'), findsOneWidget);
 
     await _tapMarkAndWait(tester, fixture, 'surah-a', expectedEvents: 1);
     await _pumpUntil(
       tester,
-      () async => find.widgetWithText(Chip, 'Test Surah A').evaluate().isEmpty,
+      () async => _recommendationBadge('surah-a').evaluate().isEmpty,
     );
     expect(_dueCountText(tester), contains('1'));
-    expect(find.widgetWithText(Chip, 'Test Surah A'), findsNothing);
-    expect(find.widgetWithText(Chip, 'Test Surah B'), findsOneWidget);
+    expect(_recommendationBadge('surah-a'), findsNothing);
+    expect(_recommendationBadge('surah-b'), findsOneWidget);
     expect(_markIcon('surah-a', Icons.check), findsOneWidget);
 
     await _tapMarkAndWait(tester, fixture, 'surah-a', expectedEvents: 2);
@@ -1403,6 +1623,11 @@ Finder _markControl(String surahId) =>
 
 Finder _markText(String surahId, String value) =>
     find.descendant(of: _markControl(surahId), matching: find.text(value));
+
+Finder _recommendationBadge(String surahId) => find.descendant(
+  of: find.byKey(ValueKey<String>('active-surah-$surahId')),
+  matching: find.byType(RecommendationRankBadge),
+);
 
 Finder _markIcon(String surahId, IconData icon) =>
     find.descendant(of: _markControl(surahId), matching: find.byIcon(icon));

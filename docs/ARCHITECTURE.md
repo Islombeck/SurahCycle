@@ -238,6 +238,54 @@ current eligible Fard без использованных слотов, не с�
 имеет защищённый Undo. Полный контракт описан в
 [PRAYER_ROUTINES.md](PRAYER_ROUTINES.md).
 
+## Contextual recommendations
+
+`SurahSuggestionService` остаётся единственным источником глобальной
+неотложности (`remaining`): контекст никогда не создаёт отдельный debt на
+каждый намаз. `ContextualSurahSuggestionService` — тонкая обёртка, которая
+вставляет два дополнительных tie-break уровня строго между глобальным
+`remaining` и уже существующим хвостом сравнения (`recommendedPart.lastUsedAtUtc`,
+`displayOrder`, номер суры, id):
+
+1. сура, давно/никогда не читанная именно в этой части намаза
+   (`RecitationRepository.getLastUsedByRoutinePart`, ключ —
+   `PrayerType + isQada + PrayerSessionPart.stableKey`, а не session-specific id,
+   чтобы сравнение работало между разными сессиями одного и того же слота);
+2. сура, давно/никогда не читанная в этом типе намаза вообще
+   (переиспользует существующий `getStats(prayerType:, isQada:)`, без нового запроса).
+
+Сура, уже занявшая слот в текущей part сегодня, исключается из *новой*
+рекомендации для оставшихся слотов той же part (`excludedSurahIds`), но
+остаётся видимой и отмечаемой в общем списке. Без контекста (нет активного
+prayer part) оба новых уровня тривиально совпадают для всех кандидатов, и
+результат побайтово совпадает с global `SurahSuggestionService` — отдельной
+ветки fallback нет, это естественное поведение компаратора.
+
+`ContextualRecommendationInputs` (пустые множества/карты по умолчанию)
+собирается один раз в `contextualRecommendationInputsProvider` и передаётся
+и в Home (`_RotationContent`), и в `RotationWidgetProjectionFactory.build`,
+поэтому ранги и бейджи в Home и в Rotation Widget всегда идентичны. Kotlin не
+дублирует ranking: он лишь отображает уже посчитанный `recommendationRank`.
+
+### Isha → Witr
+
+Когда сегодняшняя Isha routine полностью завершена (все настроенные Fard/Sunnah
+part, включая followed-imam) и у пользователя включён и настроен (`enabled`,
+непустые parts) Witr template, `homePrayerContextResolutionProvider` (Home) и
+`widgetSyncLifecycleProvider` (widget) применяют один и тот же чистый
+`_applyIshaToWitrTransition` поверх уже разрешённого `PrayerContextResolution`.
+
+Это не отдельный провайдер над `prayerContextResolutionProvider` — тот
+специально остаётся неизменным, так как его читают многие существующие тесты
+через минимальный `ProviderContainer`, не знающий о routine/template
+providers. `prayerScheduleContextResolutionProvider` (время/расписание) тоже
+не трогается: он по-прежнему показывает Isha на всё её реальное окно.
+Переход не действует на Qada Isha и не переносится на past registration —
+обе ветки используют собственный явный выбор namaz, а не этот резолвер.
+Функция чистая и пересчитывается на каждый rebuild, поэтому повторное
+открытие экрана не создаёт вторую сессию/переход — `ensureCurrentSession`
+для Witr остаётся тем же идемпотентным вызовом.
+
 ## Время и идентификаторы
 
 - `createdAtUtc` сохраняется как фактический UTC-момент ввода записи;

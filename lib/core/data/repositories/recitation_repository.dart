@@ -644,6 +644,74 @@ final class RecitationRepository {
                 getStats(prayerType: prayerType, isQada: isQada),
           );
 
+  /// Last time each surah was recited within the one exact routine part
+  /// matching [stableKey], scoped to [prayerType]/[isQada] so Qada history
+  /// never blends with ordinary history for the same part.
+  ///
+  /// [stableKey] identifies a routine part slot across every session that
+  /// ever used it (unlike [PrayerSessionPart.id], which is per-session), so
+  /// this reflects "last read specifically as this Fard/Sunnah/etc. part",
+  /// not just "last read for this prayer type".
+  Future<Map<String, DateTime>> getLastUsedByRoutinePart({
+    required PrayerType prayerType,
+    required bool isQada,
+    required String stableKey,
+  }) async {
+    final events =
+        await (database.select(database.recitationEvents)
+              ..where((RecitationEvents row) => row.deletedAtUtc.isNull())
+              ..where(
+                (RecitationEvents row) =>
+                    row.prayerType.equals(prayerType.name),
+              )
+              ..where((RecitationEvents row) => row.isQada.equals(isQada))
+              ..where(
+                (RecitationEvents row) => row.prayerSessionPartId.isNotNull(),
+              ))
+            .get();
+    if (events.isEmpty) return const <String, DateTime>{};
+    final partIds = events
+        .map((RecitationEventRow event) => event.prayerSessionPartId!)
+        .toSet();
+    final parts = await (database.select(
+      database.prayerSessionParts,
+    )..where((PrayerSessionParts row) => row.id.isIn(partIds))).get();
+    final stableKeyByPartId = <String, String>{
+      for (final part in parts) part.id: part.stableKey,
+    };
+    final result = <String, DateTime>{};
+    for (final event in events) {
+      if (stableKeyByPartId[event.prayerSessionPartId] != stableKey) continue;
+      final createdAtUtc = event.createdAtUtc.toUtc();
+      final existing = result[event.surahId];
+      if (existing == null || createdAtUtc.isAfter(existing)) {
+        result[event.surahId] = createdAtUtc;
+      }
+    }
+    return Map<String, DateTime>.unmodifiable(result);
+  }
+
+  Stream<Map<String, DateTime>> watchLastUsedByRoutinePart({
+    required PrayerType prayerType,
+    required bool isQada,
+    required String stableKey,
+  }) => database
+      .customSelect(
+        'SELECT 1',
+        readsFrom: <ResultSetImplementation<Table, Object?>>{
+          database.recitationEvents,
+          database.prayerSessionParts,
+        },
+      )
+      .watch()
+      .asyncMap(
+        (List<QueryRow> _) => getLastUsedByRoutinePart(
+          prayerType: prayerType,
+          isQada: isQada,
+          stableKey: stableKey,
+        ),
+      );
+
   Future<List<RecitationHistoryEntry>> _mapHistory(
     List<RecitationEventRow> rows,
   ) async {

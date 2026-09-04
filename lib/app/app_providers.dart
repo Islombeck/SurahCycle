@@ -559,6 +559,72 @@ final recitationStatsForPrayerProvider =
           .watchStats(prayerType: context.prayerType, isQada: context.isQada);
     });
 
+typedef RoutinePartLastUsedKey = ({
+  PrayerType prayerType,
+  bool isQada,
+  String stableKey,
+});
+
+final recitationLastUsedByRoutinePartProvider =
+    StreamProvider.family<Map<String, DateTime>, RoutinePartLastUsedKey>((
+      ref,
+      key,
+    ) {
+      return ref
+          .watch(recitationRepositoryProvider)
+          .watchLastUsedByRoutinePart(
+            prayerType: key.prayerType,
+            isQada: key.isQada,
+            stableKey: key.stableKey,
+          );
+    });
+
+/// Resolves to [ContextualRecommendationInputs.empty] while any dependency
+/// is still loading or there is no current routine part, which is exactly
+/// the state [ContextualSurahSuggestionService] treats as "no context yet"
+/// and answers with the plain global order.
+final contextualRecommendationInputsProvider =
+    Provider.family<ContextualRecommendationInputs, PrayerRoutineSessionKey>((
+      ref,
+      key,
+    ) {
+      final routine = ref.watch(currentPrayerRoutineProvider(key)).valueOrNull;
+      final currentPart = routine?.currentPart?.part;
+      if (currentPart == null) return ContextualRecommendationInputs.empty;
+
+      final lastUsedInExactPart = ref
+          .watch(
+            recitationLastUsedByRoutinePartProvider((
+              prayerType: key.context.prayerType,
+              isQada: key.context.isQada,
+              stableKey: currentPart.stableKey,
+            )),
+          )
+          .valueOrNull;
+      final prayerTypeStats = ref
+          .watch(recitationStatsForPrayerProvider(key.context))
+          .valueOrNull;
+      final lastUsedInPrayerType = <String, DateTime>{
+        for (final stat
+            in prayerTypeStats?.bySurah ?? const <SurahRecitationStat>[])
+          if (stat.lastUsedAtUtc != null) stat.surah.id: stat.lastUsedAtUtc!,
+      };
+      final history = ref.watch(recitationHistoryProvider).valueOrNull;
+      final alreadyFilled = <String>{
+        for (final entry in history ?? const <RecitationHistoryEntry>[])
+          if (entry.event.localDate == key.localDate &&
+              entry.event.prayerContext == key.context &&
+              entry.event.prayerSessionPartId == currentPart.id)
+            entry.event.surahId,
+      };
+
+      return ContextualRecommendationInputs(
+        alreadyFilledInCurrentPartSurahIds: alreadyFilled,
+        lastUsedInExactPart: lastUsedInExactPart ?? const <String, DateTime>{},
+        lastUsedInPrayerType: lastUsedInPrayerType,
+      );
+    });
+
 final widgetSyncCoordinatorProvider = Provider<WidgetSyncCoordinator>((ref) {
   final coordinator = WidgetSyncCoordinator(
     bridge: const HomeWidgetBridge(),
@@ -622,7 +688,7 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
   }
   final settings = _settledValue(prayerTimeSettings);
   final storedContext = _settledValue(storedPrayer);
-  final widgetPrayerResolution = settings == null
+  final rawWidgetPrayerResolution = settings == null
       ? null
       : settings.contextSelectionMode == PrayerContextSelectionMode.manual
       ? PrayerContextResolution(
@@ -633,6 +699,27 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
         )
       : _settledValue(automaticPrayerResolution);
   final localDate = ref.watch(localDateProvider).today();
+  final rawContext = rawWidgetPrayerResolution?.context;
+  final witrTemplateForTransition = rawContext?.prayerType == PrayerType.isha
+      ? ref.watch(prayerRoutineTemplateProvider(PrayerType.witr)).valueOrNull
+      : null;
+  final ishaRoutineForTransition = rawContext?.prayerType == PrayerType.isha
+      ? ref
+            .watch(
+              currentPrayerRoutineProvider((
+                context: rawContext!,
+                localDate: localDate,
+              )),
+            )
+            .valueOrNull
+      : null;
+  final widgetPrayerResolution = rawWidgetPrayerResolution == null
+      ? null
+      : _applyIshaToWitrTransition(
+          rawWidgetPrayerResolution,
+          ishaRoutine: ishaRoutineForTransition,
+          witrTemplate: witrTemplateForTransition,
+        );
   final widgetPrayerContext = widgetPrayerResolution?.context;
   final routineState = widgetPrayerContext == null
       ? null
@@ -643,6 +730,14 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
           )),
         );
   if (routineState?.isLoading ?? false) return;
+  final contextualInputs = widgetPrayerContext == null
+      ? ContextualRecommendationInputs.empty
+      : ref.watch(
+          contextualRecommendationInputsProvider((
+            context: widgetPrayerContext,
+            localDate: localDate,
+          )),
+        );
   ref
       .watch(widgetSyncDriverProvider)
       .update(
@@ -658,6 +753,7 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
         displayPreferences: displayPreferences,
         translationSelection: translationSelection,
         selectedLearningSurahId: selectedLearningSurahId,
+        contextualInputs: contextualInputs,
       );
 });
 
@@ -731,6 +827,73 @@ final prayerContextResolutionProvider = StreamProvider<PrayerContextResolution>(
     );
   },
 );
+
+/// Applies the Isha-to-Witr auto-transition on top of whatever
+/// override/manual/automatic resolution [base] already is.
+///
+/// This deliberately never touches [prayerScheduleContextResolutionProvider]
+/// or [PrayerContextResolver]/[PrayerDaySchedule.resolveAutomaticContext]:
+/// prayer-time presentation keeps showing Isha for its whole real window.
+/// Only which prayer recitations/routine actions attribute to changes, and
+/// only after today's Isha routine is actually complete and the user has
+/// configured Witr — never for Qada Isha, never by inventing a Witr time or
+/// event. It is a pure function of already-resolved data (not a mutation),
+/// which is what keeps re-opening the screen from repeating any transition.
+PrayerContextResolution _applyIshaToWitrTransition(
+  PrayerContextResolution base, {
+  required PrayerRoutineSessionSnapshot? ishaRoutine,
+  required PrayerRoutineTemplate? witrTemplate,
+}) {
+  final context = base.context;
+  if (context == null ||
+      context.prayerType != PrayerType.isha ||
+      context.isQada) {
+    return base;
+  }
+  final offersWitrTransition =
+      (ishaRoutine?.isCompleted ?? false) &&
+      witrTemplate != null &&
+      witrTemplate.enabled &&
+      witrTemplate.parts.isNotEmpty;
+  if (!offersWitrTransition) return base;
+  return PrayerContextResolution(
+    status: base.status,
+    context: PrayerContext(prayerType: PrayerType.witr),
+  );
+}
+
+/// Home's live recitation-attribution context: [prayerContextResolutionProvider]
+/// with [_applyIshaToWitrTransition] layered on top. Kept as a separate
+/// provider (rather than folded into [prayerContextResolutionProvider]
+/// itself) so the base resolver's own extensive tests, several of which
+/// construct a bare [ProviderContainer] with a minimal override set, are not
+/// forced to also account for routine/template providers they have no
+/// reason to know about.
+final homePrayerContextResolutionProvider =
+    Provider<AsyncValue<PrayerContextResolution>>((ref) {
+      final base = ref.watch(prayerContextResolutionProvider);
+      final resolution = base.valueOrNull;
+      if (resolution?.context?.prayerType != PrayerType.isha) return base;
+      final localDate = ref.watch(localDateProvider).today();
+      final ishaRoutine = ref
+          .watch(
+            currentPrayerRoutineProvider((
+              context: PrayerContext(prayerType: PrayerType.isha),
+              localDate: localDate,
+            )),
+          )
+          .valueOrNull;
+      final witrTemplate = ref
+          .watch(prayerRoutineTemplateProvider(PrayerType.witr))
+          .valueOrNull;
+      return AsyncData<PrayerContextResolution>(
+        _applyIshaToWitrTransition(
+          resolution!,
+          ishaRoutine: ishaRoutine,
+          witrTemplate: witrTemplate,
+        ),
+      );
+    });
 
 /// Schedule-derived context used for current/next timing presentation even
 /// while the user keeps recitation attribution in manual mode.
@@ -1277,6 +1440,8 @@ final class _AppWidgetSyncDriver {
     required QuranDisplayPreferences displayPreferences,
     required QuranTranslationSelection? translationSelection,
     required String? selectedLearningSurahId,
+    ContextualRecommendationInputs contextualInputs =
+        ContextualRecommendationInputs.empty,
   }) {
     final revision = ++_revision;
     unawaited(
@@ -1293,6 +1458,7 @@ final class _AppWidgetSyncDriver {
             displayPreferences: displayPreferences,
             translationSelection: translationSelection,
             selectedLearningSurahId: selectedLearningSurahId,
+            contextualInputs: contextualInputs,
           )
           .then((snapshot) async {
             if (revision != _revision || coordinator.isDisposed) return;
@@ -1320,6 +1486,8 @@ final class _AppWidgetSyncDriver {
     required QuranDisplayPreferences displayPreferences,
     required QuranTranslationSelection? translationSelection,
     required String? selectedLearningSurahId,
+    ContextualRecommendationInputs contextualInputs =
+        ContextualRecommendationInputs.empty,
   }) async {
     final localeCode = const <String>{'ru', 'en', 'uz'}.contains(languageCode)
         ? languageCode
@@ -1363,6 +1531,7 @@ final class _AppWidgetSyncDriver {
               prayerRoutineReliable,
           markedPartIds: markedPartIds,
           prayerPart: prayerPart,
+          contextualInputs: contextualInputs,
         );
 
     final activeLearning = learning

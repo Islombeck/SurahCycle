@@ -35,19 +35,20 @@ void main() {
     });
   }
 
-  testWidgets('recommendation chips wrap without overflow on a narrow screen', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(280, 900);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'recommendation badges wrap without overflow on a narrow screen',
+    (tester) async {
+      tester.view.physicalSize = const Size(280, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const _BadgeHarness(textScale: 1.5));
+      await tester.pumpWidget(const _BadgeHarness(textScale: 1.5));
 
-    expect(find.byType(RecommendationChip), findsNWidgets(8));
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.byType(RecommendationRankBadge), findsNWidgets(8));
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 final class _BadgeHarness extends StatelessWidget {
@@ -79,9 +80,19 @@ final class _BadgeHarness extends StatelessWidget {
                   runSpacing: 8,
                   children: <Widget>[
                     for (var rank = 1; rank <= 8; rank += 1)
-                      RecommendationChip(
-                        rank: rank,
-                        label: 'A distinct surah title $rank',
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          RecommendationRankBadge(rank: rank),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'A distinct surah title $rank',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                   ],
                 ),

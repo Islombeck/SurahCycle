@@ -30,9 +30,6 @@ class AppLocalizationsUz extends AppLocalizations {
   String get historyTitle => 'Tarix';
 
   @override
-  String get recommendedTitle => 'Tavsiya';
-
-  @override
   String recommendationRank(int rank) {
     return 'Tavsiya $rank';
   }
@@ -98,6 +95,9 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get doneForCycle => 'Bajarildi';
+
+  @override
+  String get recitedInCurrentPart => 'Ushbu qismda o\'qildi';
 
   @override
   String recitationsRemaining(int count) {

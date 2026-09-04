@@ -58,32 +58,3 @@ final class RecommendationRankBadge extends StatelessWidget {
     );
   }
 }
-
-/// Keeps the recommendation priority visually separate from a surah number.
-final class RecommendationChip extends StatelessWidget {
-  const RecommendationChip({
-    required this.rank,
-    required this.label,
-    super.key,
-  });
-
-  final int rank;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      key: ValueKey<String>('recommendation-chip-$rank'),
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          RecommendationRankBadge(rank: rank),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
-          ),
-        ],
-      ),
-    );
-  }
-}

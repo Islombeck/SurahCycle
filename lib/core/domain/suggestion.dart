@@ -63,6 +63,8 @@ final class SurahSuggestionService {
   List<SurahSuggestion> suggest(
     RotationSnapshot snapshot, {
     int limit = maxRecommendationCount,
+    Set<String> excludedSurahIds = const <String>{},
+    int Function(MasteredSurah left, MasteredSurah right)? contextualTiebreak,
   }) {
     if (limit < 0) {
       throw ArgumentError.value(limit, 'limit', 'Must not be negative.');
@@ -71,6 +73,7 @@ final class SurahSuggestionService {
 
     final candidates = snapshot.activeSurahs
         .map((MasteredSurah surah) {
+          if (excludedSurahIds.contains(surah.id)) return null;
           final remaining = snapshot.rotationTarget - surah.rotationScore;
           if (remaining <= 0) return null;
           final parts = surah.rotationScheme.parts.where(
@@ -86,7 +89,7 @@ final class SurahSuggestionService {
         })
         .whereType<_SuggestionCandidate>()
         .toList();
-    candidates.sort(_compare);
+    candidates.sort((left, right) => _compare(left, right, contextualTiebreak));
 
     final effectiveLimit = limit < maxRecommendationCount
         ? limit
@@ -103,9 +106,18 @@ final class SurahSuggestionService {
     ]);
   }
 
-  int _compare(_SuggestionCandidate left, _SuggestionCandidate right) {
+  int _compare(
+    _SuggestionCandidate left,
+    _SuggestionCandidate right,
+    int Function(MasteredSurah left, MasteredSurah right)? contextualTiebreak,
+  ) {
     final remainingComparison = right.remaining.compareTo(left.remaining);
     if (remainingComparison != 0) return remainingComparison;
+
+    if (contextualTiebreak != null) {
+      final contextualComparison = contextualTiebreak(left.surah, right.surah);
+      if (contextualComparison != 0) return contextualComparison;
+    }
 
     final usedComparison = compareNullableLastUsed(
       left.recommendedPart?.lastUsedAtUtc,
