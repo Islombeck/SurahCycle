@@ -19,6 +19,7 @@
   "prayerContextTitle": "Prayer context",
   "fajr": "Fajr",
   "dhuhr": "Dhuhr",
+  "jumuah": "Jumuah",
   "asr": "Asr",
   "maghrib": "Maghrib",
   "isha": "Isha",
@@ -162,6 +163,7 @@
   ,"prayerContextMode": "Marking context"
   ,"prayerModeManual": "Manual mode"
   ,"prayerModeAutomatic": "Automatic"
+  ,"useJumuahForNextRecitation": "Use Jumuah for next recitation"
   ,"automaticPrayerSafetyNotice": "Automatic selection works only with a fresh reliable schedule. From sunrise until Dhuhr, marking requires a manual choice."
   ,"allowCalculatedFallback": "Allow local calculation"
   ,"calculatedFallbackNotice": "This is a separate calculated source, not an official OMI timetable. Defaults: Karachi and Hanafi Asr."
@@ -248,4 +250,38 @@
   ,"registrationChooseDatePrayer": "Choose date and prayer"
   ,"registrationOccurrenceDate": "Recitation date: {date}"
   ,"@registrationOccurrenceDate": {"placeholders": {"date": {"type": "String"}}}
+  ,"prayerRoutines": "Prayer routines"
+  ,"prayerRoutineDescription": "Set the ordered prayer parts, rakaat count, and required surah slots."
+  ,"routineEnabled": "Use this routine"
+  ,"routineEmpty": "No parts yet. Add the parts you want to track."
+  ,"routinePartSummary": "{rakaatCount} rakaats · {slotCount} surah slots"
+  ,"@routinePartSummary": {"placeholders": {"rakaatCount": {"type": "int"}, "slotCount": {"type": "int"}}}
+  ,"addPrayerPart": "Add prayer part"
+  ,"editPrayerPart": "Edit prayer part"
+  ,"deletePrayerPartTitle": "Delete prayer part?"
+  ,"deletePrayerPartBody": "Delete “{label}”? Existing prayer sessions will not change."
+  ,"@deletePrayerPartBody": {"placeholders": {"label": {"type": "String"}}}
+  ,"partKind": "Part type"
+  ,"customPartLabel": "Custom label"
+  ,"customPartLabelRequired": "Enter a label."
+  ,"rakaatCountLabel": "Rakaat count"
+  ,"positiveNumberRequired": "Enter a positive number."
+  ,"surahSlotsLabel": "Required surah slots"
+  ,"nonNegativeNumberRequired": "Enter zero or a positive number."
+  ,"allowsFollowingImam": "Can be completed by following the imam"
+  ,"partKindFard": "Fard"
+  ,"partKindSunnah": "Sunnah"
+  ,"partKindWitr": "Witr"
+  ,"partKindNafl": "Nafl"
+  ,"partKindCustom": "Custom"
+  ,"prayerRoutineCurrentPart": "{prayer} · {part}"
+  ,"@prayerRoutineCurrentPart": {"placeholders": {"prayer": {"type": "String"}, "part": {"type": "String"}}}
+  ,"prayerRoutineSlotProgress": "Surah slots: {done}/{total}"
+  ,"@prayerRoutineSlotProgress": {"placeholders": {"done": {"type": "int"}, "total": {"type": "int"}}}
+  ,"prayerRoutineComplete": "Prayer routine complete"
+  ,"prayerRoutineNoAvailableSlot": "The current prayer part has no available surah slot."
+  ,"followedImamAction": "Followed the imam"
+  ,"followedImamConfirmTitle": "Complete with the imam?"
+  ,"followedImamConfirmBody": "This part will be completed without a recitation event or rotation credit."
+  ,"followedImamCompleted": "Completed by following the imam"
 }

@@ -19,6 +19,7 @@
   "prayerContextTitle": "Namoz konteksti",
   "fajr": "Bomdod",
   "dhuhr": "Peshin",
+  "jumuah": "Juma",
   "asr": "Asr",
   "maghrib": "Shom",
   "isha": "Xufton",
@@ -162,6 +163,7 @@
   ,"prayerContextMode": "Belgilash konteksti"
   ,"prayerModeManual": "Qo‘lda"
   ,"prayerModeAutomatic": "Avtomatik"
+  ,"useJumuahForNextRecitation": "Keyingi tilovatni Juma sifatida belgilash"
   ,"automaticPrayerSafetyNotice": "Avtomatik tanlov faqat yangi va ishonchli jadval bilan ishlaydi. Quyosh chiqqandan Peshingacha qo‘lda tanlash kerak."
   ,"allowCalculatedFallback": "Mahalliy hisoblashga ruxsat berish"
   ,"calculatedFallbackNotice": "Bu OMI rasmiy jadvali emas, alohida hisoblangan manba. Standart: Karachi va Hanafi Asr."
@@ -248,4 +250,38 @@
   ,"registrationChooseDatePrayer": "Sana va namozni tanlash"
   ,"registrationOccurrenceDate": "Qiroat sanasi: {date}"
   ,"@registrationOccurrenceDate": {"placeholders": {"date": {"type": "String"}}}
+  ,"prayerRoutines": "Namoz tartiblari"
+  ,"prayerRoutineDescription": "Namoz qismlari tartibini, rakatlar va zarur sura slotlari sonini sozlang."
+  ,"routineEnabled": "Bu tartibdan foydalanish"
+  ,"routineEmpty": "Hali qismlar yo‘q. Kuzatmoqchi bo‘lgan qismlarni qo‘shing."
+  ,"routinePartSummary": "{rakaatCount} rakat · {slotCount} ta sura sloti"
+  ,"@routinePartSummary": {"placeholders": {"rakaatCount": {"type": "int"}, "slotCount": {"type": "int"}}}
+  ,"addPrayerPart": "Namoz qismini qo‘shish"
+  ,"editPrayerPart": "Namoz qismini tahrirlash"
+  ,"deletePrayerPartTitle": "Namoz qismi o‘chirilsinmi?"
+  ,"deletePrayerPartBody": "“{label}” o‘chirilsinmi? Avval yaratilgan namoz seanslari o‘zgarmaydi."
+  ,"@deletePrayerPartBody": {"placeholders": {"label": {"type": "String"}}}
+  ,"partKind": "Qism turi"
+  ,"customPartLabel": "Maxsus nom"
+  ,"customPartLabelRequired": "Nom kiriting."
+  ,"rakaatCountLabel": "Rakatlar soni"
+  ,"positiveNumberRequired": "Musbat son kiriting."
+  ,"surahSlotsLabel": "Zarur sura slotlari"
+  ,"nonNegativeNumberRequired": "Nol yoki musbat son kiriting."
+  ,"allowsFollowingImam": "Imomga ergashib yakunlash mumkin"
+  ,"partKindFard": "Farz"
+  ,"partKindSunnah": "Sunnat"
+  ,"partKindWitr": "Vitr"
+  ,"partKindNafl": "Nafl"
+  ,"partKindCustom": "Boshqa"
+  ,"prayerRoutineCurrentPart": "{prayer} · {part}"
+  ,"@prayerRoutineCurrentPart": {"placeholders": {"prayer": {"type": "String"}, "part": {"type": "String"}}}
+  ,"prayerRoutineSlotProgress": "Sura slotlari: {done}/{total}"
+  ,"@prayerRoutineSlotProgress": {"placeholders": {"done": {"type": "int"}, "total": {"type": "int"}}}
+  ,"prayerRoutineComplete": "Namoz tartibi yakunlandi"
+  ,"prayerRoutineNoAvailableSlot": "Namozning joriy qismida sura uchun bo‘sh slot yo‘q."
+  ,"followedImamAction": "Imomga ergashdim"
+  ,"followedImamConfirmTitle": "Imom bilan yakunlansinmi?"
+  ,"followedImamConfirmBody": "Bu qism qiroat hodisasi va aylanish hisobisiz yakunlanadi."
+  ,"followedImamCompleted": "Imomga ergashib yakunlandi"
 }

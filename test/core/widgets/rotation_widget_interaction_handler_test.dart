@@ -175,6 +175,101 @@ void main() {
   );
 
   test(
+    'exact widget slots advance parts and refresh checked state per part',
+    () async {
+      final routines = PrayerRoutineRepository(database);
+      final template = await routines.getTemplate(PrayerType.asr);
+      await routines.replaceTemplate(
+        prayerType: PrayerType.asr,
+        expectedRevision: template.revision,
+        displayName: template.displayName,
+        enabled: true,
+        parts: <PrayerRoutinePartTemplate>[
+          PrayerRoutinePartTemplate(
+            id: 'asr-fard',
+            stableKey: 'fard',
+            orderIndex: 0,
+            kind: PrayerRoutinePartKind.fard,
+            rakaatCount: 4,
+            requiredSurahSlots: 1,
+          ),
+          PrayerRoutinePartTemplate(
+            id: 'asr-sunnah',
+            stableKey: 'sunnah-after',
+            orderIndex: 1,
+            kind: PrayerRoutinePartKind.sunnah,
+            rakaatCount: 2,
+            requiredSurahSlots: 1,
+          ),
+        ],
+      );
+      final routine = await routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.asr),
+        localDate: LocalDate(2026, 8, 26),
+        startedAtUtc: DateTime.utc(2026, 8, 26, 9),
+      );
+      final firstPart = routine!.parts.first.part;
+      final initialAction = WidgetRecitationAction(
+        actionToken: _token(1),
+        surahId: scheme.surahId,
+        rotationSchemeId: scheme.id,
+        prayerSessionId: routine.session.id,
+        prayerSessionPartId: firstPart.id,
+        slotIndex: 0,
+      );
+      final bridge = _MemoryWidgetBridge(
+        initialJson: const WidgetSnapshotCodec().encode(
+          _snapshot(initialAction, locale: 'en'),
+        ),
+      );
+      var nextToken = 2;
+      final handler = _handler(
+        surahs: surahs,
+        recitations: recitations,
+        bridge: bridge,
+        nextToken: () => _token(nextToken++),
+        prayerPartLoader: (context, localDate, localization) async {
+          final current = await routines.ensureCurrentSession(
+            context: context,
+            localDate: localDate,
+            startedAtUtc: DateTime.utc(2026, 8, 26, 10),
+          );
+          return localization.prayerRoutineProjection(context, current);
+        },
+      );
+
+      final first = await handler.handle(initialAction.uri);
+
+      expect(first.status, RotationWidgetInteractionStatus.registered);
+      var history = await recitations.getHistory();
+      expect(history, hasLength(1));
+      expect(history.single.event.prayerSessionPartId, firstPart.id);
+      expect(history.single.event.slotIndex, 0);
+      final advanced = _decode(bridge.savedJson.last);
+      expect(advanced.rotation.currentPartLabel, 'Asr · Sunnah');
+      expect(advanced.rotation.slotProgressLabel, 'Surah slots: 0/1');
+      final nextItem = advanced.rotation.items.single;
+      expect(nextItem.isMarkedInCurrentPart, isFalse);
+      expect(nextItem.canMark, isTrue);
+      expect(nextItem.action!.prayerSessionId, routine.session.id);
+      expect(nextItem.action!.prayerSessionPartId, routine.parts.last.part.id);
+      expect(nextItem.action!.slotIndex, 0);
+
+      final second = await handler.handle(nextItem.action!.uri);
+
+      expect(second.status, RotationWidgetInteractionStatus.registered);
+      history = await recitations.getHistory();
+      expect(history, hasLength(2));
+      final completed = _decode(bridge.savedJson.last);
+      expect(completed.rotation.currentPartLabel, 'Prayer routine complete');
+      expect(completed.rotation.slotProgressLabel, 'Surah slots: 1/1');
+      expect(completed.rotation.items.single.isMarkedInCurrentPart, isTrue);
+      expect(completed.rotation.items.single.canMark, isFalse);
+      expect(completed.rotation.items.single.action, isNull);
+    },
+  );
+
+  test(
     'background bootstrap opens only local dependencies and closes DB',
     () async {
       await PrayerRepository(database).saveSelectedContext(
@@ -221,6 +316,7 @@ RotationWidgetInteractionHandler _handler({
   required RecitationRepository recitations,
   required _MemoryWidgetBridge bridge,
   required String Function() nextToken,
+  RotationWidgetPrayerPartLoader? prayerPartLoader,
 }) {
   final resolver = _FixedPrayerResolver(
     PrayerContext(prayerType: PrayerType.asr),
@@ -242,6 +338,7 @@ RotationWidgetInteractionHandler _handler({
       createActionToken: nextToken,
       localDates: const _FixedLocalDateProvider(),
       bridge: bridge,
+      prayerPartLoader: prayerPartLoader,
     ),
   );
 }
@@ -269,9 +366,12 @@ WidgetRecitationAction _action(String token, SurahRotationScheme scheme) =>
       rotationSchemeId: scheme.id,
     );
 
-WidgetSnapshot _snapshot(WidgetRecitationAction action) => WidgetSnapshot(
+WidgetSnapshot _snapshot(
+  WidgetRecitationAction action, {
+  String locale = 'ru',
+}) => WidgetSnapshot(
   generatedAtUtc: DateTime.utc(2026, 8, 26, 9),
-  locale: 'ru',
+  locale: locale,
   rotation: RotationWidgetProjection(
     contextLabel: 'Аср · Ротация',
     items: <RotationWidgetItem>[

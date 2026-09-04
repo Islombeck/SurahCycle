@@ -288,6 +288,222 @@ void main() {
 
     expect(registration.event.localDate, LocalDate(2026, 8, 26));
   });
+
+  test('Jumuah history and statistics remain separate from Dhuhr', () async {
+    var nextId = 280;
+    final service = RecitationApplicationService(
+      surahs: surahs,
+      recitations: recitations,
+      prayerContextResolver: _FixedPrayerContextResolver(
+        PrayerContext(prayerType: PrayerType.dhuhr),
+      ),
+      timeProvider: const _FixedTimeProvider(),
+      localDates: const _FixedLocalDateProvider(),
+      createEventId: () => _token(nextId++),
+    );
+
+    await service.registerFromApp(
+      surahId: 'test-a',
+      prayerContext: PrayerContext(prayerType: PrayerType.dhuhr),
+    );
+    await service.registerFromApp(
+      surahId: 'test-b',
+      prayerContext: PrayerContext(prayerType: PrayerType.jumuah),
+    );
+
+    final dhuhrHistory = await recitations.getHistory(
+      prayerType: PrayerType.dhuhr,
+    );
+    final jumuahHistory = await recitations.getHistory(
+      prayerType: PrayerType.jumuah,
+    );
+    expect(dhuhrHistory.single.event.prayerType, PrayerType.dhuhr);
+    expect(jumuahHistory.single.event.prayerType, PrayerType.jumuah);
+    final stats = await recitations.getStats();
+    expect(
+      stats.byPrayer
+          .singleWhere((item) => item.context.prayerType == PrayerType.dhuhr)
+          .count,
+      1,
+    );
+    expect(
+      stats.byPrayer
+          .singleWhere((item) => item.context.prayerType == PrayerType.jumuah)
+          .count,
+      1,
+    );
+  });
+
+  test(
+    'session slots are exact, complete their part, and reopen on Undo',
+    () async {
+      const sessionId = 'session-isha';
+      const sessionPartId = 'session-isha:fard';
+      const nextSessionPartId = 'session-isha:sunnah';
+      final prayers = PrayerRepository(database);
+      await prayers.saveSession(
+        PrayerSession(
+          id: sessionId,
+          context: PrayerContext(prayerType: PrayerType.isha),
+          startedAtUtc: DateTime.utc(2026, 8, 26, 10),
+        ),
+        localDate: LocalDate(2026, 8, 26),
+      );
+      await database
+          .into(database.prayerSessionParts)
+          .insert(
+            PrayerSessionPartsCompanion.insert(
+              id: sessionPartId,
+              prayerSessionId: sessionId,
+              stableKey: 'fard',
+              orderIndex: 0,
+              label: 'Fard',
+              kind: PrayerRoutinePartKind.fard.name,
+              rakaatCount: 4,
+              requiredSurahSlots: 2,
+              allowsFollowingImam: true,
+            ),
+          );
+      await database
+          .into(database.prayerSessionParts)
+          .insert(
+            PrayerSessionPartsCompanion.insert(
+              id: nextSessionPartId,
+              prayerSessionId: sessionId,
+              stableKey: 'sunnah-after',
+              orderIndex: 1,
+              label: 'Sunnah',
+              kind: PrayerRoutinePartKind.sunnah.name,
+              rakaatCount: 2,
+              requiredSurahSlots: 1,
+              allowsFollowingImam: false,
+            ),
+          );
+
+      var nextId = 300;
+      final service = RecitationApplicationService(
+        surahs: surahs,
+        recitations: recitations,
+        prayerContextResolver: _FixedPrayerContextResolver(
+          PrayerContext(prayerType: PrayerType.isha),
+        ),
+        timeProvider: const _FixedTimeProvider(),
+        localDates: const _FixedLocalDateProvider(),
+        createEventId: () => _token(nextId++),
+      );
+
+      final scheme = (await surahs.getRotationSnapshot())
+          .surahById('test-a')
+          .rotationScheme;
+      final slotlessWidgetResult = await service.registerFromWidget(
+        WidgetRecitationAction(
+          actionToken: _token(299),
+          surahId: 'test-a',
+          rotationSchemeId: scheme.id,
+        ),
+      );
+      expect(
+        slotlessWidgetResult,
+        isA<WidgetRecitationRejected>().having(
+          (result) => result.reason,
+          'reason',
+          WidgetRecitationRejection.stalePrayerSessionSlot,
+        ),
+      );
+      await expectLater(
+        service.registerFromApp(
+          surahId: 'test-a',
+          prayerContext: PrayerContext(prayerType: PrayerType.isha),
+          prayerSessionId: sessionId,
+          prayerSessionPartId: sessionPartId,
+          slotIndex: 1,
+        ),
+        throwsA(
+          isA<PrayerSessionSlotUnavailableException>().having(
+            (error) => error.reason,
+            'reason',
+            PrayerSessionSlotUnavailableReason.slotNotNext,
+          ),
+        ),
+      );
+      await expectLater(
+        service.registerFromApp(
+          surahId: 'test-a',
+          prayerContext: PrayerContext(prayerType: PrayerType.isha),
+          prayerSessionId: sessionId,
+          prayerSessionPartId: nextSessionPartId,
+          slotIndex: 0,
+        ),
+        throwsA(
+          isA<PrayerSessionSlotUnavailableException>().having(
+            (error) => error.reason,
+            'reason',
+            PrayerSessionSlotUnavailableReason.nonCurrentPart,
+          ),
+        ),
+      );
+      expect(await recitations.getHistory(), isEmpty);
+
+      final first = await service.registerFromApp(
+        surahId: 'test-a',
+        prayerContext: PrayerContext(prayerType: PrayerType.isha),
+        prayerSessionId: sessionId,
+        prayerSessionPartId: sessionPartId,
+        slotIndex: 0,
+      );
+      expect(first.event.prayerSessionId, sessionId);
+      expect(first.event.prayerSessionPartId, sessionPartId);
+      expect(first.event.slotIndex, 0);
+      expect(
+        (await (database.select(database.prayerSessionParts)..where(
+                  (PrayerSessionParts row) => row.id.equals(sessionPartId),
+                ))
+                .getSingle())
+            .completedAtUtc,
+        isNull,
+      );
+
+      await expectLater(
+        service.registerFromApp(
+          surahId: 'test-b',
+          prayerContext: PrayerContext(prayerType: PrayerType.isha),
+          prayerSessionId: sessionId,
+          prayerSessionPartId: sessionPartId,
+          slotIndex: 0,
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      final second = await service.registerFromApp(
+        surahId: 'test-b',
+        prayerContext: PrayerContext(prayerType: PrayerType.isha),
+        prayerSessionId: sessionId,
+        prayerSessionPartId: sessionPartId,
+        slotIndex: 1,
+      );
+      final completed =
+          await (database.select(database.prayerSessionParts)..where(
+                (PrayerSessionParts row) => row.id.equals(sessionPartId),
+              ))
+              .getSingle();
+      expect(
+        completed.completionMode,
+        PrayerPartCompletionMode.recitations.name,
+      );
+      expect(completed.completedAtUtc?.toUtc(), DateTime.utc(2026, 8, 26, 10));
+      expect((await recitations.getStats()).actionCount, 2);
+
+      final undo = await recitations.undo(second.undoToken);
+      expect(undo.didUndo, isTrue);
+      final reopened =
+          await (database.select(database.prayerSessionParts)..where(
+                (PrayerSessionParts row) => row.id.equals(sessionPartId),
+              ))
+              .getSingle();
+      expect(reopened.completedAtUtc, isNull);
+      expect(await recitations.getHistory(), hasLength(1));
+    },
+  );
 }
 
 RecitationApplicationService _service(

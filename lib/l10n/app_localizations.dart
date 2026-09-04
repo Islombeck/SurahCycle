@@ -208,6 +208,12 @@ abstract class AppLocalizations {
   /// **'Зухр'**
   String get dhuhr;
 
+  /// No description provided for @jumuah.
+  ///
+  /// In ru, this message translates to:
+  /// **'Жума'**
+  String get jumuah;
+
   /// No description provided for @asr.
   ///
   /// In ru, this message translates to:
@@ -1042,6 +1048,12 @@ abstract class AppLocalizations {
   /// **'Автоматически'**
   String get prayerModeAutomatic;
 
+  /// No description provided for @useJumuahForNextRecitation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отметить следующее чтение как Жума'**
+  String get useJumuahForNextRecitation;
+
   /// No description provided for @automaticPrayerSafetyNotice.
   ///
   /// In ru, this message translates to:
@@ -1473,6 +1485,186 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Дата прочтения: {date}'**
   String registrationOccurrenceDate(String date);
+
+  /// No description provided for @prayerRoutines.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порядок частей намаза'**
+  String get prayerRoutines;
+
+  /// No description provided for @prayerRoutineDescription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройте части намаза по порядку: число ракаатов и обязательных слотов для сур.'**
+  String get prayerRoutineDescription;
+
+  /// No description provided for @routineEnabled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Использовать этот порядок'**
+  String get routineEnabled;
+
+  /// No description provided for @routineEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Частей пока нет. Добавьте то, что хотите отслеживать.'**
+  String get routineEmpty;
+
+  /// No description provided for @routinePartSummary.
+  ///
+  /// In ru, this message translates to:
+  /// **'{rakaatCount} рак. · слотов для сур: {slotCount}'**
+  String routinePartSummary(int rakaatCount, int slotCount);
+
+  /// No description provided for @addPrayerPart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить часть намаза'**
+  String get addPrayerPart;
+
+  /// No description provided for @editPrayerPart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Изменить часть намаза'**
+  String get editPrayerPart;
+
+  /// No description provided for @deletePrayerPartTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить часть намаза?'**
+  String get deletePrayerPartTitle;
+
+  /// No description provided for @deletePrayerPartBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить «{label}»? Уже созданные сессии намаза не изменятся.'**
+  String deletePrayerPartBody(String label);
+
+  /// No description provided for @partKind.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тип части'**
+  String get partKind;
+
+  /// No description provided for @customPartLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Своё название'**
+  String get customPartLabel;
+
+  /// No description provided for @customPartLabelRequired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Введите название.'**
+  String get customPartLabelRequired;
+
+  /// No description provided for @rakaatCountLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Число ракаатов'**
+  String get rakaatCountLabel;
+
+  /// No description provided for @positiveNumberRequired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Введите положительное число.'**
+  String get positiveNumberRequired;
+
+  /// No description provided for @surahSlotsLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обязательные слоты для сур'**
+  String get surahSlotsLabel;
+
+  /// No description provided for @nonNegativeNumberRequired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Введите ноль или положительное число.'**
+  String get nonNegativeNumberRequired;
+
+  /// No description provided for @allowsFollowingImam.
+  ///
+  /// In ru, this message translates to:
+  /// **'Можно завершить, следуя за имамом'**
+  String get allowsFollowingImam;
+
+  /// No description provided for @partKindFard.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фард'**
+  String get partKindFard;
+
+  /// No description provided for @partKindSunnah.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сунна'**
+  String get partKindSunnah;
+
+  /// No description provided for @partKindWitr.
+  ///
+  /// In ru, this message translates to:
+  /// **'Витр'**
+  String get partKindWitr;
+
+  /// No description provided for @partKindNafl.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нафль'**
+  String get partKindNafl;
+
+  /// No description provided for @partKindCustom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Другое'**
+  String get partKindCustom;
+
+  /// No description provided for @prayerRoutineCurrentPart.
+  ///
+  /// In ru, this message translates to:
+  /// **'{prayer} · {part}'**
+  String prayerRoutineCurrentPart(String prayer, String part);
+
+  /// No description provided for @prayerRoutineSlotProgress.
+  ///
+  /// In ru, this message translates to:
+  /// **'Слоты для сур: {done}/{total}'**
+  String prayerRoutineSlotProgress(int done, int total);
+
+  /// No description provided for @prayerRoutineComplete.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порядок намаза завершён'**
+  String get prayerRoutineComplete;
+
+  /// No description provided for @prayerRoutineNoAvailableSlot.
+  ///
+  /// In ru, this message translates to:
+  /// **'В текущей части намаза нет доступного слота для суры.'**
+  String get prayerRoutineNoAvailableSlot;
+
+  /// No description provided for @followedImamAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Следовал за имамом'**
+  String get followedImamAction;
+
+  /// No description provided for @followedImamConfirmTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Завершить с имамом?'**
+  String get followedImamConfirmTitle;
+
+  /// No description provided for @followedImamConfirmBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эта часть будет завершена без события прочтения и без зачёта в ротации.'**
+  String get followedImamConfirmBody;
+
+  /// No description provided for @followedImamCompleted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Завершено вслед за имамом'**
+  String get followedImamCompleted;
 }
 
 class _AppLocalizationsDelegate

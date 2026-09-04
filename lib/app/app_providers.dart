@@ -342,6 +342,31 @@ final prayerRepositoryProvider = Provider<PrayerRepository>(
   (ref) => PrayerRepository(ref.watch(appDatabaseProvider)),
 );
 
+final prayerRoutineRepositoryProvider = Provider<PrayerRoutineRepository>(
+  (ref) => PrayerRoutineRepository(ref.watch(appDatabaseProvider)),
+);
+
+final prayerRoutineTemplateProvider =
+    StreamProvider.family<PrayerRoutineTemplate, PrayerType>((ref, type) {
+      return ref.watch(prayerRoutineRepositoryProvider).watchTemplate(type);
+    });
+
+typedef PrayerRoutineSessionKey = ({
+  PrayerContext context,
+  LocalDate localDate,
+});
+
+final currentPrayerRoutineProvider = StreamProvider.autoDispose
+    .family<PrayerRoutineSessionSnapshot?, PrayerRoutineSessionKey>((ref, key) {
+      return ref
+          .watch(prayerRoutineRepositoryProvider)
+          .watchCurrentSession(
+            context: key.context,
+            localDate: key.localDate,
+            startedAtUtc: ref.watch(timeProviderProvider).nowUtc,
+          );
+    });
+
 final prayerContextResolverProvider = Provider<RecitationPrayerContextResolver>(
   (ref) => StoredManualRecitationPrayerContextResolver(
     ref.watch(prayerRepositoryProvider),
@@ -607,6 +632,17 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
           context: storedContext,
         )
       : _settledValue(automaticPrayerResolution);
+  final localDate = ref.watch(localDateProvider).today();
+  final widgetPrayerContext = widgetPrayerResolution?.context;
+  final routineState = widgetPrayerContext == null
+      ? null
+      : ref.watch(
+          currentPrayerRoutineProvider((
+            context: widgetPrayerContext,
+            localDate: localDate,
+          )),
+        );
+  if (routineState?.isLoading ?? false) return;
   ref
       .watch(widgetSyncDriverProvider)
       .update(
@@ -615,8 +651,10 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
         learning: learning,
         catalog: catalog,
         history: history,
-        localDate: ref.watch(localDateProvider).today(),
+        localDate: localDate,
         prayerResolution: widgetPrayerResolution,
+        prayerRoutine: routineState?.valueOrNull,
+        prayerRoutineReliable: !(routineState?.hasError ?? false),
         displayPreferences: displayPreferences,
         translationSelection: translationSelection,
         selectedLearningSurahId: selectedLearningSurahId,
@@ -1034,6 +1072,9 @@ final class AppActions {
   Future<RecitationRegistration> registerRecitation({
     required String surahId,
     required PrayerContext prayerContext,
+    String? prayerSessionId,
+    String? prayerSessionPartId,
+    int? slotIndex,
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
     LocalDate? occurrenceLocalDate,
@@ -1041,6 +1082,9 @@ final class AppActions {
     return recitationService.registerFromApp(
       surahId: surahId,
       prayerContext: prayerContext,
+      prayerSessionId: prayerSessionId,
+      prayerSessionPartId: prayerSessionPartId,
+      slotIndex: slotIndex,
       coveredPartIds: coveredPartIds,
       rakaatSpanCount: rakaatSpanCount,
       occurrenceLocalDate: occurrenceLocalDate,
@@ -1228,6 +1272,8 @@ final class _AppWidgetSyncDriver {
     required List<RecitationHistoryEntry> history,
     required LocalDate localDate,
     required PrayerContextResolution? prayerResolution,
+    required PrayerRoutineSessionSnapshot? prayerRoutine,
+    required bool prayerRoutineReliable,
     required QuranDisplayPreferences displayPreferences,
     required QuranTranslationSelection? translationSelection,
     required String? selectedLearningSurahId,
@@ -1242,6 +1288,8 @@ final class _AppWidgetSyncDriver {
             history: List<RecitationHistoryEntry>.of(history),
             localDate: localDate,
             prayerResolution: prayerResolution,
+            prayerRoutine: prayerRoutine,
+            prayerRoutineReliable: prayerRoutineReliable,
             displayPreferences: displayPreferences,
             translationSelection: translationSelection,
             selectedLearningSurahId: selectedLearningSurahId,
@@ -1267,6 +1315,8 @@ final class _AppWidgetSyncDriver {
     required List<RecitationHistoryEntry> history,
     required LocalDate localDate,
     required PrayerContextResolution? prayerResolution,
+    required PrayerRoutineSessionSnapshot? prayerRoutine,
+    required bool prayerRoutineReliable,
     required QuranDisplayPreferences displayPreferences,
     required QuranTranslationSelection? translationSelection,
     required String? selectedLearningSurahId,
@@ -1277,12 +1327,21 @@ final class _AppWidgetSyncDriver {
     final l10n = lookupAppLocalizations(Locale(localeCode));
     final widgetLocalization = WidgetLocalization.forLanguageCode(localeCode);
     final prayerContext = prayerResolution?.context;
+    final prayerPart = prayerContext == null
+        ? null
+        : widgetLocalization.prayerRoutineProjection(
+            prayerContext,
+            prayerRoutine,
+          );
     final markedPartIds = prayerContext == null
         ? const <String>{}
         : <String>{
             for (final entry in history)
               if (entry.event.localDate == localDate &&
-                  entry.event.prayerContext == prayerContext)
+                  entry.event.prayerContext == prayerContext &&
+                  (prayerRoutine == null ||
+                      entry.event.prayerSessionPartId ==
+                          prayerPart?.prayerSessionPartId))
                 ...entry.event.coveredPartIds,
           };
     final rotationProjection =
@@ -1299,8 +1358,11 @@ final class _AppWidgetSyncDriver {
             endsAt: prayerResolution?.currentEndsAt?.toString(),
           ),
           createActionToken: uuid.v4,
-          actionsEnabled: prayerResolution?.canMarkDirectly ?? false,
+          actionsEnabled:
+              (prayerResolution?.canMarkDirectly ?? false) &&
+              prayerRoutineReliable,
           markedPartIds: markedPartIds,
+          prayerPart: prayerPart,
         );
 
     final activeLearning = learning

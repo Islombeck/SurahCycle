@@ -55,7 +55,7 @@ final class WidgetSnapshot {
     required this.learning,
   });
 
-  static const int schemaVersion = 4;
+  static const int schemaVersion = 5;
 
   final DateTime generatedAtUtc;
   final int snapshotRevision;
@@ -99,6 +99,8 @@ final class RotationWidgetProjection {
     required Iterable<RotationWidgetItem> items,
     int omittedCount = 0,
     String contextLabel = 'Rotation',
+    String? currentPartLabel,
+    String? slotProgressLabel,
     String? statusMessage,
   }) {
     if (omittedCount < 0) {
@@ -117,6 +119,12 @@ final class RotationWidgetProjection {
       );
     }
     _requireText(contextLabel, 'contextLabel', maxLength: 256);
+    if (currentPartLabel != null) {
+      _requireText(currentPartLabel, 'currentPartLabel', maxLength: 256);
+    }
+    if (slotProgressLabel != null) {
+      _requireText(slotProgressLabel, 'slotProgressLabel', maxLength: 256);
+    }
     if (statusMessage != null) {
       _requireText(statusMessage, 'statusMessage', maxLength: 512);
     }
@@ -156,6 +164,8 @@ final class RotationWidgetProjection {
       result,
       omittedCount,
       contextLabel,
+      currentPartLabel,
+      slotProgressLabel,
       statusMessage,
     );
   }
@@ -164,18 +174,24 @@ final class RotationWidgetProjection {
     this.items,
     this.omittedCount,
     this.contextLabel,
+    this.currentPartLabel,
+    this.slotProgressLabel,
     this.statusMessage,
   );
 
   final List<RotationWidgetItem> items;
   final int omittedCount;
   final String contextLabel;
+  final String? currentPartLabel;
+  final String? slotProgressLabel;
   final String? statusMessage;
 
   Map<String, Object?> toJson() => <String, Object?>{
     'items': items.map((item) => item.toJson()).toList(growable: false),
     'omittedCount': omittedCount,
     'contextLabel': contextLabel,
+    if (currentPartLabel != null) 'currentPartLabel': currentPartLabel,
+    if (slotProgressLabel != null) 'slotProgressLabel': slotProgressLabel,
     if (statusMessage != null) 'statusMessage': statusMessage,
   };
 
@@ -187,6 +203,8 @@ final class RotationWidgetProjection {
         ).map((item) => RotationWidgetItem._fromJson(_asMap(item, 'item'))),
         omittedCount: _integer(json, 'omittedCount'),
         contextLabel: _string(json, 'contextLabel'),
+        currentPartLabel: _nullableString(json, 'currentPartLabel'),
+        slotProgressLabel: _nullableString(json, 'slotProgressLabel'),
         statusMessage: _nullableString(json, 'statusMessage'),
       );
 
@@ -197,6 +215,8 @@ final class RotationWidgetProjection {
           _listEquals(items, other.items) &&
           omittedCount == other.omittedCount &&
           contextLabel == other.contextLabel &&
+          currentPartLabel == other.currentPartLabel &&
+          slotProgressLabel == other.slotProgressLabel &&
           statusMessage == other.statusMessage;
 
   @override
@@ -204,6 +224,8 @@ final class RotationWidgetProjection {
     Object.hashAll(items),
     omittedCount,
     contextLabel,
+    currentPartLabel,
+    slotProgressLabel,
     statusMessage,
   );
 }

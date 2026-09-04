@@ -183,6 +183,21 @@ void main() {
       expect(result.currentEndsAt, PrayerClockTime(4, 17));
     });
 
+    test('Friday Dhuhr stays Dhuhr and never becomes automatic Jumuah', () {
+      final result =
+          PrayerContextResolver(
+            FixedPrayerTimeProvider(_utcForTashkent(2026, 8, 28, 12, 25, 0)),
+          ).resolve(
+            mode: PrayerContextSelectionMode.automatic,
+            automaticSchedule: testPrayerDay(28),
+            automaticScheduleIsReliable: true,
+          );
+
+      expect(result.status, PrayerContextResolutionStatus.automatic);
+      expect(result.context?.prayerType, PrayerType.dhuhr);
+      expect(result.nextPrayerType, PrayerType.asr);
+    });
+
     test('rejects a schedule for another local calendar date', () {
       final resolver = PrayerContextResolver(
         FixedPrayerTimeProvider(_utcForTashkent(2026, 8, 26, 12, 30, 0)),
@@ -201,6 +216,7 @@ void main() {
 
   test('manual mode keeps Witr, Nafl, and Qada explicitly manual', () {
     for (final manual in <PrayerContext>[
+      PrayerContext(prayerType: PrayerType.jumuah),
       PrayerContext(prayerType: PrayerType.witr),
       PrayerContext(prayerType: PrayerType.nafl),
       PrayerContext(prayerType: PrayerType.fajr, isQada: true),

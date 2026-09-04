@@ -164,6 +164,39 @@ void main() {
         expect(result.selection!.prayerContext.prayerType, PrayerType.witr);
       },
     );
+
+    test('Jumuah Now requires an explicitly manual context', () {
+      final timeProvider = FixedPrayerTimeProvider(
+        _utcForTashkent(2026, 8, 28, 13, 0, 0),
+      );
+      final context = PrayerContext(prayerType: PrayerType.jumuah);
+      final automatic = PrayerContextResolution(
+        status: PrayerContextResolutionStatus.automatic,
+        context: context,
+      );
+      final manual = PrayerContextResolution(
+        status: PrayerContextResolutionStatus.manual,
+        context: context,
+      );
+      final resolver = PrayerRegistrationShortcutResolver(timeProvider);
+
+      final rejected = resolver.resolveNow(
+        currentResolution: automatic,
+        utcOffsetMinutes: 300,
+      );
+      final accepted = resolver.resolveNow(
+        currentResolution: manual,
+        utcOffsetMinutes: 300,
+      );
+
+      expect(
+        rejected.status,
+        PrayerRegistrationShortcutStatus.unsupportedAutomaticPrayer,
+      );
+      expect(rejected.selection, isNull);
+      expect(accepted.selection!.prayerContext, context);
+      expect(accepted.selection!.occurrenceLocalDate, LocalDate(2026, 8, 28));
+    });
   });
 }
 

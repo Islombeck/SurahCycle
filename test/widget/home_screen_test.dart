@@ -151,6 +151,229 @@ void main() {
     await _disposeWidgetTree(tester);
   });
 
+  testWidgets(
+    'configured slots advance parts and a completed routine cannot be bypassed',
+    (tester) async {
+      tester.binding.platformDispatcher.localeTestValue = const Locale('en');
+      addTearDown(tester.binding.platformDispatcher.clearLocaleTestValue);
+      final fixture = await _WidgetFixture.create();
+      addTearDown(fixture.close);
+      await fixture.addActiveSurah(
+        _descriptor(id: 'routine-surah', number: 101, name: 'Routine Surah'),
+      );
+      await fixture.replaceRoutine(PrayerType.fajr, <PrayerRoutinePartTemplate>[
+        _routinePart(
+          id: 'fajr-fard',
+          stableKey: 'fard',
+          orderIndex: 0,
+          kind: PrayerRoutinePartKind.fard,
+        ),
+        _routinePart(
+          id: 'fajr-sunnah',
+          stableKey: 'sunnah-after',
+          orderIndex: 1,
+          kind: PrayerRoutinePartKind.sunnah,
+        ),
+      ]);
+
+      await fixture.pumpApp(tester);
+      await _pumpUntil(
+        tester,
+        () async => find.text('Fajr · Fard').evaluate().isNotEmpty,
+      );
+      var routine = await fixture.routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.fajr),
+        localDate: LocalDate(2026, 8, 24),
+        startedAtUtc: fixture.now,
+      );
+      expect(routine!.currentPart!.part.stableKey, 'fard');
+      expect(find.textContaining('Surah slots: 0/1'), findsNWidgets(2));
+
+      await _tapMarkAndWait(
+        tester,
+        fixture,
+        'routine-surah',
+        expectedEvents: 1,
+      );
+      routine = await fixture.routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.fajr),
+        localDate: LocalDate(2026, 8, 24),
+        startedAtUtc: fixture.now,
+      );
+      expect(routine!.currentPart!.part.stableKey, 'sunnah-after');
+      final firstEvent = (await fixture.recitations.getHistory()).single.event;
+      expect(firstEvent.prayerSessionId, routine.session.id);
+      expect(firstEvent.prayerSessionPartId, routine.parts.first.part.id);
+      expect(firstEvent.slotIndex, 0);
+      await _pumpUntil(
+        tester,
+        () async => find.text('Fajr · Sunnah').evaluate().isNotEmpty,
+      );
+      final staleAfterCompletionCallback = tester
+          .widget<IconButton>(_markControl('routine-surah'))
+          .onPressed!;
+
+      await _tapMarkAndWait(
+        tester,
+        fixture,
+        'routine-surah',
+        expectedEvents: 2,
+      );
+      routine = await fixture.routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.fajr),
+        localDate: LocalDate(2026, 8, 24),
+        startedAtUtc: fixture.now,
+      );
+      expect(routine!.isCompleted, isTrue);
+      final events = (await fixture.recitations.getHistory())
+          .map((entry) => entry.event)
+          .toList();
+      expect(events.map((event) => event.slotIndex), everyElement(0));
+      expect(
+        events.map((event) => event.prayerSessionPartId).toSet(),
+        routine.parts.map((part) => part.part.id).toSet(),
+      );
+      await _pumpUntil(tester, () async {
+        final control = _markControl('routine-surah');
+        return control.evaluate().isNotEmpty &&
+            tester.widget<IconButton>(control).onPressed == null &&
+            find
+                .byKey(const ValueKey<String>('mark-surah-busy-routine-surah'))
+                .evaluate()
+                .isEmpty;
+      });
+
+      staleAfterCompletionCallback();
+      await tester.pump();
+      await _pumpUntil(tester, () async {
+        final control = _markControl('routine-surah');
+        return control.evaluate().isNotEmpty &&
+            tester.widget<IconButton>(control).onPressed == null &&
+            find
+                .byKey(
+                  const ValueKey<String>('prayer-routine-unavailable-snackbar'),
+                )
+                .evaluate()
+                .isNotEmpty;
+      });
+      expect(await fixture.eventCount(), 2);
+      expect(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.text('Prayer routine complete'),
+        ),
+        findsOneWidget,
+      );
+      await _disposeWidgetTree(tester);
+    },
+  );
+
+  testWidgets(
+    'followed imam is explicit, gives no credit, and remains safely undoable',
+    (tester) async {
+      tester.binding.platformDispatcher.localeTestValue = const Locale('en');
+      addTearDown(tester.binding.platformDispatcher.clearLocaleTestValue);
+      final fixture = await _WidgetFixture.create();
+      addTearDown(fixture.close);
+      await fixture.addActiveSurah(
+        _descriptor(id: 'imam-surah', number: 101, name: 'Imam Surah'),
+      );
+      await fixture.replaceRoutine(PrayerType.fajr, <PrayerRoutinePartTemplate>[
+        _routinePart(
+          id: 'fajr-imam-fard',
+          stableKey: 'fard',
+          orderIndex: 0,
+          kind: PrayerRoutinePartKind.fard,
+          requiredSurahSlots: 2,
+          allowsFollowingImam: true,
+        ),
+      ]);
+      final rotationBefore = await fixture.surahs.getRotationSnapshot();
+
+      await fixture.pumpApp(tester);
+      var routine = await fixture.routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.fajr),
+        localDate: LocalDate(2026, 8, 24),
+        startedAtUtc: fixture.now,
+      );
+      final partId = routine!.currentPart!.part.id;
+      await _pumpUntil(
+        tester,
+        () async => find
+            .byKey(ValueKey<String>('followed-imam-$partId'))
+            .evaluate()
+            .isNotEmpty,
+      );
+      await tester.tap(find.byKey(ValueKey<String>('followed-imam-$partId')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey<String>('confirm-followed-imam')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey<String>('confirm-followed-imam')),
+      );
+      await _pumpUntil(tester, () async {
+        routine = await fixture.routines.ensureCurrentSession(
+          context: PrayerContext(prayerType: PrayerType.fajr),
+          localDate: LocalDate(2026, 8, 24),
+          startedAtUtc: fixture.now,
+        );
+        return routine!.isCompleted;
+      });
+
+      expect(await fixture.eventCount(), 0);
+      expect(await fixture.surahs.getRotationSnapshot(), rotationBefore);
+      final completedPartTile = find.byKey(
+        ValueKey<String>('current-prayer-part-$partId'),
+      );
+      await _pumpUntil(
+        tester,
+        () async => find
+            .descendant(
+              of: completedPartTile,
+              matching: find.textContaining('Completed by following the imam'),
+            )
+            .evaluate()
+            .isNotEmpty,
+      );
+      expect(
+        find.descendant(
+          of: completedPartTile,
+          matching: find.textContaining('Completed by following the imam'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: completedPartTile,
+          matching: find.textContaining('Surah slots: 0/2'),
+        ),
+        findsNothing,
+        reason: 'A followed-imam completion must not look like missed slots.',
+      );
+
+      tester
+          .widget<SnackBarAction>(
+            find.byKey(const ValueKey<String>('undo-followed-imam')),
+          )
+          .onPressed();
+      await tester.pump();
+      await _pumpUntil(tester, () async {
+        routine = await fixture.routines.ensureCurrentSession(
+          context: PrayerContext(prayerType: PrayerType.fajr),
+          localDate: LocalDate(2026, 8, 24),
+          startedAtUtc: fixture.now,
+        );
+        return routine!.currentPart != null;
+      });
+      expect(routine!.currentPart!.part.id, partId);
+      expect(await fixture.eventCount(), 0);
+      expect(await fixture.surahs.getRotationSnapshot(), rotationBefore);
+      await _disposeWidgetTree(tester);
+    },
+  );
+
   testWidgets('one-tap resolves automatic prayer at action time', (
     tester,
   ) async {
@@ -187,6 +410,72 @@ void main() {
     expect(event.localDate, LocalDate(2026, 8, 25));
     await _disposeWidgetTree(tester);
   });
+
+  testWidgets('Friday Dhuhr offers an explicit one-event Jumuah override', (
+    tester,
+  ) async {
+    tester.binding.platformDispatcher.localeTestValue = const Locale('en');
+    addTearDown(tester.binding.platformDispatcher.clearLocaleTestValue);
+    final fixture = await _WidgetFixture.create();
+    addTearDown(fixture.close);
+    await fixture.addActiveSurah(
+      _descriptor(
+        id: 'jumuah-surah',
+        number: 101,
+        name: 'Jumuah Surah',
+        ayahCount: 12,
+      ),
+    );
+    final clock = _MutableTimeProvider(_utcForTashkent(2026, 8, 28, 13, 0));
+    await fixture.pumpAutomaticApp(tester, clock, day: 28);
+    final override = find.byKey(
+      const ValueKey<String>('use-jumuah-for-next-recitation'),
+    );
+    await _pumpUntil(tester, () async => override.evaluate().isNotEmpty);
+
+    expect(find.text('Dhuhr'), findsOneWidget);
+    await tester.tap(override);
+    await _pumpUntil(
+      tester,
+      () async => find.text('Jumuah').evaluate().isNotEmpty,
+    );
+
+    expect(find.text('Jumuah'), findsOneWidget);
+    expect(find.textContaining('Manual mode'), findsOneWidget);
+    expect(override, findsNothing);
+
+    await _tapMarkAndWait(tester, fixture, 'jumuah-surah', expectedEvents: 1);
+    final event = (await fixture.recitations.getHistory()).single.event;
+    expect(event.prayerContext, PrayerContext(prayerType: PrayerType.jumuah));
+
+    await _pumpUntil(tester, () async => override.evaluate().isNotEmpty);
+    expect(find.text('Dhuhr'), findsOneWidget);
+    await _disposeWidgetTree(tester);
+  });
+
+  const hiddenJumuahOverrideCases = <({String label, int day, int hour})>[
+    (label: 'non-Friday Dhuhr', day: 25, hour: 13),
+    (label: 'Friday outside Dhuhr', day: 28, hour: 18),
+  ];
+  for (final testCase in hiddenJumuahOverrideCases) {
+    testWidgets('Jumuah override is hidden during ${testCase.label}', (
+      tester,
+    ) async {
+      final fixture = await _WidgetFixture.create();
+      addTearDown(fixture.close);
+      final clock = _MutableTimeProvider(
+        _utcForTashkent(2026, 8, testCase.day, testCase.hour, 0),
+      );
+      await fixture.pumpAutomaticApp(tester, clock, day: testCase.day);
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(
+        find.byKey(const ValueKey<String>('use-jumuah-for-next-recitation')),
+        findsNothing,
+      );
+      await _disposeWidgetTree(tester);
+    });
+  }
 
   testWidgets('Previous prayer is recalculated while the sheet is open', (
     tester,
@@ -1091,6 +1380,24 @@ SurahDescriptor _descriptor({
   ayahCount: ayahCount,
 );
 
+PrayerRoutinePartTemplate _routinePart({
+  required String id,
+  required String stableKey,
+  required int orderIndex,
+  required PrayerRoutinePartKind kind,
+  int rakaatCount = 2,
+  int requiredSurahSlots = 1,
+  bool allowsFollowingImam = false,
+}) => PrayerRoutinePartTemplate(
+  id: id,
+  stableKey: stableKey,
+  orderIndex: orderIndex,
+  kind: kind,
+  rakaatCount: rakaatCount,
+  requiredSurahSlots: requiredSurahSlots,
+  allowsFollowingImam: allowsFollowingImam,
+);
+
 Finder _markControl(String surahId) =>
     find.byKey(ValueKey<String>('mark-surah-$surahId'));
 
@@ -1203,7 +1510,8 @@ final class _WidgetFixture {
     required this.now,
   }) : surahs = SurahRepository(database),
        learning = LearningRepository(database),
-       recitations = RecitationRepository(database);
+       recitations = RecitationRepository(database),
+       routines = PrayerRoutineRepository(database);
 
   static Future<_WidgetFixture> create() async {
     final fixture = _WidgetFixture._(
@@ -1226,6 +1534,21 @@ final class _WidgetFixture {
   final SurahRepository surahs;
   final LearningRepository learning;
   final RecitationRepository recitations;
+  final PrayerRoutineRepository routines;
+
+  Future<void> replaceRoutine(
+    PrayerType prayerType,
+    List<PrayerRoutinePartTemplate> parts,
+  ) async {
+    final current = await routines.getTemplate(prayerType);
+    await routines.replaceTemplate(
+      prayerType: prayerType,
+      expectedRevision: current.revision,
+      displayName: current.displayName,
+      enabled: true,
+      parts: parts,
+    );
+  }
 
   Future<void> addActiveSurah(SurahDescriptor descriptor) async {
     await surahs.upsertCatalog(<SurahDescriptor>[descriptor]);
@@ -1314,19 +1637,20 @@ final class _WidgetFixture {
 
   Future<void> pumpAutomaticApp(
     WidgetTester tester,
-    _MutableTimeProvider timeProvider,
-  ) async {
+    _MutableTimeProvider timeProvider, {
+    int day = 25,
+  }) async {
     final settings = PrayerTimeSettings(
       location: testTashkentLocation(),
       locationConfirmed: true,
       contextSelectionMode: PrayerContextSelectionMode.automatic,
     );
-    final fetchedAtUtc = DateTime.utc(2026, 8, 25);
+    final fetchedAtUtc = DateTime.utc(2026, 8, day);
     final today = PrayerTodaySchedule(
-      day: testPrayerDay(25, fetchedAtUtc: fetchedAtUtc),
-      previousDay: testPrayerDay(24, fetchedAtUtc: fetchedAtUtc),
+      day: testPrayerDay(day, fetchedAtUtc: fetchedAtUtc),
+      previousDay: testPrayerDay(day - 1, fetchedAtUtc: fetchedAtUtc),
       previousDayIsReliable: true,
-      nextDay: testPrayerDay(26, fetchedAtUtc: fetchedAtUtc),
+      nextDay: testPrayerDay(day + 1, fetchedAtUtc: fetchedAtUtc),
       nextDayIsReliable: true,
       loadResult: PrayerScheduleLoadResult(
         schedule: testPrayerMonth(fetchedAtUtc: fetchedAtUtc),

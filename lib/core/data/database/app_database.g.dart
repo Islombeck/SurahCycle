@@ -3071,6 +3071,1856 @@ class PrayerSessionsCompanion extends UpdateCompanion<PrayerSessionRow> {
   }
 }
 
+class $PrayerRoutineTemplatesTable extends PrayerRoutineTemplates
+    with TableInfo<$PrayerRoutineTemplatesTable, PrayerRoutineTemplateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PrayerRoutineTemplatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _prayerTypeMeta = const VerificationMeta(
+    'prayerType',
+  );
+  @override
+  late final GeneratedColumn<String> prayerType = GeneratedColumn<String>(
+    'prayer_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    prayerType,
+    displayName,
+    enabled,
+    revision,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'prayer_routine_templates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PrayerRoutineTemplateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('prayer_type')) {
+      context.handle(
+        _prayerTypeMeta,
+        prayerType.isAcceptableOrUnknown(data['prayer_type']!, _prayerTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_prayerTypeMeta);
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_displayNameMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PrayerRoutineTemplateRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PrayerRoutineTemplateRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      prayerType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prayer_type'],
+      )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+    );
+  }
+
+  @override
+  $PrayerRoutineTemplatesTable createAlias(String alias) {
+    return $PrayerRoutineTemplatesTable(attachedDatabase, alias);
+  }
+}
+
+class PrayerRoutineTemplateRow extends DataClass
+    implements Insertable<PrayerRoutineTemplateRow> {
+  final String id;
+  final String prayerType;
+  final String displayName;
+  final bool enabled;
+  final int revision;
+  const PrayerRoutineTemplateRow({
+    required this.id,
+    required this.prayerType,
+    required this.displayName,
+    required this.enabled,
+    required this.revision,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['prayer_type'] = Variable<String>(prayerType);
+    map['display_name'] = Variable<String>(displayName);
+    map['enabled'] = Variable<bool>(enabled);
+    map['revision'] = Variable<int>(revision);
+    return map;
+  }
+
+  PrayerRoutineTemplatesCompanion toCompanion(bool nullToAbsent) {
+    return PrayerRoutineTemplatesCompanion(
+      id: Value(id),
+      prayerType: Value(prayerType),
+      displayName: Value(displayName),
+      enabled: Value(enabled),
+      revision: Value(revision),
+    );
+  }
+
+  factory PrayerRoutineTemplateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PrayerRoutineTemplateRow(
+      id: serializer.fromJson<String>(json['id']),
+      prayerType: serializer.fromJson<String>(json['prayerType']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      revision: serializer.fromJson<int>(json['revision']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'prayerType': serializer.toJson<String>(prayerType),
+      'displayName': serializer.toJson<String>(displayName),
+      'enabled': serializer.toJson<bool>(enabled),
+      'revision': serializer.toJson<int>(revision),
+    };
+  }
+
+  PrayerRoutineTemplateRow copyWith({
+    String? id,
+    String? prayerType,
+    String? displayName,
+    bool? enabled,
+    int? revision,
+  }) => PrayerRoutineTemplateRow(
+    id: id ?? this.id,
+    prayerType: prayerType ?? this.prayerType,
+    displayName: displayName ?? this.displayName,
+    enabled: enabled ?? this.enabled,
+    revision: revision ?? this.revision,
+  );
+  PrayerRoutineTemplateRow copyWithCompanion(
+    PrayerRoutineTemplatesCompanion data,
+  ) {
+    return PrayerRoutineTemplateRow(
+      id: data.id.present ? data.id.value : this.id,
+      prayerType: data.prayerType.present
+          ? data.prayerType.value
+          : this.prayerType,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      revision: data.revision.present ? data.revision.value : this.revision,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrayerRoutineTemplateRow(')
+          ..write('id: $id, ')
+          ..write('prayerType: $prayerType, ')
+          ..write('displayName: $displayName, ')
+          ..write('enabled: $enabled, ')
+          ..write('revision: $revision')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, prayerType, displayName, enabled, revision);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PrayerRoutineTemplateRow &&
+          other.id == this.id &&
+          other.prayerType == this.prayerType &&
+          other.displayName == this.displayName &&
+          other.enabled == this.enabled &&
+          other.revision == this.revision);
+}
+
+class PrayerRoutineTemplatesCompanion
+    extends UpdateCompanion<PrayerRoutineTemplateRow> {
+  final Value<String> id;
+  final Value<String> prayerType;
+  final Value<String> displayName;
+  final Value<bool> enabled;
+  final Value<int> revision;
+  final Value<int> rowid;
+  const PrayerRoutineTemplatesCompanion({
+    this.id = const Value.absent(),
+    this.prayerType = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PrayerRoutineTemplatesCompanion.insert({
+    required String id,
+    required String prayerType,
+    required String displayName,
+    this.enabled = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       prayerType = Value(prayerType),
+       displayName = Value(displayName);
+  static Insertable<PrayerRoutineTemplateRow> custom({
+    Expression<String>? id,
+    Expression<String>? prayerType,
+    Expression<String>? displayName,
+    Expression<bool>? enabled,
+    Expression<int>? revision,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (prayerType != null) 'prayer_type': prayerType,
+      if (displayName != null) 'display_name': displayName,
+      if (enabled != null) 'enabled': enabled,
+      if (revision != null) 'revision': revision,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PrayerRoutineTemplatesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? prayerType,
+    Value<String>? displayName,
+    Value<bool>? enabled,
+    Value<int>? revision,
+    Value<int>? rowid,
+  }) {
+    return PrayerRoutineTemplatesCompanion(
+      id: id ?? this.id,
+      prayerType: prayerType ?? this.prayerType,
+      displayName: displayName ?? this.displayName,
+      enabled: enabled ?? this.enabled,
+      revision: revision ?? this.revision,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (prayerType.present) {
+      map['prayer_type'] = Variable<String>(prayerType.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrayerRoutineTemplatesCompanion(')
+          ..write('id: $id, ')
+          ..write('prayerType: $prayerType, ')
+          ..write('displayName: $displayName, ')
+          ..write('enabled: $enabled, ')
+          ..write('revision: $revision, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PrayerRoutinePartTemplatesTable extends PrayerRoutinePartTemplates
+    with
+        TableInfo<
+          $PrayerRoutinePartTemplatesTable,
+          PrayerRoutinePartTemplateRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PrayerRoutinePartTemplatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _routineTemplateIdMeta = const VerificationMeta(
+    'routineTemplateId',
+  );
+  @override
+  late final GeneratedColumn<String> routineTemplateId =
+      GeneratedColumn<String>(
+        'routine_template_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES prayer_routine_templates (id) ON DELETE CASCADE',
+        ),
+      );
+  static const VerificationMeta _stableKeyMeta = const VerificationMeta(
+    'stableKey',
+  );
+  @override
+  late final GeneratedColumn<String> stableKey = GeneratedColumn<String>(
+    'stable_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _orderIndexMeta = const VerificationMeta(
+    'orderIndex',
+  );
+  @override
+  late final GeneratedColumn<int> orderIndex = GeneratedColumn<int>(
+    'order_index',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _customLabelMeta = const VerificationMeta(
+    'customLabel',
+  );
+  @override
+  late final GeneratedColumn<String> customLabel = GeneratedColumn<String>(
+    'custom_label',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _rakaatCountMeta = const VerificationMeta(
+    'rakaatCount',
+  );
+  @override
+  late final GeneratedColumn<int> rakaatCount = GeneratedColumn<int>(
+    'rakaat_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _requiredSurahSlotsMeta =
+      const VerificationMeta('requiredSurahSlots');
+  @override
+  late final GeneratedColumn<int> requiredSurahSlots = GeneratedColumn<int>(
+    'required_surah_slots',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _allowsFollowingImamMeta =
+      const VerificationMeta('allowsFollowingImam');
+  @override
+  late final GeneratedColumn<bool> allowsFollowingImam = GeneratedColumn<bool>(
+    'allows_following_imam',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("allows_following_imam" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _defaultCompletionModeMeta =
+      const VerificationMeta('defaultCompletionMode');
+  @override
+  late final GeneratedColumn<String> defaultCompletionMode =
+      GeneratedColumn<String>(
+        'default_completion_mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('recitations'),
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    routineTemplateId,
+    stableKey,
+    orderIndex,
+    kind,
+    customLabel,
+    rakaatCount,
+    requiredSurahSlots,
+    allowsFollowingImam,
+    defaultCompletionMode,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'prayer_routine_part_templates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PrayerRoutinePartTemplateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('routine_template_id')) {
+      context.handle(
+        _routineTemplateIdMeta,
+        routineTemplateId.isAcceptableOrUnknown(
+          data['routine_template_id']!,
+          _routineTemplateIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_routineTemplateIdMeta);
+    }
+    if (data.containsKey('stable_key')) {
+      context.handle(
+        _stableKeyMeta,
+        stableKey.isAcceptableOrUnknown(data['stable_key']!, _stableKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stableKeyMeta);
+    }
+    if (data.containsKey('order_index')) {
+      context.handle(
+        _orderIndexMeta,
+        orderIndex.isAcceptableOrUnknown(data['order_index']!, _orderIndexMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_orderIndexMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('custom_label')) {
+      context.handle(
+        _customLabelMeta,
+        customLabel.isAcceptableOrUnknown(
+          data['custom_label']!,
+          _customLabelMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rakaat_count')) {
+      context.handle(
+        _rakaatCountMeta,
+        rakaatCount.isAcceptableOrUnknown(
+          data['rakaat_count']!,
+          _rakaatCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rakaatCountMeta);
+    }
+    if (data.containsKey('required_surah_slots')) {
+      context.handle(
+        _requiredSurahSlotsMeta,
+        requiredSurahSlots.isAcceptableOrUnknown(
+          data['required_surah_slots']!,
+          _requiredSurahSlotsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_requiredSurahSlotsMeta);
+    }
+    if (data.containsKey('allows_following_imam')) {
+      context.handle(
+        _allowsFollowingImamMeta,
+        allowsFollowingImam.isAcceptableOrUnknown(
+          data['allows_following_imam']!,
+          _allowsFollowingImamMeta,
+        ),
+      );
+    }
+    if (data.containsKey('default_completion_mode')) {
+      context.handle(
+        _defaultCompletionModeMeta,
+        defaultCompletionMode.isAcceptableOrUnknown(
+          data['default_completion_mode']!,
+          _defaultCompletionModeMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PrayerRoutinePartTemplateRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PrayerRoutinePartTemplateRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      routineTemplateId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}routine_template_id'],
+      )!,
+      stableKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stable_key'],
+      )!,
+      orderIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}order_index'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      customLabel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}custom_label'],
+      ),
+      rakaatCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rakaat_count'],
+      )!,
+      requiredSurahSlots: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}required_surah_slots'],
+      )!,
+      allowsFollowingImam: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}allows_following_imam'],
+      )!,
+      defaultCompletionMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}default_completion_mode'],
+      )!,
+    );
+  }
+
+  @override
+  $PrayerRoutinePartTemplatesTable createAlias(String alias) {
+    return $PrayerRoutinePartTemplatesTable(attachedDatabase, alias);
+  }
+}
+
+class PrayerRoutinePartTemplateRow extends DataClass
+    implements Insertable<PrayerRoutinePartTemplateRow> {
+  final String id;
+  final String routineTemplateId;
+  final String stableKey;
+  final int orderIndex;
+  final String kind;
+  final String? customLabel;
+  final int rakaatCount;
+  final int requiredSurahSlots;
+  final bool allowsFollowingImam;
+  final String defaultCompletionMode;
+  const PrayerRoutinePartTemplateRow({
+    required this.id,
+    required this.routineTemplateId,
+    required this.stableKey,
+    required this.orderIndex,
+    required this.kind,
+    this.customLabel,
+    required this.rakaatCount,
+    required this.requiredSurahSlots,
+    required this.allowsFollowingImam,
+    required this.defaultCompletionMode,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['routine_template_id'] = Variable<String>(routineTemplateId);
+    map['stable_key'] = Variable<String>(stableKey);
+    map['order_index'] = Variable<int>(orderIndex);
+    map['kind'] = Variable<String>(kind);
+    if (!nullToAbsent || customLabel != null) {
+      map['custom_label'] = Variable<String>(customLabel);
+    }
+    map['rakaat_count'] = Variable<int>(rakaatCount);
+    map['required_surah_slots'] = Variable<int>(requiredSurahSlots);
+    map['allows_following_imam'] = Variable<bool>(allowsFollowingImam);
+    map['default_completion_mode'] = Variable<String>(defaultCompletionMode);
+    return map;
+  }
+
+  PrayerRoutinePartTemplatesCompanion toCompanion(bool nullToAbsent) {
+    return PrayerRoutinePartTemplatesCompanion(
+      id: Value(id),
+      routineTemplateId: Value(routineTemplateId),
+      stableKey: Value(stableKey),
+      orderIndex: Value(orderIndex),
+      kind: Value(kind),
+      customLabel: customLabel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customLabel),
+      rakaatCount: Value(rakaatCount),
+      requiredSurahSlots: Value(requiredSurahSlots),
+      allowsFollowingImam: Value(allowsFollowingImam),
+      defaultCompletionMode: Value(defaultCompletionMode),
+    );
+  }
+
+  factory PrayerRoutinePartTemplateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PrayerRoutinePartTemplateRow(
+      id: serializer.fromJson<String>(json['id']),
+      routineTemplateId: serializer.fromJson<String>(json['routineTemplateId']),
+      stableKey: serializer.fromJson<String>(json['stableKey']),
+      orderIndex: serializer.fromJson<int>(json['orderIndex']),
+      kind: serializer.fromJson<String>(json['kind']),
+      customLabel: serializer.fromJson<String?>(json['customLabel']),
+      rakaatCount: serializer.fromJson<int>(json['rakaatCount']),
+      requiredSurahSlots: serializer.fromJson<int>(json['requiredSurahSlots']),
+      allowsFollowingImam: serializer.fromJson<bool>(
+        json['allowsFollowingImam'],
+      ),
+      defaultCompletionMode: serializer.fromJson<String>(
+        json['defaultCompletionMode'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'routineTemplateId': serializer.toJson<String>(routineTemplateId),
+      'stableKey': serializer.toJson<String>(stableKey),
+      'orderIndex': serializer.toJson<int>(orderIndex),
+      'kind': serializer.toJson<String>(kind),
+      'customLabel': serializer.toJson<String?>(customLabel),
+      'rakaatCount': serializer.toJson<int>(rakaatCount),
+      'requiredSurahSlots': serializer.toJson<int>(requiredSurahSlots),
+      'allowsFollowingImam': serializer.toJson<bool>(allowsFollowingImam),
+      'defaultCompletionMode': serializer.toJson<String>(defaultCompletionMode),
+    };
+  }
+
+  PrayerRoutinePartTemplateRow copyWith({
+    String? id,
+    String? routineTemplateId,
+    String? stableKey,
+    int? orderIndex,
+    String? kind,
+    Value<String?> customLabel = const Value.absent(),
+    int? rakaatCount,
+    int? requiredSurahSlots,
+    bool? allowsFollowingImam,
+    String? defaultCompletionMode,
+  }) => PrayerRoutinePartTemplateRow(
+    id: id ?? this.id,
+    routineTemplateId: routineTemplateId ?? this.routineTemplateId,
+    stableKey: stableKey ?? this.stableKey,
+    orderIndex: orderIndex ?? this.orderIndex,
+    kind: kind ?? this.kind,
+    customLabel: customLabel.present ? customLabel.value : this.customLabel,
+    rakaatCount: rakaatCount ?? this.rakaatCount,
+    requiredSurahSlots: requiredSurahSlots ?? this.requiredSurahSlots,
+    allowsFollowingImam: allowsFollowingImam ?? this.allowsFollowingImam,
+    defaultCompletionMode: defaultCompletionMode ?? this.defaultCompletionMode,
+  );
+  PrayerRoutinePartTemplateRow copyWithCompanion(
+    PrayerRoutinePartTemplatesCompanion data,
+  ) {
+    return PrayerRoutinePartTemplateRow(
+      id: data.id.present ? data.id.value : this.id,
+      routineTemplateId: data.routineTemplateId.present
+          ? data.routineTemplateId.value
+          : this.routineTemplateId,
+      stableKey: data.stableKey.present ? data.stableKey.value : this.stableKey,
+      orderIndex: data.orderIndex.present
+          ? data.orderIndex.value
+          : this.orderIndex,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      customLabel: data.customLabel.present
+          ? data.customLabel.value
+          : this.customLabel,
+      rakaatCount: data.rakaatCount.present
+          ? data.rakaatCount.value
+          : this.rakaatCount,
+      requiredSurahSlots: data.requiredSurahSlots.present
+          ? data.requiredSurahSlots.value
+          : this.requiredSurahSlots,
+      allowsFollowingImam: data.allowsFollowingImam.present
+          ? data.allowsFollowingImam.value
+          : this.allowsFollowingImam,
+      defaultCompletionMode: data.defaultCompletionMode.present
+          ? data.defaultCompletionMode.value
+          : this.defaultCompletionMode,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrayerRoutinePartTemplateRow(')
+          ..write('id: $id, ')
+          ..write('routineTemplateId: $routineTemplateId, ')
+          ..write('stableKey: $stableKey, ')
+          ..write('orderIndex: $orderIndex, ')
+          ..write('kind: $kind, ')
+          ..write('customLabel: $customLabel, ')
+          ..write('rakaatCount: $rakaatCount, ')
+          ..write('requiredSurahSlots: $requiredSurahSlots, ')
+          ..write('allowsFollowingImam: $allowsFollowingImam, ')
+          ..write('defaultCompletionMode: $defaultCompletionMode')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    routineTemplateId,
+    stableKey,
+    orderIndex,
+    kind,
+    customLabel,
+    rakaatCount,
+    requiredSurahSlots,
+    allowsFollowingImam,
+    defaultCompletionMode,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PrayerRoutinePartTemplateRow &&
+          other.id == this.id &&
+          other.routineTemplateId == this.routineTemplateId &&
+          other.stableKey == this.stableKey &&
+          other.orderIndex == this.orderIndex &&
+          other.kind == this.kind &&
+          other.customLabel == this.customLabel &&
+          other.rakaatCount == this.rakaatCount &&
+          other.requiredSurahSlots == this.requiredSurahSlots &&
+          other.allowsFollowingImam == this.allowsFollowingImam &&
+          other.defaultCompletionMode == this.defaultCompletionMode);
+}
+
+class PrayerRoutinePartTemplatesCompanion
+    extends UpdateCompanion<PrayerRoutinePartTemplateRow> {
+  final Value<String> id;
+  final Value<String> routineTemplateId;
+  final Value<String> stableKey;
+  final Value<int> orderIndex;
+  final Value<String> kind;
+  final Value<String?> customLabel;
+  final Value<int> rakaatCount;
+  final Value<int> requiredSurahSlots;
+  final Value<bool> allowsFollowingImam;
+  final Value<String> defaultCompletionMode;
+  final Value<int> rowid;
+  const PrayerRoutinePartTemplatesCompanion({
+    this.id = const Value.absent(),
+    this.routineTemplateId = const Value.absent(),
+    this.stableKey = const Value.absent(),
+    this.orderIndex = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.customLabel = const Value.absent(),
+    this.rakaatCount = const Value.absent(),
+    this.requiredSurahSlots = const Value.absent(),
+    this.allowsFollowingImam = const Value.absent(),
+    this.defaultCompletionMode = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PrayerRoutinePartTemplatesCompanion.insert({
+    required String id,
+    required String routineTemplateId,
+    required String stableKey,
+    required int orderIndex,
+    required String kind,
+    this.customLabel = const Value.absent(),
+    required int rakaatCount,
+    required int requiredSurahSlots,
+    this.allowsFollowingImam = const Value.absent(),
+    this.defaultCompletionMode = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       routineTemplateId = Value(routineTemplateId),
+       stableKey = Value(stableKey),
+       orderIndex = Value(orderIndex),
+       kind = Value(kind),
+       rakaatCount = Value(rakaatCount),
+       requiredSurahSlots = Value(requiredSurahSlots);
+  static Insertable<PrayerRoutinePartTemplateRow> custom({
+    Expression<String>? id,
+    Expression<String>? routineTemplateId,
+    Expression<String>? stableKey,
+    Expression<int>? orderIndex,
+    Expression<String>? kind,
+    Expression<String>? customLabel,
+    Expression<int>? rakaatCount,
+    Expression<int>? requiredSurahSlots,
+    Expression<bool>? allowsFollowingImam,
+    Expression<String>? defaultCompletionMode,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (routineTemplateId != null) 'routine_template_id': routineTemplateId,
+      if (stableKey != null) 'stable_key': stableKey,
+      if (orderIndex != null) 'order_index': orderIndex,
+      if (kind != null) 'kind': kind,
+      if (customLabel != null) 'custom_label': customLabel,
+      if (rakaatCount != null) 'rakaat_count': rakaatCount,
+      if (requiredSurahSlots != null)
+        'required_surah_slots': requiredSurahSlots,
+      if (allowsFollowingImam != null)
+        'allows_following_imam': allowsFollowingImam,
+      if (defaultCompletionMode != null)
+        'default_completion_mode': defaultCompletionMode,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PrayerRoutinePartTemplatesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? routineTemplateId,
+    Value<String>? stableKey,
+    Value<int>? orderIndex,
+    Value<String>? kind,
+    Value<String?>? customLabel,
+    Value<int>? rakaatCount,
+    Value<int>? requiredSurahSlots,
+    Value<bool>? allowsFollowingImam,
+    Value<String>? defaultCompletionMode,
+    Value<int>? rowid,
+  }) {
+    return PrayerRoutinePartTemplatesCompanion(
+      id: id ?? this.id,
+      routineTemplateId: routineTemplateId ?? this.routineTemplateId,
+      stableKey: stableKey ?? this.stableKey,
+      orderIndex: orderIndex ?? this.orderIndex,
+      kind: kind ?? this.kind,
+      customLabel: customLabel ?? this.customLabel,
+      rakaatCount: rakaatCount ?? this.rakaatCount,
+      requiredSurahSlots: requiredSurahSlots ?? this.requiredSurahSlots,
+      allowsFollowingImam: allowsFollowingImam ?? this.allowsFollowingImam,
+      defaultCompletionMode:
+          defaultCompletionMode ?? this.defaultCompletionMode,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (routineTemplateId.present) {
+      map['routine_template_id'] = Variable<String>(routineTemplateId.value);
+    }
+    if (stableKey.present) {
+      map['stable_key'] = Variable<String>(stableKey.value);
+    }
+    if (orderIndex.present) {
+      map['order_index'] = Variable<int>(orderIndex.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (customLabel.present) {
+      map['custom_label'] = Variable<String>(customLabel.value);
+    }
+    if (rakaatCount.present) {
+      map['rakaat_count'] = Variable<int>(rakaatCount.value);
+    }
+    if (requiredSurahSlots.present) {
+      map['required_surah_slots'] = Variable<int>(requiredSurahSlots.value);
+    }
+    if (allowsFollowingImam.present) {
+      map['allows_following_imam'] = Variable<bool>(allowsFollowingImam.value);
+    }
+    if (defaultCompletionMode.present) {
+      map['default_completion_mode'] = Variable<String>(
+        defaultCompletionMode.value,
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrayerRoutinePartTemplatesCompanion(')
+          ..write('id: $id, ')
+          ..write('routineTemplateId: $routineTemplateId, ')
+          ..write('stableKey: $stableKey, ')
+          ..write('orderIndex: $orderIndex, ')
+          ..write('kind: $kind, ')
+          ..write('customLabel: $customLabel, ')
+          ..write('rakaatCount: $rakaatCount, ')
+          ..write('requiredSurahSlots: $requiredSurahSlots, ')
+          ..write('allowsFollowingImam: $allowsFollowingImam, ')
+          ..write('defaultCompletionMode: $defaultCompletionMode, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PrayerSessionPartsTable extends PrayerSessionParts
+    with TableInfo<$PrayerSessionPartsTable, PrayerSessionPartRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PrayerSessionPartsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _prayerSessionIdMeta = const VerificationMeta(
+    'prayerSessionId',
+  );
+  @override
+  late final GeneratedColumn<String> prayerSessionId = GeneratedColumn<String>(
+    'prayer_session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES prayer_sessions (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _sourceTemplatePartIdMeta =
+      const VerificationMeta('sourceTemplatePartId');
+  @override
+  late final GeneratedColumn<String> sourceTemplatePartId =
+      GeneratedColumn<String>(
+        'source_template_part_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _templateRevisionMeta = const VerificationMeta(
+    'templateRevision',
+  );
+  @override
+  late final GeneratedColumn<int> templateRevision = GeneratedColumn<int>(
+    'template_revision',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _stableKeyMeta = const VerificationMeta(
+    'stableKey',
+  );
+  @override
+  late final GeneratedColumn<String> stableKey = GeneratedColumn<String>(
+    'stable_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _orderIndexMeta = const VerificationMeta(
+    'orderIndex',
+  );
+  @override
+  late final GeneratedColumn<int> orderIndex = GeneratedColumn<int>(
+    'order_index',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rakaatCountMeta = const VerificationMeta(
+    'rakaatCount',
+  );
+  @override
+  late final GeneratedColumn<int> rakaatCount = GeneratedColumn<int>(
+    'rakaat_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _requiredSurahSlotsMeta =
+      const VerificationMeta('requiredSurahSlots');
+  @override
+  late final GeneratedColumn<int> requiredSurahSlots = GeneratedColumn<int>(
+    'required_surah_slots',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _allowsFollowingImamMeta =
+      const VerificationMeta('allowsFollowingImam');
+  @override
+  late final GeneratedColumn<bool> allowsFollowingImam = GeneratedColumn<bool>(
+    'allows_following_imam',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("allows_following_imam" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _completionModeMeta = const VerificationMeta(
+    'completionMode',
+  );
+  @override
+  late final GeneratedColumn<String> completionMode = GeneratedColumn<String>(
+    'completion_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('recitations'),
+  );
+  static const VerificationMeta _completedAtUtcMeta = const VerificationMeta(
+    'completedAtUtc',
+  );
+  @override
+  late final GeneratedColumn<DateTime> completedAtUtc =
+      GeneratedColumn<DateTime>(
+        'completed_at_utc',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    prayerSessionId,
+    sourceTemplatePartId,
+    templateRevision,
+    stableKey,
+    orderIndex,
+    label,
+    kind,
+    rakaatCount,
+    requiredSurahSlots,
+    allowsFollowingImam,
+    completionMode,
+    completedAtUtc,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'prayer_session_parts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PrayerSessionPartRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('prayer_session_id')) {
+      context.handle(
+        _prayerSessionIdMeta,
+        prayerSessionId.isAcceptableOrUnknown(
+          data['prayer_session_id']!,
+          _prayerSessionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_prayerSessionIdMeta);
+    }
+    if (data.containsKey('source_template_part_id')) {
+      context.handle(
+        _sourceTemplatePartIdMeta,
+        sourceTemplatePartId.isAcceptableOrUnknown(
+          data['source_template_part_id']!,
+          _sourceTemplatePartIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('template_revision')) {
+      context.handle(
+        _templateRevisionMeta,
+        templateRevision.isAcceptableOrUnknown(
+          data['template_revision']!,
+          _templateRevisionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('stable_key')) {
+      context.handle(
+        _stableKeyMeta,
+        stableKey.isAcceptableOrUnknown(data['stable_key']!, _stableKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stableKeyMeta);
+    }
+    if (data.containsKey('order_index')) {
+      context.handle(
+        _orderIndexMeta,
+        orderIndex.isAcceptableOrUnknown(data['order_index']!, _orderIndexMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_orderIndexMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('rakaat_count')) {
+      context.handle(
+        _rakaatCountMeta,
+        rakaatCount.isAcceptableOrUnknown(
+          data['rakaat_count']!,
+          _rakaatCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rakaatCountMeta);
+    }
+    if (data.containsKey('required_surah_slots')) {
+      context.handle(
+        _requiredSurahSlotsMeta,
+        requiredSurahSlots.isAcceptableOrUnknown(
+          data['required_surah_slots']!,
+          _requiredSurahSlotsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_requiredSurahSlotsMeta);
+    }
+    if (data.containsKey('allows_following_imam')) {
+      context.handle(
+        _allowsFollowingImamMeta,
+        allowsFollowingImam.isAcceptableOrUnknown(
+          data['allows_following_imam']!,
+          _allowsFollowingImamMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_allowsFollowingImamMeta);
+    }
+    if (data.containsKey('completion_mode')) {
+      context.handle(
+        _completionModeMeta,
+        completionMode.isAcceptableOrUnknown(
+          data['completion_mode']!,
+          _completionModeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('completed_at_utc')) {
+      context.handle(
+        _completedAtUtcMeta,
+        completedAtUtc.isAcceptableOrUnknown(
+          data['completed_at_utc']!,
+          _completedAtUtcMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PrayerSessionPartRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PrayerSessionPartRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      prayerSessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prayer_session_id'],
+      )!,
+      sourceTemplatePartId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_template_part_id'],
+      ),
+      templateRevision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}template_revision'],
+      ),
+      stableKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stable_key'],
+      )!,
+      orderIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}order_index'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      rakaatCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rakaat_count'],
+      )!,
+      requiredSurahSlots: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}required_surah_slots'],
+      )!,
+      allowsFollowingImam: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}allows_following_imam'],
+      )!,
+      completionMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}completion_mode'],
+      )!,
+      completedAtUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}completed_at_utc'],
+      ),
+    );
+  }
+
+  @override
+  $PrayerSessionPartsTable createAlias(String alias) {
+    return $PrayerSessionPartsTable(attachedDatabase, alias);
+  }
+}
+
+class PrayerSessionPartRow extends DataClass
+    implements Insertable<PrayerSessionPartRow> {
+  final String id;
+  final String prayerSessionId;
+  final String? sourceTemplatePartId;
+  final int? templateRevision;
+  final String stableKey;
+  final int orderIndex;
+  final String label;
+  final String kind;
+  final int rakaatCount;
+  final int requiredSurahSlots;
+  final bool allowsFollowingImam;
+  final String completionMode;
+  final DateTime? completedAtUtc;
+  const PrayerSessionPartRow({
+    required this.id,
+    required this.prayerSessionId,
+    this.sourceTemplatePartId,
+    this.templateRevision,
+    required this.stableKey,
+    required this.orderIndex,
+    required this.label,
+    required this.kind,
+    required this.rakaatCount,
+    required this.requiredSurahSlots,
+    required this.allowsFollowingImam,
+    required this.completionMode,
+    this.completedAtUtc,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['prayer_session_id'] = Variable<String>(prayerSessionId);
+    if (!nullToAbsent || sourceTemplatePartId != null) {
+      map['source_template_part_id'] = Variable<String>(sourceTemplatePartId);
+    }
+    if (!nullToAbsent || templateRevision != null) {
+      map['template_revision'] = Variable<int>(templateRevision);
+    }
+    map['stable_key'] = Variable<String>(stableKey);
+    map['order_index'] = Variable<int>(orderIndex);
+    map['label'] = Variable<String>(label);
+    map['kind'] = Variable<String>(kind);
+    map['rakaat_count'] = Variable<int>(rakaatCount);
+    map['required_surah_slots'] = Variable<int>(requiredSurahSlots);
+    map['allows_following_imam'] = Variable<bool>(allowsFollowingImam);
+    map['completion_mode'] = Variable<String>(completionMode);
+    if (!nullToAbsent || completedAtUtc != null) {
+      map['completed_at_utc'] = Variable<DateTime>(completedAtUtc);
+    }
+    return map;
+  }
+
+  PrayerSessionPartsCompanion toCompanion(bool nullToAbsent) {
+    return PrayerSessionPartsCompanion(
+      id: Value(id),
+      prayerSessionId: Value(prayerSessionId),
+      sourceTemplatePartId: sourceTemplatePartId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceTemplatePartId),
+      templateRevision: templateRevision == null && nullToAbsent
+          ? const Value.absent()
+          : Value(templateRevision),
+      stableKey: Value(stableKey),
+      orderIndex: Value(orderIndex),
+      label: Value(label),
+      kind: Value(kind),
+      rakaatCount: Value(rakaatCount),
+      requiredSurahSlots: Value(requiredSurahSlots),
+      allowsFollowingImam: Value(allowsFollowingImam),
+      completionMode: Value(completionMode),
+      completedAtUtc: completedAtUtc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAtUtc),
+    );
+  }
+
+  factory PrayerSessionPartRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PrayerSessionPartRow(
+      id: serializer.fromJson<String>(json['id']),
+      prayerSessionId: serializer.fromJson<String>(json['prayerSessionId']),
+      sourceTemplatePartId: serializer.fromJson<String?>(
+        json['sourceTemplatePartId'],
+      ),
+      templateRevision: serializer.fromJson<int?>(json['templateRevision']),
+      stableKey: serializer.fromJson<String>(json['stableKey']),
+      orderIndex: serializer.fromJson<int>(json['orderIndex']),
+      label: serializer.fromJson<String>(json['label']),
+      kind: serializer.fromJson<String>(json['kind']),
+      rakaatCount: serializer.fromJson<int>(json['rakaatCount']),
+      requiredSurahSlots: serializer.fromJson<int>(json['requiredSurahSlots']),
+      allowsFollowingImam: serializer.fromJson<bool>(
+        json['allowsFollowingImam'],
+      ),
+      completionMode: serializer.fromJson<String>(json['completionMode']),
+      completedAtUtc: serializer.fromJson<DateTime?>(json['completedAtUtc']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'prayerSessionId': serializer.toJson<String>(prayerSessionId),
+      'sourceTemplatePartId': serializer.toJson<String?>(sourceTemplatePartId),
+      'templateRevision': serializer.toJson<int?>(templateRevision),
+      'stableKey': serializer.toJson<String>(stableKey),
+      'orderIndex': serializer.toJson<int>(orderIndex),
+      'label': serializer.toJson<String>(label),
+      'kind': serializer.toJson<String>(kind),
+      'rakaatCount': serializer.toJson<int>(rakaatCount),
+      'requiredSurahSlots': serializer.toJson<int>(requiredSurahSlots),
+      'allowsFollowingImam': serializer.toJson<bool>(allowsFollowingImam),
+      'completionMode': serializer.toJson<String>(completionMode),
+      'completedAtUtc': serializer.toJson<DateTime?>(completedAtUtc),
+    };
+  }
+
+  PrayerSessionPartRow copyWith({
+    String? id,
+    String? prayerSessionId,
+    Value<String?> sourceTemplatePartId = const Value.absent(),
+    Value<int?> templateRevision = const Value.absent(),
+    String? stableKey,
+    int? orderIndex,
+    String? label,
+    String? kind,
+    int? rakaatCount,
+    int? requiredSurahSlots,
+    bool? allowsFollowingImam,
+    String? completionMode,
+    Value<DateTime?> completedAtUtc = const Value.absent(),
+  }) => PrayerSessionPartRow(
+    id: id ?? this.id,
+    prayerSessionId: prayerSessionId ?? this.prayerSessionId,
+    sourceTemplatePartId: sourceTemplatePartId.present
+        ? sourceTemplatePartId.value
+        : this.sourceTemplatePartId,
+    templateRevision: templateRevision.present
+        ? templateRevision.value
+        : this.templateRevision,
+    stableKey: stableKey ?? this.stableKey,
+    orderIndex: orderIndex ?? this.orderIndex,
+    label: label ?? this.label,
+    kind: kind ?? this.kind,
+    rakaatCount: rakaatCount ?? this.rakaatCount,
+    requiredSurahSlots: requiredSurahSlots ?? this.requiredSurahSlots,
+    allowsFollowingImam: allowsFollowingImam ?? this.allowsFollowingImam,
+    completionMode: completionMode ?? this.completionMode,
+    completedAtUtc: completedAtUtc.present
+        ? completedAtUtc.value
+        : this.completedAtUtc,
+  );
+  PrayerSessionPartRow copyWithCompanion(PrayerSessionPartsCompanion data) {
+    return PrayerSessionPartRow(
+      id: data.id.present ? data.id.value : this.id,
+      prayerSessionId: data.prayerSessionId.present
+          ? data.prayerSessionId.value
+          : this.prayerSessionId,
+      sourceTemplatePartId: data.sourceTemplatePartId.present
+          ? data.sourceTemplatePartId.value
+          : this.sourceTemplatePartId,
+      templateRevision: data.templateRevision.present
+          ? data.templateRevision.value
+          : this.templateRevision,
+      stableKey: data.stableKey.present ? data.stableKey.value : this.stableKey,
+      orderIndex: data.orderIndex.present
+          ? data.orderIndex.value
+          : this.orderIndex,
+      label: data.label.present ? data.label.value : this.label,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      rakaatCount: data.rakaatCount.present
+          ? data.rakaatCount.value
+          : this.rakaatCount,
+      requiredSurahSlots: data.requiredSurahSlots.present
+          ? data.requiredSurahSlots.value
+          : this.requiredSurahSlots,
+      allowsFollowingImam: data.allowsFollowingImam.present
+          ? data.allowsFollowingImam.value
+          : this.allowsFollowingImam,
+      completionMode: data.completionMode.present
+          ? data.completionMode.value
+          : this.completionMode,
+      completedAtUtc: data.completedAtUtc.present
+          ? data.completedAtUtc.value
+          : this.completedAtUtc,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrayerSessionPartRow(')
+          ..write('id: $id, ')
+          ..write('prayerSessionId: $prayerSessionId, ')
+          ..write('sourceTemplatePartId: $sourceTemplatePartId, ')
+          ..write('templateRevision: $templateRevision, ')
+          ..write('stableKey: $stableKey, ')
+          ..write('orderIndex: $orderIndex, ')
+          ..write('label: $label, ')
+          ..write('kind: $kind, ')
+          ..write('rakaatCount: $rakaatCount, ')
+          ..write('requiredSurahSlots: $requiredSurahSlots, ')
+          ..write('allowsFollowingImam: $allowsFollowingImam, ')
+          ..write('completionMode: $completionMode, ')
+          ..write('completedAtUtc: $completedAtUtc')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    prayerSessionId,
+    sourceTemplatePartId,
+    templateRevision,
+    stableKey,
+    orderIndex,
+    label,
+    kind,
+    rakaatCount,
+    requiredSurahSlots,
+    allowsFollowingImam,
+    completionMode,
+    completedAtUtc,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PrayerSessionPartRow &&
+          other.id == this.id &&
+          other.prayerSessionId == this.prayerSessionId &&
+          other.sourceTemplatePartId == this.sourceTemplatePartId &&
+          other.templateRevision == this.templateRevision &&
+          other.stableKey == this.stableKey &&
+          other.orderIndex == this.orderIndex &&
+          other.label == this.label &&
+          other.kind == this.kind &&
+          other.rakaatCount == this.rakaatCount &&
+          other.requiredSurahSlots == this.requiredSurahSlots &&
+          other.allowsFollowingImam == this.allowsFollowingImam &&
+          other.completionMode == this.completionMode &&
+          other.completedAtUtc == this.completedAtUtc);
+}
+
+class PrayerSessionPartsCompanion
+    extends UpdateCompanion<PrayerSessionPartRow> {
+  final Value<String> id;
+  final Value<String> prayerSessionId;
+  final Value<String?> sourceTemplatePartId;
+  final Value<int?> templateRevision;
+  final Value<String> stableKey;
+  final Value<int> orderIndex;
+  final Value<String> label;
+  final Value<String> kind;
+  final Value<int> rakaatCount;
+  final Value<int> requiredSurahSlots;
+  final Value<bool> allowsFollowingImam;
+  final Value<String> completionMode;
+  final Value<DateTime?> completedAtUtc;
+  final Value<int> rowid;
+  const PrayerSessionPartsCompanion({
+    this.id = const Value.absent(),
+    this.prayerSessionId = const Value.absent(),
+    this.sourceTemplatePartId = const Value.absent(),
+    this.templateRevision = const Value.absent(),
+    this.stableKey = const Value.absent(),
+    this.orderIndex = const Value.absent(),
+    this.label = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.rakaatCount = const Value.absent(),
+    this.requiredSurahSlots = const Value.absent(),
+    this.allowsFollowingImam = const Value.absent(),
+    this.completionMode = const Value.absent(),
+    this.completedAtUtc = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PrayerSessionPartsCompanion.insert({
+    required String id,
+    required String prayerSessionId,
+    this.sourceTemplatePartId = const Value.absent(),
+    this.templateRevision = const Value.absent(),
+    required String stableKey,
+    required int orderIndex,
+    required String label,
+    required String kind,
+    required int rakaatCount,
+    required int requiredSurahSlots,
+    required bool allowsFollowingImam,
+    this.completionMode = const Value.absent(),
+    this.completedAtUtc = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       prayerSessionId = Value(prayerSessionId),
+       stableKey = Value(stableKey),
+       orderIndex = Value(orderIndex),
+       label = Value(label),
+       kind = Value(kind),
+       rakaatCount = Value(rakaatCount),
+       requiredSurahSlots = Value(requiredSurahSlots),
+       allowsFollowingImam = Value(allowsFollowingImam);
+  static Insertable<PrayerSessionPartRow> custom({
+    Expression<String>? id,
+    Expression<String>? prayerSessionId,
+    Expression<String>? sourceTemplatePartId,
+    Expression<int>? templateRevision,
+    Expression<String>? stableKey,
+    Expression<int>? orderIndex,
+    Expression<String>? label,
+    Expression<String>? kind,
+    Expression<int>? rakaatCount,
+    Expression<int>? requiredSurahSlots,
+    Expression<bool>? allowsFollowingImam,
+    Expression<String>? completionMode,
+    Expression<DateTime>? completedAtUtc,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (prayerSessionId != null) 'prayer_session_id': prayerSessionId,
+      if (sourceTemplatePartId != null)
+        'source_template_part_id': sourceTemplatePartId,
+      if (templateRevision != null) 'template_revision': templateRevision,
+      if (stableKey != null) 'stable_key': stableKey,
+      if (orderIndex != null) 'order_index': orderIndex,
+      if (label != null) 'label': label,
+      if (kind != null) 'kind': kind,
+      if (rakaatCount != null) 'rakaat_count': rakaatCount,
+      if (requiredSurahSlots != null)
+        'required_surah_slots': requiredSurahSlots,
+      if (allowsFollowingImam != null)
+        'allows_following_imam': allowsFollowingImam,
+      if (completionMode != null) 'completion_mode': completionMode,
+      if (completedAtUtc != null) 'completed_at_utc': completedAtUtc,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PrayerSessionPartsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? prayerSessionId,
+    Value<String?>? sourceTemplatePartId,
+    Value<int?>? templateRevision,
+    Value<String>? stableKey,
+    Value<int>? orderIndex,
+    Value<String>? label,
+    Value<String>? kind,
+    Value<int>? rakaatCount,
+    Value<int>? requiredSurahSlots,
+    Value<bool>? allowsFollowingImam,
+    Value<String>? completionMode,
+    Value<DateTime?>? completedAtUtc,
+    Value<int>? rowid,
+  }) {
+    return PrayerSessionPartsCompanion(
+      id: id ?? this.id,
+      prayerSessionId: prayerSessionId ?? this.prayerSessionId,
+      sourceTemplatePartId: sourceTemplatePartId ?? this.sourceTemplatePartId,
+      templateRevision: templateRevision ?? this.templateRevision,
+      stableKey: stableKey ?? this.stableKey,
+      orderIndex: orderIndex ?? this.orderIndex,
+      label: label ?? this.label,
+      kind: kind ?? this.kind,
+      rakaatCount: rakaatCount ?? this.rakaatCount,
+      requiredSurahSlots: requiredSurahSlots ?? this.requiredSurahSlots,
+      allowsFollowingImam: allowsFollowingImam ?? this.allowsFollowingImam,
+      completionMode: completionMode ?? this.completionMode,
+      completedAtUtc: completedAtUtc ?? this.completedAtUtc,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (prayerSessionId.present) {
+      map['prayer_session_id'] = Variable<String>(prayerSessionId.value);
+    }
+    if (sourceTemplatePartId.present) {
+      map['source_template_part_id'] = Variable<String>(
+        sourceTemplatePartId.value,
+      );
+    }
+    if (templateRevision.present) {
+      map['template_revision'] = Variable<int>(templateRevision.value);
+    }
+    if (stableKey.present) {
+      map['stable_key'] = Variable<String>(stableKey.value);
+    }
+    if (orderIndex.present) {
+      map['order_index'] = Variable<int>(orderIndex.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (rakaatCount.present) {
+      map['rakaat_count'] = Variable<int>(rakaatCount.value);
+    }
+    if (requiredSurahSlots.present) {
+      map['required_surah_slots'] = Variable<int>(requiredSurahSlots.value);
+    }
+    if (allowsFollowingImam.present) {
+      map['allows_following_imam'] = Variable<bool>(allowsFollowingImam.value);
+    }
+    if (completionMode.present) {
+      map['completion_mode'] = Variable<String>(completionMode.value);
+    }
+    if (completedAtUtc.present) {
+      map['completed_at_utc'] = Variable<DateTime>(completedAtUtc.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrayerSessionPartsCompanion(')
+          ..write('id: $id, ')
+          ..write('prayerSessionId: $prayerSessionId, ')
+          ..write('sourceTemplatePartId: $sourceTemplatePartId, ')
+          ..write('templateRevision: $templateRevision, ')
+          ..write('stableKey: $stableKey, ')
+          ..write('orderIndex: $orderIndex, ')
+          ..write('label: $label, ')
+          ..write('kind: $kind, ')
+          ..write('rakaatCount: $rakaatCount, ')
+          ..write('requiredSurahSlots: $requiredSurahSlots, ')
+          ..write('allowsFollowingImam: $allowsFollowingImam, ')
+          ..write('completionMode: $completionMode, ')
+          ..write('completedAtUtc: $completedAtUtc, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $RecitationEventsTable extends RecitationEvents
     with TableInfo<$RecitationEventsTable, RecitationEventRow> {
   @override
@@ -3148,6 +4998,31 @@ class $RecitationEventsTable extends RecitationEvents
       'REFERENCES prayer_sessions (id) ON DELETE SET NULL',
     ),
   );
+  static const VerificationMeta _prayerSessionPartIdMeta =
+      const VerificationMeta('prayerSessionPartId');
+  @override
+  late final GeneratedColumn<String> prayerSessionPartId =
+      GeneratedColumn<String>(
+        'prayer_session_part_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES prayer_session_parts (id) ON DELETE SET NULL',
+        ),
+      );
+  static const VerificationMeta _slotIndexMeta = const VerificationMeta(
+    'slotIndex',
+  );
+  @override
+  late final GeneratedColumn<int> slotIndex = GeneratedColumn<int>(
+    'slot_index',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtUtcMeta = const VerificationMeta(
     'createdAtUtc',
   );
@@ -3213,6 +5088,8 @@ class $RecitationEventsTable extends RecitationEvents
     rotationSchemeId,
     rakaatSpanCount,
     prayerSessionId,
+    prayerSessionPartId,
+    slotIndex,
     createdAtUtc,
     localDate,
     prayerType,
@@ -3284,6 +5161,21 @@ class $RecitationEventsTable extends RecitationEvents
           data['prayer_session_id']!,
           _prayerSessionIdMeta,
         ),
+      );
+    }
+    if (data.containsKey('prayer_session_part_id')) {
+      context.handle(
+        _prayerSessionPartIdMeta,
+        prayerSessionPartId.isAcceptableOrUnknown(
+          data['prayer_session_part_id']!,
+          _prayerSessionPartIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('slot_index')) {
+      context.handle(
+        _slotIndexMeta,
+        slotIndex.isAcceptableOrUnknown(data['slot_index']!, _slotIndexMeta),
       );
     }
     if (data.containsKey('created_at_utc')) {
@@ -3365,6 +5257,14 @@ class $RecitationEventsTable extends RecitationEvents
         DriftSqlType.string,
         data['${effectivePrefix}prayer_session_id'],
       ),
+      prayerSessionPartId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prayer_session_part_id'],
+      ),
+      slotIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}slot_index'],
+      ),
       createdAtUtc: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at_utc'],
@@ -3402,6 +5302,8 @@ class RecitationEventRow extends DataClass
   final String rotationSchemeId;
   final int rakaatSpanCount;
   final String? prayerSessionId;
+  final String? prayerSessionPartId;
+  final int? slotIndex;
   final DateTime createdAtUtc;
   final String localDate;
   final String prayerType;
@@ -3414,6 +5316,8 @@ class RecitationEventRow extends DataClass
     required this.rotationSchemeId,
     required this.rakaatSpanCount,
     this.prayerSessionId,
+    this.prayerSessionPartId,
+    this.slotIndex,
     required this.createdAtUtc,
     required this.localDate,
     required this.prayerType,
@@ -3430,6 +5334,12 @@ class RecitationEventRow extends DataClass
     map['rakaat_span_count'] = Variable<int>(rakaatSpanCount);
     if (!nullToAbsent || prayerSessionId != null) {
       map['prayer_session_id'] = Variable<String>(prayerSessionId);
+    }
+    if (!nullToAbsent || prayerSessionPartId != null) {
+      map['prayer_session_part_id'] = Variable<String>(prayerSessionPartId);
+    }
+    if (!nullToAbsent || slotIndex != null) {
+      map['slot_index'] = Variable<int>(slotIndex);
     }
     map['created_at_utc'] = Variable<DateTime>(createdAtUtc);
     map['local_date'] = Variable<String>(localDate);
@@ -3451,6 +5361,12 @@ class RecitationEventRow extends DataClass
       prayerSessionId: prayerSessionId == null && nullToAbsent
           ? const Value.absent()
           : Value(prayerSessionId),
+      prayerSessionPartId: prayerSessionPartId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(prayerSessionPartId),
+      slotIndex: slotIndex == null && nullToAbsent
+          ? const Value.absent()
+          : Value(slotIndex),
       createdAtUtc: Value(createdAtUtc),
       localDate: Value(localDate),
       prayerType: Value(prayerType),
@@ -3473,6 +5389,10 @@ class RecitationEventRow extends DataClass
       rotationSchemeId: serializer.fromJson<String>(json['rotationSchemeId']),
       rakaatSpanCount: serializer.fromJson<int>(json['rakaatSpanCount']),
       prayerSessionId: serializer.fromJson<String?>(json['prayerSessionId']),
+      prayerSessionPartId: serializer.fromJson<String?>(
+        json['prayerSessionPartId'],
+      ),
+      slotIndex: serializer.fromJson<int?>(json['slotIndex']),
       createdAtUtc: serializer.fromJson<DateTime>(json['createdAtUtc']),
       localDate: serializer.fromJson<String>(json['localDate']),
       prayerType: serializer.fromJson<String>(json['prayerType']),
@@ -3490,6 +5410,8 @@ class RecitationEventRow extends DataClass
       'rotationSchemeId': serializer.toJson<String>(rotationSchemeId),
       'rakaatSpanCount': serializer.toJson<int>(rakaatSpanCount),
       'prayerSessionId': serializer.toJson<String?>(prayerSessionId),
+      'prayerSessionPartId': serializer.toJson<String?>(prayerSessionPartId),
+      'slotIndex': serializer.toJson<int?>(slotIndex),
       'createdAtUtc': serializer.toJson<DateTime>(createdAtUtc),
       'localDate': serializer.toJson<String>(localDate),
       'prayerType': serializer.toJson<String>(prayerType),
@@ -3505,6 +5427,8 @@ class RecitationEventRow extends DataClass
     String? rotationSchemeId,
     int? rakaatSpanCount,
     Value<String?> prayerSessionId = const Value.absent(),
+    Value<String?> prayerSessionPartId = const Value.absent(),
+    Value<int?> slotIndex = const Value.absent(),
     DateTime? createdAtUtc,
     String? localDate,
     String? prayerType,
@@ -3519,6 +5443,10 @@ class RecitationEventRow extends DataClass
     prayerSessionId: prayerSessionId.present
         ? prayerSessionId.value
         : this.prayerSessionId,
+    prayerSessionPartId: prayerSessionPartId.present
+        ? prayerSessionPartId.value
+        : this.prayerSessionPartId,
+    slotIndex: slotIndex.present ? slotIndex.value : this.slotIndex,
     createdAtUtc: createdAtUtc ?? this.createdAtUtc,
     localDate: localDate ?? this.localDate,
     prayerType: prayerType ?? this.prayerType,
@@ -3541,6 +5469,10 @@ class RecitationEventRow extends DataClass
       prayerSessionId: data.prayerSessionId.present
           ? data.prayerSessionId.value
           : this.prayerSessionId,
+      prayerSessionPartId: data.prayerSessionPartId.present
+          ? data.prayerSessionPartId.value
+          : this.prayerSessionPartId,
+      slotIndex: data.slotIndex.present ? data.slotIndex.value : this.slotIndex,
       createdAtUtc: data.createdAtUtc.present
           ? data.createdAtUtc.value
           : this.createdAtUtc,
@@ -3564,6 +5496,8 @@ class RecitationEventRow extends DataClass
           ..write('rotationSchemeId: $rotationSchemeId, ')
           ..write('rakaatSpanCount: $rakaatSpanCount, ')
           ..write('prayerSessionId: $prayerSessionId, ')
+          ..write('prayerSessionPartId: $prayerSessionPartId, ')
+          ..write('slotIndex: $slotIndex, ')
           ..write('createdAtUtc: $createdAtUtc, ')
           ..write('localDate: $localDate, ')
           ..write('prayerType: $prayerType, ')
@@ -3581,6 +5515,8 @@ class RecitationEventRow extends DataClass
     rotationSchemeId,
     rakaatSpanCount,
     prayerSessionId,
+    prayerSessionPartId,
+    slotIndex,
     createdAtUtc,
     localDate,
     prayerType,
@@ -3597,6 +5533,8 @@ class RecitationEventRow extends DataClass
           other.rotationSchemeId == this.rotationSchemeId &&
           other.rakaatSpanCount == this.rakaatSpanCount &&
           other.prayerSessionId == this.prayerSessionId &&
+          other.prayerSessionPartId == this.prayerSessionPartId &&
+          other.slotIndex == this.slotIndex &&
           other.createdAtUtc == this.createdAtUtc &&
           other.localDate == this.localDate &&
           other.prayerType == this.prayerType &&
@@ -3611,6 +5549,8 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
   final Value<String> rotationSchemeId;
   final Value<int> rakaatSpanCount;
   final Value<String?> prayerSessionId;
+  final Value<String?> prayerSessionPartId;
+  final Value<int?> slotIndex;
   final Value<DateTime> createdAtUtc;
   final Value<String> localDate;
   final Value<String> prayerType;
@@ -3624,6 +5564,8 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
     this.rotationSchemeId = const Value.absent(),
     this.rakaatSpanCount = const Value.absent(),
     this.prayerSessionId = const Value.absent(),
+    this.prayerSessionPartId = const Value.absent(),
+    this.slotIndex = const Value.absent(),
     this.createdAtUtc = const Value.absent(),
     this.localDate = const Value.absent(),
     this.prayerType = const Value.absent(),
@@ -3638,6 +5580,8 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
     required String rotationSchemeId,
     required int rakaatSpanCount,
     this.prayerSessionId = const Value.absent(),
+    this.prayerSessionPartId = const Value.absent(),
+    this.slotIndex = const Value.absent(),
     required DateTime createdAtUtc,
     required String localDate,
     required String prayerType,
@@ -3659,6 +5603,8 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
     Expression<String>? rotationSchemeId,
     Expression<int>? rakaatSpanCount,
     Expression<String>? prayerSessionId,
+    Expression<String>? prayerSessionPartId,
+    Expression<int>? slotIndex,
     Expression<DateTime>? createdAtUtc,
     Expression<String>? localDate,
     Expression<String>? prayerType,
@@ -3673,6 +5619,9 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
       if (rotationSchemeId != null) 'rotation_scheme_id': rotationSchemeId,
       if (rakaatSpanCount != null) 'rakaat_span_count': rakaatSpanCount,
       if (prayerSessionId != null) 'prayer_session_id': prayerSessionId,
+      if (prayerSessionPartId != null)
+        'prayer_session_part_id': prayerSessionPartId,
+      if (slotIndex != null) 'slot_index': slotIndex,
       if (createdAtUtc != null) 'created_at_utc': createdAtUtc,
       if (localDate != null) 'local_date': localDate,
       if (prayerType != null) 'prayer_type': prayerType,
@@ -3689,6 +5638,8 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
     Value<String>? rotationSchemeId,
     Value<int>? rakaatSpanCount,
     Value<String?>? prayerSessionId,
+    Value<String?>? prayerSessionPartId,
+    Value<int?>? slotIndex,
     Value<DateTime>? createdAtUtc,
     Value<String>? localDate,
     Value<String>? prayerType,
@@ -3703,6 +5654,8 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
       rotationSchemeId: rotationSchemeId ?? this.rotationSchemeId,
       rakaatSpanCount: rakaatSpanCount ?? this.rakaatSpanCount,
       prayerSessionId: prayerSessionId ?? this.prayerSessionId,
+      prayerSessionPartId: prayerSessionPartId ?? this.prayerSessionPartId,
+      slotIndex: slotIndex ?? this.slotIndex,
       createdAtUtc: createdAtUtc ?? this.createdAtUtc,
       localDate: localDate ?? this.localDate,
       prayerType: prayerType ?? this.prayerType,
@@ -3732,6 +5685,14 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
     }
     if (prayerSessionId.present) {
       map['prayer_session_id'] = Variable<String>(prayerSessionId.value);
+    }
+    if (prayerSessionPartId.present) {
+      map['prayer_session_part_id'] = Variable<String>(
+        prayerSessionPartId.value,
+      );
+    }
+    if (slotIndex.present) {
+      map['slot_index'] = Variable<int>(slotIndex.value);
     }
     if (createdAtUtc.present) {
       map['created_at_utc'] = Variable<DateTime>(createdAtUtc.value);
@@ -3763,6 +5724,8 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
           ..write('rotationSchemeId: $rotationSchemeId, ')
           ..write('rakaatSpanCount: $rakaatSpanCount, ')
           ..write('prayerSessionId: $prayerSessionId, ')
+          ..write('prayerSessionPartId: $prayerSessionPartId, ')
+          ..write('slotIndex: $slotIndex, ')
           ..write('createdAtUtc: $createdAtUtc, ')
           ..write('localDate: $localDate, ')
           ..write('prayerType: $prayerType, ')
@@ -6996,6 +8959,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $RotationPartsTable rotationParts = $RotationPartsTable(this);
   late final $PrayerSessionsTable prayerSessions = $PrayerSessionsTable(this);
+  late final $PrayerRoutineTemplatesTable prayerRoutineTemplates =
+      $PrayerRoutineTemplatesTable(this);
+  late final $PrayerRoutinePartTemplatesTable prayerRoutinePartTemplates =
+      $PrayerRoutinePartTemplatesTable(this);
+  late final $PrayerSessionPartsTable prayerSessionParts =
+      $PrayerSessionPartsTable(this);
   late final $RecitationEventsTable recitationEvents = $RecitationEventsTable(
     this,
   );
@@ -7017,6 +8986,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     rotationSchemes,
     rotationParts,
     prayerSessions,
+    prayerRoutineTemplates,
+    prayerRoutinePartTemplates,
+    prayerSessionParts,
     recitationEvents,
     recitationEventParts,
     rotationAdjustments,
@@ -7035,7 +9007,30 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
+        'prayer_routine_templates',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('prayer_routine_part_templates', kind: UpdateKind.delete),
+      ],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
         'prayer_sessions',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('prayer_session_parts', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'prayer_sessions',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('recitation_events', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'prayer_session_parts',
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('recitation_events', kind: UpdateKind.update)],
@@ -8926,6 +10921,34 @@ final class $$PrayerSessionsTableReferences
     super.$_typedResult,
   );
 
+  static MultiTypedResultKey<
+    $PrayerSessionPartsTable,
+    List<PrayerSessionPartRow>
+  >
+  _prayerSessionPartsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.prayerSessionParts,
+        aliasName:
+            'prayer_sessions__id__prayer_session_parts__prayer_session_id',
+      );
+
+  $$PrayerSessionPartsTableProcessedTableManager get prayerSessionPartsRefs {
+    final manager =
+        $$PrayerSessionPartsTableTableManager(
+          $_db,
+          $_db.prayerSessionParts,
+        ).filter(
+          (f) => f.prayerSessionId.id.sqlEquals($_itemColumn<String>('id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _prayerSessionPartsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<$RecitationEventsTable, List<RecitationEventRow>>
   _recitationEventsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.recitationEvents,
@@ -8980,6 +11003,31 @@ class $$PrayerSessionsTableFilterComposer
     column: $table.localDate,
     builder: (column) => ColumnFilters(column),
   );
+
+  Expression<bool> prayerSessionPartsRefs(
+    Expression<bool> Function($$PrayerSessionPartsTableFilterComposer f) f,
+  ) {
+    final $$PrayerSessionPartsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.prayerSessionParts,
+      getReferencedColumn: (t) => t.prayerSessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PrayerSessionPartsTableFilterComposer(
+            $db: $db,
+            $table: $db.prayerSessionParts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 
   Expression<bool> recitationEventsRefs(
     Expression<bool> Function($$RecitationEventsTableFilterComposer f) f,
@@ -9070,6 +11118,32 @@ class $$PrayerSessionsTableAnnotationComposer
   GeneratedColumn<String> get localDate =>
       $composableBuilder(column: $table.localDate, builder: (column) => column);
 
+  Expression<T> prayerSessionPartsRefs<T extends Object>(
+    Expression<T> Function($$PrayerSessionPartsTableAnnotationComposer a) f,
+  ) {
+    final $$PrayerSessionPartsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.prayerSessionParts,
+          getReferencedColumn: (t) => t.prayerSessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PrayerSessionPartsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.prayerSessionParts,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
   Expression<T> recitationEventsRefs<T extends Object>(
     Expression<T> Function($$RecitationEventsTableAnnotationComposer a) f,
   ) {
@@ -9109,7 +11183,10 @@ class $$PrayerSessionsTableTableManager
           $$PrayerSessionsTableUpdateCompanionBuilder,
           (PrayerSessionRow, $$PrayerSessionsTableReferences),
           PrayerSessionRow,
-          PrefetchHooks Function({bool recitationEventsRefs})
+          PrefetchHooks Function({
+            bool prayerSessionPartsRefs,
+            bool recitationEventsRefs,
+          })
         > {
   $$PrayerSessionsTableTableManager(
     _$AppDatabase db,
@@ -9164,40 +11241,63 @@ class $$PrayerSessionsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({recitationEventsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (recitationEventsRefs) db.recitationEvents,
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (recitationEventsRefs)
-                    await $_getPrefetchedData<
-                      PrayerSessionRow,
-                      $PrayerSessionsTable,
-                      RecitationEventRow
-                    >(
-                      currentTable: table,
-                      referencedTable: $$PrayerSessionsTableReferences
-                          ._recitationEventsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$PrayerSessionsTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).recitationEventsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where(
-                            (e) => e.prayerSessionId == item.id,
-                          ),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({prayerSessionPartsRefs = false, recitationEventsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (prayerSessionPartsRefs) db.prayerSessionParts,
+                    if (recitationEventsRefs) db.recitationEvents,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (prayerSessionPartsRefs)
+                        await $_getPrefetchedData<
+                          PrayerSessionRow,
+                          $PrayerSessionsTable,
+                          PrayerSessionPartRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PrayerSessionsTableReferences
+                              ._prayerSessionPartsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PrayerSessionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).prayerSessionPartsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.prayerSessionId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (recitationEventsRefs)
+                        await $_getPrefetchedData<
+                          PrayerSessionRow,
+                          $PrayerSessionsTable,
+                          RecitationEventRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PrayerSessionsTableReferences
+                              ._recitationEventsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PrayerSessionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).recitationEventsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.prayerSessionId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -9214,7 +11314,1419 @@ typedef $$PrayerSessionsTableProcessedTableManager =
       $$PrayerSessionsTableUpdateCompanionBuilder,
       (PrayerSessionRow, $$PrayerSessionsTableReferences),
       PrayerSessionRow,
-      PrefetchHooks Function({bool recitationEventsRefs})
+      PrefetchHooks Function({
+        bool prayerSessionPartsRefs,
+        bool recitationEventsRefs,
+      })
+    >;
+typedef $$PrayerRoutineTemplatesTableCreateCompanionBuilder =
+    PrayerRoutineTemplatesCompanion Function({
+      required String id,
+      required String prayerType,
+      required String displayName,
+      Value<bool> enabled,
+      Value<int> revision,
+      Value<int> rowid,
+    });
+typedef $$PrayerRoutineTemplatesTableUpdateCompanionBuilder =
+    PrayerRoutineTemplatesCompanion Function({
+      Value<String> id,
+      Value<String> prayerType,
+      Value<String> displayName,
+      Value<bool> enabled,
+      Value<int> revision,
+      Value<int> rowid,
+    });
+
+final class $$PrayerRoutineTemplatesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PrayerRoutineTemplatesTable,
+          PrayerRoutineTemplateRow
+        > {
+  $$PrayerRoutineTemplatesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<
+    $PrayerRoutinePartTemplatesTable,
+    List<PrayerRoutinePartTemplateRow>
+  >
+  _prayerRoutinePartTemplatesRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.prayerRoutinePartTemplates,
+    aliasName:
+        'prayer_routine_templates__id__prayer_routine_part_templates__routine_template_id',
+  );
+
+  $$PrayerRoutinePartTemplatesTableProcessedTableManager
+  get prayerRoutinePartTemplatesRefs {
+    final manager =
+        $$PrayerRoutinePartTemplatesTableTableManager(
+          $_db,
+          $_db.prayerRoutinePartTemplates,
+        ).filter(
+          (f) => f.routineTemplateId.id.sqlEquals($_itemColumn<String>('id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _prayerRoutinePartTemplatesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$PrayerRoutineTemplatesTableFilterComposer
+    extends Composer<_$AppDatabase, $PrayerRoutineTemplatesTable> {
+  $$PrayerRoutineTemplatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get prayerType => $composableBuilder(
+    column: $table.prayerType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> prayerRoutinePartTemplatesRefs(
+    Expression<bool> Function($$PrayerRoutinePartTemplatesTableFilterComposer f)
+    f,
+  ) {
+    final $$PrayerRoutinePartTemplatesTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.prayerRoutinePartTemplates,
+          getReferencedColumn: (t) => t.routineTemplateId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PrayerRoutinePartTemplatesTableFilterComposer(
+                $db: $db,
+                $table: $db.prayerRoutinePartTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$PrayerRoutineTemplatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PrayerRoutineTemplatesTable> {
+  $$PrayerRoutineTemplatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get prayerType => $composableBuilder(
+    column: $table.prayerType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PrayerRoutineTemplatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PrayerRoutineTemplatesTable> {
+  $$PrayerRoutineTemplatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get prayerType => $composableBuilder(
+    column: $table.prayerType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  Expression<T> prayerRoutinePartTemplatesRefs<T extends Object>(
+    Expression<T> Function(
+      $$PrayerRoutinePartTemplatesTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$PrayerRoutinePartTemplatesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.prayerRoutinePartTemplates,
+          getReferencedColumn: (t) => t.routineTemplateId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PrayerRoutinePartTemplatesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.prayerRoutinePartTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$PrayerRoutineTemplatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PrayerRoutineTemplatesTable,
+          PrayerRoutineTemplateRow,
+          $$PrayerRoutineTemplatesTableFilterComposer,
+          $$PrayerRoutineTemplatesTableOrderingComposer,
+          $$PrayerRoutineTemplatesTableAnnotationComposer,
+          $$PrayerRoutineTemplatesTableCreateCompanionBuilder,
+          $$PrayerRoutineTemplatesTableUpdateCompanionBuilder,
+          (PrayerRoutineTemplateRow, $$PrayerRoutineTemplatesTableReferences),
+          PrayerRoutineTemplateRow,
+          PrefetchHooks Function({bool prayerRoutinePartTemplatesRefs})
+        > {
+  $$PrayerRoutineTemplatesTableTableManager(
+    _$AppDatabase db,
+    $PrayerRoutineTemplatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PrayerRoutineTemplatesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PrayerRoutineTemplatesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PrayerRoutineTemplatesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> prayerType = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PrayerRoutineTemplatesCompanion(
+                id: id,
+                prayerType: prayerType,
+                displayName: displayName,
+                enabled: enabled,
+                revision: revision,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String prayerType,
+                required String displayName,
+                Value<bool> enabled = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PrayerRoutineTemplatesCompanion.insert(
+                id: id,
+                prayerType: prayerType,
+                displayName: displayName,
+                enabled: enabled,
+                revision: revision,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PrayerRoutineTemplatesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({prayerRoutinePartTemplatesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (prayerRoutinePartTemplatesRefs)
+                  db.prayerRoutinePartTemplates,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (prayerRoutinePartTemplatesRefs)
+                    await $_getPrefetchedData<
+                      PrayerRoutineTemplateRow,
+                      $PrayerRoutineTemplatesTable,
+                      PrayerRoutinePartTemplateRow
+                    >(
+                      currentTable: table,
+                      referencedTable: $$PrayerRoutineTemplatesTableReferences
+                          ._prayerRoutinePartTemplatesRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$PrayerRoutineTemplatesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).prayerRoutinePartTemplatesRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.routineTemplateId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PrayerRoutineTemplatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PrayerRoutineTemplatesTable,
+      PrayerRoutineTemplateRow,
+      $$PrayerRoutineTemplatesTableFilterComposer,
+      $$PrayerRoutineTemplatesTableOrderingComposer,
+      $$PrayerRoutineTemplatesTableAnnotationComposer,
+      $$PrayerRoutineTemplatesTableCreateCompanionBuilder,
+      $$PrayerRoutineTemplatesTableUpdateCompanionBuilder,
+      (PrayerRoutineTemplateRow, $$PrayerRoutineTemplatesTableReferences),
+      PrayerRoutineTemplateRow,
+      PrefetchHooks Function({bool prayerRoutinePartTemplatesRefs})
+    >;
+typedef $$PrayerRoutinePartTemplatesTableCreateCompanionBuilder =
+    PrayerRoutinePartTemplatesCompanion Function({
+      required String id,
+      required String routineTemplateId,
+      required String stableKey,
+      required int orderIndex,
+      required String kind,
+      Value<String?> customLabel,
+      required int rakaatCount,
+      required int requiredSurahSlots,
+      Value<bool> allowsFollowingImam,
+      Value<String> defaultCompletionMode,
+      Value<int> rowid,
+    });
+typedef $$PrayerRoutinePartTemplatesTableUpdateCompanionBuilder =
+    PrayerRoutinePartTemplatesCompanion Function({
+      Value<String> id,
+      Value<String> routineTemplateId,
+      Value<String> stableKey,
+      Value<int> orderIndex,
+      Value<String> kind,
+      Value<String?> customLabel,
+      Value<int> rakaatCount,
+      Value<int> requiredSurahSlots,
+      Value<bool> allowsFollowingImam,
+      Value<String> defaultCompletionMode,
+      Value<int> rowid,
+    });
+
+final class $$PrayerRoutinePartTemplatesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PrayerRoutinePartTemplatesTable,
+          PrayerRoutinePartTemplateRow
+        > {
+  $$PrayerRoutinePartTemplatesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PrayerRoutineTemplatesTable _routineTemplateIdTable(
+    _$AppDatabase db,
+  ) => db.prayerRoutineTemplates.createAlias(
+    'prayer_routine_part_templates__routine_template_id__prayer_routine_templates__id',
+  );
+
+  $$PrayerRoutineTemplatesTableProcessedTableManager get routineTemplateId {
+    final $_column = $_itemColumn<String>('routine_template_id')!;
+
+    final manager = $$PrayerRoutineTemplatesTableTableManager(
+      $_db,
+      $_db.prayerRoutineTemplates,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_routineTemplateIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PrayerRoutinePartTemplatesTableFilterComposer
+    extends Composer<_$AppDatabase, $PrayerRoutinePartTemplatesTable> {
+  $$PrayerRoutinePartTemplatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stableKey => $composableBuilder(
+    column: $table.stableKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get orderIndex => $composableBuilder(
+    column: $table.orderIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customLabel => $composableBuilder(
+    column: $table.customLabel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rakaatCount => $composableBuilder(
+    column: $table.rakaatCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get requiredSurahSlots => $composableBuilder(
+    column: $table.requiredSurahSlots,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get allowsFollowingImam => $composableBuilder(
+    column: $table.allowsFollowingImam,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get defaultCompletionMode => $composableBuilder(
+    column: $table.defaultCompletionMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PrayerRoutineTemplatesTableFilterComposer get routineTemplateId {
+    final $$PrayerRoutineTemplatesTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.routineTemplateId,
+          referencedTable: $db.prayerRoutineTemplates,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PrayerRoutineTemplatesTableFilterComposer(
+                $db: $db,
+                $table: $db.prayerRoutineTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$PrayerRoutinePartTemplatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PrayerRoutinePartTemplatesTable> {
+  $$PrayerRoutinePartTemplatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get stableKey => $composableBuilder(
+    column: $table.stableKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get orderIndex => $composableBuilder(
+    column: $table.orderIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customLabel => $composableBuilder(
+    column: $table.customLabel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rakaatCount => $composableBuilder(
+    column: $table.rakaatCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get requiredSurahSlots => $composableBuilder(
+    column: $table.requiredSurahSlots,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get allowsFollowingImam => $composableBuilder(
+    column: $table.allowsFollowingImam,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get defaultCompletionMode => $composableBuilder(
+    column: $table.defaultCompletionMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PrayerRoutineTemplatesTableOrderingComposer get routineTemplateId {
+    final $$PrayerRoutineTemplatesTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.routineTemplateId,
+          referencedTable: $db.prayerRoutineTemplates,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PrayerRoutineTemplatesTableOrderingComposer(
+                $db: $db,
+                $table: $db.prayerRoutineTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$PrayerRoutinePartTemplatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PrayerRoutinePartTemplatesTable> {
+  $$PrayerRoutinePartTemplatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get stableKey =>
+      $composableBuilder(column: $table.stableKey, builder: (column) => column);
+
+  GeneratedColumn<int> get orderIndex => $composableBuilder(
+    column: $table.orderIndex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get customLabel => $composableBuilder(
+    column: $table.customLabel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get rakaatCount => $composableBuilder(
+    column: $table.rakaatCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get requiredSurahSlots => $composableBuilder(
+    column: $table.requiredSurahSlots,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get allowsFollowingImam => $composableBuilder(
+    column: $table.allowsFollowingImam,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get defaultCompletionMode => $composableBuilder(
+    column: $table.defaultCompletionMode,
+    builder: (column) => column,
+  );
+
+  $$PrayerRoutineTemplatesTableAnnotationComposer get routineTemplateId {
+    final $$PrayerRoutineTemplatesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.routineTemplateId,
+          referencedTable: $db.prayerRoutineTemplates,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PrayerRoutineTemplatesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.prayerRoutineTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$PrayerRoutinePartTemplatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PrayerRoutinePartTemplatesTable,
+          PrayerRoutinePartTemplateRow,
+          $$PrayerRoutinePartTemplatesTableFilterComposer,
+          $$PrayerRoutinePartTemplatesTableOrderingComposer,
+          $$PrayerRoutinePartTemplatesTableAnnotationComposer,
+          $$PrayerRoutinePartTemplatesTableCreateCompanionBuilder,
+          $$PrayerRoutinePartTemplatesTableUpdateCompanionBuilder,
+          (
+            PrayerRoutinePartTemplateRow,
+            $$PrayerRoutinePartTemplatesTableReferences,
+          ),
+          PrayerRoutinePartTemplateRow,
+          PrefetchHooks Function({bool routineTemplateId})
+        > {
+  $$PrayerRoutinePartTemplatesTableTableManager(
+    _$AppDatabase db,
+    $PrayerRoutinePartTemplatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PrayerRoutinePartTemplatesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PrayerRoutinePartTemplatesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PrayerRoutinePartTemplatesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> routineTemplateId = const Value.absent(),
+                Value<String> stableKey = const Value.absent(),
+                Value<int> orderIndex = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> customLabel = const Value.absent(),
+                Value<int> rakaatCount = const Value.absent(),
+                Value<int> requiredSurahSlots = const Value.absent(),
+                Value<bool> allowsFollowingImam = const Value.absent(),
+                Value<String> defaultCompletionMode = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PrayerRoutinePartTemplatesCompanion(
+                id: id,
+                routineTemplateId: routineTemplateId,
+                stableKey: stableKey,
+                orderIndex: orderIndex,
+                kind: kind,
+                customLabel: customLabel,
+                rakaatCount: rakaatCount,
+                requiredSurahSlots: requiredSurahSlots,
+                allowsFollowingImam: allowsFollowingImam,
+                defaultCompletionMode: defaultCompletionMode,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String routineTemplateId,
+                required String stableKey,
+                required int orderIndex,
+                required String kind,
+                Value<String?> customLabel = const Value.absent(),
+                required int rakaatCount,
+                required int requiredSurahSlots,
+                Value<bool> allowsFollowingImam = const Value.absent(),
+                Value<String> defaultCompletionMode = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PrayerRoutinePartTemplatesCompanion.insert(
+                id: id,
+                routineTemplateId: routineTemplateId,
+                stableKey: stableKey,
+                orderIndex: orderIndex,
+                kind: kind,
+                customLabel: customLabel,
+                rakaatCount: rakaatCount,
+                requiredSurahSlots: requiredSurahSlots,
+                allowsFollowingImam: allowsFollowingImam,
+                defaultCompletionMode: defaultCompletionMode,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PrayerRoutinePartTemplatesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({routineTemplateId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (routineTemplateId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.routineTemplateId,
+                                referencedTable:
+                                    $$PrayerRoutinePartTemplatesTableReferences
+                                        ._routineTemplateIdTable(db),
+                                referencedColumn:
+                                    $$PrayerRoutinePartTemplatesTableReferences
+                                        ._routineTemplateIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PrayerRoutinePartTemplatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PrayerRoutinePartTemplatesTable,
+      PrayerRoutinePartTemplateRow,
+      $$PrayerRoutinePartTemplatesTableFilterComposer,
+      $$PrayerRoutinePartTemplatesTableOrderingComposer,
+      $$PrayerRoutinePartTemplatesTableAnnotationComposer,
+      $$PrayerRoutinePartTemplatesTableCreateCompanionBuilder,
+      $$PrayerRoutinePartTemplatesTableUpdateCompanionBuilder,
+      (
+        PrayerRoutinePartTemplateRow,
+        $$PrayerRoutinePartTemplatesTableReferences,
+      ),
+      PrayerRoutinePartTemplateRow,
+      PrefetchHooks Function({bool routineTemplateId})
+    >;
+typedef $$PrayerSessionPartsTableCreateCompanionBuilder =
+    PrayerSessionPartsCompanion Function({
+      required String id,
+      required String prayerSessionId,
+      Value<String?> sourceTemplatePartId,
+      Value<int?> templateRevision,
+      required String stableKey,
+      required int orderIndex,
+      required String label,
+      required String kind,
+      required int rakaatCount,
+      required int requiredSurahSlots,
+      required bool allowsFollowingImam,
+      Value<String> completionMode,
+      Value<DateTime?> completedAtUtc,
+      Value<int> rowid,
+    });
+typedef $$PrayerSessionPartsTableUpdateCompanionBuilder =
+    PrayerSessionPartsCompanion Function({
+      Value<String> id,
+      Value<String> prayerSessionId,
+      Value<String?> sourceTemplatePartId,
+      Value<int?> templateRevision,
+      Value<String> stableKey,
+      Value<int> orderIndex,
+      Value<String> label,
+      Value<String> kind,
+      Value<int> rakaatCount,
+      Value<int> requiredSurahSlots,
+      Value<bool> allowsFollowingImam,
+      Value<String> completionMode,
+      Value<DateTime?> completedAtUtc,
+      Value<int> rowid,
+    });
+
+final class $$PrayerSessionPartsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PrayerSessionPartsTable,
+          PrayerSessionPartRow
+        > {
+  $$PrayerSessionPartsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PrayerSessionsTable _prayerSessionIdTable(_$AppDatabase db) =>
+      db.prayerSessions.createAlias(
+        'prayer_session_parts__prayer_session_id__prayer_sessions__id',
+      );
+
+  $$PrayerSessionsTableProcessedTableManager get prayerSessionId {
+    final $_column = $_itemColumn<String>('prayer_session_id')!;
+
+    final manager = $$PrayerSessionsTableTableManager(
+      $_db,
+      $_db.prayerSessions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_prayerSessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$RecitationEventsTable, List<RecitationEventRow>>
+  _recitationEventsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.recitationEvents,
+    aliasName:
+        'prayer_session_parts__id__recitation_events__prayer_session_part_id',
+  );
+
+  $$RecitationEventsTableProcessedTableManager get recitationEventsRefs {
+    final manager =
+        $$RecitationEventsTableTableManager($_db, $_db.recitationEvents).filter(
+          (f) =>
+              f.prayerSessionPartId.id.sqlEquals($_itemColumn<String>('id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _recitationEventsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$PrayerSessionPartsTableFilterComposer
+    extends Composer<_$AppDatabase, $PrayerSessionPartsTable> {
+  $$PrayerSessionPartsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceTemplatePartId => $composableBuilder(
+    column: $table.sourceTemplatePartId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get templateRevision => $composableBuilder(
+    column: $table.templateRevision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stableKey => $composableBuilder(
+    column: $table.stableKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get orderIndex => $composableBuilder(
+    column: $table.orderIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rakaatCount => $composableBuilder(
+    column: $table.rakaatCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get requiredSurahSlots => $composableBuilder(
+    column: $table.requiredSurahSlots,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get allowsFollowingImam => $composableBuilder(
+    column: $table.allowsFollowingImam,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get completionMode => $composableBuilder(
+    column: $table.completionMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get completedAtUtc => $composableBuilder(
+    column: $table.completedAtUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PrayerSessionsTableFilterComposer get prayerSessionId {
+    final $$PrayerSessionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.prayerSessionId,
+      referencedTable: $db.prayerSessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PrayerSessionsTableFilterComposer(
+            $db: $db,
+            $table: $db.prayerSessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> recitationEventsRefs(
+    Expression<bool> Function($$RecitationEventsTableFilterComposer f) f,
+  ) {
+    final $$RecitationEventsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.recitationEvents,
+      getReferencedColumn: (t) => t.prayerSessionPartId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecitationEventsTableFilterComposer(
+            $db: $db,
+            $table: $db.recitationEvents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$PrayerSessionPartsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PrayerSessionPartsTable> {
+  $$PrayerSessionPartsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceTemplatePartId => $composableBuilder(
+    column: $table.sourceTemplatePartId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get templateRevision => $composableBuilder(
+    column: $table.templateRevision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get stableKey => $composableBuilder(
+    column: $table.stableKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get orderIndex => $composableBuilder(
+    column: $table.orderIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rakaatCount => $composableBuilder(
+    column: $table.rakaatCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get requiredSurahSlots => $composableBuilder(
+    column: $table.requiredSurahSlots,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get allowsFollowingImam => $composableBuilder(
+    column: $table.allowsFollowingImam,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get completionMode => $composableBuilder(
+    column: $table.completionMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get completedAtUtc => $composableBuilder(
+    column: $table.completedAtUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PrayerSessionsTableOrderingComposer get prayerSessionId {
+    final $$PrayerSessionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.prayerSessionId,
+      referencedTable: $db.prayerSessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PrayerSessionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.prayerSessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PrayerSessionPartsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PrayerSessionPartsTable> {
+  $$PrayerSessionPartsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceTemplatePartId => $composableBuilder(
+    column: $table.sourceTemplatePartId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get templateRevision => $composableBuilder(
+    column: $table.templateRevision,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get stableKey =>
+      $composableBuilder(column: $table.stableKey, builder: (column) => column);
+
+  GeneratedColumn<int> get orderIndex => $composableBuilder(
+    column: $table.orderIndex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<int> get rakaatCount => $composableBuilder(
+    column: $table.rakaatCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get requiredSurahSlots => $composableBuilder(
+    column: $table.requiredSurahSlots,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get allowsFollowingImam => $composableBuilder(
+    column: $table.allowsFollowingImam,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get completionMode => $composableBuilder(
+    column: $table.completionMode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get completedAtUtc => $composableBuilder(
+    column: $table.completedAtUtc,
+    builder: (column) => column,
+  );
+
+  $$PrayerSessionsTableAnnotationComposer get prayerSessionId {
+    final $$PrayerSessionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.prayerSessionId,
+      referencedTable: $db.prayerSessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PrayerSessionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.prayerSessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> recitationEventsRefs<T extends Object>(
+    Expression<T> Function($$RecitationEventsTableAnnotationComposer a) f,
+  ) {
+    final $$RecitationEventsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.recitationEvents,
+      getReferencedColumn: (t) => t.prayerSessionPartId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecitationEventsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.recitationEvents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$PrayerSessionPartsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PrayerSessionPartsTable,
+          PrayerSessionPartRow,
+          $$PrayerSessionPartsTableFilterComposer,
+          $$PrayerSessionPartsTableOrderingComposer,
+          $$PrayerSessionPartsTableAnnotationComposer,
+          $$PrayerSessionPartsTableCreateCompanionBuilder,
+          $$PrayerSessionPartsTableUpdateCompanionBuilder,
+          (PrayerSessionPartRow, $$PrayerSessionPartsTableReferences),
+          PrayerSessionPartRow,
+          PrefetchHooks Function({
+            bool prayerSessionId,
+            bool recitationEventsRefs,
+          })
+        > {
+  $$PrayerSessionPartsTableTableManager(
+    _$AppDatabase db,
+    $PrayerSessionPartsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PrayerSessionPartsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PrayerSessionPartsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PrayerSessionPartsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> prayerSessionId = const Value.absent(),
+                Value<String?> sourceTemplatePartId = const Value.absent(),
+                Value<int?> templateRevision = const Value.absent(),
+                Value<String> stableKey = const Value.absent(),
+                Value<int> orderIndex = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<int> rakaatCount = const Value.absent(),
+                Value<int> requiredSurahSlots = const Value.absent(),
+                Value<bool> allowsFollowingImam = const Value.absent(),
+                Value<String> completionMode = const Value.absent(),
+                Value<DateTime?> completedAtUtc = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PrayerSessionPartsCompanion(
+                id: id,
+                prayerSessionId: prayerSessionId,
+                sourceTemplatePartId: sourceTemplatePartId,
+                templateRevision: templateRevision,
+                stableKey: stableKey,
+                orderIndex: orderIndex,
+                label: label,
+                kind: kind,
+                rakaatCount: rakaatCount,
+                requiredSurahSlots: requiredSurahSlots,
+                allowsFollowingImam: allowsFollowingImam,
+                completionMode: completionMode,
+                completedAtUtc: completedAtUtc,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String prayerSessionId,
+                Value<String?> sourceTemplatePartId = const Value.absent(),
+                Value<int?> templateRevision = const Value.absent(),
+                required String stableKey,
+                required int orderIndex,
+                required String label,
+                required String kind,
+                required int rakaatCount,
+                required int requiredSurahSlots,
+                required bool allowsFollowingImam,
+                Value<String> completionMode = const Value.absent(),
+                Value<DateTime?> completedAtUtc = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PrayerSessionPartsCompanion.insert(
+                id: id,
+                prayerSessionId: prayerSessionId,
+                sourceTemplatePartId: sourceTemplatePartId,
+                templateRevision: templateRevision,
+                stableKey: stableKey,
+                orderIndex: orderIndex,
+                label: label,
+                kind: kind,
+                rakaatCount: rakaatCount,
+                requiredSurahSlots: requiredSurahSlots,
+                allowsFollowingImam: allowsFollowingImam,
+                completionMode: completionMode,
+                completedAtUtc: completedAtUtc,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PrayerSessionPartsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({prayerSessionId = false, recitationEventsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (recitationEventsRefs) db.recitationEvents,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (prayerSessionId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.prayerSessionId,
+                                    referencedTable:
+                                        $$PrayerSessionPartsTableReferences
+                                            ._prayerSessionIdTable(db),
+                                    referencedColumn:
+                                        $$PrayerSessionPartsTableReferences
+                                            ._prayerSessionIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (recitationEventsRefs)
+                        await $_getPrefetchedData<
+                          PrayerSessionPartRow,
+                          $PrayerSessionPartsTable,
+                          RecitationEventRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PrayerSessionPartsTableReferences
+                              ._recitationEventsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PrayerSessionPartsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).recitationEventsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.prayerSessionPartId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$PrayerSessionPartsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PrayerSessionPartsTable,
+      PrayerSessionPartRow,
+      $$PrayerSessionPartsTableFilterComposer,
+      $$PrayerSessionPartsTableOrderingComposer,
+      $$PrayerSessionPartsTableAnnotationComposer,
+      $$PrayerSessionPartsTableCreateCompanionBuilder,
+      $$PrayerSessionPartsTableUpdateCompanionBuilder,
+      (PrayerSessionPartRow, $$PrayerSessionPartsTableReferences),
+      PrayerSessionPartRow,
+      PrefetchHooks Function({bool prayerSessionId, bool recitationEventsRefs})
     >;
 typedef $$RecitationEventsTableCreateCompanionBuilder =
     RecitationEventsCompanion Function({
@@ -9224,6 +12736,8 @@ typedef $$RecitationEventsTableCreateCompanionBuilder =
       required String rotationSchemeId,
       required int rakaatSpanCount,
       Value<String?> prayerSessionId,
+      Value<String?> prayerSessionPartId,
+      Value<int?> slotIndex,
       required DateTime createdAtUtc,
       required String localDate,
       required String prayerType,
@@ -9239,6 +12753,8 @@ typedef $$RecitationEventsTableUpdateCompanionBuilder =
       Value<String> rotationSchemeId,
       Value<int> rakaatSpanCount,
       Value<String?> prayerSessionId,
+      Value<String?> prayerSessionPartId,
+      Value<int?> slotIndex,
       Value<DateTime> createdAtUtc,
       Value<String> localDate,
       Value<String> prayerType,
@@ -9277,6 +12793,25 @@ final class $$RecitationEventsTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static $PrayerSessionPartsTable _prayerSessionPartIdTable(_$AppDatabase db) =>
+      db.prayerSessionParts.createAlias(
+        'recitation_events__prayer_session_part_id__prayer_session_parts__id',
+      );
+
+  $$PrayerSessionPartsTableProcessedTableManager? get prayerSessionPartId {
+    final $_column = $_itemColumn<String>('prayer_session_part_id');
+    if ($_column == null) return null;
+    final manager = $$PrayerSessionPartsTableTableManager(
+      $_db,
+      $_db.prayerSessionParts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_prayerSessionPartIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
 }
 
 class $$RecitationEventsTableFilterComposer
@@ -9305,6 +12840,11 @@ class $$RecitationEventsTableFilterComposer
 
   ColumnFilters<int> get rakaatSpanCount => $composableBuilder(
     column: $table.rakaatSpanCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get slotIndex => $composableBuilder(
+    column: $table.slotIndex,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9355,6 +12895,29 @@ class $$RecitationEventsTableFilterComposer
     );
     return composer;
   }
+
+  $$PrayerSessionPartsTableFilterComposer get prayerSessionPartId {
+    final $$PrayerSessionPartsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.prayerSessionPartId,
+      referencedTable: $db.prayerSessionParts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PrayerSessionPartsTableFilterComposer(
+            $db: $db,
+            $table: $db.prayerSessionParts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$RecitationEventsTableOrderingComposer
@@ -9383,6 +12946,11 @@ class $$RecitationEventsTableOrderingComposer
 
   ColumnOrderings<int> get rakaatSpanCount => $composableBuilder(
     column: $table.rakaatSpanCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get slotIndex => $composableBuilder(
+    column: $table.slotIndex,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -9433,6 +13001,29 @@ class $$RecitationEventsTableOrderingComposer
     );
     return composer;
   }
+
+  $$PrayerSessionPartsTableOrderingComposer get prayerSessionPartId {
+    final $$PrayerSessionPartsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.prayerSessionPartId,
+      referencedTable: $db.prayerSessionParts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PrayerSessionPartsTableOrderingComposer(
+            $db: $db,
+            $table: $db.prayerSessionParts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$RecitationEventsTableAnnotationComposer
@@ -9461,6 +13052,9 @@ class $$RecitationEventsTableAnnotationComposer
     column: $table.rakaatSpanCount,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get slotIndex =>
+      $composableBuilder(column: $table.slotIndex, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAtUtc => $composableBuilder(
     column: $table.createdAtUtc,
@@ -9505,6 +13099,30 @@ class $$RecitationEventsTableAnnotationComposer
     );
     return composer;
   }
+
+  $$PrayerSessionPartsTableAnnotationComposer get prayerSessionPartId {
+    final $$PrayerSessionPartsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.prayerSessionPartId,
+          referencedTable: $db.prayerSessionParts,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PrayerSessionPartsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.prayerSessionParts,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
 }
 
 class $$RecitationEventsTableTableManager
@@ -9520,7 +13138,10 @@ class $$RecitationEventsTableTableManager
           $$RecitationEventsTableUpdateCompanionBuilder,
           (RecitationEventRow, $$RecitationEventsTableReferences),
           RecitationEventRow,
-          PrefetchHooks Function({bool prayerSessionId})
+          PrefetchHooks Function({
+            bool prayerSessionId,
+            bool prayerSessionPartId,
+          })
         > {
   $$RecitationEventsTableTableManager(
     _$AppDatabase db,
@@ -9543,6 +13164,8 @@ class $$RecitationEventsTableTableManager
                 Value<String> rotationSchemeId = const Value.absent(),
                 Value<int> rakaatSpanCount = const Value.absent(),
                 Value<String?> prayerSessionId = const Value.absent(),
+                Value<String?> prayerSessionPartId = const Value.absent(),
+                Value<int?> slotIndex = const Value.absent(),
                 Value<DateTime> createdAtUtc = const Value.absent(),
                 Value<String> localDate = const Value.absent(),
                 Value<String> prayerType = const Value.absent(),
@@ -9556,6 +13179,8 @@ class $$RecitationEventsTableTableManager
                 rotationSchemeId: rotationSchemeId,
                 rakaatSpanCount: rakaatSpanCount,
                 prayerSessionId: prayerSessionId,
+                prayerSessionPartId: prayerSessionPartId,
+                slotIndex: slotIndex,
                 createdAtUtc: createdAtUtc,
                 localDate: localDate,
                 prayerType: prayerType,
@@ -9571,6 +13196,8 @@ class $$RecitationEventsTableTableManager
                 required String rotationSchemeId,
                 required int rakaatSpanCount,
                 Value<String?> prayerSessionId = const Value.absent(),
+                Value<String?> prayerSessionPartId = const Value.absent(),
+                Value<int?> slotIndex = const Value.absent(),
                 required DateTime createdAtUtc,
                 required String localDate,
                 required String prayerType,
@@ -9584,6 +13211,8 @@ class $$RecitationEventsTableTableManager
                 rotationSchemeId: rotationSchemeId,
                 rakaatSpanCount: rakaatSpanCount,
                 prayerSessionId: prayerSessionId,
+                prayerSessionPartId: prayerSessionPartId,
+                slotIndex: slotIndex,
                 createdAtUtc: createdAtUtc,
                 localDate: localDate,
                 prayerType: prayerType,
@@ -9599,49 +13228,65 @@ class $$RecitationEventsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({prayerSessionId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (prayerSessionId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.prayerSessionId,
-                                referencedTable:
-                                    $$RecitationEventsTableReferences
-                                        ._prayerSessionIdTable(db),
-                                referencedColumn:
-                                    $$RecitationEventsTableReferences
-                                        ._prayerSessionIdTable(db)
-                                        .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({prayerSessionId = false, prayerSessionPartId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (prayerSessionId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.prayerSessionId,
+                                    referencedTable:
+                                        $$RecitationEventsTableReferences
+                                            ._prayerSessionIdTable(db),
+                                    referencedColumn:
+                                        $$RecitationEventsTableReferences
+                                            ._prayerSessionIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (prayerSessionPartId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.prayerSessionPartId,
+                                    referencedTable:
+                                        $$RecitationEventsTableReferences
+                                            ._prayerSessionPartIdTable(db),
+                                    referencedColumn:
+                                        $$RecitationEventsTableReferences
+                                            ._prayerSessionPartIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -9658,7 +13303,7 @@ typedef $$RecitationEventsTableProcessedTableManager =
       $$RecitationEventsTableUpdateCompanionBuilder,
       (RecitationEventRow, $$RecitationEventsTableReferences),
       RecitationEventRow,
-      PrefetchHooks Function({bool prayerSessionId})
+      PrefetchHooks Function({bool prayerSessionId, bool prayerSessionPartId})
     >;
 typedef $$RecitationEventPartsTableCreateCompanionBuilder =
     RecitationEventPartsCompanion Function({
@@ -11574,6 +15219,19 @@ class $AppDatabaseManager {
       $$RotationPartsTableTableManager(_db, _db.rotationParts);
   $$PrayerSessionsTableTableManager get prayerSessions =>
       $$PrayerSessionsTableTableManager(_db, _db.prayerSessions);
+  $$PrayerRoutineTemplatesTableTableManager get prayerRoutineTemplates =>
+      $$PrayerRoutineTemplatesTableTableManager(
+        _db,
+        _db.prayerRoutineTemplates,
+      );
+  $$PrayerRoutinePartTemplatesTableTableManager
+  get prayerRoutinePartTemplates =>
+      $$PrayerRoutinePartTemplatesTableTableManager(
+        _db,
+        _db.prayerRoutinePartTemplates,
+      );
+  $$PrayerSessionPartsTableTableManager get prayerSessionParts =>
+      $$PrayerSessionPartsTableTableManager(_db, _db.prayerSessionParts);
   $$RecitationEventsTableTableManager get recitationEvents =>
       $$RecitationEventsTableTableManager(_db, _db.recitationEvents);
   $$RecitationEventPartsTableTableManager get recitationEventParts =>

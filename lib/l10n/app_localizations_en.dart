@@ -67,6 +67,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dhuhr => 'Dhuhr';
 
   @override
+  String get jumuah => 'Jumuah';
+
+  @override
   String get asr => 'Asr';
 
   @override
@@ -542,6 +545,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prayerModeAutomatic => 'Automatic';
 
   @override
+  String get useJumuahForNextRecitation => 'Use Jumuah for next recitation';
+
+  @override
   String get automaticPrayerSafetyNotice =>
       'Automatic selection works only with a fresh reliable schedule. From sunrise until Dhuhr, marking requires a manual choice.';
 
@@ -802,4 +808,105 @@ class AppLocalizationsEn extends AppLocalizations {
   String registrationOccurrenceDate(String date) {
     return 'Recitation date: $date';
   }
+
+  @override
+  String get prayerRoutines => 'Prayer routines';
+
+  @override
+  String get prayerRoutineDescription =>
+      'Set the ordered prayer parts, rakaat count, and required surah slots.';
+
+  @override
+  String get routineEnabled => 'Use this routine';
+
+  @override
+  String get routineEmpty => 'No parts yet. Add the parts you want to track.';
+
+  @override
+  String routinePartSummary(int rakaatCount, int slotCount) {
+    return '$rakaatCount rakaats · $slotCount surah slots';
+  }
+
+  @override
+  String get addPrayerPart => 'Add prayer part';
+
+  @override
+  String get editPrayerPart => 'Edit prayer part';
+
+  @override
+  String get deletePrayerPartTitle => 'Delete prayer part?';
+
+  @override
+  String deletePrayerPartBody(String label) {
+    return 'Delete “$label”? Existing prayer sessions will not change.';
+  }
+
+  @override
+  String get partKind => 'Part type';
+
+  @override
+  String get customPartLabel => 'Custom label';
+
+  @override
+  String get customPartLabelRequired => 'Enter a label.';
+
+  @override
+  String get rakaatCountLabel => 'Rakaat count';
+
+  @override
+  String get positiveNumberRequired => 'Enter a positive number.';
+
+  @override
+  String get surahSlotsLabel => 'Required surah slots';
+
+  @override
+  String get nonNegativeNumberRequired => 'Enter zero or a positive number.';
+
+  @override
+  String get allowsFollowingImam => 'Can be completed by following the imam';
+
+  @override
+  String get partKindFard => 'Fard';
+
+  @override
+  String get partKindSunnah => 'Sunnah';
+
+  @override
+  String get partKindWitr => 'Witr';
+
+  @override
+  String get partKindNafl => 'Nafl';
+
+  @override
+  String get partKindCustom => 'Custom';
+
+  @override
+  String prayerRoutineCurrentPart(String prayer, String part) {
+    return '$prayer · $part';
+  }
+
+  @override
+  String prayerRoutineSlotProgress(int done, int total) {
+    return 'Surah slots: $done/$total';
+  }
+
+  @override
+  String get prayerRoutineComplete => 'Prayer routine complete';
+
+  @override
+  String get prayerRoutineNoAvailableSlot =>
+      'The current prayer part has no available surah slot.';
+
+  @override
+  String get followedImamAction => 'Followed the imam';
+
+  @override
+  String get followedImamConfirmTitle => 'Complete with the imam?';
+
+  @override
+  String get followedImamConfirmBody =>
+      'This part will be completed without a recitation event or rotation credit.';
+
+  @override
+  String get followedImamCompleted => 'Completed by following the imam';
 }

@@ -35,7 +35,7 @@ Provider и calculator реализуют разные interfaces и несут 
 `PrayerScheduleUseCases` загружает текущий месяц для Home. Явное
 обновление запрашивает текущий и следующий месяц. Cache хранится отдельными
 versioned JSON-файлами в application-support directory
-`prayer_time_cache_v1` и не меняет Drift schema v4.
+`prayer_time_cache_v1` и остаётся отдельно от пользовательской Drift schema v5.
 
 Ключ опубликованного месяца включает source, provider region и `YYYY-MM`.
 Ключ расчёта дополнительно включает method, Asr school, high-latitude rule и
@@ -107,12 +107,18 @@ location.
 Асра, Магриба и Иша; default 0. Поправка обязана сохранять строгий
 хронологический порядок, иначе настройки отклоняются. Восход не корректируется.
 
-Витр, Нафль и каза остаются ручными:
+Jumuah, Витр, Нафль и каза остаются ручными:
 
+- Jumuah доступен как отдельный Prayer Context, не имеет solar-time boundary и
+  не поддерживает каза;
 - Витр доступен как отдельный Prayer Context и поддерживает каза;
 - Нафль не выводится автоматически и не поддерживает каза;
 - автоматический resolver выбирает только пять дневных молитв;
 - ручной режим сохраняет уже существующий выбор пользователя.
+
+Даже в пятницу автоматический resolver возвращает Dhuhr. В текущем Friday
+Dhuhr interval полное приложение может предложить explicit one-event Jumuah
+override; это пользовательский выбор, а не вычисленный prayer time.
 
 Все решения получают текущее UTC-время через `TimeProvider` и переводят
 его в локальную дату с persisted timezone/offset. После следующей локальной
@@ -136,12 +142,14 @@ location.
 - **Now** — доступный текущий контекст и сегодняшняя дата региона;
 - **Previous prayer** — предыдущая из пяти молитв только по reliable schedule;
   на границе дня требует reliable previous day и никогда не придумывает Витр;
-- **Yesterday** — вчерашний prayer day и явно выбранная молитва, включая Витр;
+- **Yesterday** — вчерашний prayer day и явно выбранная молитва, включая
+  Jumuah или Витр;
 - **Custom date and prayer** — обе исторические координаты выбираются явно.
 
 Недостающий, stale или mismatched schedule делает зависимый shortcut
 недоступным, а не подставляет дату или молитву. Витр и Нафль не получают
-вычисленную границу: они доступны только как ручной выбор. Прошлая дата сама по
+вычисленную границу; Jumuah также никогда не выводится из schedule. Они
+доступны только как ручной выбор. Прошлая дата сама по
 себе не означает каза — `isQada` изменяется только отдельным явным действием
 пользователя и остаётся ограничен `PrayerType.supportsQada`.
 
@@ -157,6 +165,9 @@ location.
 - после восхода и до Зухра direct mark выключен;
 - Зухр, Аср и Магриб заканчиваются следующей границей;
 - Иша продолжается до следующего Фаджра, если соседний день подтверждён.
+
+Jumuah отсутствует в этом списке намеренно. Пятничный Dhuhr interval остаётся
+Dhuhr до explicit app-only override.
 
 Null context всегда отключает регистрацию. UI и widget не подставляют
 `Fajr` или другой default при missing/stale schedule.
@@ -185,12 +196,15 @@ Direct widget action не выполняет HTTP. Headless bootstrap откры
 - при включённом fallback может локально рассчитать месяц по уже сохранённым
   параметрам и отдельно проверенным координатам;
 - определяет контекст именно на execution time;
+- загружает current routine snapshot и, если он существует, требует exact
+  current `prayerSessionId + prayerSessionPartId + slotIndex`;
 - при missing/unreliable schedule отклоняет mark и публикует безопасный widget
   snapshot с disabled actions.
 
 Widget — только current-context/current-date surface. Он не предлагает
 исторические shortcuts, не принимает `occurrenceLocalDate` из UI приложения и
-не видит transient app override.
+не видит transient app override. Cached slotless widget action отклоняется,
+если для уже разрешённого context/date включена routine.
 
 После action bootstrap ждёт завершения transaction и snapshot refresh и лишь
 затем закрывает database. Quran download, translation warmup, location request
@@ -217,6 +231,10 @@ Advanced registration в Home позволяет выбрать historical occur
 число ракаатов и поясняют, что это общий span события, а не соответствие
 отдельных аятов отдельным ракаатам.
 
+Home отдельно показывает current routine part/progress. Friday Dhuhr может
+предложить one-event Jumuah override только для текущего дня и текущего Dhuhr
+interval; в другие дни/интервалы action отсутствует.
+
 ## Проверки
 
 Unit/widget tests покрывают provider URL и строгий parser, полный месяц,
@@ -230,6 +248,10 @@ Sprint 5B дополнительно проверяет null startup без fake
 legacy установки (включая отсутствующий settings JSON), adjacent-month
 границы, исторические shortcuts, независимые `createdAtUtc`/`localDate`,
 явный каза, transient override и compact/detail rakaat presentation.
+
+Sprint 6A дополнительно проверяет, что Dhuhr остаётся automatic result в
+пятницу, Jumuah доступен вручную и хранится отдельно, не поддерживает Qada, а
+widget action использует exact routine slot без network/time invention.
 
 Аудит источников и ограничения описаны в
 [PRAYER_TIME_SOURCE_AUDIT.md](PRAYER_TIME_SOURCE_AUDIT.md).

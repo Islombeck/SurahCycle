@@ -7,7 +7,7 @@ import '../../generated_migrations/schema.dart';
 
 void main() {
   test(
-    'v1 to v4 preserves every legacy table and backfills v4 semantics',
+    'v1 to v5 preserves every legacy table and backfills v5 semantics',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(1);
@@ -18,24 +18,29 @@ void main() {
       final migrationDatabase = AppDatabase(schema.newConnection());
       await verifier.migrateAndValidate(
         migrationDatabase,
-        4,
+        5,
         // Runtime-only performance indexes are intentionally absent from the
         // generated Drift schema. Old tables are checked explicitly below.
         options: const ValidationOptions(),
       );
 
-      expect(migrationDatabase.schemaVersion, 4);
+      expect(migrationDatabase.schemaVersion, 5);
       expect(
         await migrationDatabase
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        4,
+        5,
       );
       expect(
         await migrationDatabase.customSelect('PRAGMA foreign_key_check').get(),
         isEmpty,
       );
+      await _expectVersionFiveScaffold(migrationDatabase, <String>{
+        'legacy-live-1',
+        'legacy-deleted',
+        'legacy-live-2',
+      });
 
       final metadata = await migrationDatabase
           .select(migrationDatabase.surahMetadata)
@@ -511,7 +516,7 @@ void main() {
     },
   );
 
-  test('v2 to v4 preserves four-part state and accepts a fifth part', () async {
+  test('v2 to v5 preserves four-part state and accepts a fifth part', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(2);
     final raw = schema.rawDatabase;
@@ -525,22 +530,26 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      4,
+      5,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 4);
+    expect(database.schemaVersion, 5);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      4,
+      5,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
       isEmpty,
     );
+    await _expectVersionFiveScaffold(database, <String>{
+      'v2-live',
+      'v2-deleted',
+    });
 
     final metadata = await database.select(database.surahMetadata).getSingle();
     expect(
@@ -918,7 +927,7 @@ void main() {
     );
   });
 
-  test('v3 to v4 preserves all data and backfills generic learning', () async {
+  test('v3 to v5 preserves all data and backfills generic learning', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(3);
     final raw = schema.rawDatabase;
@@ -932,22 +941,26 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      4,
+      5,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 4);
+    expect(database.schemaVersion, 5);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      4,
+      5,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
       isEmpty,
     );
+    await _expectVersionFiveScaffold(database, <String>{
+      'v2-live',
+      'v2-deleted',
+    });
 
     final mastered = await database.select(database.masteredSurahs).getSingle();
     expect(mastered.surahId, 'v2-surah');
@@ -1230,6 +1243,286 @@ void main() {
       hasLength(2),
     );
     expect(await database.select(database.rotationSchemes).get(), hasLength(1));
+  });
+
+  test('v4 to v5 preserves all legacy rows and relationships', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(4);
+    final raw = schema.rawDatabase;
+    raw.execute('PRAGMA foreign_keys = ON');
+    _seedVersionFour(raw);
+
+    final database = AppDatabase(schema.newConnection());
+    addTearDown(() async {
+      await database.close();
+      schema.close();
+    });
+    await verifier.migrateAndValidate(
+      database,
+      5,
+      options: const ValidationOptions(),
+    );
+
+    expect(database.schemaVersion, 5);
+    expect(
+      await database
+          .customSelect('PRAGMA user_version')
+          .map((row) => row.read<int>('user_version'))
+          .getSingle(),
+      5,
+    );
+    expect(
+      await database.customSelect('PRAGMA foreign_key_check').get(),
+      isEmpty,
+    );
+    await _expectVersionFiveScaffold(database, <String>{'v4-event'});
+
+    final metadata = await database.select(database.surahMetadata).getSingle();
+    expect(
+      <Object?>[
+        metadata.id,
+        metadata.surahNumber,
+        metadata.officialName,
+        metadata.ayahCount,
+        metadata.sourceId,
+        metadata.sourceVersion,
+      ],
+      <Object?>['v4-surah', 3, 'V4 Surah', 11, 'v4-source', 'v4'],
+    );
+    final mastered = await database.select(database.masteredSurahs).getSingle();
+    expect(
+      <Object?>[
+        mastered.surahId,
+        mastered.isCurrentlyMastered,
+        mastered.isActive,
+        mastered.hasEnteredRotation,
+        mastered.activationBaselineScore,
+        mastered.cachedRotationScore,
+        mastered.cachedTotalRecitations,
+        mastered.cachedLastUsedAtUtc?.toUtc(),
+        mastered.alias,
+        mastered.displayOrder,
+      ],
+      <Object?>['v4-surah', true, true, true, 4, 6, 2, _utc(1), 'V4 alias', 4],
+    );
+    final state = await database.select(database.rotationStates).getSingle();
+    expect(
+      <int>[
+        state.singletonId,
+        state.rotationTarget,
+        state.lastJournalSequence,
+        state.projectionVersion,
+      ],
+      <int>[1, 12, 2, 2],
+    );
+    final scheme = await database.select(database.rotationSchemes).getSingle();
+    expect(
+      <Object?>[
+        scheme.id,
+        scheme.surahId,
+        scheme.version,
+        scheme.ayahCountSnapshot,
+        scheme.baselineScore,
+        scheme.baselineTotalRecitations,
+        scheme.baselineLastUsedAtUtc?.toUtc(),
+        scheme.resetsRotationBaseline,
+        scheme.activatedJournalSequence,
+        scheme.supersededJournalSequence,
+      ],
+      <Object?>['v4-scheme', 'v4-surah', 3, 11, 4, 1, _utc(0), true, 0, null],
+    );
+    final part = await database.select(database.rotationParts).getSingle();
+    expect(
+      <Object?>[
+        part.id,
+        part.schemeId,
+        part.ordinal,
+        part.startAyah,
+        part.endAyah,
+        part.cachedScore,
+        part.cachedRecitationCount,
+        part.cachedLastUsedAtUtc?.toUtc(),
+      ],
+      <Object?>['v4-part', 'v4-scheme', 1, 1, 11, 6, 2, _utc(1)],
+    );
+    final session = await database.select(database.prayerSessions).getSingle();
+    expect(
+      <Object?>[
+        session.id,
+        session.prayerType,
+        session.isQada,
+        session.startedAtUtc.toUtc(),
+        session.localDate,
+      ],
+      <Object?>['v4-session', 'isha', false, _utc(2), '2026-08-24'],
+    );
+    final event = await database.select(database.recitationEvents).getSingle();
+    expect(
+      <Object?>[
+        event.id,
+        event.journalSequence,
+        event.surahId,
+        event.rotationSchemeId,
+        event.rakaatSpanCount,
+        event.prayerSessionId,
+        event.prayerSessionPartId,
+        event.slotIndex,
+        event.createdAtUtc.toUtc(),
+        event.localDate,
+        event.prayerType,
+        event.isQada,
+        event.deletedAtUtc,
+      ],
+      <Object?>[
+        'v4-event',
+        1,
+        'v4-surah',
+        'v4-scheme',
+        2,
+        'v4-session',
+        null,
+        null,
+        _utc(2),
+        '2026-08-24',
+        'isha',
+        false,
+        null,
+      ],
+    );
+    final coverage = await database
+        .select(database.recitationEventParts)
+        .getSingle();
+    expect(
+      <String>[coverage.eventId, coverage.schemeId, coverage.partId],
+      <String>['v4-event', 'v4-scheme', 'v4-part'],
+    );
+    final adjustment = await database
+        .select(database.rotationAdjustments)
+        .getSingle();
+    expect(
+      <Object?>[
+        adjustment.id,
+        adjustment.journalSequence,
+        adjustment.surahId,
+        adjustment.rotationSchemeId,
+        adjustment.delta,
+        adjustment.reason,
+        adjustment.createdAtUtc.toUtc(),
+        adjustment.deletedAtUtc,
+      ],
+      <Object?>[
+        'v4-adjustment',
+        2,
+        'v4-surah',
+        'v4-scheme',
+        -2,
+        'Preserved v4 adjustment',
+        _utc(3),
+        null,
+      ],
+    );
+    final learning = await database.select(database.learningSurahs).getSingle();
+    expect(
+      <Object?>[
+        learning.id,
+        learning.surahId,
+        learning.ayahCount,
+        learning.planKind,
+        learning.stageKind,
+        learning.stageStartAyah,
+        learning.stageEndAyah,
+        learning.targetStartAyah,
+        learning.targetEndAyah,
+        learning.blockSize,
+        learning.learningCycle,
+        learning.status,
+        learning.lastLearningActivityAtUtc?.toUtc(),
+        learning.inactivityRollbackForActivityAtUtc?.toUtc(),
+      ],
+      <Object?>[
+        'v4-learning',
+        'v4-surah',
+        11,
+        'chunked',
+        'bridge',
+        5,
+        7,
+        3,
+        10,
+        4,
+        2,
+        'active',
+        _utc(4),
+        _utc(1),
+      ],
+    );
+    final learningEvent = await database
+        .select(database.learningEvents)
+        .getSingle();
+    expect(
+      <Object?>[
+        learningEvent.id,
+        learningEvent.sequence,
+        learningEvent.learningSurahId,
+        learningEvent.type,
+        learningEvent.createdAtUtc.toUtc(),
+        learningEvent.learningCycle,
+        learningEvent.fromPlanKind,
+        learningEvent.fromTargetStartAyah,
+        learningEvent.fromTargetEndAyah,
+        learningEvent.fromBlockSize,
+        learningEvent.fromStageKind,
+        learningEvent.fromStageStartAyah,
+        learningEvent.fromStageEndAyah,
+        learningEvent.toPlanKind,
+        learningEvent.toTargetStartAyah,
+        learningEvent.toTargetEndAyah,
+        learningEvent.toBlockSize,
+        learningEvent.toStageKind,
+        learningEvent.toStageStartAyah,
+        learningEvent.toStageEndAyah,
+        learningEvent.reason,
+      ],
+      <Object?>[
+        'v4-learning-event',
+        31,
+        'v4-learning',
+        'planChanged',
+        _utc(5),
+        2,
+        'classicCumulative',
+        1,
+        11,
+        null,
+        'cumulative',
+        1,
+        6,
+        'chunked',
+        3,
+        10,
+        4,
+        'bridge',
+        5,
+        7,
+        'Preserved v4 plan change',
+      ],
+    );
+    final setting = await database.select(database.appSettings).getSingle();
+    expect(
+      <Object?>[
+        setting.key,
+        setting.value,
+        setting.valueType,
+        setting.updatedAtUtc.toUtc(),
+      ],
+      <Object?>['v4-setting', 'preserved', 'string', _utc(6)],
+    );
+
+    await _expectConstraint(database, '''
+      INSERT INTO prayer_sessions
+        (id, prayer_type, is_qada, started_at_utc)
+      VALUES ('invalid-jumuah-qada', 'jumuah', 1, 1)
+    ''');
   });
 }
 
@@ -1639,6 +1932,210 @@ void _seedVersionThree(dynamic raw) {
     'INSERT INTO app_settings (key, value, value_type, updated_at_utc) '
     'VALUES (?, ?, ?, ?)',
     <Object?>['v3-setting', 'preserved', 'string', _encoded(_utc(14))],
+  );
+}
+
+void _seedVersionFour(dynamic raw) {
+  raw.execute(
+    'INSERT INTO surah_metadata '
+    '(id, surah_number, official_name, ayah_count, source_id, source_version) '
+    'VALUES (?, ?, ?, ?, ?, ?)',
+    <Object?>['v4-surah', 3, 'V4 Surah', 11, 'v4-source', 'v4'],
+  );
+  raw.execute(
+    'INSERT INTO mastered_surahs '
+    '(surah_id, is_currently_mastered, is_active, has_entered_rotation, '
+    'activation_baseline_score, cached_rotation_score, '
+    'cached_total_recitations, cached_last_used_at_utc, alias, '
+    'display_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>['v4-surah', 1, 1, 1, 4, 6, 2, _encoded(_utc(1)), 'V4 alias', 4],
+  );
+  raw.execute(
+    'INSERT INTO rotation_states '
+    '(singleton_id, rotation_target, last_journal_sequence, '
+    'projection_version) VALUES (?, ?, ?, ?)',
+    <Object?>[1, 12, 2, 2],
+  );
+  raw.execute(
+    'INSERT INTO rotation_schemes '
+    '(id, surah_id, version, ayah_count_snapshot, baseline_score, '
+    'baseline_total_recitations, baseline_last_used_at_utc, '
+    'resets_rotation_baseline, activated_journal_sequence, '
+    'superseded_journal_sequence) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>[
+      'v4-scheme',
+      'v4-surah',
+      3,
+      11,
+      4,
+      1,
+      _encoded(_utc(0)),
+      1,
+      0,
+      null,
+    ],
+  );
+  raw.execute(
+    'INSERT INTO rotation_parts '
+    '(id, scheme_id, ordinal, start_ayah, end_ayah, cached_score, '
+    'cached_recitation_count, cached_last_used_at_utc) '
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>['v4-part', 'v4-scheme', 1, 1, 11, 6, 2, _encoded(_utc(1))],
+  );
+  raw.execute(
+    'INSERT INTO prayer_sessions '
+    '(id, prayer_type, is_qada, started_at_utc, local_date) '
+    'VALUES (?, ?, ?, ?, ?)',
+    <Object?>['v4-session', 'isha', 0, _encoded(_utc(2)), '2026-08-24'],
+  );
+  raw.execute(
+    'INSERT INTO recitation_events '
+    '(id, journal_sequence, surah_id, rotation_scheme_id, '
+    'rakaat_span_count, prayer_session_id, created_at_utc, local_date, '
+    'prayer_type, is_qada, deleted_at_utc) '
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>[
+      'v4-event',
+      1,
+      'v4-surah',
+      'v4-scheme',
+      2,
+      'v4-session',
+      _encoded(_utc(2)),
+      '2026-08-24',
+      'isha',
+      0,
+      null,
+    ],
+  );
+  raw.execute(
+    'INSERT INTO recitation_event_parts (event_id, scheme_id, part_id) '
+    'VALUES (?, ?, ?)',
+    <Object?>['v4-event', 'v4-scheme', 'v4-part'],
+  );
+  raw.execute(
+    'INSERT INTO rotation_adjustments '
+    '(id, journal_sequence, surah_id, rotation_scheme_id, delta, reason, '
+    'created_at_utc, deleted_at_utc) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>[
+      'v4-adjustment',
+      2,
+      'v4-surah',
+      'v4-scheme',
+      -2,
+      'Preserved v4 adjustment',
+      _encoded(_utc(3)),
+      null,
+    ],
+  );
+  raw.execute(
+    'INSERT INTO learning_surahs '
+    '(id, surah_id, ayah_count, plan_kind, stage_kind, stage_start_ayah, '
+    'stage_end_ayah, target_start_ayah, target_end_ayah, block_size, '
+    'learning_cycle, status, last_learning_activity_at_utc, '
+    'inactivity_rollback_for_activity_at_utc) '
+    'VALUES (${List<String>.filled(14, '?').join(', ')})',
+    <Object?>[
+      'v4-learning',
+      'v4-surah',
+      11,
+      'chunked',
+      'bridge',
+      5,
+      7,
+      3,
+      10,
+      4,
+      2,
+      'active',
+      _encoded(_utc(4)),
+      _encoded(_utc(1)),
+    ],
+  );
+  raw.execute(
+    'INSERT INTO learning_events '
+    '(id, sequence, learning_surah_id, type, created_at_utc, learning_cycle, '
+    'from_plan_kind, from_target_start_ayah, from_target_end_ayah, '
+    'from_block_size, from_stage_kind, from_stage_start_ayah, '
+    'from_stage_end_ayah, to_plan_kind, to_target_start_ayah, '
+    'to_target_end_ayah, to_block_size, to_stage_kind, to_stage_start_ayah, '
+    'to_stage_end_ayah, reason) '
+    'VALUES (${List<String>.filled(21, '?').join(', ')})',
+    <Object?>[
+      'v4-learning-event',
+      31,
+      'v4-learning',
+      'planChanged',
+      _encoded(_utc(5)),
+      2,
+      'classicCumulative',
+      1,
+      11,
+      null,
+      'cumulative',
+      1,
+      6,
+      'chunked',
+      3,
+      10,
+      4,
+      'bridge',
+      5,
+      7,
+      'Preserved v4 plan change',
+    ],
+  );
+  raw.execute(
+    'INSERT INTO app_settings (key, value, value_type, updated_at_utc) '
+    'VALUES (?, ?, ?, ?)',
+    <Object?>['v4-setting', 'preserved', 'string', _encoded(_utc(6))],
+  );
+}
+
+Future<void> _expectVersionFiveScaffold(
+  AppDatabase database,
+  Set<String> legacyEventIds,
+) async {
+  final templates = await database.select(database.prayerRoutineTemplates).get()
+    ..sort((left, right) => left.prayerType.compareTo(right.prayerType));
+  expect(
+    templates
+        .map(
+          (row) => <Object?>[
+            row.id,
+            row.prayerType,
+            row.displayName,
+            row.enabled,
+            row.revision,
+          ],
+        )
+        .toList(),
+    <List<Object?>>[
+      <Object?>['routine:asr', 'asr', 'asr', true, 1],
+      <Object?>['routine:dhuhr', 'dhuhr', 'dhuhr', true, 1],
+      <Object?>['routine:fajr', 'fajr', 'fajr', true, 1],
+      <Object?>['routine:isha', 'isha', 'isha', true, 1],
+      <Object?>['routine:jumuah', 'jumuah', 'jumuah', true, 1],
+      <Object?>['routine:maghrib', 'maghrib', 'maghrib', true, 1],
+      <Object?>['routine:nafl', 'nafl', 'nafl', true, 1],
+      <Object?>['routine:witr', 'witr', 'witr', true, 1],
+    ],
+  );
+  expect(
+    await database.select(database.prayerRoutinePartTemplates).get(),
+    isEmpty,
+  );
+  expect(await database.select(database.prayerSessionParts).get(), isEmpty);
+
+  final legacyEvents = (await database.select(database.recitationEvents).get())
+      .where((event) => legacyEventIds.contains(event.id))
+      .toList();
+  expect(legacyEvents.map((event) => event.id).toSet(), legacyEventIds);
+  expect(
+    legacyEvents.every(
+      (event) => event.prayerSessionPartId == null && event.slotIndex == null,
+    ),
+    isTrue,
   );
 }
 

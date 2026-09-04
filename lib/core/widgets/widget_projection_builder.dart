@@ -300,6 +300,8 @@ final class WidgetProjectionBuilder {
     required Iterable<RotationWidgetCandidate> rotationCandidates,
     LearningWidgetCandidate? learningCandidate,
     String rotationContextLabel = 'Rotation',
+    String? rotationCurrentPartLabel,
+    String? rotationSlotProgressLabel,
     String? rotationStatusMessage,
   }) => WidgetSnapshot(
     generatedAtUtc: generatedAtUtc,
@@ -307,6 +309,8 @@ final class WidgetProjectionBuilder {
     rotation: buildRotation(
       rotationCandidates,
       contextLabel: rotationContextLabel,
+      currentPartLabel: rotationCurrentPartLabel,
+      slotProgressLabel: rotationSlotProgressLabel,
       statusMessage: rotationStatusMessage,
     ),
     learning: buildLearning(learningCandidate),
@@ -315,6 +319,8 @@ final class WidgetProjectionBuilder {
   RotationWidgetProjection buildRotation(
     Iterable<RotationWidgetCandidate> candidates, {
     String contextLabel = 'Rotation',
+    String? currentPartLabel,
+    String? slotProgressLabel,
     String? statusMessage,
   }) {
     final active = candidates.toList(growable: false)..sort(_compareRotation);
@@ -325,6 +331,8 @@ final class WidgetProjectionBuilder {
           ? active.length - maxRotationWidgetItems
           : 0,
       contextLabel: contextLabel,
+      currentPartLabel: currentPartLabel,
+      slotProgressLabel: slotProgressLabel,
       statusMessage: statusMessage,
     );
   }

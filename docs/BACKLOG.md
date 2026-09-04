@@ -1,8 +1,8 @@
-# Backlog после Sprint 4
+# Backlog после Sprint 6A
 
 Ниже только осознанно не реализованные функции. Автоматическое расписание
-намаза, добровольная location, Android direct widget mark и Quran display
-layers уже не являются backlog.
+намаза, добровольная location, Android direct widget mark, Quran display
+layers и configurable prayer routines уже не являются backlog.
 
 1. Prayer notifications и системные alarms.
 2. Adhan audio.
@@ -28,8 +28,8 @@ layers уже не являются backlog.
 13. Подтверждённая публичная спецификация
     `Fatvo markazi taqvim mezonlari`; до неё generic calculation не
     называется методом ОМИ.
-14. Prayer rules beyond the implemented schedule boundaries, explicit
-    Hanafi/Shafi Asr selector and manual offsets.
+14. Prayer rules beyond the implemented schedule boundaries and the existing
+    explicit Hanafi/Shafi Asr selector/manual offsets.
 15. Рекомендации для пары сур между ракаатами.
 16. Полная модель каждого отдельного ракаата; сейчас хранится
     `rakaatSpanCount` 1–4.
@@ -45,6 +45,12 @@ layers уже не являются backlog.
     `uzbek_moyassar`; подключать только после полного 114/6236/hash audit.
 26. Подключить Cyrillic transliteration только из полного coordinate-aligned
     dataset с доказанными provenance и license; generated conversion запрещена.
+
+Следующий запланированный checkpoint, но ещё не реализованный Sprint 6A:
+
+- contextual prayer/session-part statistics and deterministic recommendations;
+- единый Home/Widget ranking без отдельного recommendation block;
+- idempotent current-day Isha → Witr transition после настроенного completion.
 
 Отдельные release/operational gates, а не новые product features:
 

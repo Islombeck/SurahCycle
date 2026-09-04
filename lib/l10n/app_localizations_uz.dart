@@ -67,6 +67,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get dhuhr => 'Peshin';
 
   @override
+  String get jumuah => 'Juma';
+
+  @override
   String get asr => 'Asr';
 
   @override
@@ -543,6 +546,10 @@ class AppLocalizationsUz extends AppLocalizations {
   String get prayerModeAutomatic => 'Avtomatik';
 
   @override
+  String get useJumuahForNextRecitation =>
+      'Keyingi tilovatni Juma sifatida belgilash';
+
+  @override
   String get automaticPrayerSafetyNotice =>
       'Avtomatik tanlov faqat yangi va ishonchli jadval bilan ishlaydi. Quyosh chiqqandan Peshingacha qo‘lda tanlash kerak.';
 
@@ -803,4 +810,106 @@ class AppLocalizationsUz extends AppLocalizations {
   String registrationOccurrenceDate(String date) {
     return 'Qiroat sanasi: $date';
   }
+
+  @override
+  String get prayerRoutines => 'Namoz tartiblari';
+
+  @override
+  String get prayerRoutineDescription =>
+      'Namoz qismlari tartibini, rakatlar va zarur sura slotlari sonini sozlang.';
+
+  @override
+  String get routineEnabled => 'Bu tartibdan foydalanish';
+
+  @override
+  String get routineEmpty =>
+      'Hali qismlar yo‘q. Kuzatmoqchi bo‘lgan qismlarni qo‘shing.';
+
+  @override
+  String routinePartSummary(int rakaatCount, int slotCount) {
+    return '$rakaatCount rakat · $slotCount ta sura sloti';
+  }
+
+  @override
+  String get addPrayerPart => 'Namoz qismini qo‘shish';
+
+  @override
+  String get editPrayerPart => 'Namoz qismini tahrirlash';
+
+  @override
+  String get deletePrayerPartTitle => 'Namoz qismi o‘chirilsinmi?';
+
+  @override
+  String deletePrayerPartBody(String label) {
+    return '“$label” o‘chirilsinmi? Avval yaratilgan namoz seanslari o‘zgarmaydi.';
+  }
+
+  @override
+  String get partKind => 'Qism turi';
+
+  @override
+  String get customPartLabel => 'Maxsus nom';
+
+  @override
+  String get customPartLabelRequired => 'Nom kiriting.';
+
+  @override
+  String get rakaatCountLabel => 'Rakatlar soni';
+
+  @override
+  String get positiveNumberRequired => 'Musbat son kiriting.';
+
+  @override
+  String get surahSlotsLabel => 'Zarur sura slotlari';
+
+  @override
+  String get nonNegativeNumberRequired => 'Nol yoki musbat son kiriting.';
+
+  @override
+  String get allowsFollowingImam => 'Imomga ergashib yakunlash mumkin';
+
+  @override
+  String get partKindFard => 'Farz';
+
+  @override
+  String get partKindSunnah => 'Sunnat';
+
+  @override
+  String get partKindWitr => 'Vitr';
+
+  @override
+  String get partKindNafl => 'Nafl';
+
+  @override
+  String get partKindCustom => 'Boshqa';
+
+  @override
+  String prayerRoutineCurrentPart(String prayer, String part) {
+    return '$prayer · $part';
+  }
+
+  @override
+  String prayerRoutineSlotProgress(int done, int total) {
+    return 'Sura slotlari: $done/$total';
+  }
+
+  @override
+  String get prayerRoutineComplete => 'Namoz tartibi yakunlandi';
+
+  @override
+  String get prayerRoutineNoAvailableSlot =>
+      'Namozning joriy qismida sura uchun bo‘sh slot yo‘q.';
+
+  @override
+  String get followedImamAction => 'Imomga ergashdim';
+
+  @override
+  String get followedImamConfirmTitle => 'Imom bilan yakunlansinmi?';
+
+  @override
+  String get followedImamConfirmBody =>
+      'Bu qism qiroat hodisasi va aylanish hisobisiz yakunlanadi.';
+
+  @override
+  String get followedImamCompleted => 'Imomga ergashib yakunlandi';
 }

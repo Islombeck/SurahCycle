@@ -102,6 +102,22 @@ class RotationWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                         style = TextStyle(fontSize = 12.sp),
                         maxLines = 1,
                     )
+                    snapshot?.rotation?.currentPartLabel?.let { currentPartLabel ->
+                        Spacer(GlanceModifier.height(2.dp))
+                        Text(
+                            currentPartLabel,
+                            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                            maxLines = 2,
+                        )
+                    }
+                    snapshot?.rotation?.slotProgressLabel?.let { slotProgressLabel ->
+                        Spacer(GlanceModifier.height(1.dp))
+                        Text(
+                            slotProgressLabel,
+                            style = TextStyle(fontSize = 11.sp),
+                            maxLines = 1,
+                        )
+                    }
                     snapshot?.rotation?.statusMessage?.let { statusMessage ->
                         Spacer(GlanceModifier.height(2.dp))
                         Text(

@@ -8,6 +8,13 @@ import 'rotation_widget_projection_factory.dart';
 import 'widget_snapshot.dart';
 import 'widget_sync_coordinator.dart';
 
+typedef RotationWidgetPrayerPartLoader =
+    Future<RotationWidgetPrayerPartProjection?> Function(
+      PrayerContext context,
+      LocalDate localDate,
+      WidgetLocalization localization,
+    );
+
 /// Rebuilds a widget from authoritative local state without loading Quran
 /// text, translation, transliteration, HTTP clients, or the Riverpod UI tree.
 final class InteractiveWidgetSnapshotRefresher {
@@ -19,6 +26,7 @@ final class InteractiveWidgetSnapshotRefresher {
     required this.createActionToken,
     required this.localDates,
     required this.bridge,
+    this.prayerPartLoader,
     this.codec = const WidgetSnapshotCodec(),
   });
 
@@ -29,6 +37,7 @@ final class InteractiveWidgetSnapshotRefresher {
   final String Function() createActionToken;
   final RecitationLocalDateProvider localDates;
   final WidgetSnapshotBridge bridge;
+  final RotationWidgetPrayerPartLoader? prayerPartLoader;
   final WidgetSnapshotCodec codec;
 
   Future<WidgetSnapshot> refresh({bool actionFailed = false}) async {
@@ -50,11 +59,16 @@ final class InteractiveWidgetSnapshotRefresher {
           );
     final prayerContext = details.context;
     final rotation = await surahs.getRotationSnapshot();
+    final localDate = localDates.today();
+    final prayerPart = prayerContext == null || prayerPartLoader == null
+        ? null
+        : await prayerPartLoader!(prayerContext, localDate, localization);
     final markedPartIds = prayerContext == null
         ? const <String>{}
         : await recitations.getMarkedPartIds(
             context: prayerContext,
-            localDate: localDates.today(),
+            localDate: localDate,
+            prayerSessionPartId: prayerPart?.prayerSessionPartId,
           );
     final rebuiltRotation =
         RotationWidgetProjectionFactory(
@@ -70,6 +84,7 @@ final class InteractiveWidgetSnapshotRefresher {
           createActionToken: createActionToken,
           actionsEnabled: prayerContext != null,
           markedPartIds: markedPartIds,
+          prayerPart: prayerPart,
           statusMessage: actionFailed
               ? localization.l10n.widgetActionNotCompleted
               : null,
@@ -116,6 +131,8 @@ RotationWidgetProjection _preserveVisibleOrder(
     items: ordered,
     omittedCount: current.omittedCount,
     contextLabel: current.contextLabel,
+    currentPartLabel: current.currentPartLabel,
+    slotProgressLabel: current.slotProgressLabel,
     statusMessage: current.statusMessage,
   );
 }

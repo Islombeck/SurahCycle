@@ -53,12 +53,18 @@ final class RotationWidgetInteractionHandler {
         'actionToken': action?.actionToken,
         'surah': action?.surahId,
         'part': action?.partId,
+        'prayerSession': action?.prayerSessionId,
+        'prayerSessionPart': action?.prayerSessionPartId,
+        'slot': action?.slotIndex,
       });
       if (action != null) {
         onLog?.call('transaction_start', <String, Object?>{
           'actionToken': action.actionToken,
           'surah': action.surahId,
           'part': action.partId,
+          'prayerSession': action.prayerSessionId,
+          'prayerSessionPart': action.prayerSessionPartId,
+          'slot': action.slotIndex,
         });
         final result = await recitations.registerFromWidget(action);
         switch (result) {
@@ -69,6 +75,8 @@ final class RotationWidgetInteractionHandler {
               'dbEventId': registration.event.id,
               'prayerContext': registration.event.prayerContext.toString(),
               'prayerSession': registration.event.prayerSessionId,
+              'prayerSessionPart': registration.event.prayerSessionPartId,
+              'slot': registration.event.slotIndex,
               'parts': registration.event.coveredPartIds.join(','),
               'snapshotRevision': registration.snapshot.revision,
             });

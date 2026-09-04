@@ -19,6 +19,17 @@ void main() {
       );
     });
 
+    test('Jumuah is distinct from Dhuhr and has no invented Qada mode', () {
+      final jumuah = PrayerContext(prayerType: PrayerType.jumuah);
+
+      expect(jumuah.prayerType, isNot(PrayerType.dhuhr));
+      expect(PrayerType.jumuah.supportsQada, isFalse);
+      expect(
+        () => PrayerContext(prayerType: PrayerType.jumuah, isQada: true),
+        throwsArgumentError,
+      );
+    });
+
     test('witr is distinct and supports Qada without theological flags', () {
       final context = PrayerContext(prayerType: PrayerType.witr, isQada: true);
 

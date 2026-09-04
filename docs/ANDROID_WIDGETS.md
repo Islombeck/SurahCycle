@@ -22,14 +22,14 @@ min/target/compile SDK values and JVM 17.
 
 ## Ownership boundary
 
-`text
+```text
 Drift/domain/Quran/prayer streams
                  |
                  v
        Dart projection builders
                  |
                  v
-       WidgetSnapshot schema 3
+       WidgetSnapshot schema 5
                  |
                  v
  home_widget SharedPreferences bridge
@@ -43,7 +43,7 @@ Drift/domain/Quran/prayer streams
           |
           v
  RecitationApplicationService + Drift transaction
-`
+```
 
 Dart owns sorting, rank, debt, eligible actions, localized labels, Quran layer
 selection, Prayer Context and all mutation rules. Kotlin validates a
@@ -54,11 +54,14 @@ The shared snapshot key is `murajaah_widget_snapshot`. Malformed JSON,
 unknown schema, unsafe deep links, duplicate IDs/tokens, unreasonable payloads
 or native composition errors fail closed to localized fallback UI.
 
-## Snapshot schema 3
+## Snapshot schema 5
 
 The current contract adds:
 
 - optional structured action per Rotation row;
+- localized current prayer-part and slot-progress labels;
+- exact prayer session/part/slot target in action schema 2 when a routine is
+  active;
 - structured Learning ayah lines bound by surah/ayah coordinates;
 - independent `showArabic`, `showTransliteration` and
   `showTranslation` flags;
@@ -66,12 +69,16 @@ The current contract adds:
 
 Abbreviated example:
 
-`json
+```json
 {
-  "schemaVersion": 3,
+  "schemaVersion": 5,
   "generatedAtUtc": "2026-08-26T10:00:00.000Z",
+  "snapshotRevision": 42,
   "locale": "ru",
   "rotation": {
+    "contextLabel": "Фаджр · ручной режим",
+    "currentPartLabel": "Фаджр · Фард",
+    "slotProgressLabel": "1 из 2 сур отмечено",
     "items": [{
       "id": "scheme-id:part:2",
       "surahId": "2",
@@ -83,11 +90,14 @@ Abbreviated example:
       "recommendationRank": 0,
       "deepLink": "murajaah://app/surah/2?part=part-id",
       "action": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "actionToken": "00000000-0000-4000-8000-000000000001",
         "surahId": "2",
         "rotationSchemeId": "scheme-id",
-        "partId": "part-id"
+        "partId": "part-id",
+        "prayerSessionId": "routine:fajr:2026-09-04",
+        "prayerSessionPartId": "routine:fajr:2026-09-04:part:fard",
+        "slotIndex": 1
       }
     }],
     "omittedCount": 0
@@ -115,16 +125,19 @@ Abbreviated example:
     }
   }
 }
-`
+```
 
 Actual Quran strings are never examples hardcoded in production. Arabic comes
 from the pinned Tanzil Uthmani corpus, transliteration from the pinned Tanzil
 English Transliteration asset, and translation only from the selected verified
 QuranEnc cache. Missing layers remain absent.
 
-Native decoder accepts schema 2 only as a display-only migration input and
-schema 3 as current. Dart reads/writes schema 3. Dynamic Glance IDs are masked
-outside the reserved range and checked for collisions.
+Native decoder accepts schema 2/3/4 as display-compatible migration input and
+schema 5 as current. Dart reads/writes schema 5. Older snapshots receive no
+invented routine target. Action schema 1 is accepted as cached legacy
+transport, but Dart rejects it when an active routine requires an exact slot.
+Dynamic Glance IDs are masked outside the reserved range and checked for
+collisions.
 
 ## Synchronization
 
@@ -132,7 +145,7 @@ outside the reserved range and checked for collisions.
 150 ms, serializes writes, collapses pending work to the newest projection and
 skips unchanged content even if generation time changed. Recalculation occurs
 after app startup, locale/content/display-setting changes and every mutation
-affecting rotation or learning.
+affecting rotation, prayer routines or learning.
 
 An interactive outcome performs an immediate zero-debounce rebuild from the
 database. A widget bridge error never rolls back a valid domain transaction.
@@ -200,9 +213,10 @@ When ADB exposes a device, verify:
 6. text tap opens the correct row without marking;
 7. History contains the widget-created event; Delete refreshes the widget;
 8. manual and reliable automatic Prayer Context attribution;
-9. malformed/unknown snapshot and forced composition fallbacks;
-10. RU/EN/UZ native strings;
-11. tap → database → launcher refresh latency.
+9. exact current routine part/slot progression and completed-routine disable;
+10. malformed/unknown snapshot and forced composition fallbacks;
+11. RU/EN/UZ native strings;
+12. tap → database → launcher refresh latency.
 
 If no physical device appears in `adb devices`, these items remain
 unverified; desktop tests and APK compilation are not reported as device QA.

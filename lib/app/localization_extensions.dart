@@ -11,6 +11,7 @@ extension PrayerLocalization on PrayerType {
   String label(AppLocalizations l10n) => switch (this) {
     PrayerType.fajr => l10n.fajr,
     PrayerType.dhuhr => l10n.dhuhr,
+    PrayerType.jumuah => l10n.jumuah,
     PrayerType.asr => l10n.asr,
     PrayerType.maghrib => l10n.maghrib,
     PrayerType.isha => l10n.isha,

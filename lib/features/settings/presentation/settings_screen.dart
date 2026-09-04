@@ -6,6 +6,7 @@ import '../../../app/app_providers.dart';
 import '../../../app/localization_extensions.dart';
 import '../../../core/domain/domain.dart';
 import '../../quran/quran.dart';
+import 'prayer_routine_settings_card.dart';
 import 'prayer_time_settings_card.dart';
 
 final class SettingsScreen extends ConsumerStatefulWidget {
@@ -99,6 +100,8 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   const PrayerTimeSettingsCard(),
+                  const SizedBox(height: 8),
+                  const PrayerRoutineSettingsCard(),
                   const SizedBox(height: 8),
                   Card(
                     child: Padding(

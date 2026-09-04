@@ -67,10 +67,10 @@ final class PrayerRegistrationShortcutResult {
 /// Resolves registration shortcuts using the same injected clock and schedule
 /// primitives as automatic prayer-context resolution.
 ///
-/// Witr and Nafl have no calculated schedule boundary. They are therefore
-/// accepted only through a manual current context, [resolveYesterday], or
-/// [resolveCustom]; [resolvePreviousPrayer] can only produce the five daily
-/// scheduled prayers.
+/// Jumuah, Witr, and Nafl have no calculated schedule boundary. They are
+/// therefore accepted only through a manual current context,
+/// [resolveYesterday], or [resolveCustom]; [resolvePreviousPrayer] can only
+/// produce the five daily scheduled prayers.
 final class PrayerRegistrationShortcutResolver {
   const PrayerRegistrationShortcutResolver(this.timeProvider);
 
@@ -89,7 +89,8 @@ final class PrayerRegistrationShortcutResolver {
     final isManual =
         currentResolution.status == PrayerContextResolutionStatus.manual;
     if (!isManual &&
-        (context.prayerType == PrayerType.witr ||
+        (context.prayerType == PrayerType.jumuah ||
+            context.prayerType == PrayerType.witr ||
             context.prayerType == PrayerType.nafl)) {
       return const PrayerRegistrationShortcutResult.unavailable(
         PrayerRegistrationShortcutStatus.unsupportedAutomaticPrayer,

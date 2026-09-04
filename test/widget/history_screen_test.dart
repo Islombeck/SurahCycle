@@ -10,6 +10,25 @@ import 'package:murajaah/features/history/presentation/history_screen.dart';
 import 'package:murajaah/l10n/app_localizations.dart';
 
 void main() {
+  testWidgets('legacy event without a routine part or slot stays visible', (
+    tester,
+  ) async {
+    final entry = _entry(id: 'legacy-without-routine');
+    expect(entry.event.prayerSessionPartId, isNull);
+    expect(entry.event.slotIndex, isNull);
+
+    await _pumpHistory(tester, <RecitationHistoryEntry>[entry]);
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('history-entry-legacy-without-routine'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Al-Ikhlas'), findsWidgets);
+    expect(find.textContaining('Fajr'), findsWidgets);
+  });
+
   testWidgets(
     'historical row keeps occurrence date separate from added timestamp',
     (tester) async {

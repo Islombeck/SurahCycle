@@ -15,6 +15,8 @@ internal data class NativeRotationProjection(
     val items: List<NativeRotationItem>,
     val omittedCount: Int,
     val contextLabel: String?,
+    val currentPartLabel: String?,
+    val slotProgressLabel: String?,
     val statusMessage: String?,
 )
 
@@ -33,21 +35,28 @@ internal data class NativeRotationItem(
 )
 
 internal data class NativeRotationAction(
+    val schemaVersion: Int,
     val actionToken: String,
     val surahId: String,
     val rotationSchemeId: String,
     val partId: String?,
+    val prayerSessionId: String?,
+    val prayerSessionPartId: String?,
+    val slotIndex: Int?,
 ) {
     val uri: Uri
         get() =
             Uri.Builder()
                 .scheme("murajaah-widget")
                 .authority("recitation")
-                .appendQueryParameter("schema", ACTION_SCHEMA_VERSION.toString())
+                .appendQueryParameter("schema", schemaVersion.toString())
                 .appendQueryParameter("token", actionToken)
                 .appendQueryParameter("surah", surahId)
                 .appendQueryParameter("scheme", rotationSchemeId)
                 .apply { partId?.let { appendQueryParameter("part", it) } }
+                .apply { prayerSessionId?.let { appendQueryParameter("session", it) } }
+                .apply { prayerSessionPartId?.let { appendQueryParameter("sessionPart", it) } }
+                .apply { slotIndex?.let { appendQueryParameter("slot", it.toString()) } }
                 .build()
 }
 
@@ -85,7 +94,8 @@ internal data class NativeLearningAyahLine(
 internal object NativeWidgetSnapshotParser {
     private const val LEGACY_SCHEMA_VERSION = 2
     private const val PREVIOUS_SCHEMA_VERSION = 3
-    private const val SCHEMA_VERSION = 4
+    private const val INTERACTIVE_SCHEMA_VERSION = 4
+    private const val SCHEMA_VERSION = 5
     private const val MAX_ROTATION_ITEMS = 64
     private const val MAX_TEXT_LINES = 3
     // Mirrors Dart's domain-level maxRecommendationCount.
@@ -97,19 +107,20 @@ internal object NativeWidgetSnapshotParser {
             val root = JSONObject(raw)
             val schemaVersion = root.getInt("schemaVersion")
             require(
-                schemaVersion == LEGACY_SCHEMA_VERSION ||
+                    schemaVersion == LEGACY_SCHEMA_VERSION ||
                     schemaVersion == PREVIOUS_SCHEMA_VERSION ||
+                    schemaVersion == INTERACTIVE_SCHEMA_VERSION ||
                     schemaVersion == SCHEMA_VERSION
             )
             val rootKeys =
                 mutableSetOf("schemaVersion", "generatedAtUtc", "locale", "rotation", "learning")
-            if (schemaVersion >= SCHEMA_VERSION) rootKeys += "snapshotRevision"
+            if (schemaVersion >= INTERACTIVE_SCHEMA_VERSION) rootKeys += "snapshotRevision"
             requireOnlyKeys(root, rootKeys)
             requireText(root.getString("generatedAtUtc"), 128)
             requireText(root.getString("locale"), 32)
             NativeWidgetSnapshot(
                 snapshotRevision =
-                    if (schemaVersion >= SCHEMA_VERSION) {
+                    if (schemaVersion >= INTERACTIVE_SCHEMA_VERSION) {
                         root.getLong("snapshotRevision").also { require(it >= 0L) }
                     } else {
                         0L
@@ -167,13 +178,25 @@ internal object NativeWidgetSnapshotParser {
                     null
                 }
             val isMarked =
-                if (schemaVersion >= SCHEMA_VERSION) item.getBoolean("isMarkedInCurrentPart") else false
+                if (schemaVersion >= INTERACTIVE_SCHEMA_VERSION) {
+                    item.getBoolean("isMarkedInCurrentPart")
+                } else {
+                    false
+                }
             val isProcessing =
-                if (schemaVersion >= SCHEMA_VERSION) item.getBoolean("isActionInProgress") else false
+                if (schemaVersion >= INTERACTIVE_SCHEMA_VERSION) {
+                    item.getBoolean("isActionInProgress")
+                } else {
+                    false
+                }
             val canMark =
-                if (schemaVersion >= SCHEMA_VERSION) item.getBoolean("canMark") else action != null
+                if (schemaVersion >= INTERACTIVE_SCHEMA_VERSION) {
+                    item.getBoolean("canMark")
+                } else {
+                    action != null
+                }
             val disabledReason =
-                if (schemaVersion >= SCHEMA_VERSION) {
+                if (schemaVersion >= INTERACTIVE_SCHEMA_VERSION) {
                     item.optionalString("disabledReason")?.let { requireText(it, 256) }
                 } else {
                     null
@@ -204,6 +227,18 @@ internal object NativeWidgetSnapshotParser {
                 } else {
                     null
                 },
+            currentPartLabel =
+                if (schemaVersion >= SCHEMA_VERSION) {
+                    json.optionalString("currentPartLabel")?.let { requireText(it, 256) }
+                } else {
+                    null
+                },
+            slotProgressLabel =
+                if (schemaVersion >= SCHEMA_VERSION) {
+                    json.optionalString("slotProgressLabel")?.let { requireText(it, 256) }
+                } else {
+                    null
+                },
             statusMessage =
                 if (schemaVersion >= PREVIOUS_SCHEMA_VERSION) {
                     json.optionalString("statusMessage")?.let { requireText(it, 512) }
@@ -218,22 +253,58 @@ internal object NativeWidgetSnapshotParser {
         expectedSurahId: String,
         expectedPartId: String?,
     ): NativeRotationAction {
+        val actionSchemaVersion = json.getInt("schemaVersion")
+        require(
+            actionSchemaVersion == LEGACY_ACTION_SCHEMA_VERSION ||
+                actionSchemaVersion == ACTION_SCHEMA_VERSION
+        )
+        val allowedKeys =
+            mutableSetOf(
+                "schemaVersion",
+                "actionToken",
+                "surahId",
+                "rotationSchemeId",
+                "partId",
+            )
+        if (actionSchemaVersion >= ACTION_SCHEMA_VERSION) {
+            allowedKeys += "prayerSessionId"
+            allowedKeys += "prayerSessionPartId"
+            allowedKeys += "slotIndex"
+        }
         requireOnlyKeys(
             json,
-            setOf("schemaVersion", "actionToken", "surahId", "rotationSchemeId", "partId"),
+            allowedKeys,
         )
-        require(json.getInt("schemaVersion") == ACTION_SCHEMA_VERSION)
         val actionToken = requireText(json.getString("actionToken"), 36)
         require(UUID_V4.matches(actionToken))
         val surahId = requireSafeId(json.getString("surahId"))
         val schemeId = requireSafeId(json.getString("rotationSchemeId"))
         val partId = json.optionalString("partId")?.let(::requireSafeId)
+        val prayerSessionId =
+            json.optionalString("prayerSessionId")?.let(::requireSafeId)
+        val prayerSessionPartId =
+            json.optionalString("prayerSessionPartId")?.let(::requireSafeId)
+        val slotIndex =
+            if (json.has("slotIndex") && !json.isNull("slotIndex")) {
+                json.getInt("slotIndex").also { require(it in 0..MAX_PRAYER_SLOT_INDEX) }
+            } else {
+                null
+            }
+        val hasAnySlotTarget =
+            prayerSessionId != null || prayerSessionPartId != null || slotIndex != null
+        val hasCompleteSlotTarget =
+            prayerSessionId != null && prayerSessionPartId != null && slotIndex != null
+        require(hasAnySlotTarget == hasCompleteSlotTarget)
         require(surahId == expectedSurahId && partId == expectedPartId)
         return NativeRotationAction(
+            schemaVersion = actionSchemaVersion,
             actionToken = actionToken.lowercase(),
             surahId = surahId,
             rotationSchemeId = schemeId,
             partId = partId,
+            prayerSessionId = prayerSessionId,
+            prayerSessionPartId = prayerSessionPartId,
+            slotIndex = slotIndex,
         )
     }
 
@@ -371,7 +442,9 @@ internal object NativeWidgetSnapshotParser {
         )
 }
 
-internal const val ACTION_SCHEMA_VERSION = 1
+internal const val LEGACY_ACTION_SCHEMA_VERSION = 1
+internal const val ACTION_SCHEMA_VERSION = 2
+private const val MAX_PRAYER_SLOT_INDEX = 1023
 
 internal fun stableWidgetItemId(value: String): Long {
     var hash = 1_125_899_906_842_597L

@@ -1,6 +1,7 @@
 enum PrayerType {
   fajr,
   dhuhr,
+  jumuah,
   asr,
   maghrib,
   isha,
@@ -8,7 +9,7 @@ enum PrayerType {
   nafl;
 
   /// Product capability only; it deliberately makes no theological claim.
-  bool get supportsQada => this != PrayerType.nafl;
+  bool get supportsQada => this != PrayerType.nafl && this != PrayerType.jumuah;
 }
 
 /// The prayer in which a recitation took place.

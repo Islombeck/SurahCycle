@@ -117,6 +117,32 @@ final class RecitationStats {
   final List<PrayerRecitationStat> byPrayer;
 }
 
+enum PrayerSessionSlotUnavailableReason {
+  exactSlotRequired,
+  missingSession,
+  contextMismatch,
+  dateMismatch,
+  missingPart,
+  foreignPart,
+  nonCurrentPart,
+  completedPart,
+  slotOutOfRange,
+  slotNotNext,
+  occupiedSlot,
+}
+
+/// A typed stale-target failure for exact prayer-session slot registrations.
+///
+/// It remains a [StateError] for existing app callers, while widget actions
+/// can safely map only this known validation family to a user-facing rejection
+/// without hiding unrelated persistence or projection failures.
+final class PrayerSessionSlotUnavailableException extends StateError {
+  PrayerSessionSlotUnavailableException(this.reason, String message)
+    : super(message);
+
+  final PrayerSessionSlotUnavailableReason reason;
+}
+
 /// Atomic journal writes, projection rebuild, history, statistics, and Undo.
 final class RecitationRepository {
   RecitationRepository(this.database, {this._engine = const RotationEngine()})
@@ -166,7 +192,7 @@ final class RecitationRepository {
     final normalizedEvent = _atDatabasePrecision(event);
     final registration = await database.transaction(() async {
       await _ensureUnusedJournalId(normalizedEvent.id);
-      await _validatePrayerSession(normalizedEvent);
+      final prayerSessionPart = await _validatePrayerSession(normalizedEvent);
       final state = await _projection.loadRotationState();
       final before = await _projection.loadSnapshot();
       final persistedEvent = _engine.resolveRecitation(before, normalizedEvent);
@@ -184,6 +210,10 @@ final class RecitationRepository {
               rotationSchemeId: persistedEvent.rotationSchemeId!,
               rakaatSpanCount: persistedEvent.rakaatSpanCount,
               prayerSessionId: Value<String?>(persistedEvent.prayerSessionId),
+              prayerSessionPartId: Value<String?>(
+                persistedEvent.prayerSessionPartId,
+              ),
+              slotIndex: Value<int?>(persistedEvent.slotIndex),
               createdAtUtc: persistedEvent.createdAtUtc,
               localDate: persistedEvent.localDate.toString(),
               prayerType: persistedEvent.prayerType.name,
@@ -200,6 +230,9 @@ final class RecitationRepository {
                 partId: partId,
               ),
             );
+      }
+      if (prayerSessionPart != null && persistedEvent.slotIndex != null) {
+        await _reconcileRecitationCompletion(prayerSessionPart.id);
       }
       await _projection.writeSnapshot(
         committedAfter,
@@ -293,6 +326,9 @@ final class RecitationRepository {
       if (deleted != 1) {
         throw StateError('Failed to remove undoable recitation.');
       }
+      if (event.prayerSessionPartId case final prayerSessionPartId?) {
+        await _reconcileRecitationCompletion(prayerSessionPartId);
+      }
       await _projection.writeSnapshot(
         token._beforeSnapshot,
         lastJournalSequence: token._previousJournalSequence,
@@ -330,6 +366,9 @@ final class RecitationRepository {
       )..where((RecitationEvents row) => row.id.equals(eventId))).write(
         RecitationEventsCompanion(deletedAtUtc: Value<DateTime?>(deletedAtUtc)),
       );
+      if (existing.prayerSessionPartId case final prayerSessionPartId?) {
+        await _reconcileRecitationCompletion(prayerSessionPartId);
+      }
       final rebuilt = await _projection.rebuildFromJournal(
         targetFloor: before.rotationTarget,
       );
@@ -416,6 +455,7 @@ final class RecitationRepository {
   Future<Set<String>> getMarkedPartIds({
     required PrayerContext context,
     required LocalDate localDate,
+    String? prayerSessionPartId,
   }) async {
     final entries = await getHistory(
       limit: 10000,
@@ -426,7 +466,9 @@ final class RecitationRepository {
     );
     return <String>{
       for (final entry in entries)
-        for (final partId in entry.event.coveredPartIds) partId,
+        if (prayerSessionPartId == null ||
+            entry.event.prayerSessionPartId == prayerSessionPartId)
+          for (final partId in entry.event.coveredPartIds) partId,
     };
   }
 
@@ -676,6 +718,8 @@ final class RecitationRepository {
     id: row.id,
     surahId: row.surahId,
     prayerSessionId: row.prayerSessionId,
+    prayerSessionPartId: row.prayerSessionPartId,
+    slotIndex: row.slotIndex,
     prayerContext: PrayerContext(
       prayerType: PrayerType.values.byName(row.prayerType),
       isQada: row.isQada,
@@ -715,22 +759,241 @@ final class RecitationRepository {
     }
   }
 
-  Future<void> _validatePrayerSession(SurahRecitationEvent event) async {
+  Future<PrayerSessionPartRow?> _validatePrayerSession(
+    SurahRecitationEvent event,
+  ) async {
     final sessionId = event.prayerSessionId;
-    if (sessionId == null) return;
+    if (sessionId == null) {
+      if (await _hasConfiguredRoutine(event)) {
+        throw PrayerSessionSlotUnavailableException(
+          PrayerSessionSlotUnavailableReason.exactSlotRequired,
+          'This prayer has an active routine and requires an exact slot.',
+        );
+      }
+      return null;
+    }
     final session =
         await (database.select(database.prayerSessions)
               ..where((PrayerSessions row) => row.id.equals(sessionId)))
             .getSingleOrNull();
     if (session == null) {
-      throw StateError('Prayer session "$sessionId" does not exist.');
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.missingSession,
+        'Prayer session "$sessionId" does not exist.',
+      );
     }
     if (session.prayerType != event.prayerType.name ||
         session.isQada != event.isQada) {
-      throw StateError(
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.contextMismatch,
         'Recitation context does not match prayer session "$sessionId".',
       );
     }
+    if (session.localDate != null &&
+        session.localDate != event.localDate.toString()) {
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.dateMismatch,
+        'Recitation date does not match prayer session "$sessionId".',
+      );
+    }
+
+    final sessionParts =
+        await (database.select(database.prayerSessionParts)
+              ..where(
+                (PrayerSessionParts row) =>
+                    row.prayerSessionId.equals(sessionId),
+              )
+              ..orderBy(<OrderingTerm Function(PrayerSessionParts)>[
+                (PrayerSessionParts row) => OrderingTerm.asc(row.orderIndex),
+              ]))
+            .get();
+    if (sessionParts.isEmpty) {
+      if (await _hasConfiguredRoutine(event)) {
+        throw PrayerSessionSlotUnavailableException(
+          PrayerSessionSlotUnavailableReason.exactSlotRequired,
+          'This prayer has an active routine and requires an exact slot.',
+        );
+      }
+      return null;
+    }
+
+    final partId = event.prayerSessionPartId;
+    final slotIndex = event.slotIndex;
+    if (partId == null || slotIndex == null) {
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.exactSlotRequired,
+        'A routine recitation requires a session part and slot.',
+      );
+    }
+    final part =
+        await (database.select(database.prayerSessionParts)
+              ..where((PrayerSessionParts row) => row.id.equals(partId)))
+            .getSingleOrNull();
+    if (part == null) {
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.missingPart,
+        'Prayer session part "$partId" does not exist.',
+      );
+    }
+    if (part.prayerSessionId != sessionId) {
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.foreignPart,
+        'Prayer session part "$partId" does not belong to "$sessionId".',
+      );
+    }
+    PrayerSessionPartRow? currentPart;
+    for (final candidate in sessionParts) {
+      if (candidate.completedAtUtc == null) {
+        currentPart = candidate;
+        break;
+      }
+    }
+    if (currentPart == null) {
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.completedPart,
+        'Prayer session "$sessionId" is already complete.',
+      );
+    }
+    if (currentPart.id != partId) {
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.nonCurrentPart,
+        'Prayer session part "$partId" is not the current part.',
+      );
+    }
+    if (part.completedAtUtc != null) {
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.completedPart,
+        'Prayer session part "$partId" is already completed.',
+      );
+    }
+
+    if (slotIndex >= part.requiredSurahSlots) {
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.slotOutOfRange,
+        'Slot $slotIndex is outside prayer session part "$partId".',
+      );
+    }
+    final occupiedEvents =
+        await (database.select(database.recitationEvents)..where(
+              (RecitationEvents row) =>
+                  row.prayerSessionPartId.equals(partId) &
+                  row.slotIndex.isNotNull() &
+                  row.deletedAtUtc.isNull(),
+            ))
+            .get();
+    final occupiedSlots = <int>{
+      for (final occupied in occupiedEvents) occupied.slotIndex!,
+    };
+    if (occupiedSlots.contains(slotIndex)) {
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.occupiedSlot,
+        'Slot $slotIndex in prayer session part "$partId" is occupied.',
+      );
+    }
+    int? nextSlotIndex;
+    for (var index = 0; index < part.requiredSurahSlots; index += 1) {
+      if (!occupiedSlots.contains(index)) {
+        nextSlotIndex = index;
+        break;
+      }
+    }
+    if (slotIndex != nextSlotIndex) {
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.slotNotNext,
+        'Slot $slotIndex is not the next slot in prayer session part "$partId".',
+      );
+    }
+    return part;
+  }
+
+  Future<bool> _hasConfiguredRoutine(SurahRecitationEvent event) async {
+    final sessions =
+        await (database.select(database.prayerSessions)..where(
+              (PrayerSessions row) =>
+                  row.prayerType.equals(event.prayerType.name) &
+                  row.isQada.equals(event.isQada) &
+                  row.localDate.equals(event.localDate.toString()),
+            ))
+            .get();
+    for (final session in sessions) {
+      final part =
+          await (database.select(database.prayerSessionParts)
+                ..where(
+                  (PrayerSessionParts row) =>
+                      row.prayerSessionId.equals(session.id),
+                )
+                ..limit(1))
+              .getSingleOrNull();
+      if (part != null) return true;
+    }
+
+    final template =
+        await (database.select(database.prayerRoutineTemplates)..where(
+              (PrayerRoutineTemplates row) =>
+                  row.prayerType.equals(event.prayerType.name) &
+                  row.enabled.equals(true),
+            ))
+            .getSingleOrNull();
+    if (template == null) return false;
+    final templatePart =
+        await (database.select(database.prayerRoutinePartTemplates)
+              ..where(
+                (PrayerRoutinePartTemplates row) =>
+                    row.routineTemplateId.equals(template.id),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return templatePart != null;
+  }
+
+  Future<void> _reconcileRecitationCompletion(String partId) async {
+    final part =
+        await (database.select(database.prayerSessionParts)
+              ..where((PrayerSessionParts row) => row.id.equals(partId)))
+            .getSingleOrNull();
+    if (part == null || part.requiredSurahSlots == 0) return;
+    if (part.completionMode == PrayerPartCompletionMode.followedImam.name &&
+        part.completedAtUtc != null) {
+      return;
+    }
+
+    final activeSlotEvents =
+        await (database.select(database.recitationEvents)..where(
+              (RecitationEvents row) =>
+                  row.prayerSessionPartId.equals(partId) &
+                  row.slotIndex.isNotNull() &
+                  row.deletedAtUtc.isNull(),
+            ))
+            .get();
+    if (activeSlotEvents.length < part.requiredSurahSlots) {
+      if (part.completionMode == PrayerPartCompletionMode.recitations.name &&
+          part.completedAtUtc != null) {
+        await (database.update(
+          database.prayerSessionParts,
+        )..where((PrayerSessionParts row) => row.id.equals(partId))).write(
+          const PrayerSessionPartsCompanion(
+            completedAtUtc: Value<DateTime?>(null),
+          ),
+        );
+      }
+      return;
+    }
+
+    final completedAtUtc = activeSlotEvents
+        .map((RecitationEventRow row) => row.createdAtUtc.toUtc())
+        .reduce(
+          (DateTime left, DateTime right) => left.isAfter(right) ? left : right,
+        );
+    await (database.update(
+      database.prayerSessionParts,
+    )..where((PrayerSessionParts row) => row.id.equals(partId))).write(
+      PrayerSessionPartsCompanion(
+        completionMode: Value<String>(
+          PrayerPartCompletionMode.recitations.name,
+        ),
+        completedAtUtc: Value<DateTime?>(completedAtUtc),
+      ),
+    );
   }
 }
 
@@ -749,6 +1012,8 @@ SurahRecitationEvent _atDatabasePrecision(SurahRecitationEvent event) {
     createdAtUtc: createdAtUtc,
     localDate: event.localDate,
     prayerSessionId: event.prayerSessionId,
+    prayerSessionPartId: event.prayerSessionPartId,
+    slotIndex: event.slotIndex,
     coverage: event.coverage,
     rakaatSpanCount: event.rakaatSpanCount,
   );

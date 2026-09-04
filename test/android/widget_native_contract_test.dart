@@ -75,7 +75,7 @@ void main() {
     expect(fallback, contains('appWidgetId: Int, deepLink: Uri'));
   });
 
-  test('schema 4 state is strict and preserves schema 2/3 fallback', () {
+  test('schema 5 routine state is strict and preserves older fallback', () {
     final snapshot = _read(
       'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
       'WidgetSnapshot.kt',
@@ -84,16 +84,38 @@ void main() {
       'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
       'LearningWidget.kt',
     );
+    final rotation = _read(
+      'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
+      'RotationWidget.kt',
+    );
 
     expect(snapshot, contains('private const val LEGACY_SCHEMA_VERSION = 2'));
     expect(snapshot, contains('private const val PREVIOUS_SCHEMA_VERSION = 3'));
-    expect(snapshot, contains('private const val SCHEMA_VERSION = 4'));
+    expect(
+      snapshot,
+      contains('private const val INTERACTIVE_SCHEMA_VERSION = 4'),
+    );
+    expect(snapshot, contains('private const val SCHEMA_VERSION = 5'));
+    expect(
+      snapshot,
+      contains('internal const val LEGACY_ACTION_SCHEMA_VERSION = 1'),
+    );
+    expect(snapshot, contains('internal const val ACTION_SCHEMA_VERSION = 2'));
     expect(snapshot, contains('root.getLong("snapshotRevision")'));
     expect(snapshot, contains('requireOnlyKeys(root, rootKeys)'));
     expect(snapshot, contains('require(remaining >= 0)'));
     expect(snapshot, contains('debtLabel == if (remaining > 1)'));
     expect(snapshot, contains('item.getBoolean("isMarkedInCurrentPart")'));
     expect(snapshot, contains('item.getBoolean("canMark")'));
+    expect(snapshot, contains('json.optionalString("currentPartLabel")'));
+    expect(snapshot, contains('json.optionalString("slotProgressLabel")'));
+    expect(snapshot, contains('json.optionalString("prayerSessionId")'));
+    expect(snapshot, contains('json.optionalString("prayerSessionPartId")'));
+    expect(snapshot, contains('json.getInt("slotIndex")'));
+    expect(
+      snapshot,
+      contains('require(hasAnySlotTarget == hasCompleteSlotTarget)'),
+    );
     expect(snapshot, contains('val ayahLines: List<NativeLearningAyahLine>'));
     expect(snapshot, contains('val surahNumber: Int?'));
     expect(snapshot, contains('val ayahNumber: Int?'));
@@ -103,6 +125,8 @@ void main() {
       learning,
       contains('line.transliteration.withoutTanzilPresentationTags()'),
     );
+    expect(rotation, contains('snapshot?.rotation?.currentPartLabel'));
+    expect(rotation, contains('snapshot?.rotation?.slotProgressLabel'));
   });
 
   test('Quran audio owns a separate Android media service contract', () {

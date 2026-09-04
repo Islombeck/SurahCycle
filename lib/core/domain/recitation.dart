@@ -142,6 +142,8 @@ final class SurahRecitationEvent implements RotationJournalEvent {
     required DateTime createdAtUtc,
     required LocalDate localDate,
     String? prayerSessionId,
+    String? prayerSessionPartId,
+    int? slotIndex,
     RecitationCoverage? coverage,
     String? rotationSchemeId,
     Iterable<String>? coveredPartIds,
@@ -162,6 +164,17 @@ final class SurahRecitationEvent implements RotationJournalEvent {
         'prayerSessionId',
         'Must be null or non-empty.',
       );
+    }
+    if (prayerSessionPartId != null && prayerSessionPartId.isEmpty) {
+      throw ArgumentError.value(prayerSessionPartId, 'prayerSessionPartId');
+    }
+    if (prayerSessionPartId != null && prayerSessionId == null) {
+      throw ArgumentError(
+        'prayerSessionPartId requires a concrete prayerSessionId.',
+      );
+    }
+    if (slotIndex != null && (slotIndex < 0 || prayerSessionPartId == null)) {
+      throw ArgumentError.value(slotIndex, 'slotIndex');
     }
     if (rakaatSpanCount < 1) {
       throw ArgumentError.value(
@@ -196,6 +209,8 @@ final class SurahRecitationEvent implements RotationJournalEvent {
       createdAtUtc: createdAtUtc,
       localDate: localDate,
       prayerSessionId: prayerSessionId,
+      prayerSessionPartId: prayerSessionPartId,
+      slotIndex: slotIndex,
       coverage: resolvedCoverage,
       rakaatSpanCount: rakaatSpanCount,
     );
@@ -208,6 +223,8 @@ final class SurahRecitationEvent implements RotationJournalEvent {
     required this.createdAtUtc,
     required this.localDate,
     required this.prayerSessionId,
+    required this.prayerSessionPartId,
+    required this.slotIndex,
     required this.coverage,
     required this.rakaatSpanCount,
   });
@@ -220,6 +237,8 @@ final class SurahRecitationEvent implements RotationJournalEvent {
   final DateTime createdAtUtc;
   final LocalDate localDate;
   final String? prayerSessionId;
+  final String? prayerSessionPartId;
+  final int? slotIndex;
   final RecitationCoverage? coverage;
   final int rakaatSpanCount;
 
@@ -238,6 +257,8 @@ final class SurahRecitationEvent implements RotationJournalEvent {
         createdAtUtc: createdAtUtc,
         localDate: localDate,
         prayerSessionId: prayerSessionId,
+        prayerSessionPartId: prayerSessionPartId,
+        slotIndex: slotIndex,
         coverage: coverage,
         rakaatSpanCount: rakaatSpanCount,
       );
@@ -252,6 +273,8 @@ final class SurahRecitationEvent implements RotationJournalEvent {
           createdAtUtc == other.createdAtUtc &&
           localDate == other.localDate &&
           prayerSessionId == other.prayerSessionId &&
+          prayerSessionPartId == other.prayerSessionPartId &&
+          slotIndex == other.slotIndex &&
           coverage == other.coverage &&
           rakaatSpanCount == other.rakaatSpanCount;
 
@@ -263,6 +286,8 @@ final class SurahRecitationEvent implements RotationJournalEvent {
     createdAtUtc,
     localDate,
     prayerSessionId,
+    prayerSessionPartId,
+    slotIndex,
     coverage,
     rakaatSpanCount,
   );

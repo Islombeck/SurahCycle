@@ -19,6 +19,7 @@
   "prayerContextTitle": "Контекст намаза",
   "fajr": "Фаджр",
   "dhuhr": "Зухр",
+  "jumuah": "Жума",
   "asr": "Аср",
   "maghrib": "Магриб",
   "isha": "Иша",
@@ -168,6 +169,7 @@
   ,"prayerContextMode": "Контекст отметки"
   ,"prayerModeManual": "Ручной режим"
   ,"prayerModeAutomatic": "Автоматически"
+  ,"useJumuahForNextRecitation": "Отметить следующее чтение как Жума"
   ,"automaticPrayerSafetyNotice": "Автовыбор работает только по свежему надёжному расписанию. После восхода до Зухра отметка потребует ручного выбора."
   ,"allowCalculatedFallback": "Разрешить локальный расчёт"
   ,"calculatedFallbackNotice": "Это отдельный расчётный источник, а не официальное расписание ОМИ. По умолчанию: Karachi, Аср Hanafi."
@@ -254,4 +256,38 @@
   ,"registrationChooseDatePrayer": "Выбрать дату и намаз"
   ,"registrationOccurrenceDate": "Дата прочтения: {date}"
   ,"@registrationOccurrenceDate": {"placeholders": {"date": {"type": "String"}}}
+  ,"prayerRoutines": "Порядок частей намаза"
+  ,"prayerRoutineDescription": "Настройте части намаза по порядку: число ракаатов и обязательных слотов для сур."
+  ,"routineEnabled": "Использовать этот порядок"
+  ,"routineEmpty": "Частей пока нет. Добавьте то, что хотите отслеживать."
+  ,"routinePartSummary": "{rakaatCount} рак. · слотов для сур: {slotCount}"
+  ,"@routinePartSummary": {"placeholders": {"rakaatCount": {"type": "int"}, "slotCount": {"type": "int"}}}
+  ,"addPrayerPart": "Добавить часть намаза"
+  ,"editPrayerPart": "Изменить часть намаза"
+  ,"deletePrayerPartTitle": "Удалить часть намаза?"
+  ,"deletePrayerPartBody": "Удалить «{label}»? Уже созданные сессии намаза не изменятся."
+  ,"@deletePrayerPartBody": {"placeholders": {"label": {"type": "String"}}}
+  ,"partKind": "Тип части"
+  ,"customPartLabel": "Своё название"
+  ,"customPartLabelRequired": "Введите название."
+  ,"rakaatCountLabel": "Число ракаатов"
+  ,"positiveNumberRequired": "Введите положительное число."
+  ,"surahSlotsLabel": "Обязательные слоты для сур"
+  ,"nonNegativeNumberRequired": "Введите ноль или положительное число."
+  ,"allowsFollowingImam": "Можно завершить, следуя за имамом"
+  ,"partKindFard": "Фард"
+  ,"partKindSunnah": "Сунна"
+  ,"partKindWitr": "Витр"
+  ,"partKindNafl": "Нафль"
+  ,"partKindCustom": "Другое"
+  ,"prayerRoutineCurrentPart": "{prayer} · {part}"
+  ,"@prayerRoutineCurrentPart": {"placeholders": {"prayer": {"type": "String"}, "part": {"type": "String"}}}
+  ,"prayerRoutineSlotProgress": "Слоты для сур: {done}/{total}"
+  ,"@prayerRoutineSlotProgress": {"placeholders": {"done": {"type": "int"}, "total": {"type": "int"}}}
+  ,"prayerRoutineComplete": "Порядок намаза завершён"
+  ,"prayerRoutineNoAvailableSlot": "В текущей части намаза нет доступного слота для суры."
+  ,"followedImamAction": "Следовал за имамом"
+  ,"followedImamConfirmTitle": "Завершить с имамом?"
+  ,"followedImamConfirmBody": "Эта часть будет завершена без события прочтения и без зачёта в ротации."
+  ,"followedImamCompleted": "Завершено вслед за имамом"
 }

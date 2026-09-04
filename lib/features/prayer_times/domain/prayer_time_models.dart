@@ -293,7 +293,7 @@ final class PrayerTimeAdjustments {
     PrayerType.asr => asrMinutes,
     PrayerType.maghrib => maghribMinutes,
     PrayerType.isha => ishaMinutes,
-    PrayerType.witr || PrayerType.nafl => 0,
+    PrayerType.jumuah || PrayerType.witr || PrayerType.nafl => 0,
   };
 
   @override

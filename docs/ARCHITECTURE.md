@@ -1,4 +1,4 @@
-# Архитектура Murajaah — Sprint 5
+# Архитектура Murajaah — Sprint 6A
 
 ## Эволюция архитектуры
 
@@ -23,6 +23,12 @@ learning lifecycle. Изменения Sprint 5B в Prayer Context исполь�
 - исторические shortcuts реализованы чистым application resolver и доступны
   только полному приложению;
 - native widget остаётся current-context/current-date boundary и fail-closed.
+
+Sprint 6A переводит пользовательскую базу на Drift schema v5. Она добавляет
+ручные ordered prayer routines, immutable session-part snapshots и nullable
+exact-slot links в событиях. Миграция не навязывает мазхаб: для каждого типа
+создаётся только пустой template. Jumuah становится отдельным
+ручным `PrayerType`, но не новым solar-time interval.
 
 Одна пользовательская отметка создаёт один `RecitationEvent`, а выбранные части записываются отношением `recitation_event_parts` в той же транзакции. `rakaatSpanCount` описывает, на сколько ракаатов распространялось это действие, но не моделирует каждый ракаат отдельно. Смена разбиения создаёт новую схему; прежняя схема и coverage истории не переписываются.
 
@@ -128,7 +134,10 @@ Snapshot хранит номер схемы/алгоритма и позицию
 | `RotationState` | singleton/id, `rotationTarget` (начально `1`), projection version | глобальная проекция цикла |
 | `RotationAdjustmentEvent` | id, `surahId`, signed `delta`, reason, UTC time | ручной перенос баланса без изменения истории чтений |
 | `PrayerSession` | id, `prayerType`, `isQada`, UTC/local time | контекст одного или нескольких чтений; может быть упрощён до snapshot контекста в событии |
-| `RecitationEvent` | UUID, `surahId`, `rotationSchemeId`, `rakaatSpanCount`, prayer snapshot, `createdAtUtc`, occurrence `localDate`, deletion marker | неизменяемый факт одного пользовательского действия |
+| `PrayerRoutineTemplate` | prayer type, enabled, revision, display name | редактируемая пользователем routine без встроенного религиозного preset |
+| `PrayerRoutinePartTemplate` | stable key, order, kind/label, rakaats, required slots, imam capability | ordered определение одной части будущих сессий |
+| `PrayerSessionPart` | source/revision, immutable label/order/kind/rakaats/slots, completion | неизменяемый snapshot части конкретной prayer session |
+| `RecitationEvent` | UUID, `surahId`, `rotationSchemeId`, `rakaatSpanCount`, prayer snapshot, nullable session-part/slot, `createdAtUtc`, occurrence `localDate`, deletion marker | неизменяемый факт одного пользовательского действия |
 | `RecitationEventPart` | `eventId`, `schemeId`, `partId` | точное историческое coverage одного события |
 | `LearningSurah` | `surahId`, status, stage kind, current ayah/range, `lastUserActivityAtUtc`, inactivity guard | текущая проекция независимого прогресса |
 | `LearningEvent` | UUID, `surahId`, type, before/after stage, UTC time, metadata | `repeated`, `learned`, inactivity rollback, undo, completion |
@@ -161,7 +170,8 @@ assets и доступны offline без записи в Quran cache. QuranEnc 
 - Первое включение выученной суры задаёт `rotationScore = rotationTarget - 1`.
 - Отключение и повторное включение сохраняют score и сами по себе не меняют target.
 - Ручная корректировка score не создаёт `RecitationEvent`.
-- Возможность каза задаётся нейтральным capability `supportsQada`: пять обязательных типов и Витр поддерживают её, Нафль — нет.
+- Возможность каза задаётся нейтральным capability `supportsQada`: пять
+  schedule-derived типов и Витр поддерживают её, Нафль и Jumuah — нет.
 - В активной схеме от одной до `ayahCount` частей, которые без пробелов и пересечений покрывают `1..ayahCount`.
 - Coverage всегда относится к той же суре и той же версии схемы, что и событие.
 - Пользовательское удаление требует подтверждения; Undo последней регистрации восстанавливает полный pre-action snapshot.
@@ -175,10 +185,19 @@ assets и доступны offline без записи в Quran cache. QuranEnc 
   выбором и проверяется через `PrayerType.supportsQada`.
 - `rakaatSpanCount` по умолчанию равен 1 и не создаёт соответствия между
   отдельными ракаатами и аятами.
+- Routine part имеет `rakaatCount > 0`, `requiredSurahSlots >= 0` и
+  непрерывный `orderIndex`; custom part требует label.
+- Session-part snapshot не изменяется после редактирования template.
+- Если для точного context/date существует routine, событие обязано ссылаться
+  на current incomplete session part и ровно его next free slot.
+- `followedImam` завершает eligible Fard part, но не является чтением и не
+  создаёт event, rotation credit или статистику.
 
 ## Prayer Context
 
-Доменное перечисление содержит пять обязательных намазов, Витр и Нафль. `isQada` проверяется через `PrayerType.supportsQada`, без богословского флага `isObligatory`. Некорректно только сочетание типа без capability и `isQada=true`; сейчас это Нафль.
+Доменное перечисление содержит пять schedule-derived намазов, Jumuah, Витр и
+Нафль. `isQada` проверяется через `PrayerType.supportsQada`, без богословского
+флага `isObligatory`. Некорректны сочетания Jumuah/Нафль с `isQada=true`.
 
 Событие хранит snapshot контекста (`prayerType`, `isQada`), даже если есть ссылка на `PrayerSession`. Поэтому последующее изменение UI-настройки не переписывает историю.
 
@@ -191,9 +210,33 @@ assets и доступны offline без записи в Quran cache. QuranEnc 
 - Yesterday оставляет prayer type ручным, поэтому поддерживает Витр;
 - Custom date and prayer принимает обе координаты явно.
 
-Витр и Нафль не выводятся из расписания. В automatic mode ручной выбор в UI
+Jumuah, Витр и Нафль не выводятся из расписания. Automatic Friday resolver
+по-прежнему возвращает Dhuhr. В automatic mode ручной выбор в UI
 создаёт transient override для одной регистрации и затем очищается, не меняя
 persisted mode. Native widget не подписан на этот provider.
+
+## Prayer routines и exact slots
+
+Settings редактирует отдельный revisioned template для каждого `PrayerType`:
+enable/disable, add/edit/delete, reorder, kind/custom label, positive rakaat
+count, non-negative required surah slots и explicit imam capability. Никакой
+порядок или число частей не выводятся из названия намаза.
+
+При первом действии `PrayerRoutineRepository.ensureCurrentSession` копирует
+актуальный enabled template в `PrayerSessionPart`. Позднее изменение template
+не переписывает уже начатую сессию. Zero-slot part завершается без события.
+Текущая часть — первая незавершённая; текущий слот — первый свободный в ней.
+
+Foreground и headless записи проходят одну transaction-time проверку полной
+tuple `prayerSessionId + prayerSessionPartId + slotIndex`. Stale, partial,
+occupied, skipped или non-current tuple отклоняется до записи. Slotless legacy
+flow остаётся допустим только когда для этого context/date нет routine.
+Завершённая routine не открывает fallback-регистрацию.
+
+Followed-imam completion требует explicit confirmation, допустим только для
+current eligible Fard без использованных слотов, не создаёт recitation/credit и
+имеет защищённый Undo. Полный контракт описан в
+[PRAYER_ROUTINES.md](PRAYER_ROUTINES.md).
 
 ## Время и идентификаторы
 
@@ -257,10 +300,14 @@ historical sheet тоже пересчитываются при выборе и 
 
 ## Interactive widget boundary
 
-Snapshot schema 3 содержит display-ready rows и необязательные action schema 1.
+Snapshot schema 5 содержит display-ready rows, current prayer-part/progress и
+необязательные action schema 2 с exact session-part-slot tuple. Kotlin
+принимает поддерживаемые старые display snapshots, но бизнес-решения не
+исполняет.
 Kotlin валидирует и передаёт action официальному home_widget background
 receiver. Headless Dart заново проверяет текущую схему, часть, active state и
-Prayer Context, затем вызывает тот же `RecitationApplicationService`.
+Prayer Context, session part и next slot, затем вызывает тот же
+`RecitationApplicationService`.
 На tap нет HTTP. После любого outcome snapshot перестраивается из базы; database
 закрывается только после awaited transaction/refresh. Детали:
 [INTERACTIVE_ANDROID_WIDGET.md](INTERACTIVE_ANDROID_WIDGET.md).
@@ -268,8 +315,10 @@ Prayer Context, затем вызывает тот же `RecitationApplicationSe
 Widget action не принимает historical occurrence и не читает transient
 app override. Дата и Prayer Context определяются заново на execution time из
 persisted current settings; при недоказанном контексте действие отклоняется.
+Legacy action schema 1 остаётся parseable для launcher cache, но slotless
+payload fail-closed, если пользователь уже включил routine.
 
-## Расширения вне Sprint 5
+## Расширения вне Sprint 6A
 
 - `RecitationRuleService` — точка подключения будущих подтверждённых правил; сейчас разрешает любой выбор.
 - интерфейс export/sync отделён от Drift DAO, чтобы позже передавать пользовательские события серверу;

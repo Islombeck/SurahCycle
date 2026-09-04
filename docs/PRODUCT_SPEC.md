@@ -1,4 +1,4 @@
-# Product Spec — Sprint 5
+# Product Spec — Sprint 6A
 
 ## Продуктовая цель
 
@@ -14,13 +14,13 @@ content важнее количества функций.
 
 Sprint 5 сохраняет весь объём Sprints 1–4:
 
-- мигрируемая Drift schema v4 и локальный event journal;
+- мигрируемая Drift schema v5 и локальный event journal;
 - список выученных сур, aliases, порядок и active/inactive rotation;
 - versioned whole/split schemes, exact part coverage и 1–4 ракаата;
 - `RotationEngine`, due state, до восьми объяснимых ranked
   recommendations и отдельные full-equivalent/action/part-credit metrics;
-- manual Prayer Context с Фаджром, Зухром, Асром, Магрибом, Иша, Витром,
-  Нафлем и capability каза;
+- manual Prayer Context с Фаджром, Зухром, Jumuah, Асром, Магрибом, Иша,
+  Витром, Нафлем и отдельным capability каза;
 - atomic registration, краткоживущий Undo, History Delete и projection rebuild;
 - независимая `LearningStateMachine` с cumulative stages;
 - RU/EN/UZ Material 3 UI;
@@ -69,6 +69,22 @@ Sprint 5B добавляет:
 6. Default один ракаат, advanced выбор 1–4 и менее шумное отображение ракаатов
    в History без моделирования соответствия аятов отдельным ракаатам.
 
+Sprint 6A добавляет:
+
+1. Пустые manual prayer-routine templates для каждого типа без встроенного
+   мазхабного preset.
+2. Settings editor: включение routine, add/edit/delete, drag reorder, kind или
+   custom label, положительное число ракаатов, неотрицательное число слотов зам-
+   сур и explicit `Followed the imam` capability.
+3. Immutable snapshot template в начатую prayer session: последующие настройки
+   меняют только будущие сессии.
+4. Exact current-part/current-slot регистрацию из Home и Rotation Widget с
+   повторной проверкой на transaction boundary.
+5. Explicit followed-imam completion и безопасный Undo без recitation event,
+   rotation credit или статистики чтения.
+6. Отдельный Jumuah Prayer Context и History/Statistics bucket. Solar resolver
+   не придумывает Jumuah; на Friday Dhuhr Home даёт one-event override.
+
 Функции вне scope перечислены в [BACKLOG.md](BACKLOG.md).
 
 ## Главный сценарий ротации
@@ -88,6 +104,27 @@ split-row отмечает только показанную часть и ис�
 После commit пересчитываются rotation и widgets. Undo восстанавливает точный
 pre-action snapshot. History Delete требует подтверждения, сохраняет tombstone
 event ID и не позволяет старому widget action создать событие повторно.
+
+## Prayer routines
+
+Routine — ordered пользовательский список частей одного `PrayerType`. Части
+могут быть Fard, Sunnah, Witr, Nafl или Custom; порядок, label, rakaats и число
+требуемых surah slots задаёт пользователь. `rakaatCount` части не означает
+per-rakaat mapping аятов, а zero-slot part завершается без фиктивного чтения.
+
+Home показывает текущую часть и прогресс всех частей. Каждая обычная отметка
+занимает ровно next free slot первой незавершённой части. Когда часть заполнена,
+следующая становится current; после завершения последней mark disabled и stale
+callback отклоняется. Legacy slotless flow сохраняется только для молитвы и
+даты без настроенной routine.
+
+`Followed the imam` доступен только для current разрешённой Fard-части без уже
+занятых слотов и требует confirmation. Он завершает часть, но не считается
+чтением. Undo разрешён только пока более поздняя история не зависит от этого
+completion.
+
+Подробный контракт: [PRAYER_ROUTINES.md](PRAYER_ROUTINES.md). Миграция:
+[DATABASE_MIGRATION_V5.md](DATABASE_MIGRATION_V5.md).
 
 ## Learning audio
 
@@ -169,7 +206,7 @@ rules. Default Uzbekistan fallback — Karachi + Hanafi, но не метод О
 
 ### Manual и automatic Prayer Context
 
-Manual mode использует сохранённый выбор, включая Витр, Нафль и каза.
+Manual mode использует сохранённый выбор, включая Jumuah, Витр, Нафль и каза.
 Automatic mode выбирает только Фаджр/Зухр/Аср/Магриб/Иша по надёжному schedule
 текущей локальной даты:
 
@@ -198,6 +235,10 @@ Context, установка остаётся в manual mode без подтве�
 override и очищается после успешной регистрации. Он не переключает persisted
 mode. Native widget override не видит и продолжает использовать только
 текущий контекст, доказанный persisted settings и schedule.
+
+Jumuah не получает solar time и не заменяет Dhuhr в automatic resolver. Только
+на текущем Friday Dhuhr Home предлагает явный one-event Jumuah override.
+Jumuah не поддерживает Qada и хранится отдельно от Dhuhr.
 
 ### Историческая регистрация
 
@@ -231,11 +272,15 @@ schedule пересчитывается по текущим часам. Поэт
 
 ## Android widgets
 
-Rotation Widget показывает due-only projection. Круг mark вызывает headless
+Rotation Widget показывает due-only projection, текущую prayer part и slot
+progress. Круг mark вызывает headless
 Dart callback; текст строки открывает app. `actionToken` становится ID
 event journal, поэтому redelivery и double tap exact-once. Перед записью
 повторно проверяются surah, active state, current scheme, part и execution-time
-Prayer Context. Stale action отклоняется и widget перестраивается из базы.
+Prayer Context. Action schema 2 также несёт exact prayer session, session part
+и next slot; все три координаты перепроверяются. Stale action отклоняется и
+widget перестраивается из базы. Cached schema-1 action допустим только при
+отсутствии routine, иначе fail-closed.
 Исторические shortcuts и transient app override в widget не передаются: его
 mark всегда относится к текущей локальной дате и execution-time контексту.
 
@@ -265,7 +310,7 @@ monthly prayer schedule остаются offline. Сбой content/schedule prov
 - destructive History/reset actions требуют подтверждения;
 - нет рекламы, streaks, социальных функций и лишнего onboarding.
 
-## Критерии приёмки Sprint 5
+## Критерии приёмки Sprint 6A
 
 Автоматически проверяются:
 
@@ -277,6 +322,10 @@ monthly prayer schedule остаются offline. Сбой content/schedule prov
 - historical shortcuts, past-date/non-Qada и Witr manual scenarios;
 - независимые occurrence/created timestamps и rakaat History presentation;
 - direct widget validation, exact-once и native contract;
+- v1/v2/v3/v4 → v5 migrations и сохранение legacy nullable part/slot history;
+- manual routine CRUD/reorder, immutable sessions, exact slot progression,
+  completed-routine rejection и followed-imam/Undo;
+- Jumuah отдельно от Dhuhr и отсутствие automatic Jumuah resolution/Qada;
 - Flutter analyzer, Kotlin tests/compile и debug APK build.
 
 На физическом Android отдельно проверяются launcher rendering, circle/text

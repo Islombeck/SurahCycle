@@ -67,6 +67,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dhuhr => 'Зухр';
 
   @override
+  String get jumuah => 'Жума';
+
+  @override
   String get asr => 'Аср';
 
   @override
@@ -543,6 +546,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get prayerModeAutomatic => 'Автоматически';
 
   @override
+  String get useJumuahForNextRecitation => 'Отметить следующее чтение как Жума';
+
+  @override
   String get automaticPrayerSafetyNotice =>
       'Автовыбор работает только по свежему надёжному расписанию. После восхода до Зухра отметка потребует ручного выбора.';
 
@@ -802,4 +808,107 @@ class AppLocalizationsRu extends AppLocalizations {
   String registrationOccurrenceDate(String date) {
     return 'Дата прочтения: $date';
   }
+
+  @override
+  String get prayerRoutines => 'Порядок частей намаза';
+
+  @override
+  String get prayerRoutineDescription =>
+      'Настройте части намаза по порядку: число ракаатов и обязательных слотов для сур.';
+
+  @override
+  String get routineEnabled => 'Использовать этот порядок';
+
+  @override
+  String get routineEmpty =>
+      'Частей пока нет. Добавьте то, что хотите отслеживать.';
+
+  @override
+  String routinePartSummary(int rakaatCount, int slotCount) {
+    return '$rakaatCount рак. · слотов для сур: $slotCount';
+  }
+
+  @override
+  String get addPrayerPart => 'Добавить часть намаза';
+
+  @override
+  String get editPrayerPart => 'Изменить часть намаза';
+
+  @override
+  String get deletePrayerPartTitle => 'Удалить часть намаза?';
+
+  @override
+  String deletePrayerPartBody(String label) {
+    return 'Удалить «$label»? Уже созданные сессии намаза не изменятся.';
+  }
+
+  @override
+  String get partKind => 'Тип части';
+
+  @override
+  String get customPartLabel => 'Своё название';
+
+  @override
+  String get customPartLabelRequired => 'Введите название.';
+
+  @override
+  String get rakaatCountLabel => 'Число ракаатов';
+
+  @override
+  String get positiveNumberRequired => 'Введите положительное число.';
+
+  @override
+  String get surahSlotsLabel => 'Обязательные слоты для сур';
+
+  @override
+  String get nonNegativeNumberRequired =>
+      'Введите ноль или положительное число.';
+
+  @override
+  String get allowsFollowingImam => 'Можно завершить, следуя за имамом';
+
+  @override
+  String get partKindFard => 'Фард';
+
+  @override
+  String get partKindSunnah => 'Сунна';
+
+  @override
+  String get partKindWitr => 'Витр';
+
+  @override
+  String get partKindNafl => 'Нафль';
+
+  @override
+  String get partKindCustom => 'Другое';
+
+  @override
+  String prayerRoutineCurrentPart(String prayer, String part) {
+    return '$prayer · $part';
+  }
+
+  @override
+  String prayerRoutineSlotProgress(int done, int total) {
+    return 'Слоты для сур: $done/$total';
+  }
+
+  @override
+  String get prayerRoutineComplete => 'Порядок намаза завершён';
+
+  @override
+  String get prayerRoutineNoAvailableSlot =>
+      'В текущей части намаза нет доступного слота для суры.';
+
+  @override
+  String get followedImamAction => 'Следовал за имамом';
+
+  @override
+  String get followedImamConfirmTitle => 'Завершить с имамом?';
+
+  @override
+  String get followedImamConfirmBody =>
+      'Эта часть будет завершена без события прочтения и без зачёта в ротации.';
+
+  @override
+  String get followedImamCompleted => 'Завершено вслед за имамом';
 }

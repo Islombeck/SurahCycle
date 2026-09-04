@@ -182,8 +182,95 @@ class PrayerSessions extends Table {
   @override
   List<String> get customConstraints => <String>[
     "CHECK (prayer_type IN ('fajr', 'dhuhr', 'asr', 'maghrib', "
-        "'isha', 'witr', 'nafl'))",
-    "CHECK (is_qada = 0 OR prayer_type != 'nafl')",
+        "'isha', 'jumuah', 'witr', 'nafl'))",
+    "CHECK (is_qada = 0 OR prayer_type NOT IN ('nafl', 'jumuah'))",
+  ];
+}
+
+@DataClassName('PrayerRoutineTemplateRow')
+class PrayerRoutineTemplates extends Table {
+  TextColumn get id => text()();
+  TextColumn get prayerType => text()();
+  TextColumn get displayName => text()();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  IntColumn get revision => integer().withDefault(const Constant(1))();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+
+  @override
+  List<String> get customConstraints => <String>[
+    'UNIQUE (prayer_type)',
+    'CHECK (length(display_name) > 0)',
+    'CHECK (revision > 0)',
+  ];
+}
+
+@DataClassName('PrayerRoutinePartTemplateRow')
+class PrayerRoutinePartTemplates extends Table {
+  TextColumn get id => text()();
+  TextColumn get routineTemplateId => text().references(
+    PrayerRoutineTemplates,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  TextColumn get stableKey => text()();
+  IntColumn get orderIndex => integer()();
+  TextColumn get kind => text()();
+  TextColumn get customLabel => text().nullable()();
+  IntColumn get rakaatCount => integer()();
+  IntColumn get requiredSurahSlots => integer()();
+  BoolColumn get allowsFollowingImam =>
+      boolean().withDefault(const Constant(false))();
+  TextColumn get defaultCompletionMode =>
+      text().withDefault(const Constant('recitations'))();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+
+  @override
+  List<String> get customConstraints => <String>[
+    'UNIQUE (routine_template_id, stable_key)',
+    'UNIQUE (routine_template_id, order_index)',
+    'CHECK (order_index >= 0)',
+    "CHECK (kind IN ('fard', 'sunnah', 'witr', 'nafl', 'custom'))",
+    "CHECK (kind != 'custom' OR length(custom_label) > 0)",
+    'CHECK (rakaat_count > 0)',
+    'CHECK (required_surah_slots >= 0)',
+    "CHECK (default_completion_mode IN ('recitations', 'followedImam'))",
+  ];
+}
+
+@DataClassName('PrayerSessionPartRow')
+class PrayerSessionParts extends Table {
+  TextColumn get id => text()();
+  TextColumn get prayerSessionId =>
+      text().references(PrayerSessions, #id, onDelete: KeyAction.cascade)();
+  TextColumn get sourceTemplatePartId => text().nullable()();
+  IntColumn get templateRevision => integer().nullable()();
+  TextColumn get stableKey => text()();
+  IntColumn get orderIndex => integer()();
+  TextColumn get label => text()();
+  TextColumn get kind => text()();
+  IntColumn get rakaatCount => integer()();
+  IntColumn get requiredSurahSlots => integer()();
+  BoolColumn get allowsFollowingImam => boolean()();
+  TextColumn get completionMode =>
+      text().withDefault(const Constant('recitations'))();
+  DateTimeColumn get completedAtUtc => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+
+  @override
+  List<String> get customConstraints => <String>[
+    'UNIQUE (prayer_session_id, order_index)',
+    'CHECK (order_index >= 0)',
+    'CHECK (length(label) > 0)',
+    "CHECK (kind IN ('fard', 'sunnah', 'witr', 'nafl', 'custom'))",
+    'CHECK (rakaat_count > 0)',
+    'CHECK (required_surah_slots >= 0)',
+    "CHECK (completion_mode IN ('recitations', 'followedImam'))",
   ];
 }
 
@@ -206,6 +293,12 @@ class RecitationEvents extends Table {
     #id,
     onDelete: KeyAction.setNull,
   )();
+  TextColumn get prayerSessionPartId => text().nullable().references(
+    PrayerSessionParts,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
+  IntColumn get slotIndex => integer().nullable()();
   DateTimeColumn get createdAtUtc => dateTime()();
   TextColumn get localDate => text()();
   TextColumn get prayerType => text()();
@@ -225,9 +318,10 @@ class RecitationEvents extends Table {
     'CHECK (length(id) > 0)',
     'CHECK (journal_sequence > 0)',
     "CHECK (prayer_type IN ('fajr', 'dhuhr', 'asr', 'maghrib', "
-        "'isha', 'witr', 'nafl'))",
-    "CHECK (is_qada = 0 OR prayer_type != 'nafl')",
+        "'isha', 'jumuah', 'witr', 'nafl'))",
+    "CHECK (is_qada = 0 OR prayer_type NOT IN ('nafl', 'jumuah'))",
     'CHECK (rakaat_span_count >= 1)',
+    'CHECK (slot_index IS NULL OR slot_index >= 0)',
     'FOREIGN KEY (rotation_scheme_id, surah_id) '
         'REFERENCES rotation_schemes (id, surah_id) ON DELETE RESTRICT',
   ];
@@ -428,6 +522,9 @@ class AppSettings extends Table {
     RotationSchemes,
     RotationParts,
     PrayerSessions,
+    PrayerRoutineTemplates,
+    PrayerRoutinePartTemplates,
+    PrayerSessionParts,
     RecitationEvents,
     RecitationEventParts,
     RotationAdjustments,
@@ -441,7 +538,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'murajaah_user'));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -449,11 +546,13 @@ class AppDatabase extends _$AppDatabase {
       await migrator.createAll();
       await _createVersionTwoIndexes();
       await _createVersionFourIndexesAndGuards();
+      await _createVersionFiveIndexes();
+      await _ensureEmptyRoutineTemplates();
       await _ensureRotationSingleton();
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
       if (from == to) return;
-      if (from < 1 || from > 3 || to != 4) {
+      if (from < 1 || from > 4 || to != 5) {
         throw StateError('Unsupported database migration from $from to $to.');
       }
       if (from < 2) {
@@ -465,11 +564,16 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) {
         await _migrateVersionThreeToFour(migrator);
       }
+      if (from < 5) {
+        await _migrateVersionFourToFive(migrator, sourceVersion: from);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
       await _createVersionFourIndexesAndGuards();
+      await _createVersionFiveIndexes();
       await _ensureRotationSingleton();
+      await _ensureEmptyRoutineTemplates();
     },
   );
 
@@ -553,6 +657,98 @@ class AppDatabase extends _$AppDatabase {
     ''');
   }
 
+  Future<void> _createVersionFiveIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_routine_parts_order '
+      'ON prayer_routine_part_templates (routine_template_id, order_index)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_session_parts_order '
+      'ON prayer_session_parts (prayer_session_id, order_index)',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_recitation_session_slot '
+      'ON recitation_events (prayer_session_part_id, slot_index) '
+      'WHERE prayer_session_part_id IS NOT NULL AND slot_index IS NOT NULL '
+      'AND deleted_at_utc IS NULL',
+    );
+  }
+
+  Future<void> _ensureEmptyRoutineTemplates() async {
+    for (final type in <String>[
+      'fajr',
+      'dhuhr',
+      'jumuah',
+      'asr',
+      'maghrib',
+      'isha',
+      'witr',
+      'nafl',
+    ]) {
+      await customStatement(
+        'INSERT OR IGNORE INTO prayer_routine_templates '
+        '(id, prayer_type, display_name, enabled, revision) '
+        'VALUES (?, ?, ?, 1, 1)',
+        <Object?>['routine:$type', type, type],
+      );
+    }
+  }
+
+  Future<void> _migrateVersionFourToFive(
+    Migrator migrator, {
+    required int sourceVersion,
+  }) async {
+    if (!await _tableExists('prayer_routine_templates')) {
+      await migrator.createTable(prayerRoutineTemplates);
+    }
+    if (!await _tableExists('prayer_routine_part_templates')) {
+      await migrator.createTable(prayerRoutinePartTemplates);
+    }
+    if (sourceVersion >= 2) {
+      await migrator.alterTable(TableMigration(prayerSessions));
+    }
+    if (!await _tableExists('prayer_session_parts')) {
+      await migrator.createTable(prayerSessionParts);
+    }
+    final eventColumns = await customSelect(
+      'PRAGMA table_info(recitation_events)',
+    ).get();
+    final hasSessionPart = eventColumns.any(
+      (row) => row.read<String>('name') == 'prayer_session_part_id',
+    );
+    if (!hasSessionPart) {
+      await migrator.alterTable(
+        TableMigration(
+          recitationEvents,
+          newColumns: <GeneratedColumn<Object>>[
+            recitationEvents.prayerSessionPartId,
+            recitationEvents.slotIndex,
+          ],
+        ),
+      );
+    }
+    await _createVersionFiveIndexes();
+    await _ensureEmptyRoutineTemplates();
+    final violations = await customSelect('PRAGMA foreign_key_check').get();
+    if (violations.isNotEmpty) {
+      throw StateError(
+        'Foreign-key violations after v4 to v5 migration: ${violations.length}.',
+      );
+    }
+  }
+
+  Future<bool> _tableExists(String tableName) async {
+    final row = await customSelect(
+      'SELECT 1 AS found FROM sqlite_schema '
+      'WHERE type = ? AND name = ? LIMIT 1',
+      variables: <Variable<Object>>[
+        const Variable<String>('table'),
+        Variable<String>(tableName),
+      ],
+    ).getSingleOrNull();
+    return row != null;
+  }
+
   Future<void> _migrateVersionOneToTwo(Migrator migrator) async {
     // Drop named v1 indexes before renaming their tables. SQLite keeps index
     // names attached to renamed tables, which would otherwise block v2 names.
@@ -624,6 +820,12 @@ class AppDatabase extends _$AppDatabase {
       SELECT id, prayer_type, is_qada, started_at_utc, local_date
       FROM prayer_sessions_v1
     ''');
+
+    // Current RecitationEvents has an optional v5 foreign key to this table.
+    // During a chained v1 -> v5 upgrade SQLite requires the referenced table
+    // to exist before legacy recitations can be inserted. It stays empty until
+    // the v5 routine/session-part flow creates snapshots explicitly.
+    await migrator.createTable(prayerSessionParts);
 
     await migrator.createTable(recitationEvents);
     await customStatement('''

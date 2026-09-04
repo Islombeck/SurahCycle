@@ -1,5 +1,6 @@
 export 'learning.dart';
 export 'prayer.dart';
+export 'prayer_routine.dart';
 export 'recitation.dart';
 export 'rotation.dart';
 export 'rotation_scheme.dart';

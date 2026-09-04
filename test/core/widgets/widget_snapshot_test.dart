@@ -7,7 +7,7 @@ import 'package:murajaah/core/widgets/widget_snapshot.dart';
 void main() {
   const codec = WidgetSnapshotCodec();
 
-  test('schema 4 snapshot round-trips revision and item state', () {
+  test('schema 5 snapshot round-trips routine labels and item state', () {
     const exactArabic = '  بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ  ';
     const exactTransliteration = 'Bismi All<u>a</u>hi  ';
     const exactTranslation = '  Во имя Аллаха';
@@ -29,6 +29,8 @@ void main() {
     expect(decoded.sameProjectionAs(original), isTrue);
     expect(decoded.generatedAtUtc, original.generatedAtUtc);
     expect(decoded.snapshotRevision, original.snapshotRevision);
+    expect(decoded.rotation.currentPartLabel, 'Asr · Fard');
+    expect(decoded.rotation.slotProgressLabel, 'Surahs 1/2');
     final line = decoded.learning.item!.ayahLines.single;
     expect(line.arabic, exactArabic);
     expect(line.transliteration, exactTransliteration);
@@ -59,8 +61,8 @@ void main() {
     for (final source in <String>[
       '{',
       '[]',
-      '{"schemaVersion":4}',
-      '{"schemaVersion":"4"}',
+      '{"schemaVersion":5}',
+      '{"schemaVersion":"5"}',
     ]) {
       expect(
         (codec.decode(source) as WidgetSnapshotRejected).error,
@@ -70,7 +72,7 @@ void main() {
   });
 
   test('unknown and previous schema versions are rejected safely in Dart', () {
-    for (final version in <int>[2, 3, 99]) {
+    for (final version in <int>[2, 3, 4, 99]) {
       final result = codec.decode('{"schemaVersion":$version}');
 
       expect(result, isA<WidgetSnapshotRejected>());
@@ -288,6 +290,8 @@ WidgetSnapshot _snapshot({LearningWidgetAyahLine? line}) => WidgetSnapshot(
   snapshotRevision: 7,
   locale: 'ru',
   rotation: RotationWidgetProjection(
+    currentPartLabel: 'Asr · Fard',
+    slotProgressLabel: 'Surahs 1/2',
     contextLabel: 'Аср · Ротация',
     items: <RotationWidgetItem>[
       RotationWidgetItem(

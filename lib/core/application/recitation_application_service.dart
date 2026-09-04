@@ -71,6 +71,7 @@ enum WidgetRecitationRejection {
   fatihaExcluded,
   staleScheme,
   invalidPart,
+  stalePrayerSessionSlot,
 }
 
 sealed class WidgetRecitationResult {
@@ -116,6 +117,9 @@ final class RecitationApplicationService {
   Future<RecitationRegistration> registerFromApp({
     required String surahId,
     required PrayerContext prayerContext,
+    String? prayerSessionId,
+    String? prayerSessionPartId,
+    int? slotIndex,
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
     LocalDate? occurrenceLocalDate,
@@ -134,6 +138,9 @@ final class RecitationApplicationService {
         // Choosing a past day does not imply Qada; that remains an explicit
         // property of [prayerContext].
         localDate: occurrenceLocalDate ?? localDates.today(),
+        prayerSessionId: prayerSessionId,
+        prayerSessionPartId: prayerSessionPartId,
+        slotIndex: slotIndex,
         rotationSchemeId: explicitPartIds == null
             ? null
             : mastered.rotationScheme.id,
@@ -207,18 +214,28 @@ final class RecitationApplicationService {
         WidgetRecitationRejection.unknownPrayerContext,
       );
     }
-    final registration = await recitations.registerOnce(
-      SurahRecitationEvent(
-        id: action.actionToken,
-        surahId: action.surahId,
-        prayerContext: prayerContext,
-        createdAtUtc: timeProvider.nowUtc(),
-        localDate: localDates.today(),
-        rotationSchemeId: scheme.id,
-        coveredPartIds: coveredPartIds,
-        rakaatSpanCount: 1,
-      ),
-    );
+    final RecitationRegistration? registration;
+    try {
+      registration = await recitations.registerOnce(
+        SurahRecitationEvent(
+          id: action.actionToken,
+          surahId: action.surahId,
+          prayerContext: prayerContext,
+          createdAtUtc: timeProvider.nowUtc(),
+          localDate: localDates.today(),
+          prayerSessionId: action.prayerSessionId,
+          prayerSessionPartId: action.prayerSessionPartId,
+          slotIndex: action.slotIndex,
+          rotationSchemeId: scheme.id,
+          coveredPartIds: coveredPartIds,
+          rakaatSpanCount: 1,
+        ),
+      );
+    } on PrayerSessionSlotUnavailableException {
+      return const WidgetRecitationRejected(
+        WidgetRecitationRejection.stalePrayerSessionSlot,
+      );
+    }
     return registration == null
         ? const WidgetRecitationDuplicate()
         : WidgetRecitationRegistered(registration);

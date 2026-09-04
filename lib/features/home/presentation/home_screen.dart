@@ -25,6 +25,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   final Set<String> _busySurahIds = <String>{};
   final Set<String> _openCoverageSheetSurahIds = <String>{};
+  final Set<String> _busyRoutinePartIds = <String>{};
 
   @override
   void initState() {
@@ -91,6 +92,28 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
       ref.watch(prayerTodayScheduleProvider),
       prayerSettings,
     );
+    final canOfferJumuahOverride = _canOfferJumuahOverride(
+      resolution: prayerResolution,
+      settings: prayerSettings,
+      schedule: prayerSchedule,
+    );
+    final localDate = ref.watch(localDateProvider).today();
+    final resolvedPrayerContext = prayerResolution?.context;
+    final AsyncValue<PrayerRoutineSessionSnapshot?>? currentRoutine =
+        resolvedPrayerContext == null
+        ? null
+        : ref.watch(
+            currentPrayerRoutineProvider((
+              context: resolvedPrayerContext,
+              localDate: localDate,
+            )),
+          );
+    var routineMarkingEnabled = true;
+    if (currentRoutine != null) {
+      final routine = currentRoutine.valueOrNull;
+      routineMarkingEnabled =
+          routine == null || routine.currentPart?.nextSlotIndex != null;
+    }
     final selectedLearningSurahId = ref.watch(selectedLearningSurahProvider);
     final rollbackQueue = ref.watch(learningRollbackQueueProvider);
 
@@ -102,7 +125,8 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
             ref
               ..invalidate(rotationSnapshotProvider)
               ..invalidate(activeLearningProvider)
-              ..invalidate(catalogProvider);
+              ..invalidate(catalogProvider)
+              ..invalidate(currentPrayerRoutineProvider);
           },
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -129,8 +153,35 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                       onTap: () => _showPrayerPicker(
                         manualPrayer ?? prayerResolution?.context,
                       ),
+                      onJumuahOverride: canOfferJumuahOverride
+                          ? () =>
+                                ref
+                                    .read(
+                                      prayerContextOverrideProvider.notifier,
+                                    )
+                                    .state = PrayerContext(
+                                  prayerType: PrayerType.jumuah,
+                                )
+                          : null,
                     ),
-                    const SizedBox(height: 16),
+                    if (currentRoutine != null) ...<Widget>[
+                      currentRoutine.when(
+                        data: (routine) => routine == null
+                            ? const SizedBox.shrink()
+                            : _PrayerRoutineCard(
+                                snapshot: routine,
+                                prayerContext: resolvedPrayerContext!,
+                                busyPartIds: _busyRoutinePartIds,
+                                onFollowedImam: _completeByFollowingImam,
+                              ),
+                        loading: () => const SizedBox.shrink(),
+                        error: (error, stackTrace) => const SizedBox.shrink(),
+                      ),
+                      if (currentRoutine.valueOrNull != null)
+                        const SizedBox(height: 16),
+                    ],
+                    if (currentRoutine?.valueOrNull == null)
+                      const SizedBox(height: 16),
                     if (rollbackQueue.isNotEmpty)
                       _RollbackNotice(
                         outcome: rollbackQueue.first,
@@ -142,6 +193,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                       data: (snapshot) => _RotationContent(
                         snapshot: snapshot,
                         busyIds: _busySurahIds,
+                        markingEnabled: routineMarkingEnabled,
                         onMarkRequested: (surah) => _handleMarkRequest(surah),
                         onAdvancedMarkRequested: (surah) =>
                             _handleMarkRequest(surah, advanced: true),
@@ -311,14 +363,49 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (_busySurahIds.contains(surah.id)) return;
     setState(() => _busySurahIds.add(surah.id));
     try {
+      final localDate =
+          occurrenceLocalDate ?? ref.read(localDateProvider).today();
+      final routine = await ref
+          .read(prayerRoutineRepositoryProvider)
+          .ensureCurrentSession(
+            context: prayer,
+            localDate: localDate,
+            startedAtUtc: ref.read(timeProviderProvider).nowUtc(),
+          );
+      final routinePart = routine?.currentPart;
+      final slotIndex = routinePart?.nextSlotIndex;
+      if (routine != null && slotIndex == null) {
+        if (mounted && _isPrimaryHomeSectionActive) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.removeCurrentSnackBar(reason: SnackBarClosedReason.hide);
+          messenger.showSnackBar(
+            SnackBar(
+              key: const ValueKey<String>(
+                'prayer-routine-unavailable-snackbar',
+              ),
+              content: Text(
+                routine.isCompleted
+                    ? context.l10n.prayerRoutineComplete
+                    : context.l10n.prayerRoutineNoAvailableSlot,
+              ),
+            ),
+          );
+        }
+        return;
+      }
       final registration = await ref
           .read(appActionsProvider)
           .registerRecitation(
             surahId: surah.id,
             prayerContext: prayer,
+            prayerSessionId: slotIndex == null ? null : routine!.session.id,
+            prayerSessionPartId: slotIndex == null
+                ? null
+                : routinePart!.part.id,
+            slotIndex: slotIndex,
             coveredPartIds: coveredPartIds,
             rakaatSpanCount: rakaatSpanCount,
-            occurrenceLocalDate: occurrenceLocalDate,
+            occurrenceLocalDate: localDate,
           );
       if (ref.read(prayerContextOverrideProvider) != null) {
         ref.read(prayerContextOverrideProvider.notifier).state = null;
@@ -353,6 +440,77 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     } finally {
       if (mounted) setState(() => _busySurahIds.remove(surah.id));
+    }
+  }
+
+  Future<void> _completeByFollowingImam(
+    PrayerSessionPartProgress progress,
+  ) async {
+    final part = progress.part;
+    if (_busyRoutinePartIds.contains(part.id)) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.followedImamConfirmTitle),
+        content: Text(context.l10n.followedImamConfirmBody),
+        actions: <Widget>[
+          TextButton(
+            key: const ValueKey<String>('cancel-followed-imam'),
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            key: const ValueKey<String>('confirm-followed-imam'),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _busyRoutinePartIds.add(part.id));
+    try {
+      final completion = await ref
+          .read(prayerRoutineRepositoryProvider)
+          .completeByFollowingImam(
+            prayerSessionPartId: part.id,
+            completedAtUtc: ref.read(timeProviderProvider).nowUtc(),
+          );
+      if (ref.read(prayerContextOverrideProvider) != null) {
+        ref.read(prayerContextOverrideProvider.notifier).state = null;
+      }
+      ref.invalidate(currentPrayerRoutineProvider);
+      final undoToken = completion.undoToken;
+      if (!mounted || undoToken == null) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.removeCurrentSnackBar(reason: SnackBarClosedReason.hide);
+      messenger.showSnackBar(
+        SnackBar(
+          duration: _recitationSnackBarDuration,
+          persist: false,
+          content: Text(context.l10n.followedImamCompleted),
+          action: SnackBarAction(
+            key: const ValueKey<String>('undo-followed-imam'),
+            label: context.l10n.undo,
+            onPressed: () async {
+              final undone = await ref
+                  .read(prayerRoutineRepositoryProvider)
+                  .undoFollowedImam(undoToken);
+              if (undone && mounted) {
+                ref.invalidate(currentPrayerRoutineProvider);
+              }
+            },
+          ),
+        ),
+      );
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.errorGeneric)));
+      }
+    } finally {
+      if (mounted) setState(() => _busyRoutinePartIds.remove(part.id));
     }
   }
 
@@ -454,6 +612,125 @@ final class _ActionPrayerContext {
   final PrayerContext context;
   final bool isAutomatic;
 }
+
+final class _PrayerRoutineCard extends StatelessWidget {
+  const _PrayerRoutineCard({
+    required this.snapshot,
+    required this.prayerContext,
+    required this.busyPartIds,
+    required this.onFollowedImam,
+  });
+
+  final PrayerRoutineSessionSnapshot snapshot;
+  final PrayerContext prayerContext;
+  final Set<String> busyPartIds;
+  final ValueChanged<PrayerSessionPartProgress> onFollowedImam;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = snapshot.currentPart;
+    return Card(
+      key: const ValueKey<String>('current-prayer-routine'),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              current == null
+                  ? context.l10n.prayerRoutineComplete
+                  : context.l10n.prayerRoutineCurrentPart(
+                      prayerContext.prayerType.label(context.l10n),
+                      _sessionPartLabel(context, current.part),
+                    ),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            for (final progress in snapshot.parts)
+              _PrayerRoutinePartTile(
+                progress: progress,
+                isCurrent: progress.part.id == current?.part.id,
+                isBusy: busyPartIds.contains(progress.part.id),
+                onFollowedImam: onFollowedImam,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+final class _PrayerRoutinePartTile extends StatelessWidget {
+  const _PrayerRoutinePartTile({
+    required this.progress,
+    required this.isCurrent,
+    required this.isBusy,
+    required this.onFollowedImam,
+  });
+
+  final PrayerSessionPartProgress progress;
+  final bool isCurrent;
+  final bool isBusy;
+  final ValueChanged<PrayerSessionPartProgress> onFollowedImam;
+
+  @override
+  Widget build(BuildContext context) {
+    final part = progress.part;
+    final canFollowImam =
+        isCurrent &&
+        !part.isCompleted &&
+        part.kind == PrayerRoutinePartKind.fard &&
+        part.allowsFollowingImam &&
+        progress.completedSlotCount == 0;
+    final progressLabel = part.wasFollowedImam
+        ? context.l10n.followedImamCompleted
+        : context.l10n.prayerRoutineSlotProgress(
+            progress.completedSlotCount,
+            part.requiredSurahSlots,
+          );
+    return Semantics(
+      selected: isCurrent,
+      child: ListTile(
+        key: ValueKey<String>('current-prayer-part-${part.id}'),
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(
+          part.isCompleted
+              ? Icons.check_circle
+              : isCurrent
+              ? Icons.play_circle_outline
+              : Icons.radio_button_unchecked,
+          color: part.isCompleted || isCurrent
+              ? Theme.of(context).colorScheme.primary
+              : null,
+        ),
+        title: Text(_sessionPartLabel(context, part)),
+        subtitle: Text(
+          '${context.l10n.routinePartSummary(part.rakaatCount, part.requiredSurahSlots)}\n'
+          '$progressLabel',
+        ),
+        isThreeLine: true,
+        trailing: canFollowImam
+            ? TextButton(
+                key: ValueKey<String>('followed-imam-${part.id}'),
+                onPressed: isBusy ? null : () => onFollowedImam(progress),
+                child: Text(context.l10n.followedImamAction),
+              )
+            : null,
+      ),
+    );
+  }
+}
+
+String _sessionPartLabel(BuildContext context, PrayerSessionPart part) =>
+    part.kind == PrayerRoutinePartKind.custom
+    ? part.label
+    : switch (part.kind) {
+        PrayerRoutinePartKind.fard => context.l10n.partKindFard,
+        PrayerRoutinePartKind.sunnah => context.l10n.partKindSunnah,
+        PrayerRoutinePartKind.witr => context.l10n.partKindWitr,
+        PrayerRoutinePartKind.nafl => context.l10n.partKindNafl,
+        PrayerRoutinePartKind.custom => part.label,
+      };
 
 final class _RecitationSelection {
   const _RecitationSelection({
@@ -974,6 +1251,22 @@ PrayerTodaySchedule? _matchingPrayerSchedule(
 T? _settledAsyncValue<T>(AsyncValue<T> state) =>
     state.isLoading || state.hasError ? null : state.valueOrNull;
 
+bool _canOfferJumuahOverride({
+  required PrayerContextResolution? resolution,
+  required PrayerTimeSettings? settings,
+  required PrayerTodaySchedule? schedule,
+}) {
+  if (settings?.contextSelectionMode != PrayerContextSelectionMode.automatic ||
+      resolution?.status != PrayerContextResolutionStatus.automatic ||
+      resolution?.context?.prayerType != PrayerType.dhuhr ||
+      schedule == null) {
+    return false;
+  }
+  final date = schedule.day.date;
+  return DateTime.utc(date.year, date.month, date.day).weekday ==
+      DateTime.friday;
+}
+
 final class _PrayerContextCard extends StatelessWidget {
   const _PrayerContextCard({
     required this.resolution,
@@ -981,6 +1274,7 @@ final class _PrayerContextCard extends StatelessWidget {
     required this.settings,
     required this.schedule,
     required this.onTap,
+    required this.onJumuahOverride,
   });
 
   final PrayerContextResolution? resolution;
@@ -988,6 +1282,7 @@ final class _PrayerContextCard extends StatelessWidget {
   final PrayerTimeSettings? settings;
   final PrayerTodaySchedule? schedule;
   final VoidCallback onTap;
+  final VoidCallback? onJumuahOverride;
 
   @override
   Widget build(BuildContext context) {
@@ -1001,9 +1296,11 @@ final class _PrayerContextCard extends StatelessWidget {
         ? resolved
         : scheduleResolution;
     final details = <String>[
-      settings?.contextSelectionMode == PrayerContextSelectionMode.automatic
-          ? context.l10n.prayerModeAutomatic
-          : context.l10n.prayerModeManual,
+      resolved?.status == PrayerContextResolutionStatus.manual ||
+              settings?.contextSelectionMode ==
+                  PrayerContextSelectionMode.manual
+          ? context.l10n.prayerModeManual
+          : context.l10n.prayerModeAutomatic,
       if (timing?.currentStartsAt != null)
         timing?.currentEndsAt == null
             ? context.l10n.prayerStartsAt('${timing!.currentStartsAt}')
@@ -1021,40 +1318,63 @@ final class _PrayerContextCard extends StatelessWidget {
             '${loaded.loadResult.schedule.location.displayName}',
     ];
     return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: <Widget>[
-              CircleAvatar(
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                child: const Icon(Icons.mosque_outlined),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: <Widget>[
+                  CircleAvatar(
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer,
+                    child: const Icon(Icons.mosque_outlined),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          context.l10n.prayerContextTitle,
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          details.join('\n'),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.expand_more),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      context.l10n.prayerContextTitle,
-                      style: Theme.of(context).textTheme.labelLarge,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(title, style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 2),
-                    Text(
-                      details.join('\n'),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+            ),
+          ),
+          if (onJumuahOverride != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: ActionChip(
+                  key: const ValueKey<String>('use-jumuah-for-next-recitation'),
+                  avatar: const Icon(Icons.swap_horiz, size: 18),
+                  label: Text(context.l10n.useJumuahForNextRecitation),
+                  onPressed: onJumuahOverride,
                 ),
               ),
-              const Icon(Icons.expand_more),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -1077,12 +1397,14 @@ final class _RotationContent extends StatelessWidget {
   const _RotationContent({
     required this.snapshot,
     required this.busyIds,
+    required this.markingEnabled,
     required this.onMarkRequested,
     required this.onAdvancedMarkRequested,
   });
 
   final RotationSnapshot snapshot;
   final Set<String> busyIds;
+  final bool markingEnabled;
   final ValueChanged<MasteredSurah> onMarkRequested;
   final ValueChanged<MasteredSurah> onAdvancedMarkRequested;
 
@@ -1171,6 +1493,7 @@ final class _RotationContent extends StatelessWidget {
                   surah: active[index],
                   remaining: snapshot.remainingFor(active[index].id),
                   isBusy: busyIds.contains(active[index].id),
+                  isEnabled: markingEnabled,
                   onMarkRequested: () => onMarkRequested(active[index]),
                   onAdvancedMarkRequested: active[index].rotationScheme.isSplit
                       ? null
@@ -1191,6 +1514,7 @@ final class _SurahRotationTile extends StatelessWidget {
     required this.surah,
     required this.remaining,
     required this.isBusy,
+    required this.isEnabled,
     required this.onMarkRequested,
     required this.onAdvancedMarkRequested,
   });
@@ -1198,6 +1522,7 @@ final class _SurahRotationTile extends StatelessWidget {
   final MasteredSurah surah;
   final int remaining;
   final bool isBusy;
+  final bool isEnabled;
   final VoidCallback onMarkRequested;
   final VoidCallback? onAdvancedMarkRequested;
 
@@ -1214,9 +1539,9 @@ final class _SurahRotationTile extends StatelessWidget {
       key: ValueKey<String>('active-surah-${surah.id}'),
       leading: Semantics(
         button: true,
-        enabled: !isBusy,
+        enabled: isEnabled && !isBusy,
         label: '${surah.surah.displayName}, $status',
-        onTap: isBusy ? null : onMarkRequested,
+        onTap: !isEnabled || isBusy ? null : onMarkRequested,
         child: ExcludeSemantics(
           child: SizedBox.square(
             dimension: 48,
@@ -1224,7 +1549,7 @@ final class _SurahRotationTile extends StatelessWidget {
               key: ValueKey<String>('mark-surah-${surah.id}'),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints.tightFor(width: 48, height: 48),
-              onPressed: isBusy ? null : onMarkRequested,
+              onPressed: !isEnabled || isBusy ? null : onMarkRequested,
               icon: isBusy
                   ? SizedBox.square(
                       key: ValueKey<String>('mark-surah-busy-${surah.id}'),
@@ -1242,7 +1567,7 @@ final class _SurahRotationTile extends StatelessWidget {
           : IconButton(
               key: ValueKey<String>('advanced-mark-surah-${surah.id}'),
               tooltip: context.l10n.selectCoverage,
-              onPressed: isBusy ? null : onAdvancedMarkRequested,
+              onPressed: !isEnabled || isBusy ? null : onAdvancedMarkRequested,
               icon: const Icon(Icons.tune),
             ),
       subtitle: Text(

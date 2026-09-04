@@ -13,10 +13,13 @@ import '../core/data/data.dart';
 import '../core/domain/domain.dart';
 import '../core/widgets/widgets.dart';
 import '../features/prayer_times/prayer_times.dart';
+import 'widget_localization.dart';
 
 typedef WidgetDatabaseFactory = AppDatabase Function();
 typedef BackgroundPrayerContextResolverFactory =
     FutureOr<RecitationPrayerContextResolver> Function(AppDatabase database);
+typedef BackgroundPrayerPartLoaderFactory =
+    FutureOr<RotationWidgetPrayerPartLoader?> Function(AppDatabase database);
 
 /// Official home_widget background entry point. It must stay top-level and
 /// retained by the AOT compiler because Android can invoke it in a headless
@@ -47,6 +50,7 @@ Future<RotationWidgetInteractionOutcome> runRotationWidgetBackgroundAction(
   RecitationLocalDateProvider? localDates,
   String Function()? createEventId,
   BackgroundPrayerContextResolverFactory? createPrayerContextResolver,
+  BackgroundPrayerPartLoaderFactory? createPrayerPartLoader,
   WidgetInteractionErrorHandler? onError,
 }) async {
   final database = openDatabase();
@@ -77,6 +81,21 @@ Future<RotationWidgetInteractionOutcome> runRotationWidgetBackgroundAction(
       localDates: effectiveLocalDates,
       createEventId: eventIdFactory,
     );
+    final prayerPartLoader = createPrayerPartLoader == null
+        ? (
+            PrayerContext context,
+            LocalDate localDate,
+            WidgetLocalization localization,
+          ) async {
+            final snapshot = await PrayerRoutineRepository(database)
+                .ensureCurrentSession(
+                  context: context,
+                  localDate: localDate,
+                  startedAtUtc: timeProvider.nowUtc(),
+                );
+            return localization.prayerRoutineProjection(context, snapshot);
+          }
+        : await createPrayerPartLoader(database);
     final refresher = InteractiveWidgetSnapshotRefresher(
       surahs: surahs,
       recitations: recitations,
@@ -85,6 +104,7 @@ Future<RotationWidgetInteractionOutcome> runRotationWidgetBackgroundAction(
       createActionToken: eventIdFactory,
       localDates: effectiveLocalDates,
       bridge: bridge,
+      prayerPartLoader: prayerPartLoader,
     );
     return await RotationWidgetInteractionHandler(
       recitations: applicationService,
