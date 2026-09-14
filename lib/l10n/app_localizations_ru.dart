@@ -927,6 +927,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get followedImamCompleted => 'Завершено вслед за имамом';
 
   @override
+  String get returnToAutomaticPrayer => 'Вернуться к авто';
+
+  @override
   String get routineEditFailed =>
       'Не удалось сохранить изменение порядка намаза';
 

@@ -843,10 +843,49 @@ final selectedPrayerProvider =
       );
     });
 
-/// A full-app, one-event manual choice while persisted settings remain in
-/// automatic mode. Native widgets deliberately ignore this override.
-final prayerContextOverrideProvider = StateProvider<PrayerContext?>((ref) {
+/// A manual context chosen while persisted settings remain in automatic mode.
+///
+/// It deliberately survives a whole series of marks: having to re-pick Witr or
+/// Nafl after every single surah was the reported defect. It is scoped to the
+/// local date it was chosen for, so a sticky override can never silently
+/// produce events for the next day — past midnight it stops applying and the
+/// app falls back to automatic resolution. Native widgets ignore it entirely.
+final class PrayerContextOverride {
+  const PrayerContextOverride({required this.context, required this.localDate});
+
+  final PrayerContext context;
+  final LocalDate localDate;
+
+  bool appliesOn(LocalDate today) => localDate == today;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PrayerContextOverride &&
+          context == other.context &&
+          localDate == other.localDate;
+
+  @override
+  int get hashCode => Object.hash(context, localDate);
+
+  @override
+  String toString() =>
+      'PrayerContextOverride(context: $context, localDate: $localDate)';
+}
+
+final prayerContextOverrideProvider = StateProvider<PrayerContextOverride?>((
+  ref,
+) {
   return null;
+});
+
+/// The override that still applies right now, or null once its date has passed.
+final activePrayerContextOverrideProvider = Provider<PrayerContext?>((ref) {
+  final override = ref.watch(prayerContextOverrideProvider);
+  if (override == null) return null;
+  return override.appliesOn(ref.watch(localDateProvider).today())
+      ? override.context
+      : null;
 });
 
 final prayerContextResolutionProvider = StreamProvider<PrayerContextResolution>(
@@ -859,7 +898,7 @@ final prayerContextResolutionProvider = StreamProvider<PrayerContextResolution>(
         ),
       );
     }
-    final override = ref.watch(prayerContextOverrideProvider);
+    final override = ref.watch(activePrayerContextOverrideProvider);
     if (settings.contextSelectionMode == PrayerContextSelectionMode.automatic &&
         override != null) {
       return Stream<PrayerContextResolution>.value(

@@ -162,15 +162,21 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                         manualPrayer ?? prayerResolution?.context,
                       ),
                       onJumuahOverride: canOfferJumuahOverride
-                          ? () =>
-                                ref
-                                    .read(
-                                      prayerContextOverrideProvider.notifier,
-                                    )
-                                    .state = PrayerContext(
-                                  prayerType: PrayerType.jumuah,
-                                )
+                          ? () => _setPrayerContextOverride(
+                              PrayerContext(prayerType: PrayerType.jumuah),
+                            )
                           : null,
+                      onReturnToAutomatic:
+                          ref.watch(activePrayerContextOverrideProvider) == null
+                          ? null
+                          : () =>
+                                ref
+                                        .read(
+                                          prayerContextOverrideProvider
+                                              .notifier,
+                                        )
+                                        .state =
+                                    null,
                     ),
                     if (currentRoutine != null) ...<Widget>[
                       currentRoutine.when(
@@ -330,7 +336,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
           : _ActionPrayerContext(context: selected, isAutomatic: false);
     }
 
-    final override = ref.read(prayerContextOverrideProvider);
+    final override = ref.read(activePrayerContextOverrideProvider);
     if (override != null) {
       return _ActionPrayerContext(context: override, isAutomatic: false);
     }
@@ -416,9 +422,9 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
             rakaatSpanCount: rakaatSpanCount,
             occurrenceLocalDate: localDate,
           );
-      if (ref.read(prayerContextOverrideProvider) != null) {
-        ref.read(prayerContextOverrideProvider.notifier).state = null;
-      }
+      // A manual context deliberately survives this mark: it is cleared only
+      // by the explicit "back to automatic" action or once its local date has
+      // passed. Re-picking Witr or Nafl for every surah was the reported bug.
       if (!mounted || !_isPrimaryHomeSectionActive) return;
       final messenger = ScaffoldMessenger.of(context);
       // An action makes SnackBar persistent by default in current Flutter.
@@ -485,9 +491,8 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
             prayerSessionPartId: part.id,
             completedAtUtc: ref.read(timeProviderProvider).nowUtc(),
           );
-      if (ref.read(prayerContextOverrideProvider) != null) {
-        ref.read(prayerContextOverrideProvider.notifier).state = null;
-      }
+      // Same rule as an ordinary mark: following the imam does not end a
+      // manually chosen context.
       ref.invalidate(currentPrayerRoutineProvider);
       final undoToken = completion.undoToken;
       if (!mounted || undoToken == null) return;
@@ -591,10 +596,21 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
           PrayerContextSelectionMode.manual) {
         await ref.read(selectedPrayerProvider.notifier).select(selected);
       } else {
-        ref.read(prayerContextOverrideProvider.notifier).state = selected;
+        _setPrayerContextOverride(selected);
       }
     }
     return selected;
+  }
+
+  /// Scopes the override to the local date it was chosen for, so it can stay
+  /// selected across a series of marks without ever leaking into the next day.
+  void _setPrayerContextOverride(PrayerContext context) {
+    ref
+        .read(prayerContextOverrideProvider.notifier)
+        .state = PrayerContextOverride(
+      context: context,
+      localDate: ref.read(localDateProvider).today(),
+    );
   }
 
   Future<void> _undoLearningRollback(LearningActionOutcome outcome) async {
@@ -1284,6 +1300,7 @@ final class _PrayerContextCard extends StatelessWidget {
     required this.schedule,
     required this.onTap,
     required this.onJumuahOverride,
+    required this.onReturnToAutomatic,
   });
 
   final PrayerContextResolution? resolution;
@@ -1292,6 +1309,10 @@ final class _PrayerContextCard extends StatelessWidget {
   final PrayerTodaySchedule? schedule;
   final VoidCallback onTap;
   final VoidCallback? onJumuahOverride;
+
+  /// Non-null only while a manual context is actually overriding automatic
+  /// resolution, so the user always has one visible way back.
+  final VoidCallback? onReturnToAutomatic;
 
   @override
   Widget build(BuildContext context) {
@@ -1389,6 +1410,19 @@ final class _PrayerContextCard extends StatelessWidget {
                   avatar: const Icon(Icons.swap_horiz, size: 18),
                   label: Text(context.l10n.useJumuahForNextRecitation),
                   onPressed: onJumuahOverride,
+                ),
+              ),
+            ),
+          if (onReturnToAutomatic != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: ActionChip(
+                  key: const ValueKey<String>('return-to-automatic-prayer'),
+                  avatar: const Icon(Icons.autorenew, size: 18),
+                  label: Text(context.l10n.returnToAutomaticPrayer),
+                  onPressed: onReturnToAutomatic,
                 ),
               ),
             ),

@@ -288,6 +288,7 @@
   ,"followedImamConfirmTitle": "Complete with the imam?"
   ,"followedImamConfirmBody": "This part will be completed without a recitation event or rotation credit."
   ,"followedImamCompleted": "Completed by following the imam"
+  ,"returnToAutomaticPrayer": "Back to automatic"
   ,"routineEditFailed": "Could not save the prayer routine change"
   ,"routineEditConflict": "The prayer routine changed. The current state is shown — please repeat the action."
 }

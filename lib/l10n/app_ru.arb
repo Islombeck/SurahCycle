@@ -294,6 +294,7 @@
   ,"followedImamConfirmTitle": "Завершить с имамом?"
   ,"followedImamConfirmBody": "Эта часть будет завершена без события прочтения и без зачёта в ротации."
   ,"followedImamCompleted": "Завершено вслед за имамом"
+  ,"returnToAutomaticPrayer": "Вернуться к авто"
   ,"routineEditFailed": "Не удалось сохранить изменение порядка намаза"
   ,"routineEditConflict": "Порядок намаза изменился. Показано актуальное состояние — повторите действие."
 }

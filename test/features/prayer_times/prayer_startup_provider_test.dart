@@ -311,7 +311,7 @@ void main() {
   });
 
   test(
-    'one-event override leaves automatic mode and schedule context intact',
+    'a manual override leaves automatic mode and schedule context intact',
     () async {
       final harness = _ProviderHarness(
         nowUtc: _utcForTashkent(2026, 8, 25, 17, 30),
@@ -320,8 +320,12 @@ void main() {
       await harness.prime();
       final override = PrayerContext(prayerType: PrayerType.witr);
 
-      harness.container.read(prayerContextOverrideProvider.notifier).state =
-          override;
+      harness.container
+          .read(prayerContextOverrideProvider.notifier)
+          .state = PrayerContextOverride(
+        context: override,
+        localDate: LocalDate(2026, 8, 25),
+      );
       final appResolution = await harness.container.read(
         prayerContextResolutionProvider.future,
       );
@@ -370,8 +374,14 @@ void main() {
     await container.read(prayerTimeSettingsProvider.future);
     await _waitForSelectedPrayerLoad(container);
 
-    container.read(prayerContextOverrideProvider.notifier).state =
-        PrayerContext(prayerType: PrayerType.witr);
+    container
+        .read(prayerContextOverrideProvider.notifier)
+        .state = PrayerContextOverride(
+      context: PrayerContext(prayerType: PrayerType.witr),
+      // Deliberately still applicable today, so the test proves that
+      // persisted manual mode wins over a live override.
+      localDate: container.read(localDateProvider).today(),
+    );
     final resolution = await container.read(
       prayerContextResolutionProvider.future,
     );

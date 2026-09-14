@@ -928,6 +928,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get followedImamCompleted => 'Imomga ergashib yakunlandi';
 
   @override
+  String get returnToAutomaticPrayer => 'Avtomatikaga qaytish';
+
+  @override
   String get routineEditFailed =>
       'Namoz tartibidagi o‘zgarishni saqlab bo‘lmadi';
 

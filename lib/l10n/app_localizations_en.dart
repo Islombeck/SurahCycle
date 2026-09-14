@@ -925,6 +925,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get followedImamCompleted => 'Completed by following the imam';
 
   @override
+  String get returnToAutomaticPrayer => 'Back to automatic';
+
+  @override
   String get routineEditFailed => 'Could not save the prayer routine change';
 
   @override

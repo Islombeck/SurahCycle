@@ -1690,6 +1690,12 @@ abstract class AppLocalizations {
   /// **'Завершено вслед за имамом'**
   String get followedImamCompleted;
 
+  /// No description provided for @returnToAutomaticPrayer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вернуться к авто'**
+  String get returnToAutomaticPrayer;
+
   /// No description provided for @routineEditFailed.
   ///
   /// In ru, this message translates to:

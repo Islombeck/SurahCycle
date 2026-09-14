@@ -475,7 +475,7 @@ void main() {
     },
   );
 
-  testWidgets('Friday Dhuhr offers an explicit one-event Jumuah override', (
+  testWidgets('a manual override survives a series of marks until released', (
     tester,
   ) async {
     tester.binding.platformDispatcher.localeTestValue = const Locale('en');
@@ -508,12 +508,36 @@ void main() {
     expect(find.textContaining('Manual mode'), findsOneWidget);
     expect(override, findsNothing);
 
+    // The chosen context must survive a whole series of marks; re-picking it
+    // for every single surah was the reported defect.
     await _tapMarkAndWait(tester, fixture, 'jumuah-surah', expectedEvents: 1);
-    final event = (await fixture.recitations.getHistory()).single.event;
-    expect(event.prayerContext, PrayerContext(prayerType: PrayerType.jumuah));
+    expect(_prayerContextTitleText(tester), 'Jumuah');
 
-    await _pumpUntil(tester, () async => override.evaluate().isNotEmpty);
+    await _tapMarkAndWait(tester, fixture, 'jumuah-surah', expectedEvents: 2);
+    expect(_prayerContextTitleText(tester), 'Jumuah');
+
+    final events = await fixture.recitations.getHistory();
+    expect(events, hasLength(2));
+    expect(
+      events.map((entry) => entry.event.prayerContext),
+      everyElement(PrayerContext(prayerType: PrayerType.jumuah)),
+      reason: 'both marks belong to the context the user actually chose',
+    );
+
+    // Only an explicit action returns to automatic resolution.
+    final returnToAuto = find.byKey(
+      const ValueKey<String>('return-to-automatic-prayer'),
+    );
+    expect(returnToAuto, findsOneWidget);
+    await tester.tap(returnToAuto);
+    await _pumpUntil(
+      tester,
+      () async => _prayerContextTitleText(tester) == 'Dhuhr',
+    );
+
     expect(_prayerContextTitleText(tester), 'Dhuhr');
+    expect(returnToAuto, findsNothing);
+    await _pumpUntil(tester, () async => override.evaluate().isNotEmpty);
     await _disposeWidgetTree(tester);
   });
 
