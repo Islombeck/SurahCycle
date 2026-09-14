@@ -23,16 +23,26 @@ final class _LearningScreenState extends ConsumerState<LearningScreen> {
   @override
   void initState() {
     super.initState();
-    final initialSurahId = widget.initialSurahId;
-    if (initialSurahId != null && initialSurahId.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ref
-              .read(selectedLearningSurahProvider.notifier)
-              .select(initialSurahId);
-        }
-      });
+    _selectRequestedSurah(widget.initialSurahId);
+  }
+
+  /// A warm deep link reuses this same screen inside the shell, so the request
+  /// arrives as a changed widget rather than a fresh [initState].
+  @override
+  void didUpdateWidget(LearningScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialSurahId != oldWidget.initialSurahId) {
+      _selectRequestedSurah(widget.initialSurahId);
     }
+  }
+
+  void _selectRequestedSurah(String? surahId) {
+    if (surahId == null || surahId.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(selectedLearningSurahProvider.notifier).select(surahId);
+      }
+    });
   }
 
   @override

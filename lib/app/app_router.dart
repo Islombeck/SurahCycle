@@ -51,7 +51,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: <RouteBase>[
               GoRoute(
                 path: '/learning',
-                builder: (context, state) => const LearningScreen(),
+                // A selected surah is a query parameter, not a nested route,
+                // so every entry point lands on this one screen inside the
+                // shell and keeps the bottom navigation.
+                builder: (context, state) => LearningScreen(
+                  initialSurahId: state.uri.queryParameters['surah'],
+                ),
               ),
             ],
           ),
@@ -85,11 +90,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) =>
             SurahDetailScreen(surahId: state.pathParameters['id'] ?? ''),
       ),
+      // Kept so deep links already cached in a launcher widget stay valid, but
+      // resolved into the shell instead of being pushed above it. Pushing this
+      // on the root navigator is what opened Learning without the bottom
+      // navigation and without a normal back path.
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
         path: '/learning/:id',
-        builder: (context, state) =>
-            LearningScreen(initialSurahId: state.pathParameters['id']),
+        redirect: (context, state) {
+          final surahId = state.pathParameters['id'] ?? '';
+          if (surahId.isEmpty) return '/learning';
+          return '/learning?surah=${Uri.encodeQueryComponent(surahId)}';
+        },
       ),
     ],
   );
@@ -120,7 +131,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ? null
             : <String, String>{'part': partId},
       ).toString(),
-      WidgetLearningDeepLink(:final surahId) => '/learning/$surahId',
+      WidgetLearningDeepLink(:final surahId) => Uri(
+        path: '/learning',
+        queryParameters: <String, String>{'surah': surahId},
+      ).toString(),
     };
     router.go(location);
   }
