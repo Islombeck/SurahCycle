@@ -692,6 +692,53 @@ final contextualRecommendationInputsProvider =
       );
     });
 
+final recommendationBatchRepositoryProvider =
+    Provider<RecommendationBatchRepository>(
+      (ref) =>
+          RecommendationBatchRepository(ref.watch(settingsRepositoryProvider)),
+    );
+
+/// The one stable batch Home and the Rotation widget both read.
+///
+/// Sharing a single provider is what keeps their ranks and completed marks
+/// from ever disagreeing, and the stored batch is what stops the block from
+/// shrinking as surahs are marked: a batch is only rebuilt when its key
+/// changes, never because a surah in it stopped being due.
+final currentRecommendationBatchProvider = StreamProvider.autoDispose
+    .family<RecommendationBatch?, PrayerRoutineSessionKey>((ref, key) {
+      final snapshot = ref.watch(rotationSnapshotProvider).valueOrNull;
+      if (snapshot == null) return Stream<RecommendationBatch?>.value(null);
+
+      final repository = ref.watch(recommendationBatchRepositoryProvider);
+      final inputs = ref.watch(contextualRecommendationInputsProvider(key));
+      final routine = ref.watch(currentPrayerRoutineProvider(key)).valueOrNull;
+      final timeProvider = ref.watch(timeProviderProvider);
+      final batchKey = RecommendationBatchKey(
+        localDate: key.localDate,
+        prayerType: key.context.prayerType,
+        isQada: key.context.isQada,
+        partStableKey: routine?.currentPart?.part.stableKey,
+      );
+      final pool = const ContextualSurahSuggestionService()
+          .rankedCandidateIdsWith(snapshot, inputs);
+
+      return repository.watch().asyncMap((stored) async {
+        final plan = const RecommendationBatchService().plan(
+          key: batchKey,
+          rankedEligibleSurahIds: pool,
+          cycle: stored.cycle,
+          existing: stored.batch,
+        );
+        if (stored.batch != plan.batch || stored.cycle != plan.cycle) {
+          await repository.save(
+            StoredRecommendationState(batch: plan.batch, cycle: plan.cycle),
+            updatedAtUtc: timeProvider.nowUtc(),
+          );
+        }
+        return plan.batch;
+      });
+    });
+
 final widgetSyncCoordinatorProvider = Provider<WidgetSyncCoordinator>((ref) {
   final coordinator = WidgetSyncCoordinator(
     bridge: const HomeWidgetBridge(),

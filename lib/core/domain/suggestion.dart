@@ -60,6 +60,24 @@ final class SurahSuggestion {
 final class SurahSuggestionService {
   const SurahSuggestionService();
 
+  /// Every eligible candidate in ranked order, with no product ceiling.
+  ///
+  /// [suggest] is capped at [maxRecommendationCount] because a
+  /// [SurahSuggestion] carries a bounded rank. A recommendation batch needs
+  /// the whole ordered pool to pick from, so it reads the ranking through
+  /// this instead of re-deriving it.
+  List<String> rankedCandidateIds(
+    RotationSnapshot snapshot, {
+    Set<String> excludedSurahIds = const <String>{},
+    int Function(MasteredSurah left, MasteredSurah right)? contextualTiebreak,
+  }) => List<String>.unmodifiable(
+    _rankedCandidates(
+      snapshot,
+      excludedSurahIds: excludedSurahIds,
+      contextualTiebreak: contextualTiebreak,
+    ).map((candidate) => candidate.surah.id),
+  );
+
   List<SurahSuggestion> suggest(
     RotationSnapshot snapshot, {
     int limit = maxRecommendationCount,
@@ -71,6 +89,32 @@ final class SurahSuggestionService {
     }
     if (limit == 0) return const <SurahSuggestion>[];
 
+    final candidates = _rankedCandidates(
+      snapshot,
+      excludedSurahIds: excludedSurahIds,
+      contextualTiebreak: contextualTiebreak,
+    );
+
+    final effectiveLimit = limit < maxRecommendationCount
+        ? limit
+        : maxRecommendationCount;
+    final selected = candidates.take(effectiveLimit).toList(growable: false);
+    return List<SurahSuggestion>.unmodifiable(<SurahSuggestion>[
+      for (var index = 0; index < selected.length; index += 1)
+        SurahSuggestion(
+          surah: selected[index].surah,
+          remaining: selected[index].remaining,
+          recommendationRank: index,
+          recommendedParts: selected[index].recommendedParts,
+        ),
+    ]);
+  }
+
+  List<_SuggestionCandidate> _rankedCandidates(
+    RotationSnapshot snapshot, {
+    required Set<String> excludedSurahIds,
+    int Function(MasteredSurah left, MasteredSurah right)? contextualTiebreak,
+  }) {
     final candidates = snapshot.activeSurahs
         .map((MasteredSurah surah) {
           if (excludedSurahIds.contains(surah.id)) return null;
@@ -90,20 +134,7 @@ final class SurahSuggestionService {
         .whereType<_SuggestionCandidate>()
         .toList();
     candidates.sort((left, right) => _compare(left, right, contextualTiebreak));
-
-    final effectiveLimit = limit < maxRecommendationCount
-        ? limit
-        : maxRecommendationCount;
-    final selected = candidates.take(effectiveLimit).toList(growable: false);
-    return List<SurahSuggestion>.unmodifiable(<SurahSuggestion>[
-      for (var index = 0; index < selected.length; index += 1)
-        SurahSuggestion(
-          surah: selected[index].surah,
-          remaining: selected[index].remaining,
-          recommendationRank: index,
-          recommendedParts: selected[index].recommendedParts,
-        ),
-    ]);
+    return candidates;
   }
 
   int _compare(

@@ -37,6 +37,64 @@ void main() {
     },
   );
 
+  group('the full ranked pool', () {
+    RotationSnapshot snapshotOf(int count) => RotationSnapshot(
+      rotationTarget: 10,
+      surahs: <MasteredSurah>[
+        for (var index = 0; index < count; index += 1)
+          mastered(id: 'surah-$index', score: 9, order: index),
+      ],
+    );
+
+    test('returns every eligible candidate, not just the visible eight', () {
+      final snapshot = snapshotOf(12);
+
+      final pool = contextual.rankedCandidateIdsWith(
+        snapshot,
+        const ContextualRecommendationInputs(),
+      );
+
+      expect(pool, hasLength(12));
+      expect(
+        pool.take(maxRecommendationCount),
+        contextual
+            .suggestWith(snapshot, const ContextualRecommendationInputs())
+            .map((suggestion) => suggestion.surah.id),
+        reason: 'the pool must use the same order the visible list uses',
+      );
+    });
+
+    test('an excluded surah is left out of the pool as well', () {
+      final pool = contextual.rankedCandidateIdsWith(
+        snapshotOf(4),
+        const ContextualRecommendationInputs(
+          alreadyFilledInCurrentPartSurahIds: <String>{'surah-1'},
+        ),
+      );
+
+      expect(pool, isNot(contains('surah-1')));
+      expect(pool, hasLength(3));
+    });
+
+    test('contextual recency reorders the pool the same way', () {
+      final snapshot = snapshotOf(3);
+      final now = DateTime.utc(2026, 9, 14);
+
+      final pool = contextual.rankedCandidateIdsWith(
+        snapshot,
+        ContextualRecommendationInputs(
+          lastUsedInExactPart: <String, DateTime>{'surah-0': now},
+        ),
+      );
+
+      expect(
+        pool.first,
+        isNot('surah-0'),
+        reason: 'a surah just read in this exact part drops behind',
+      );
+    });
+  });
+
   test('urgency always outranks contextual recency: a more overdue surah wins '
       'even if it was just read in this exact part', () {
     final snapshot = RotationSnapshot(

@@ -88,6 +88,34 @@ final class ContextualSurahSuggestionService {
     );
   }
 
+  /// The whole eligible pool in the same contextual order, for a batch that
+  /// needs more candidates than the product ceiling exposes.
+  List<String> rankedCandidateIdsWith(
+    RotationSnapshot snapshot,
+    ContextualRecommendationInputs inputs,
+  ) => suggestionService.rankedCandidateIds(
+    snapshot,
+    excludedSurahIds: inputs.alreadyFilledInCurrentPartSurahIds,
+    contextualTiebreak: (MasteredSurah left, MasteredSurah right) =>
+        _contextualCompare(left, right, inputs),
+  );
+
+  int _contextualCompare(
+    MasteredSurah left,
+    MasteredSurah right,
+    ContextualRecommendationInputs inputs,
+  ) {
+    final exactPartComparison = compareNullableLastUsed(
+      inputs.lastUsedInExactPart[left.id],
+      inputs.lastUsedInExactPart[right.id],
+    );
+    if (exactPartComparison != 0) return exactPartComparison;
+    return compareNullableLastUsed(
+      inputs.lastUsedInPrayerType[left.id],
+      inputs.lastUsedInPrayerType[right.id],
+    );
+  }
+
   /// Convenience overload taking a resolved [ContextualRecommendationInputs]
   /// bundle, so Home and the widget projection factory pass the exact same
   /// value through without re-unpacking its three fields at each call site.
