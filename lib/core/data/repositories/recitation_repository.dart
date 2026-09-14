@@ -476,7 +476,7 @@ final class RecitationRepository {
   Stream<List<RecitationHistoryEntry>> watchHistory({int limit = 100}) =>
       database
           .customSelect(
-            'SELECT 1',
+            'SELECT 1 AS recitation_history_watch',
             readsFrom: <ResultSetImplementation<Table, Object?>>{
               database.recitationEvents,
               database.recitationEventParts,
@@ -630,7 +630,7 @@ final class RecitationRepository {
   Stream<RecitationStats> watchStats({PrayerType? prayerType, bool? isQada}) =>
       database
           .customSelect(
-            'SELECT 1',
+            'SELECT 1 AS recitation_stats_watch',
             readsFrom: <ResultSetImplementation<Table, Object?>>{
               database.recitationEvents,
               database.recitationEventParts,
@@ -698,7 +698,7 @@ final class RecitationRepository {
     required String stableKey,
   }) => database
       .customSelect(
-        'SELECT 1',
+        'SELECT 1 AS recitation_routine_part_watch',
         readsFrom: <ResultSetImplementation<Table, Object?>>{
           database.recitationEvents,
           database.prayerSessionParts,

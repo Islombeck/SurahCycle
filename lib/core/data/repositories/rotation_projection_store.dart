@@ -98,7 +98,7 @@ final class RotationProjectionStore {
 
   Stream<RotationSnapshot> watchSnapshot() => database
       .customSelect(
-        'SELECT 1',
+        'SELECT 1 AS rotation_projection_watch',
         readsFrom: <ResultSetImplementation<Table, Object?>>{
           database.rotationStates,
           database.masteredSurahs,

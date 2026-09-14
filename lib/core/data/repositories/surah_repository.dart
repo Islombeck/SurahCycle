@@ -77,7 +77,11 @@ final class SurahRepository {
 
   Stream<List<CatalogSurah>> watchCatalog({String query = ''}) => database
       .customSelect(
-        'SELECT 1',
+        // Drift keys cached query streams by SQL text and variables only, so
+        // every watch query in the app needs its own text. Reusing a bare
+        // 'SELECT 1' makes unrelated streams share one subscription and the
+        // `readsFrom` set of whichever registered first.
+        'SELECT 1 AS surah_catalog_watch',
         readsFrom: <ResultSetImplementation<Table, Object?>>{
           database.surahMetadata,
           database.masteredSurahs,

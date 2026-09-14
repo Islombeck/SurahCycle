@@ -51,7 +51,7 @@ final class PrayerRepository {
 
   Stream<PrayerContext?> watchSelectedContext() => database
       .customSelect(
-        'SELECT 1',
+        'SELECT 1 AS prayer_context_watch',
         readsFrom: <ResultSetImplementation<Table, Object?>>{
           database.appSettings,
         },

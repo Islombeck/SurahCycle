@@ -174,7 +174,8 @@ final class PrayerRoutineRepository {
 
   Stream<PrayerRoutineTemplate> watchTemplate(PrayerType prayerType) => database
       .customSelect(
-        'SELECT 1',
+        // Unique per watch query: see the note in SurahRepository.watchCatalog.
+        'SELECT 1 AS prayer_routine_template_watch',
         readsFrom: <ResultSetImplementation<Table, Object?>>{
           database.prayerRoutineTemplates,
           database.prayerRoutinePartTemplates,
@@ -587,7 +588,7 @@ final class PrayerRoutineRepository {
     required DateTime Function() startedAtUtc,
   }) => database
       .customSelect(
-        'SELECT 1',
+        'SELECT 1 AS prayer_routine_session_watch',
         readsFrom: <ResultSetImplementation<Table, Object?>>{
           database.prayerRoutineTemplates,
           database.prayerRoutinePartTemplates,
