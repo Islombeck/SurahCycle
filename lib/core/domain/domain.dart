@@ -3,6 +3,7 @@ export 'learning.dart';
 export 'prayer.dart';
 export 'prayer_routine.dart';
 export 'recitation.dart';
+export 'recommendation_batch.dart';
 export 'rotation.dart';
 export 'rotation_scheme.dart';
 export 'suggestion.dart';
