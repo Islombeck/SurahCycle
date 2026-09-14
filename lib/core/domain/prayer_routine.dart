@@ -4,6 +4,55 @@ enum PrayerRoutinePartKind { fard, sunnah, witr, nafl, custom }
 
 enum PrayerPartCompletionMode { recitations, followedImam }
 
+/// Which routine parts a Qada context may contain.
+///
+/// Qada applies to the missed obligation itself, never to the voluntary parts
+/// a user performs around it, so eligibility depends on both the prayer and
+/// the kind of its part. [PrayerType.supportsQada] alone cannot express that:
+/// it only answers whether the prayer has a make-up obligation at all.
+///
+/// This is the single source of truth. The routine snapshot filters by it, and
+/// the recitation repository re-checks it at the write boundary, so a deep
+/// link, a widget action, or a direct method call cannot bypass the rule.
+abstract final class PrayerQadaPolicy {
+  /// The one part kind that carries the obligation of [prayerType], or null
+  /// when the prayer has no make-up obligation at all.
+  static PrayerRoutinePartKind? obligatoryPartKind(PrayerType prayerType) =>
+      switch (prayerType) {
+        PrayerType.fajr ||
+        PrayerType.dhuhr ||
+        PrayerType.asr ||
+        PrayerType.maghrib ||
+        PrayerType.isha => PrayerRoutinePartKind.fard,
+        PrayerType.witr => PrayerRoutinePartKind.witr,
+        PrayerType.jumuah || PrayerType.nafl => null,
+      };
+
+  /// Ordinary prayers keep every configured part; a Qada context keeps only
+  /// the obligatory one. Sunnah, Nafl and custom parts never become Qada.
+  ///
+  /// Takes the two coordinates separately so a stored row can be checked
+  /// without rebuilding a [PrayerContext], whose own constructor rejects
+  /// combinations that legacy history may still legitimately contain.
+  static bool allowsPart({
+    required PrayerType prayerType,
+    required bool isQada,
+    required PrayerRoutinePartKind kind,
+  }) {
+    if (!isQada) return true;
+    return obligatoryPartKind(prayerType) == kind;
+  }
+
+  static bool allowsPartKind({
+    required PrayerContext context,
+    required PrayerRoutinePartKind kind,
+  }) => allowsPart(
+    prayerType: context.prayerType,
+    isQada: context.isQada,
+    kind: kind,
+  );
+}
+
 final class PrayerRoutinePartTemplate {
   factory PrayerRoutinePartTemplate({
     required String id,

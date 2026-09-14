@@ -129,6 +129,7 @@ enum PrayerSessionSlotUnavailableReason {
   slotOutOfRange,
   slotNotNext,
   occupiedSlot,
+  qadaPartNotEligible,
 }
 
 /// A typed stale-target failure for exact prayer-session slot registrations.
@@ -932,6 +933,20 @@ final class RecitationRepository {
       throw PrayerSessionSlotUnavailableException(
         PrayerSessionSlotUnavailableReason.completedPart,
         'Prayer session part "$partId" is already completed.',
+      );
+    }
+    // Re-checked here, not only when the snapshot was built: a legacy session
+    // or a forged widget/deep-link payload must not create new Qada history on
+    // a voluntary part.
+    if (!PrayerQadaPolicy.allowsPart(
+      prayerType: event.prayerType,
+      isQada: event.isQada,
+      kind: PrayerRoutinePartKind.values.byName(part.kind),
+    )) {
+      throw PrayerSessionSlotUnavailableException(
+        PrayerSessionSlotUnavailableReason.qadaPartNotEligible,
+        'Prayer session part "$partId" cannot carry Qada for '
+        '${event.prayerType.name}.',
       );
     }
 

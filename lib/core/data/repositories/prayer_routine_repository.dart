@@ -378,7 +378,7 @@ final class PrayerRoutineRepository {
   }) => database.transaction(() async {
     final template = await getTemplate(session.context.prayerType);
     final sourceParts = template.enabled
-        ? template.parts
+        ? _qadaEligibleParts(session.context, template.parts)
         : const <PrayerRoutinePartTemplate>[];
     final partIds = <String>[
       for (final sourcePart in sourceParts) createPartId(sourcePart),
@@ -509,7 +509,11 @@ final class PrayerRoutineRepository {
     }
 
     final template = await getTemplate(context.prayerType);
-    if (!template.enabled || template.parts.isEmpty) return null;
+    if (!template.enabled) return null;
+    // A Qada context keeps only the obligatory part. If nothing remains the
+    // routine has nothing to track, so the ordinary slotless flow stays.
+    final sourceParts = _qadaEligibleParts(context, template.parts);
+    if (sourceParts.isEmpty) return null;
 
     final sessionId = _routineSessionId(context, localDate);
     await database
@@ -524,7 +528,7 @@ final class PrayerRoutineRepository {
           ),
           mode: InsertMode.insertOrIgnore,
         );
-    for (final source in template.parts) {
+    for (final source in sourceParts) {
       await database
           .into(database.prayerSessionParts)
           .insert(
@@ -555,7 +559,7 @@ final class PrayerRoutineRepository {
       database.prayerSessions,
     )..where((PrayerSessions row) => row.id.equals(sessionId))).getSingle();
     final parts = await getSessionParts(sessionId);
-    if (parts.length != template.parts.length) {
+    if (parts.length != sourceParts.length) {
       throw StateError('Current prayer routine snapshot is incomplete.');
     }
     return _routineSessionFromRow(sessionRow, parts: parts);
@@ -876,6 +880,19 @@ void _requireRevision(PrayerRoutineTemplate current, int expectedRevision) {
     );
   }
 }
+
+/// Keeps only the parts a [context] may actually contain.
+///
+/// Ordinary prayers keep every configured part. A Qada context keeps only the
+/// obligatory one, so a missed Fard never drags its Sunnah parts along.
+List<PrayerRoutinePartTemplate> _qadaEligibleParts(
+  PrayerContext context,
+  Iterable<PrayerRoutinePartTemplate> parts,
+) => <PrayerRoutinePartTemplate>[
+  for (final part in parts)
+    if (PrayerQadaPolicy.allowsPartKind(context: context, kind: part.kind))
+      part,
+];
 
 List<PrayerRoutinePartTemplate> _normalizeOrder(
   Iterable<PrayerRoutinePartTemplate> parts,
