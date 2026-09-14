@@ -13,6 +13,7 @@ import '../core/domain/domain.dart';
 import '../core/widgets/widgets.dart';
 import '../features/quran/quran.dart';
 import '../features/prayer_times/prayer_times.dart';
+import '../features/settings/application/prayer_routine_editor.dart';
 import '../l10n/app_localizations.dart';
 import 'localization_extensions.dart';
 import 'widget_localization.dart';
@@ -350,6 +351,13 @@ final prayerRoutineTemplateProvider =
     StreamProvider.family<PrayerRoutineTemplate, PrayerType>((ref, type) {
       return ref.watch(prayerRoutineRepositoryProvider).watchTemplate(type);
     });
+
+/// Single instance: it serializes every routine edit through one queue.
+final prayerRoutineEditorProvider = Provider<PrayerRoutineEditor>(
+  (ref) => PrayerRoutineEditor(
+    repository: ref.watch(prayerRoutineRepositoryProvider),
+  ),
+);
 
 typedef PrayerRoutineSessionKey = ({
   PrayerContext context,

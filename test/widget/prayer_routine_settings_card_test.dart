@@ -193,6 +193,52 @@ void main() {
     },
   );
 
+  testWidgets('an edit still applies when the shown revision is stale', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final repository = PrayerRoutineRepository(database);
+
+    await _pumpCard(tester, database);
+    await _expandCard(tester);
+
+    // The card is now showing a template snapshot. Something else commits a
+    // change before the user's own action reaches the repository, which is
+    // exactly what happens while the watch stream has not caught up yet.
+    final shown = await repository.getTemplate(PrayerType.fajr);
+    await repository.addPart(
+      prayerType: PrayerType.fajr,
+      expectedRevision: shown.revision,
+      part: PrayerRoutinePartTemplate(
+        id: 'external',
+        stableKey: 'part:external',
+        orderIndex: 0,
+        kind: PrayerRoutinePartKind.fard,
+        rakaatCount: 2,
+        requiredSurahSlots: 2,
+      ),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('add-prayer-routine-part')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey<String>('save-prayer-part')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SnackBar), findsNothing);
+    final stored = await repository.getTemplate(PrayerType.fajr);
+    expect(
+      stored.parts,
+      hasLength(2),
+      reason: 'the stale revision must not discard the user action',
+    );
+    expect(stored.parts.first.id, 'external');
+
+    await _disposeWidgetTree(tester);
+  });
+
   testWidgets('a user-created Jumuah Fard part allows following the imam', (
     tester,
   ) async {

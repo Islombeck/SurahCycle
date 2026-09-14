@@ -926,4 +926,12 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get followedImamCompleted => 'Imomga ergashib yakunlandi';
+
+  @override
+  String get routineEditFailed =>
+      'Namoz tartibidagi o‘zgarishni saqlab bo‘lmadi';
+
+  @override
+  String get routineEditConflict =>
+      'Namoz tartibi o‘zgardi. Joriy holat ko‘rsatildi — amalni qaytaring.';
 }

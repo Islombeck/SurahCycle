@@ -6,6 +6,7 @@ import '../../../app/app_providers.dart';
 import '../../../app/localization_extensions.dart';
 import '../../../core/data/data.dart';
 import '../../../core/domain/domain.dart';
+import '../application/prayer_routine_editor.dart';
 
 /// Manual, denomination-neutral editor for the ordered parts of each prayer.
 final class PrayerRoutineSettingsCard extends ConsumerStatefulWidget {
@@ -86,14 +87,11 @@ final class _PrayerRoutineSettingsCardState
           value: template.enabled,
           onChanged: _busy
               ? null
-              : (enabled) => _guard(
-                  () => ref
-                      .read(prayerRoutineRepositoryProvider)
-                      .setTemplateEnabled(
-                        prayerType: template.prayerType,
-                        expectedRevision: template.revision,
-                        enabled: enabled,
-                      ),
+              : (enabled) => _run(
+                  () => _editor.setEnabled(
+                    prayerType: template.prayerType,
+                    enabled: enabled,
+                  ),
                 ),
         ),
         if (template.parts.isEmpty)
@@ -162,14 +160,8 @@ final class _PrayerRoutineSettingsCardState
     );
     final result = await _showPartDialog(draft, isNew: true);
     if (result == null || !mounted) return;
-    await _guard(
-      () => ref
-          .read(prayerRoutineRepositoryProvider)
-          .addPart(
-            prayerType: template.prayerType,
-            expectedRevision: template.revision,
-            part: result,
-          ),
+    await _run(
+      () => _editor.addPart(prayerType: template.prayerType, part: result),
     );
   }
 
@@ -179,14 +171,11 @@ final class _PrayerRoutineSettingsCardState
   ) async {
     final result = await _showPartDialog(part, isNew: false);
     if (result == null || !mounted) return;
-    await _guard(
-      () => ref
-          .read(prayerRoutineRepositoryProvider)
-          .updatePart(
-            prayerType: template.prayerType,
-            expectedRevision: template.revision,
-            replacement: result,
-          ),
+    await _run(
+      () => _editor.updatePart(
+        prayerType: template.prayerType,
+        replacement: result,
+      ),
     );
   }
 
@@ -214,14 +203,9 @@ final class _PrayerRoutineSettingsCardState
       ),
     );
     if (confirmed != true || !mounted) return;
-    await _guard(
-      () => ref
-          .read(prayerRoutineRepositoryProvider)
-          .deletePart(
-            prayerType: template.prayerType,
-            expectedRevision: template.revision,
-            partId: part.id,
-          ),
+    await _run(
+      () =>
+          _editor.deletePart(prayerType: template.prayerType, partId: part.id),
     );
   }
 
@@ -236,14 +220,11 @@ final class _PrayerRoutineSettingsCardState
     final ids = template.parts.map((part) => part.id).toList();
     final id = ids.removeAt(oldIndex);
     ids.insert(insertionIndex, id);
-    await _guard(
-      () => ref
-          .read(prayerRoutineRepositoryProvider)
-          .reorderParts(
-            prayerType: template.prayerType,
-            expectedRevision: template.revision,
-            orderedPartIds: ids,
-          ),
+    await _run(
+      () => _editor.reorderParts(
+        prayerType: template.prayerType,
+        orderedPartIds: ids,
+      ),
     );
   }
 
@@ -272,20 +253,46 @@ final class _PrayerRoutineSettingsCardState
     PrayerRoutinePartKind.custom => context.l10n.partKindCustom,
   };
 
-  Future<void> _guard(Future<Object?> Function() action) async {
+  PrayerRoutineEditor get _editor => ref.read(prayerRoutineEditorProvider);
+
+  /// The editor never throws: it reports a typed outcome so this screen can
+  /// distinguish "someone else changed it" from "it actually failed", and can
+  /// offer a bounded, user-driven retry instead of silently repeating writes.
+  Future<void> _run(Future<PrayerRoutineEditOutcome> Function() action) async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      await action();
-    } on Object {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(context.l10n.errorGeneric)));
+      final outcome = await action();
+      if (!mounted) return;
+      switch (outcome) {
+        case PrayerRoutineEditApplied():
+        case PrayerRoutineEditUnchanged():
+          break;
+        case PrayerRoutineEditConflict():
+          _showOutcome(context.l10n.routineEditConflict);
+        case PrayerRoutineEditFailed():
+          _showOutcome(context.l10n.routineEditFailed, retry: action);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  void _showOutcome(
+    String message, {
+    Future<PrayerRoutineEditOutcome> Function()? retry,
+  }) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: retry == null
+            ? null
+            : SnackBarAction(
+                label: context.l10n.retry,
+                onPressed: () => _run(retry),
+              ),
+      ),
+    );
   }
 }
 

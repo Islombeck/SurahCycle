@@ -925,4 +925,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get followedImamCompleted => 'Завершено вслед за имамом';
+
+  @override
+  String get routineEditFailed =>
+      'Не удалось сохранить изменение порядка намаза';
+
+  @override
+  String get routineEditConflict =>
+      'Порядок намаза изменился. Показано актуальное состояние — повторите действие.';
 }

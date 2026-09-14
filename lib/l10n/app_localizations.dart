@@ -1689,6 +1689,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Завершено вслед за имамом'**
   String get followedImamCompleted;
+
+  /// No description provided for @routineEditFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сохранить изменение порядка намаза'**
+  String get routineEditFailed;
+
+  /// No description provided for @routineEditConflict.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порядок намаза изменился. Показано актуальное состояние — повторите действие.'**
+  String get routineEditConflict;
 }
 
 class _AppLocalizationsDelegate

@@ -288,4 +288,6 @@
   ,"followedImamConfirmTitle": "Imom bilan yakunlansinmi?"
   ,"followedImamConfirmBody": "Bu qism qiroat hodisasi va aylanish hisobisiz yakunlanadi."
   ,"followedImamCompleted": "Imomga ergashib yakunlandi"
+  ,"routineEditFailed": "Namoz tartibidagi o‘zgarishni saqlab bo‘lmadi"
+  ,"routineEditConflict": "Namoz tartibi o‘zgardi. Joriy holat ko‘rsatildi — amalni qaytaring."
 }
