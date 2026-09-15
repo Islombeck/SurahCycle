@@ -155,6 +155,10 @@ final class ContextualSurahSuggestionService {
 
   /// The whole eligible pool in the same contextual order, for a batch that
   /// needs more candidates than the product ceiling exposes.
+  /// Includes surahs that have already reached the rotation target, ranked
+  /// after every still-due one. A batch must be able to reach its full size
+  /// even late in a cycle, when most surahs have been recited; otherwise the
+  /// visible block silently shrinks exactly when repeats start appearing.
   List<String> rankedCandidateIdsWith(
     RotationSnapshot snapshot,
     ContextualRecommendationInputs inputs,
@@ -163,6 +167,7 @@ final class ContextualSurahSuggestionService {
     excludedSurahIds: inputs.alreadyFilledInCurrentPartSurahIds,
     contextualTiebreak: (MasteredSurah left, MasteredSurah right) =>
         _contextualCompare(left, right, inputs),
+    includeSatisfied: true,
   );
 
   int _contextualCompare(

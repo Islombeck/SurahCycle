@@ -66,15 +66,26 @@ final class SurahSuggestionService {
   /// [SurahSuggestion] carries a bounded rank. A recommendation batch needs
   /// the whole ordered pool to pick from, so it reads the ranking through
   /// this instead of re-deriving it.
+  /// The whole ranked pool, for a recommendation batch that needs more
+  /// candidates than the product ceiling exposes.
+  ///
+  /// [includeSatisfied] widens the pool to surahs that have already reached the
+  /// rotation target. They sort after every still-due surah, so the visible
+  /// order is unchanged — they only become available once the due ones run out.
+  /// A batch needs this: without it the pool shrinks as the user recites, and a
+  /// newly planned batch cannot reach eight entries even though eight eligible
+  /// surahs exist. That is what "at 2× the count drops" was.
   List<String> rankedCandidateIds(
     RotationSnapshot snapshot, {
     Set<String> excludedSurahIds = const <String>{},
     int Function(MasteredSurah left, MasteredSurah right)? contextualTiebreak,
+    bool includeSatisfied = false,
   }) => List<String>.unmodifiable(
     _rankedCandidates(
       snapshot,
       excludedSurahIds: excludedSurahIds,
       contextualTiebreak: contextualTiebreak,
+      includeSatisfied: includeSatisfied,
     ).map((candidate) => candidate.surah.id),
   );
 
@@ -114,12 +125,14 @@ final class SurahSuggestionService {
     RotationSnapshot snapshot, {
     required Set<String> excludedSurahIds,
     int Function(MasteredSurah left, MasteredSurah right)? contextualTiebreak,
+    bool includeSatisfied = false,
   }) {
     final candidates = snapshot.activeSurahs
         .map((MasteredSurah surah) {
           if (excludedSurahIds.contains(surah.id)) return null;
           final remaining = snapshot.rotationTarget - surah.rotationScore;
-          if (remaining <= 0) return null;
+          // `suggest()` keeps its due-only meaning; only a batch pool widens.
+          if (remaining <= 0 && !includeSatisfied) return null;
           final parts = surah.rotationScheme.parts.where(
             (SurahRotationPart part) =>
                 snapshot.rotationTarget - part.rotationScore == remaining,
