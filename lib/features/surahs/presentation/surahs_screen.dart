@@ -209,7 +209,8 @@ final class _CatalogListState extends ConsumerState<_CatalogList> {
     busy: _busy.contains(item.surah.id),
     onToggle: (value) => _setActive(item, value),
     onReturnToLearning: () => _returnToLearning(item),
-    onOpen: () => context.push('/surah/${item.surah.id}'),
+    onOpen: () =>
+        context.push('/surahs/detail/${Uri.encodeComponent(item.surah.id)}'),
   );
 
   Future<void> _add(CatalogSurah item) async {

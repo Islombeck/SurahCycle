@@ -44,6 +44,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/surahs',
                 builder: (context, state) => const SurahsScreen(),
+                routes: <RouteBase>[
+                  // Nested inside the branch, not pushed above the shell, so
+                  // the detail screen keeps the bottom navigation and a back
+                  // path into its own tab — the same lesson Stage D learned
+                  // from `/learning/:id`.
+                  GoRoute(
+                    path: 'detail/:id',
+                    builder: (context, state) => SurahDetailScreen(
+                      surahId: state.pathParameters['id'] ?? '',
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -84,11 +96,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const HistoryScreen(),
       ),
       GoRoute(path: '/home', redirect: (context, state) => '/'),
+      // Kept as a redirect for the same reason `/learning/:id` is: a Rotation
+      // widget already on the launcher holds a `PendingIntent` built with this
+      // path, and that intent survives an app update. The `part` query
+      // parameter is carried through unchanged.
+      // `/surah/` normalizes to `/surah`, which matches no route at all and
+      // would land on the router's error page. A malformed legacy link should
+      // open the surah list instead.
+      GoRoute(path: '/surah', redirect: (context, state) => '/surahs'),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
         path: '/surah/:id',
-        builder: (context, state) =>
-            SurahDetailScreen(surahId: state.pathParameters['id'] ?? ''),
+        redirect: (context, state) {
+          final surahId = state.pathParameters['id'] ?? '';
+          if (surahId.isEmpty) return '/surahs';
+          final part = state.uri.queryParameters['part'];
+          final target = '/surahs/detail/${Uri.encodeComponent(surahId)}';
+          return part == null
+              ? target
+              : '$target?part=${Uri.encodeQueryComponent(part)}';
+        },
       ),
       // Kept so deep links already cached in a launcher widget stay valid, but
       // resolved into the shell instead of being pushed above it. Pushing this
