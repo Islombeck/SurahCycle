@@ -1592,24 +1592,47 @@ final class _RotationContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ordered = const SurahOperationalOrderService().order(snapshot);
-    // The batch drives the order and the ranks. It is a stored decision, so a
-    // marked surah keeps its position and simply renders as completed instead
-    // of dropping out and shrinking the block.
-    final batchIds = batch?.surahIds.toList() ?? const <String>[];
-    final positions = <String, int>{
-      for (var index = 0; index < batchIds.length; index += 1)
-        batchIds[index]: index,
-    };
-    final occurrences = <String, int>{
-      for (final entry in batch?.entries ?? const <RecommendationBatchEntry>[])
-        entry.surahId: entry.occurrence,
-    };
-    final active = <MasteredSurah>[
-      for (final surahId in batchIds)
-        ...ordered.where((surah) => surah.id == surahId),
-      ...ordered.where((surah) => !positions.containsKey(surah.id)),
-    ];
+    // Outside a resolved prayer there is no batch to keep stable — and no
+    // direct marking either — so the plain computed order still applies.
+    final hasBatch = batch != null && !batch!.isEmpty;
+    final fallback = hasBatch
+        ? const <SurahSuggestion>[]
+        : const ContextualSurahSuggestionService().suggestWith(
+            snapshot,
+            ContextualRecommendationInputs.empty,
+          );
+    final List<MasteredSurah> active;
+    final Map<String, int> positions;
+    final Map<String, int> occurrences;
+    if (hasBatch) {
+      // The batch drives the order and the ranks. It is a stored decision, so
+      // a marked surah keeps its position and renders as completed instead of
+      // dropping out and shrinking the block.
+      final ordered = const SurahOperationalOrderService().order(snapshot);
+      final batchIds = batch!.surahIds.toList();
+      positions = <String, int>{
+        for (var index = 0; index < batchIds.length; index += 1)
+          batchIds[index]: index,
+      };
+      occurrences = <String, int>{
+        for (final entry in batch!.entries) entry.surahId: entry.occurrence,
+      };
+      active = <MasteredSurah>[
+        for (final surahId in batchIds)
+          ...ordered.where((surah) => surah.id == surahId),
+        ...ordered.where((surah) => !positions.containsKey(surah.id)),
+      ];
+    } else {
+      positions = <String, int>{
+        for (final suggestion in fallback)
+          suggestion.surah.id: suggestion.recommendationRank,
+      };
+      occurrences = const <String, int>{};
+      active = const SurahOperationalOrderService().order(
+        snapshot,
+        recommendations: fallback,
+      );
+    }
     if (active.isEmpty) {
       return Card(
         child: Padding(
