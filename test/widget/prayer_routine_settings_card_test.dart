@@ -145,7 +145,11 @@ void main() {
       final list = tester.widget<ReorderableListView>(
         find.byKey(const ValueKey<String>('prayer-routine-parts-fajr')),
       );
-      list.onReorderItem!(0, 2);
+      // `onReorderItem` reports the index **after** the removal, so moving the
+      // first of two parts to the end is (0, 1), not (0, 2). This test used to
+      // pass the pre-removal index, which is the deprecated `onReorder`
+      // convention and is what the card was wrongly compensating for.
+      list.onReorderItem!(0, 1);
       await tester.pumpAndSettle();
       var template = await repository.getTemplate(PrayerType.fajr);
       expect(template.parts.map((part) => part.id), <String>[
@@ -279,6 +283,121 @@ void main() {
 
     await _disposeWidgetTree(tester);
   });
+
+  group('reordering parts', () {
+    // Reported by the owner during acceptance: reordering "не сохраняется".
+    // `ReorderableListView.onReorderItem` already subtracts one from newIndex
+    // when an item moves down, so the card's own extra adjustment made a
+    // one-step move collapse onto its own index and return without saving.
+    Future<PrayerRoutineTemplate> seedThreeParts(AppDatabase database) async {
+      final repository = PrayerRoutineRepository(database);
+      var template = await repository.getTemplate(PrayerType.fajr);
+      for (final (index, label) in <String>[
+        'first',
+        'second',
+        'third',
+      ].indexed) {
+        template = await repository.addPart(
+          prayerType: PrayerType.fajr,
+          expectedRevision: template.revision,
+          part: PrayerRoutinePartTemplate(
+            id: 'part-$label',
+            stableKey: 'key-$label',
+            orderIndex: index,
+            kind: PrayerRoutinePartKind.custom,
+            customLabel: label,
+            rakaatCount: 2,
+            requiredSurahSlots: 1,
+          ),
+        );
+      }
+      return template;
+    }
+
+    List<String> labelsOf(PrayerRoutineTemplate template) => <String>[
+      for (final part in template.parts) part.customLabel ?? '',
+    ];
+
+    testWidgets('moving a part down by one is saved', (tester) async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final repository = PrayerRoutineRepository(database);
+      final seeded = await seedThreeParts(database);
+      expect(labelsOf(seeded), <String>['first', 'second', 'third']);
+
+      await _pumpCard(tester, database);
+      await _expandCard(tester);
+
+      // What Flutter delivers for a one-step move down: already adjusted.
+      await _reorderParts(tester, oldIndex: 0, newIndex: 1);
+
+      expect(
+        labelsOf(await repository.getTemplate(PrayerType.fajr)),
+        <String>['second', 'first', 'third'],
+        reason: 'a one-step move down must reach the database',
+      );
+      await _disposeWidgetTree(tester);
+    });
+
+    testWidgets('moving a part down by two lands where it was dropped', (
+      tester,
+    ) async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final repository = PrayerRoutineRepository(database);
+      await seedThreeParts(database);
+
+      await _pumpCard(tester, database);
+      await _expandCard(tester);
+
+      await _reorderParts(tester, oldIndex: 0, newIndex: 2);
+
+      expect(
+        labelsOf(await repository.getTemplate(PrayerType.fajr)),
+        <String>['second', 'third', 'first'],
+        reason: 'the part must not land one slot short of the drop',
+      );
+      await _disposeWidgetTree(tester);
+    });
+
+    testWidgets('moving a part up still works', (tester) async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final repository = PrayerRoutineRepository(database);
+      await seedThreeParts(database);
+
+      await _pumpCard(tester, database);
+      await _expandCard(tester);
+
+      await _reorderParts(tester, oldIndex: 2, newIndex: 0);
+
+      expect(labelsOf(await repository.getTemplate(PrayerType.fajr)), <String>[
+        'third',
+        'first',
+        'second',
+      ]);
+      await _disposeWidgetTree(tester);
+    });
+  });
+}
+
+/// Invokes the list's reorder callback the way Flutter does, so the test
+/// exercises the card's handler rather than a synthesized drag gesture.
+Future<void> _reorderParts(
+  WidgetTester tester, {
+  required int oldIndex,
+  required int newIndex,
+}) async {
+  final list = tester.widget<ReorderableListView>(
+    find.byType(ReorderableListView),
+  );
+  expect(
+    list.onReorderItem,
+    isNotNull,
+    reason: 'the card must use the callback that pre-adjusts newIndex',
+  );
+  list.onReorderItem!(oldIndex, newIndex);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpCard(WidgetTester tester, AppDatabase database) async {

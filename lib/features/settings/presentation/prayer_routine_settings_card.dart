@@ -209,17 +209,21 @@ final class _PrayerRoutineSettingsCardState
     );
   }
 
+  /// [newIndex] arrives **already adjusted** for the removal at [oldIndex]:
+  /// `ReorderableListView.onReorderItem` subtracts one itself and only calls
+  /// back when the index actually changed. Repeating that adjustment here made
+  /// a one-step move down collapse onto its own index and return without
+  /// saving — the "переставить не сохраняется" the owner reported — and made a
+  /// longer move land one slot short of the drop.
   Future<void> _reorder(
     PrayerRoutineTemplate template,
     int oldIndex,
     int newIndex,
   ) async {
-    var insertionIndex = newIndex;
-    if (insertionIndex > oldIndex) insertionIndex -= 1;
-    if (insertionIndex == oldIndex) return;
+    if (newIndex == oldIndex) return;
     final ids = template.parts.map((part) => part.id).toList();
     final id = ids.removeAt(oldIndex);
-    ids.insert(insertionIndex, id);
+    ids.insert(newIndex, id);
     await _run(
       () => _editor.reorderParts(
         prayerType: template.prayerType,
