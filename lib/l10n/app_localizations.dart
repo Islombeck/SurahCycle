@@ -103,7 +103,7 @@ abstract class AppLocalizations {
   /// No description provided for @appName.
   ///
   /// In ru, this message translates to:
-  /// **'SalahCycle'**
+  /// **'SurahCycle'**
   String get appName;
 
   /// No description provided for @homeTab.
@@ -775,7 +775,7 @@ abstract class AppLocalizations {
   /// No description provided for @widgetOpenAppToLoadText.
   ///
   /// In ru, this message translates to:
-  /// **'Откройте SalahCycle, чтобы загрузить проверенный текст'**
+  /// **'Откройте SurahCycle, чтобы загрузить проверенный текст'**
   String get widgetOpenAppToLoadText;
 
   /// No description provided for @customParts.
@@ -1291,7 +1291,7 @@ abstract class AppLocalizations {
   /// No description provided for @widgetSelectPrayerInApp.
   ///
   /// In ru, this message translates to:
-  /// **'Выберите намаз в SalahCycle'**
+  /// **'Выберите намаз в SurahCycle'**
   String get widgetSelectPrayerInApp;
 
   /// No description provided for @widgetActionNotCompleted.

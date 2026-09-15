@@ -1,6 +1,6 @@
 {
   "@@locale": "uz",
-  "appName": "SalahCycle",
+  "appName": "SurahCycle",
   "homeTab": "Bosh sahifa",
   "surahsTab": "Suralar",
   "learningTab": "O‘rganish",
@@ -114,7 +114,7 @@
   ,"widgetPart": "Qism"
   ,"widgetAyah": "Oyat"
   ,"widgetAyahs": "Oyatlar"
-  ,"widgetOpenAppToLoadText": "Tasdiqlangan matnni yuklash uchun SalahCycle’ni oching"
+  ,"widgetOpenAppToLoadText": "Tasdiqlangan matnni yuklash uchun SurahCycle’ni oching"
   ,"customParts": "Maxsus"
   ,"customPartCount": "Qismlar soni"
   ,"customPartCountRange": "1 dan {max} gacha"
@@ -211,7 +211,7 @@
   ,"@widgetAutomaticPrayerRange": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}, "end": {"type": "String"}}}
   ,"widgetAutomaticPrayerStart": "{prayer} · {start} dan · Aylanish"
   ,"@widgetAutomaticPrayerStart": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}}}
-  ,"widgetSelectPrayerInApp": "SalahCycle’da namozni tanlang"
+  ,"widgetSelectPrayerInApp": "SurahCycle’da namozni tanlang"
   ,"widgetActionNotCompleted": "Belgilab bo‘lmadi. Joriy ma’lumotlar tiklandi."
   ,"learningHow": "Qanday yodlaysiz?"
   ,"learningClassic": "Klassik"

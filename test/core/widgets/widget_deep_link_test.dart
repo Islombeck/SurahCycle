@@ -28,19 +28,19 @@ void main() {
   group('rename transition', () {
     test('the new scheme parses to the same destinations', () {
       expect(
-        WidgetDeepLink.tryParse('salahcycle://app/home'),
+        WidgetDeepLink.tryParse('surahcycle://app/home'),
         const WidgetHomeDeepLink(),
       );
       expect(
-        WidgetDeepLink.tryParse('salahcycle://app/learning'),
+        WidgetDeepLink.tryParse('surahcycle://app/learning'),
         const WidgetLearningRootDeepLink(),
       );
       expect(
-        WidgetDeepLink.tryParse('salahcycle://app/surah/2?part=part-2'),
+        WidgetDeepLink.tryParse('surahcycle://app/surah/2?part=part-2'),
         WidgetSurahDeepLink(surahId: '2', partId: 'part-2'),
       );
       expect(
-        WidgetDeepLink.tryParse('salahcycle://app/learning/112'),
+        WidgetDeepLink.tryParse('surahcycle://app/learning/112'),
         WidgetLearningDeepLink('112'),
       );
     });
@@ -56,9 +56,9 @@ void main() {
     });
 
     test('an unrelated scheme is still refused', () {
-      expect(WidgetDeepLink.tryParse('salah://app/home'), isNull);
+      expect(WidgetDeepLink.tryParse('surah://app/home'), isNull);
       expect(WidgetDeepLink.tryParse('https://app/home'), isNull);
-      expect(WidgetDeepLink.tryParse('salahcycles://app/home'), isNull);
+      expect(WidgetDeepLink.tryParse('surahcycles://app/home'), isNull);
     });
 
     test('builders still emit the legacy scheme for now', () {

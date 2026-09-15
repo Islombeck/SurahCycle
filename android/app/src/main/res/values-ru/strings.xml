@@ -1,34 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="rotation_widget_name">Ротация SalahCycle</string>
+    <string name="rotation_widget_name">Ротация SurahCycle</string>
     <string name="rotation_widget_description">Суры и части, которые пора повторить</string>
     <string name="rotation_widget_title">Ротация</string>
     <string name="rotation_widget_subtitle">Нужно повторить</string>
-    <string name="rotation_widget_empty">Всё закрыто. Откройте SalahCycle, чтобы проверить ротацию.</string>
+    <string name="rotation_widget_empty">Всё закрыто. Откройте SurahCycle, чтобы проверить ротацию.</string>
     <string name="rotation_widget_more">Ещё %1$d</string>
     <string name="rotation_widget_preview_sample">102. Такасур · 8 · 2×</string>
-    <string name="learning_widget_name">Заучивание SalahCycle</string>
+    <string name="learning_widget_name">Заучивание SurahCycle</string>
     <string name="learning_widget_description">Выбранная сура и текущий этап заучивания</string>
     <string name="learning_widget_title">Заучивание</string>
     <string name="learning_widget_empty">Выберите суру в разделе «Заучивание».</string>
     <string name="learning_widget_preview_sample">112. Ихляс · 1–3</string>
-    <string name="prayer_widget_name">Время намаза SalahCycle</string>
+    <string name="prayer_widget_name">Время намаза SurahCycle</string>
     <string name="prayer_widget_description">Фаджр, Зухр, Аср, Магриб и Иша на сегодня</string>
     <string name="prayer_widget_title">Время намаза</string>
     <string name="prayer_widget_stale">Требуется обновление</string>
     <string name="prayer_widget_between">Между намазами</string>
     <string name="prayer_widget_next_at">Далее: %1$s в %2$s</string>
     <string name="prayer_widget_preview_sample">Зухр · 12:30</string>
-    <string name="widget_open_murajaah">Откройте SalahCycle</string>
+    <string name="widget_open_murajaah">Откройте SurahCycle</string>
     <string name="widget_open_app">Открыть приложение</string>
     <string name="widget_recommendation_rank">&#9733; %1$d</string>
     <string name="widget_mark_recitation">Отметить прочтение</string>
     <string name="widget_recitation_marked">Прочтение отмечено</string>
-    <string name="widget_error_title">SalahCycle</string>
+    <string name="widget_error_title">SurahCycle</string>
     <string name="widget_error_message">Не удалось обновить виджет.</string>
     <string name="widget_error_open_app">Откройте приложение</string>
     <string name="learning_notification_channel_name">Напоминание о заучивании</string>
     <string name="learning_notification_channel_description">Тихое, беззвучное напоминание о том, что повторить дальше. По умолчанию выключено.</string>
-    <string name="dream_service_name">SalahCycle</string>
-    <string name="dream_service_empty">Откройте SalahCycle и выберите суру в разделе «Заучивание»</string>
+    <string name="dream_service_name">SurahCycle</string>
+    <string name="dream_service_empty">Откройте SurahCycle и выберите суру в разделе «Заучивание»</string>
 </resources>

@@ -9,7 +9,7 @@ class AppLocalizationsUz extends AppLocalizations {
   AppLocalizationsUz([String locale = 'uz']) : super(locale);
 
   @override
-  String get appName => 'SalahCycle';
+  String get appName => 'SurahCycle';
 
   @override
   String get homeTab => 'Bosh sahifa';
@@ -383,7 +383,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get widgetOpenAppToLoadText =>
-      'Tasdiqlangan matnni yuklash uchun SalahCycle’ni oching';
+      'Tasdiqlangan matnni yuklash uchun SurahCycle’ni oching';
 
   @override
   String get customParts => 'Maxsus';
@@ -697,7 +697,7 @@ class AppLocalizationsUz extends AppLocalizations {
   }
 
   @override
-  String get widgetSelectPrayerInApp => 'SalahCycle’da namozni tanlang';
+  String get widgetSelectPrayerInApp => 'SurahCycle’da namozni tanlang';
 
   @override
   String get widgetActionNotCompleted =>

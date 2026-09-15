@@ -4,7 +4,7 @@ sealed class WidgetDeepLink {
   Uri get uri;
 
   /// The scheme the app is renaming to.
-  static const String scheme = 'salahcycle';
+  static const String scheme = 'surahcycle';
 
   /// The pre-rename scheme, still accepted.
   ///

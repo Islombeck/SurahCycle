@@ -9,7 +9,7 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
-  String get appName => 'SalahCycle';
+  String get appName => 'SurahCycle';
 
   @override
   String get homeTab => 'Главная';
@@ -383,7 +383,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get widgetOpenAppToLoadText =>
-      'Откройте SalahCycle, чтобы загрузить проверенный текст';
+      'Откройте SurahCycle, чтобы загрузить проверенный текст';
 
   @override
   String get customParts => 'Свой';
@@ -695,7 +695,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get widgetSelectPrayerInApp => 'Выберите намаз в SalahCycle';
+  String get widgetSelectPrayerInApp => 'Выберите намаз в SurahCycle';
 
   @override
   String get widgetActionNotCompleted =>
