@@ -692,6 +692,28 @@ final contextualRecommendationInputsProvider =
       );
     });
 
+/// Surahs already recited in this exact occurrence today.
+///
+/// A batch position uses this to render as completed instead of being
+/// removed, which is what keeps the block a stable size. Scoped to the
+/// current routine part when there is one, and to the whole prayer otherwise,
+/// so the slotless flow behaves the same way.
+final recitedInCurrentOccurrenceProvider =
+    Provider.family<Set<String>, PrayerRoutineSessionKey>((ref, key) {
+      final history = ref.watch(recitationHistoryProvider).valueOrNull;
+      if (history == null) return const <String>{};
+      final routine = ref.watch(currentPrayerRoutineProvider(key)).valueOrNull;
+      final currentPartId = routine?.currentPart?.part.id;
+      return <String>{
+        for (final entry in history)
+          if (entry.event.localDate == key.localDate &&
+              entry.event.prayerContext == key.context &&
+              (currentPartId == null ||
+                  entry.event.prayerSessionPartId == currentPartId))
+            entry.event.surahId,
+      };
+    });
+
 final recommendationBatchRepositoryProvider =
     Provider<RecommendationBatchRepository>(
       (ref) =>

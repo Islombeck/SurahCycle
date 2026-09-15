@@ -8,12 +8,19 @@ import '../../../../app/localization_extensions.dart';
 /// Material's avatar slot applies its own sizing and padding, which made the
 /// circle and its digit appear misaligned on physical Android devices.
 final class RecommendationRankBadge extends StatelessWidget {
-  const RecommendationRankBadge({required this.rank, super.key})
-    : assert(rank >= 1 && rank <= 8);
+  const RecommendationRankBadge({
+    required this.rank,
+    this.isCompleted = false,
+    super.key,
+  }) : assert(rank >= 1 && rank <= 8);
 
   static const double dimension = 24;
 
   final int rank;
+
+  /// A completed position turns green and keeps its place, so the batch never
+  /// shrinks as surahs are marked.
+  final bool isCompleted;
 
   @override
   Widget build(BuildContext context) {
@@ -27,9 +34,15 @@ final class RecommendationRankBadge extends StatelessWidget {
         dimension: dimension,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: colors.tertiaryContainer,
+            color: isCompleted
+                ? colors.primaryContainer
+                : colors.tertiaryContainer,
             shape: BoxShape.circle,
-            border: Border.all(color: colors.tertiary.withValues(alpha: 0.45)),
+            border: Border.all(
+              color: isCompleted
+                  ? colors.primary
+                  : colors.tertiary.withValues(alpha: 0.45),
+            ),
           ),
           child: Center(
             child: FittedBox(
@@ -44,7 +57,9 @@ final class RecommendationRankBadge extends StatelessWidget {
                   forceStrutHeight: true,
                 ),
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: colors.onTertiaryContainer,
+                  color: isCompleted
+                      ? colors.onPrimaryContainer
+                      : colors.onTertiaryContainer,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   height: 1,

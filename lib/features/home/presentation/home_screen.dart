@@ -108,10 +108,20 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
               localDate: localDate,
             )),
           );
-    final contextualInputs = resolvedPrayerContext == null
-        ? ContextualRecommendationInputs.empty
+    final recommendationBatch = resolvedPrayerContext == null
+        ? null
+        : ref
+              .watch(
+                currentRecommendationBatchProvider((
+                  context: resolvedPrayerContext,
+                  localDate: localDate,
+                )),
+              )
+              .valueOrNull;
+    final completedSurahIds = resolvedPrayerContext == null
+        ? const <String>{}
         : ref.watch(
-            contextualRecommendationInputsProvider((
+            recitedInCurrentOccurrenceProvider((
               context: resolvedPrayerContext,
               localDate: localDate,
             )),
@@ -208,7 +218,8 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                         snapshot: snapshot,
                         busyIds: _busySurahIds,
                         markingEnabled: routineMarkingEnabled,
-                        contextualInputs: contextualInputs,
+                        batch: recommendationBatch,
+                        completedSurahIds: completedSurahIds,
                         onMarkRequested: (surah) => _handleMarkRequest(surah),
                         onAdvancedMarkRequested: (surah) =>
                             _handleMarkRequest(surah, advanced: true),
@@ -1565,7 +1576,8 @@ final class _RotationContent extends StatelessWidget {
     required this.snapshot,
     required this.busyIds,
     required this.markingEnabled,
-    required this.contextualInputs,
+    required this.batch,
+    required this.completedSurahIds,
     required this.onMarkRequested,
     required this.onAdvancedMarkRequested,
   });
@@ -1573,20 +1585,31 @@ final class _RotationContent extends StatelessWidget {
   final RotationSnapshot snapshot;
   final Set<String> busyIds;
   final bool markingEnabled;
-  final ContextualRecommendationInputs contextualInputs;
+  final RecommendationBatch? batch;
+  final Set<String> completedSurahIds;
   final ValueChanged<MasteredSurah> onMarkRequested;
   final ValueChanged<MasteredSurah> onAdvancedMarkRequested;
 
   @override
   Widget build(BuildContext context) {
-    final suggestions = const ContextualSurahSuggestionService().suggestWith(
-      snapshot,
-      contextualInputs,
-    );
-    final active = const SurahOperationalOrderService().order(
-      snapshot,
-      recommendations: suggestions,
-    );
+    final ordered = const SurahOperationalOrderService().order(snapshot);
+    // The batch drives the order and the ranks. It is a stored decision, so a
+    // marked surah keeps its position and simply renders as completed instead
+    // of dropping out and shrinking the block.
+    final batchIds = batch?.surahIds.toList() ?? const <String>[];
+    final positions = <String, int>{
+      for (var index = 0; index < batchIds.length; index += 1)
+        batchIds[index]: index,
+    };
+    final occurrences = <String, int>{
+      for (final entry in batch?.entries ?? const <RecommendationBatchEntry>[])
+        entry.surahId: entry.occurrence,
+    };
+    final active = <MasteredSurah>[
+      for (final surahId in batchIds)
+        ...ordered.where((surah) => surah.id == surahId),
+      ...ordered.where((surah) => !positions.containsKey(surah.id)),
+    ];
     if (active.isEmpty) {
       return Card(
         child: Padding(
@@ -1604,10 +1627,6 @@ final class _RotationContent extends StatelessWidget {
     final dueSurahCount = active
         .where((surah) => snapshot.remainingFor(surah.id) > 0)
         .length;
-    final ranks = <String, int>{
-      for (final suggestion in suggestions)
-        suggestion.surah.id: suggestion.recommendationRank,
-    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -1641,10 +1660,11 @@ final class _RotationContent extends StatelessWidget {
                   remaining: snapshot.remainingFor(active[index].id),
                   isBusy: busyIds.contains(active[index].id),
                   isEnabled: markingEnabled,
-                  recommendationRank: ranks[active[index].id],
-                  isRecitedInCurrentPart: contextualInputs
-                      .alreadyFilledInCurrentPartSurahIds
-                      .contains(active[index].id),
+                  recommendationRank: positions[active[index].id],
+                  occurrence: occurrences[active[index].id] ?? 1,
+                  isRecitedInCurrentPart: completedSurahIds.contains(
+                    active[index].id,
+                  ),
                   onMarkRequested: () => onMarkRequested(active[index]),
                   onAdvancedMarkRequested: active[index].rotationScheme.isSplit
                       ? null
@@ -1670,6 +1690,7 @@ final class _SurahRotationTile extends StatelessWidget {
     required this.isRecitedInCurrentPart,
     required this.onMarkRequested,
     required this.onAdvancedMarkRequested,
+    this.occurrence = 1,
   });
 
   final MasteredSurah surah;
@@ -1678,6 +1699,10 @@ final class _SurahRotationTile extends StatelessWidget {
   final bool isEnabled;
   final int? recommendationRank;
   final bool isRecitedInCurrentPart;
+
+  /// Second appearance in the current recommendation cycle, shown honestly as
+  /// `2×`. It never doubles a recitation event or affects statistics.
+  final int occurrence;
   final VoidCallback onMarkRequested;
   final VoidCallback? onAdvancedMarkRequested;
 
@@ -1719,7 +1744,18 @@ final class _SurahRotationTile extends StatelessWidget {
       title: Row(
         children: <Widget>[
           if (recommendationRank != null) ...<Widget>[
-            RecommendationRankBadge(rank: recommendationRank! + 1),
+            RecommendationRankBadge(
+              rank: recommendationRank! + 1,
+              isCompleted: isRecitedInCurrentPart,
+            ),
+            if (occurrence > 1) ...<Widget>[
+              const SizedBox(width: 4),
+              Text(
+                '$occurrence×',
+                key: ValueKey<String>('recommendation-repeat-${surah.id}'),
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
             const SizedBox(width: 8),
           ],
           Flexible(

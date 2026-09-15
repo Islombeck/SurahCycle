@@ -1413,6 +1413,11 @@ void main() {
     await fixture.pumpApp(tester);
     await _waitForMarkControl(tester, 'surah-a');
 
+    // The batch is now read from storage, so it arrives a frame or two later.
+    await _pumpUntil(
+      tester,
+      () async => _recommendationBadge('surah-a').evaluate().isNotEmpty,
+    );
     expect(_dueCountText(tester), contains('2'));
     expect(_recommendationBadge('surah-a'), findsOneWidget);
     expect(_recommendationBadge('surah-b'), findsOneWidget);
@@ -1420,10 +1425,14 @@ void main() {
     await _tapMarkAndWait(tester, fixture, 'surah-a', expectedEvents: 1);
     await _pumpUntil(
       tester,
-      () async => _recommendationBadge('surah-a').evaluate().isEmpty,
+      () async => _dueCountText(tester)?.contains('1') ?? false,
     );
     expect(_dueCountText(tester), contains('1'));
-    expect(_recommendationBadge('surah-a'), findsNothing);
+    expect(
+      _recommendationBadge('surah-a'),
+      findsOneWidget,
+      reason: 'a marked surah keeps its batch position instead of vanishing',
+    );
     expect(_recommendationBadge('surah-b'), findsOneWidget);
     expect(_markIcon('surah-a', Icons.check), findsOneWidget);
 

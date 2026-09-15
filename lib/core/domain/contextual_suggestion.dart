@@ -18,6 +18,41 @@ final class ContextualRecommendationInputs {
   final Set<String> alreadyFilledInCurrentPartSurahIds;
   final Map<String, DateTime> lastUsedInExactPart;
   final Map<String, DateTime> lastUsedInPrayerType;
+
+  /// Value equality matters here: this is rebuilt from several streams, and
+  /// without it every unrelated emission would look like a change and force
+  /// dependents — including the recommendation batch — to rebuild and
+  /// resubscribe needlessly.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ContextualRecommendationInputs &&
+          _sameSet(
+            alreadyFilledInCurrentPartSurahIds,
+            other.alreadyFilledInCurrentPartSurahIds,
+          ) &&
+          _sameMap(lastUsedInExactPart, other.lastUsedInExactPart) &&
+          _sameMap(lastUsedInPrayerType, other.lastUsedInPrayerType);
+
+  @override
+  int get hashCode => Object.hash(
+    alreadyFilledInCurrentPartSurahIds.length,
+    lastUsedInExactPart.length,
+    lastUsedInPrayerType.length,
+  );
+}
+
+bool _sameSet(Set<String> left, Set<String> right) =>
+    identical(left, right) ||
+    (left.length == right.length && left.containsAll(right));
+
+bool _sameMap(Map<String, DateTime> left, Map<String, DateTime> right) {
+  if (identical(left, right)) return true;
+  if (left.length != right.length) return false;
+  for (final entry in left.entries) {
+    if (right[entry.key] != entry.value) return false;
+  }
+  return true;
 }
 
 /// Ranks due, rotation-eligible surahs for one specific prayer/part.
