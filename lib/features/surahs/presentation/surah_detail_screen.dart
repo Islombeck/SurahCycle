@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/app_providers.dart';
 import '../../../app/localization_extensions.dart';
 import '../../../core/domain/domain.dart';
+import '../../learning/application/recall_controller.dart';
+import '../../learning/presentation/recall_range_sheet.dart';
+import '../../learning/presentation/recall_screen.dart';
 
 final class SurahDetailScreen extends ConsumerStatefulWidget {
   const SurahDetailScreen({required this.surahId, super.key});
@@ -140,9 +143,48 @@ final class _SurahDetailScreenState extends ConsumerState<SurahDetailScreen> {
                     : const Icon(Icons.call_split),
                 label: Text(context.l10n.manualBoundaries),
               ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                key: const ValueKey<String>('surah-recall-start'),
+                onPressed: _busy ? null : () => _startRecall(surah),
+                icon: const Icon(Icons.visibility_off_outlined),
+                label: Text(context.l10n.recallStartAction),
+              ),
+              _RecallSummaryLine(surahId: surah.id),
             ],
           );
         },
+      ),
+    );
+  }
+
+  /// Checks a mastered surah from memory. The whole surah is the default
+  /// range, since there is no learning stage to inherit here.
+  Future<void> _startRecall(MasteredSurah surah) async {
+    final range = await showRecallRangeSheet(
+      context: context,
+      ayahCount: surah.surah.ayahCount,
+      initialStart: 1,
+      initialEnd: surah.surah.ayahCount,
+    );
+    if (range == null || !mounted) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => RecallScreen(
+          request: RecallRequest(
+            surahId: surah.id,
+            surahNumber: surah.surah.surahNumber,
+            surahAyahCount: surah.surah.ayahCount,
+            ayahStart: range.start,
+            ayahEnd: range.end,
+            // A mastered surah is no longer in a learning cycle; the journal
+            // still needs a cycle, so the first one stands for "after
+            // mastery".
+            learningCycle: 1,
+            source: RecallSource.surah,
+          ),
+          surahTitle: surah.surah.displayName,
+        ),
       ),
     );
   }
@@ -207,6 +249,42 @@ final class _SurahDetailScreenState extends ConsumerState<SurahDetailScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+}
+
+/// Says out loud what the memory checks did, including the one effect they
+/// have on the review order. Nothing about recall should be a hidden score.
+final class _RecallSummaryLine extends ConsumerWidget {
+  const _RecallSummaryLine({required this.surahId});
+
+  final String surahId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = ref.watch(recallSummariesProvider).valueOrNull?[surahId];
+    if (summary == null || summary.total == 0) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            context.l10n.recallSurahSummary(
+              summary.recalled,
+              summary.imperfect,
+            ),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (summary.needsReview) ...<Widget>[
+            const SizedBox(height: 4),
+            Text(
+              context.l10n.recallPriorityNote,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

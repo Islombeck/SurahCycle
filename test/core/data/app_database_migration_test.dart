@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:drift/native.dart';
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:murajaah/core/data/data.dart';
@@ -7,7 +10,7 @@ import '../../generated_migrations/schema.dart';
 
 void main() {
   test(
-    'v1 to v5 preserves every legacy table and backfills v5 semantics',
+    'v1 to v6 preserves every legacy table and backfills v5 semantics',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(1);
@@ -18,25 +21,25 @@ void main() {
       final migrationDatabase = AppDatabase(schema.newConnection());
       await verifier.migrateAndValidate(
         migrationDatabase,
-        5,
+        6,
         // Runtime-only performance indexes are intentionally absent from the
         // generated Drift schema. Old tables are checked explicitly below.
         options: const ValidationOptions(),
       );
 
-      expect(migrationDatabase.schemaVersion, 5);
+      expect(migrationDatabase.schemaVersion, 6);
       expect(
         await migrationDatabase
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        5,
+        6,
       );
       expect(
         await migrationDatabase.customSelect('PRAGMA foreign_key_check').get(),
         isEmpty,
       );
-      await _expectVersionFiveScaffold(migrationDatabase, <String>{
+      await _expectVersionSixScaffold(migrationDatabase, <String>{
         'legacy-live-1',
         'legacy-deleted',
         'legacy-live-2',
@@ -516,7 +519,7 @@ void main() {
     },
   );
 
-  test('v2 to v5 preserves four-part state and accepts a fifth part', () async {
+  test('v2 to v6 preserves four-part state and accepts a fifth part', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(2);
     final raw = schema.rawDatabase;
@@ -530,23 +533,23 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      5,
+      6,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 5);
+    expect(database.schemaVersion, 6);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      5,
+      6,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
       isEmpty,
     );
-    await _expectVersionFiveScaffold(database, <String>{
+    await _expectVersionSixScaffold(database, <String>{
       'v2-live',
       'v2-deleted',
     });
@@ -927,7 +930,7 @@ void main() {
     );
   });
 
-  test('v3 to v5 preserves all data and backfills generic learning', () async {
+  test('v3 to v6 preserves all data and backfills generic learning', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(3);
     final raw = schema.rawDatabase;
@@ -941,23 +944,23 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      5,
+      6,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 5);
+    expect(database.schemaVersion, 6);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      5,
+      6,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
       isEmpty,
     );
-    await _expectVersionFiveScaffold(database, <String>{
+    await _expectVersionSixScaffold(database, <String>{
       'v2-live',
       'v2-deleted',
     });
@@ -1245,7 +1248,7 @@ void main() {
     expect(await database.select(database.rotationSchemes).get(), hasLength(1));
   });
 
-  test('v4 to v5 preserves all legacy rows and relationships', () async {
+  test('v4 to v6 preserves all legacy rows and relationships', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(4);
     final raw = schema.rawDatabase;
@@ -1259,23 +1262,23 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      5,
+      6,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 5);
+    expect(database.schemaVersion, 6);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      5,
+      6,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
       isEmpty,
     );
-    await _expectVersionFiveScaffold(database, <String>{'v4-event'});
+    await _expectVersionSixScaffold(database, <String>{'v4-event'});
 
     final metadata = await database.select(database.surahMetadata).getSingle();
     expect(
@@ -1524,6 +1527,237 @@ void main() {
       VALUES ('invalid-jumuah-qada', 'jumuah', 1, 1)
     ''');
   });
+
+  test(
+    'v5 to v6 keeps the routine scaffold and adds the recall journal',
+    () async {
+      final verifier = SchemaVerifier(GeneratedHelper());
+      final schema = await verifier.schemaAt(5);
+      final raw = schema.rawDatabase;
+      raw.execute('PRAGMA foreign_keys = ON');
+      _seedVersionFive(raw);
+
+      final database = AppDatabase(schema.newConnection());
+      addTearDown(() async {
+        await database.close();
+        schema.close();
+      });
+      await verifier.migrateAndValidate(
+        database,
+        6,
+        options: const ValidationOptions(),
+      );
+
+      expect(database.schemaVersion, 6);
+      expect(
+        await database
+            .customSelect('PRAGMA user_version')
+            .map((row) => row.read<int>('user_version'))
+            .getSingle(),
+        6,
+      );
+      expect(
+        await database.customSelect('PRAGMA foreign_key_check').get(),
+        isEmpty,
+      );
+
+      // Everything the user configured in v5 has to survive untouched.
+      final template = await (database.select(
+        database.prayerRoutineTemplates,
+      )..where((row) => row.prayerType.equals('witr'))).getSingle();
+      expect(
+        <Object?>[
+          template.id,
+          template.displayName,
+          template.enabled,
+          template.revision,
+        ],
+        <Object?>['routine:witr', 'Witr', true, 4],
+      );
+      final partTemplate = await database
+          .select(database.prayerRoutinePartTemplates)
+          .getSingle();
+      expect(
+        <Object?>[
+          partTemplate.id,
+          partTemplate.routineTemplateId,
+          partTemplate.stableKey,
+          partTemplate.orderIndex,
+          partTemplate.kind,
+          partTemplate.customLabel,
+          partTemplate.rakaatCount,
+          partTemplate.requiredSurahSlots,
+          partTemplate.allowsFollowingImam,
+          partTemplate.defaultCompletionMode,
+        ],
+        <Object?>[
+          'v5-part-template',
+          'routine:witr',
+          'witr',
+          0,
+          'witr',
+          null,
+          3,
+          2,
+          false,
+          'recitations',
+        ],
+      );
+      final sessionPart = await database
+          .select(database.prayerSessionParts)
+          .getSingle();
+      expect(
+        <Object?>[
+          sessionPart.id,
+          sessionPart.prayerSessionId,
+          sessionPart.sourceTemplatePartId,
+          sessionPart.templateRevision,
+          sessionPart.stableKey,
+          sessionPart.orderIndex,
+          sessionPart.label,
+          sessionPart.kind,
+          sessionPart.rakaatCount,
+          sessionPart.requiredSurahSlots,
+          sessionPart.allowsFollowingImam,
+          sessionPart.completionMode,
+          sessionPart.completedAtUtc?.toUtc(),
+        ],
+        <Object?>[
+          'v5-session-part',
+          'v5-session',
+          'v5-part-template',
+          4,
+          'witr',
+          0,
+          'Witr',
+          'witr',
+          3,
+          2,
+          false,
+          'recitations',
+          _utc(3),
+        ],
+      );
+      final event = await database
+          .select(database.recitationEvents)
+          .getSingle();
+      expect(
+        <Object?>[
+          event.id,
+          event.prayerSessionId,
+          event.prayerSessionPartId,
+          event.slotIndex,
+          event.prayerType,
+          event.isQada,
+        ],
+        <Object?>['v5-event', 'v5-session', 'v5-session-part', 1, 'witr', true],
+      );
+      final setting = await database.select(database.appSettings).getSingle();
+      expect(setting.key, 'v5-setting');
+      expect(setting.value, 'preserved');
+
+      // The new journal arrives empty and accepts append-only writes.
+      expect(await database.select(database.recallAttempts).get(), isEmpty);
+      await database.customStatement('''
+      INSERT INTO recall_attempts
+        (id, surah_id, ayah_start, ayah_end, learning_cycle, result,
+         created_at_utc, local_date, source)
+      VALUES ('recall-1', 'v5-surah', 2, 2, 1, 'recalledWithMistake',
+              ${_encoded(_utc(7))}, '2026-08-24', 'learning')
+    ''');
+      final attempt = await database
+          .select(database.recallAttempts)
+          .getSingle();
+      expect(
+        <Object?>[
+          attempt.id,
+          attempt.surahId,
+          attempt.ayahStart,
+          attempt.ayahEnd,
+          attempt.learningCycle,
+          attempt.result,
+          attempt.createdAtUtc.toUtc(),
+          attempt.localDate,
+          attempt.source,
+        ],
+        <Object?>[
+          'recall-1',
+          'v5-surah',
+          2,
+          2,
+          1,
+          'recalledWithMistake',
+          _utc(7),
+          '2026-08-24',
+          'learning',
+        ],
+      );
+      expect(attempt.sequence, greaterThan(0));
+
+      // The table's own guards, so a corrupt row cannot enter the journal.
+      await _expectConstraint(database, '''
+      INSERT INTO recall_attempts
+        (id, surah_id, ayah_start, ayah_end, result, created_at_utc,
+         local_date, source)
+      VALUES ('recall-bad-result', 'v5-surah', 1, 1, 'perfect', 1,
+              '2026-08-24', 'learning')
+    ''');
+      await _expectConstraint(database, '''
+      INSERT INTO recall_attempts
+        (id, surah_id, ayah_start, ayah_end, result, created_at_utc,
+         local_date, source)
+      VALUES ('recall-bad-range', 'v5-surah', 5, 2, 'recalled', 1,
+              '2026-08-24', 'learning')
+    ''');
+      await _expectConstraint(database, '''
+      INSERT INTO recall_attempts
+        (id, surah_id, ayah_start, ayah_end, result, created_at_utc,
+         local_date, source)
+      VALUES ('recall-bad-source', 'v5-surah', 1, 1, 'recalled', 1,
+              '2026-08-24', 'widget')
+    ''');
+      await _expectConstraint(database, '''
+      INSERT INTO recall_attempts
+        (id, surah_id, ayah_start, ayah_end, result, created_at_utc,
+         local_date, source)
+      VALUES ('recall-orphan', 'missing-surah', 1, 1, 'recalled', 1,
+              '2026-08-24', 'learning')
+    ''');
+      await _expectConstraint(database, '''
+      INSERT INTO recall_attempts
+        (id, surah_id, ayah_start, ayah_end, result, created_at_utc,
+         local_date, source)
+      VALUES ('recall-1', 'v5-surah', 1, 1, 'recalled', 1,
+              '2026-08-24', 'learning')
+    ''');
+      expect(
+        await database.customSelect('PRAGMA foreign_key_check').get(),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
+    'a database from a newer app version is refused, not downgraded',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('murajaah-v6-');
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}/murajaah.sqlite');
+
+      final created = AppDatabase(NativeDatabase(file));
+      await created.customStatement('PRAGMA user_version = 7');
+      await created.close();
+
+      // Opening someone else's future schema must fail loudly. Silently running
+      // v6 code against a v7 file would corrupt data we cannot recover.
+      final reopened = AppDatabase(NativeDatabase(file));
+      addTearDown(reopened.close);
+      await expectLater(
+        reopened.select(reopened.appSettings).get(),
+        throwsA(isA<StateError>()),
+      );
+    },
+  );
 }
 
 DateTime _utc(int minute) => DateTime.utc(2026, 8, 24, 10, minute);
@@ -2092,10 +2326,155 @@ void _seedVersionFour(dynamic raw) {
   );
 }
 
-Future<void> _expectVersionFiveScaffold(
+void _seedVersionFive(dynamic raw) {
+  raw.execute(
+    'INSERT INTO surah_metadata '
+    '(id, surah_number, official_name, ayah_count, source_id, source_version) '
+    'VALUES (?, ?, ?, ?, ?, ?)',
+    <Object?>['v5-surah', 4, 'V5 Surah', 9, 'v5-source', 'v5'],
+  );
+  raw.execute(
+    'INSERT INTO mastered_surahs '
+    '(surah_id, is_currently_mastered, is_active, has_entered_rotation, '
+    'activation_baseline_score, cached_rotation_score, '
+    'cached_total_recitations, cached_last_used_at_utc, alias, display_order) '
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>['v5-surah', 1, 1, 1, 2, 5, 3, _encoded(_utc(1)), 'V5 alias', 2],
+  );
+  raw.execute(
+    'INSERT INTO rotation_states '
+    '(singleton_id, rotation_target, last_journal_sequence, '
+    'projection_version) VALUES (?, ?, ?, ?)',
+    <Object?>[1, 8, 1, 2],
+  );
+  raw.execute(
+    'INSERT INTO rotation_schemes '
+    '(id, surah_id, version, ayah_count_snapshot, baseline_score, '
+    'baseline_total_recitations, baseline_last_used_at_utc, '
+    'resets_rotation_baseline, activated_journal_sequence, '
+    'superseded_journal_sequence) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>['v5-scheme', 'v5-surah', 1, 9, 2, 0, null, 0, 0, null],
+  );
+  raw.execute(
+    'INSERT INTO rotation_parts '
+    '(id, scheme_id, ordinal, start_ayah, end_ayah, cached_score, '
+    'cached_recitation_count, cached_last_used_at_utc) '
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>['v5-part', 'v5-scheme', 1, 1, 9, 5, 3, _encoded(_utc(1))],
+  );
+  // The v5 routine scaffold, with a real edited template revision.
+  for (final type in <String>[
+    'fajr',
+    'dhuhr',
+    'jumuah',
+    'asr',
+    'maghrib',
+    'isha',
+    'witr',
+    'nafl',
+  ]) {
+    raw.execute(
+      'INSERT INTO prayer_routine_templates '
+      '(id, prayer_type, display_name, enabled, revision) '
+      'VALUES (?, ?, ?, ?, ?)',
+      <Object?>[
+        'routine:$type',
+        type,
+        type == 'witr' ? 'Witr' : type,
+        1,
+        type == 'witr' ? 4 : 1,
+      ],
+    );
+  }
+  raw.execute(
+    'INSERT INTO prayer_routine_part_templates '
+    '(id, routine_template_id, stable_key, order_index, kind, custom_label, '
+    'rakaat_count, required_surah_slots, allows_following_imam, '
+    'default_completion_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>[
+      'v5-part-template',
+      'routine:witr',
+      'witr',
+      0,
+      'witr',
+      null,
+      3,
+      2,
+      0,
+      'recitations',
+    ],
+  );
+  raw.execute(
+    'INSERT INTO prayer_sessions '
+    '(id, prayer_type, is_qada, started_at_utc, local_date) '
+    'VALUES (?, ?, ?, ?, ?)',
+    <Object?>['v5-session', 'witr', 1, _encoded(_utc(2)), '2026-08-24'],
+  );
+  raw.execute(
+    'INSERT INTO prayer_session_parts '
+    '(id, prayer_session_id, source_template_part_id, template_revision, '
+    'stable_key, order_index, label, kind, rakaat_count, '
+    'required_surah_slots, allows_following_imam, completion_mode, '
+    'completed_at_utc) VALUES (${List<String>.filled(13, '?').join(', ')})',
+    <Object?>[
+      'v5-session-part',
+      'v5-session',
+      'v5-part-template',
+      4,
+      'witr',
+      0,
+      'Witr',
+      'witr',
+      3,
+      2,
+      0,
+      'recitations',
+      _encoded(_utc(3)),
+    ],
+  );
+  raw.execute(
+    'INSERT INTO recitation_events '
+    '(id, journal_sequence, surah_id, rotation_scheme_id, rakaat_span_count, '
+    'prayer_session_id, prayer_session_part_id, slot_index, created_at_utc, '
+    'local_date, prayer_type, is_qada, deleted_at_utc) '
+    'VALUES (${List<String>.filled(13, '?').join(', ')})',
+    <Object?>[
+      'v5-event',
+      1,
+      'v5-surah',
+      'v5-scheme',
+      1,
+      'v5-session',
+      'v5-session-part',
+      1,
+      _encoded(_utc(3)),
+      '2026-08-24',
+      'witr',
+      1,
+      null,
+    ],
+  );
+  raw.execute(
+    'INSERT INTO recitation_event_parts (event_id, scheme_id, part_id) '
+    'VALUES (?, ?, ?)',
+    <Object?>['v5-event', 'v5-scheme', 'v5-part'],
+  );
+  raw.execute(
+    'INSERT INTO app_settings (key, value, value_type, updated_at_utc) '
+    'VALUES (?, ?, ?, ?)',
+    <Object?>['v5-setting', 'preserved', 'string', _encoded(_utc(6))],
+  );
+}
+
+Future<void> _expectVersionSixScaffold(
   AppDatabase database,
   Set<String> legacyEventIds,
 ) async {
+  // v6 adds the recall journal and backfills nothing: a recall attempt is a
+  // statement about what the user remembered, and inventing one would be a
+  // lie about their memory.
+  expect(await database.select(database.recallAttempts).get(), isEmpty);
+
   final templates = await database.select(database.prayerRoutineTemplates).get()
     ..sort((left, right) => left.prayerType.compareTo(right.prayerType));
   expect(

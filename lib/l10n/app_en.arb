@@ -291,4 +291,32 @@
   ,"returnToAutomaticPrayer": "Back to automatic"
   ,"routineEditFailed": "Could not save the prayer routine change"
   ,"routineEditConflict": "The prayer routine changed. The current state is shown — please repeat the action."
+  ,"recallModeTitle": "Memory check"
+  ,"recallStartAction": "Check from memory"
+  ,"recallRangeTitle": "Which ayahs?"
+  ,"recallRangeFrom": "From ayah"
+  ,"recallRangeTo": "To ayah"
+  ,"recallRangeInvalid": "The last ayah cannot come before the first."
+  ,"recallBegin": "Begin"
+  ,"recallHiddenTitle": "Ayah {number}"
+  ,"@recallHiddenTitle": {"placeholders": {"number": {"type": "int"}}}
+  ,"recallHiddenHint": "Recite it from memory, then open the text."
+  ,"recallReveal": "Show the ayah"
+  ,"recallResultRecalled": "Recalled"
+  ,"recallResultWithMistake": "With a mistake"
+  ,"recallResultNotRecalled": "Did not recall"
+  ,"recallSkip": "Next"
+  ,"recallProgress": "{done} of {total}"
+  ,"@recallProgress": {"placeholders": {"done": {"type": "int"}, "total": {"type": "int"}}}
+  ,"recallFinishedTitle": "Check complete"
+  ,"recallFinishedBody": "Recalled: {recalled} · With a mistake: {withMistake} · Did not recall: {notRecalled}"
+  ,"@recallFinishedBody": {"placeholders": {"recalled": {"type": "int"}, "withMistake": {"type": "int"}, "notRecalled": {"type": "int"}}}
+  ,"recallSelfAssessment": "You grade yourself — the app does not listen to or check your recitation."
+  ,"recallPriorityNote": "Ayahs you marked as a mistake move up in review suggestions. Nothing else changes."
+  ,"recallSaveFailed": "Could not save the result"
+  ,"recallClose": "Done"
+  ,"recallHistoryTitle": "Memory checks"
+  ,"recallNoHistory": "No checks yet."
+  ,"recallSurahSummary": "{recalled} recalled · {imperfect} to revisit"
+  ,"@recallSurahSummary": {"placeholders": {"recalled": {"type": "int"}, "imperfect": {"type": "int"}}}
 }

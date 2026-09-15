@@ -4,6 +4,7 @@ export 'repositories/learning_repository.dart';
 export 'repositories/prayer_repository.dart';
 export 'repositories/prayer_routine_repository.dart';
 export 'repositories/quran_cache_repository.dart';
+export 'repositories/recall_repository.dart';
 export 'repositories/recitation_repository.dart';
 export 'repositories/recommendation_batch_repository.dart';
 export 'repositories/settings_repository.dart';

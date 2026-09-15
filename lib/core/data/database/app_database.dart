@@ -495,6 +495,40 @@ class LearningEvents extends Table {
   ];
 }
 
+@DataClassName('RecallAttemptRow')
+class RecallAttempts extends Table {
+  @override
+  String get tableName => 'recall_attempts';
+
+  TextColumn get id => text()();
+  IntColumn get sequence => integer().autoIncrement()();
+  TextColumn get surahId =>
+      text().references(SurahMetadata, #id, onDelete: KeyAction.restrict)();
+  IntColumn get ayahStart => integer()();
+  IntColumn get ayahEnd => integer()();
+  IntColumn get learningCycle =>
+      integer().withDefault(const Constant<int>(1))();
+  TextColumn get result => text()();
+  DateTimeColumn get createdAtUtc => dateTime()();
+  TextColumn get localDate => text()();
+  TextColumn get source => text()();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => <Set<Column<Object>>>[
+    <Column<Object>>{id},
+  ];
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK (length(id) > 0)',
+    'CHECK (ayah_start > 0)',
+    'CHECK (ayah_end >= ayah_start)',
+    'CHECK (learning_cycle > 0)',
+    "CHECK (result IN ('recalled', 'recalledWithMistake', 'notRecalled'))",
+    "CHECK (source IN ('learning', 'surah'))",
+  ];
+}
+
 @DataClassName('AppSettingRow')
 class AppSettings extends Table {
   @override
@@ -530,6 +564,7 @@ class AppSettings extends Table {
     RotationAdjustments,
     LearningSurahs,
     LearningEvents,
+    RecallAttempts,
     AppSettings,
   ],
 )
@@ -538,7 +573,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'murajaah_user'));
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -547,12 +582,13 @@ class AppDatabase extends _$AppDatabase {
       await _createVersionTwoIndexes();
       await _createVersionFourIndexesAndGuards();
       await _createVersionFiveIndexes();
+      await _createVersionSixIndexes();
       await _ensureEmptyRoutineTemplates();
       await _ensureRotationSingleton();
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
       if (from == to) return;
-      if (from < 1 || from > 4 || to != 5) {
+      if (from < 1 || from > 5 || to != 6) {
         throw StateError('Unsupported database migration from $from to $to.');
       }
       if (from < 2) {
@@ -567,11 +603,15 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) {
         await _migrateVersionFourToFive(migrator, sourceVersion: from);
       }
+      if (from < 6) {
+        await _migrateVersionFiveToSix(migrator);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
       await _createVersionFourIndexesAndGuards();
       await _createVersionFiveIndexes();
+      await _createVersionSixIndexes();
       await _ensureRotationSingleton();
       await _ensureEmptyRoutineTemplates();
     },
@@ -672,6 +712,34 @@ class AppDatabase extends _$AppDatabase {
       'WHERE prayer_session_part_id IS NOT NULL AND slot_index IS NOT NULL '
       'AND deleted_at_utc IS NULL',
     );
+  }
+
+  Future<void> _createVersionSixIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_recall_attempts_surah_sequence '
+      'ON recall_attempts (surah_id, sequence)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_recall_attempts_date '
+      'ON recall_attempts (local_date, sequence)',
+    );
+  }
+
+  /// Adds the append-only recall journal. Nothing is backfilled: recall
+  /// attempts are a new kind of fact, and inventing historical ones would
+  /// misreport how well the user actually remembered anything.
+  Future<void> _migrateVersionFiveToSix(Migrator migrator) async {
+    if (!await _tableExists('recall_attempts')) {
+      await migrator.createTable(recallAttempts);
+    }
+    await _createVersionSixIndexes();
+    final violations = await customSelect('PRAGMA foreign_key_check').get();
+    if (violations.isNotEmpty) {
+      throw StateError(
+        'Foreign-key violations after v5 to v6 migration: '
+        '${violations.length}.',
+      );
+    }
   }
 
   Future<void> _ensureEmptyRoutineTemplates() async {

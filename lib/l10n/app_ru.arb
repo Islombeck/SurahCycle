@@ -297,4 +297,32 @@
   ,"returnToAutomaticPrayer": "Вернуться к авто"
   ,"routineEditFailed": "Не удалось сохранить изменение порядка намаза"
   ,"routineEditConflict": "Порядок намаза изменился. Показано актуальное состояние — повторите действие."
+  ,"recallModeTitle": "Проверка по памяти"
+  ,"recallStartAction": "Проверить по памяти"
+  ,"recallRangeTitle": "Какие аяты?"
+  ,"recallRangeFrom": "С аята"
+  ,"recallRangeTo": "По аят"
+  ,"recallRangeInvalid": "Последний аят не может быть раньше первого."
+  ,"recallBegin": "Начать"
+  ,"recallHiddenTitle": "Аят {number}"
+  ,"@recallHiddenTitle": {"placeholders": {"number": {"type": "int"}}}
+  ,"recallHiddenHint": "Прочитайте его по памяти, затем откройте текст."
+  ,"recallReveal": "Показать аят"
+  ,"recallResultRecalled": "Вспомнил"
+  ,"recallResultWithMistake": "С ошибкой"
+  ,"recallResultNotRecalled": "Не вспомнил"
+  ,"recallSkip": "Дальше"
+  ,"recallProgress": "{done} из {total}"
+  ,"@recallProgress": {"placeholders": {"done": {"type": "int"}, "total": {"type": "int"}}}
+  ,"recallFinishedTitle": "Проверка завершена"
+  ,"recallFinishedBody": "Вспомнил: {recalled} · С ошибкой: {withMistake} · Не вспомнил: {notRecalled}"
+  ,"@recallFinishedBody": {"placeholders": {"recalled": {"type": "int"}, "withMistake": {"type": "int"}, "notRecalled": {"type": "int"}}}
+  ,"recallSelfAssessment": "Оценку ставите вы сами — приложение не слушает и не проверяет чтение."
+  ,"recallPriorityNote": "Аяты, отмеченные как ошибка, поднимаются в предложениях для повторения. Больше ничего не меняется."
+  ,"recallSaveFailed": "Не удалось сохранить результат"
+  ,"recallClose": "Готово"
+  ,"recallHistoryTitle": "Проверки по памяти"
+  ,"recallNoHistory": "Проверок пока нет."
+  ,"recallSurahSummary": "{recalled} вспомнил · {imperfect} повторить"
+  ,"@recallSurahSummary": {"placeholders": {"recalled": {"type": "int"}, "imperfect": {"type": "int"}}}
 }

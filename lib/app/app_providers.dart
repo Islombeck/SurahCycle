@@ -11,6 +11,7 @@ import '../core/application/application.dart';
 import '../core/data/data.dart';
 import '../core/domain/domain.dart';
 import '../core/widgets/widgets.dart';
+import '../features/learning/application/recall_controller.dart';
 import '../features/quran/quran.dart';
 import '../features/prayer_times/prayer_times.dart';
 import '../features/settings/application/prayer_routine_editor.dart';
@@ -339,6 +340,35 @@ final learningRepositoryProvider = Provider<LearningRepository>(
   (ref) => LearningRepository(ref.watch(appDatabaseProvider)),
 );
 
+final recallRepositoryProvider = Provider<RecallRepository>(
+  (ref) => RecallRepository(ref.watch(appDatabaseProvider)),
+);
+
+/// Per-surah recall counts, used only to explain review priority to the user.
+final recallSummariesProvider = StreamProvider<Map<String, RecallSurahSummary>>(
+  (ref) => ref.watch(recallRepositoryProvider).watchSummaries(),
+);
+
+/// One running memory check. Disposed with its screen: an abandoned check
+/// leaves only the attempts that were actually graded.
+final recallControllerProvider = StateNotifierProvider.autoDispose
+    .family<RecallController, RecallRunState, RecallRequest>(
+      (ref, request) => RecallController(
+        session: RecallSession(
+          surahId: request.surahId,
+          surahNumber: request.surahNumber,
+          ayahStart: request.ayahStart,
+          ayahEnd: request.ayahEnd,
+        ),
+        repository: ref.watch(recallRepositoryProvider),
+        timeProvider: ref.watch(timeProviderProvider),
+        localDateProvider: ref.watch(localDateProvider),
+        uuid: ref.watch(uuidProvider),
+        learningCycle: request.learningCycle,
+        source: request.source,
+      ),
+    );
+
 final prayerRepositoryProvider = Provider<PrayerRepository>(
   (ref) => PrayerRepository(ref.watch(appDatabaseProvider)),
 );
@@ -655,9 +685,22 @@ final contextualRecommendationInputsProvider =
       ref,
       key,
     ) {
+      // Read before the early return: what a memory check said is true no
+      // matter which prayer part happens to be active.
+      final recallNeedsReview = <String>{
+        for (final summary
+            in ref.watch(recallSummariesProvider).valueOrNull?.values ??
+                const <RecallSurahSummary>[])
+          if (summary.needsReview) summary.surahId,
+      };
+
       final routine = ref.watch(currentPrayerRoutineProvider(key)).valueOrNull;
       final currentPart = routine?.currentPart?.part;
-      if (currentPart == null) return ContextualRecommendationInputs.empty;
+      if (currentPart == null) {
+        return ContextualRecommendationInputs(
+          recallNeedsReviewSurahIds: recallNeedsReview,
+        );
+      }
 
       final lastUsedInExactPart = ref
           .watch(
@@ -689,6 +732,7 @@ final contextualRecommendationInputsProvider =
         alreadyFilledInCurrentPartSurahIds: alreadyFilled,
         lastUsedInExactPart: lastUsedInExactPart ?? const <String, DateTime>{},
         lastUsedInPrayerType: lastUsedInPrayerType,
+        recallNeedsReviewSurahIds: recallNeedsReview,
       );
     });
 

@@ -8632,6 +8632,616 @@ class LearningEventsCompanion extends UpdateCompanion<LearningEventRow> {
   }
 }
 
+class $RecallAttemptsTable extends RecallAttempts
+    with TableInfo<$RecallAttemptsTable, RecallAttemptRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecallAttemptsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sequenceMeta = const VerificationMeta(
+    'sequence',
+  );
+  @override
+  late final GeneratedColumn<int> sequence = GeneratedColumn<int>(
+    'sequence',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _surahIdMeta = const VerificationMeta(
+    'surahId',
+  );
+  @override
+  late final GeneratedColumn<String> surahId = GeneratedColumn<String>(
+    'surah_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES surah_metadata (id) ON DELETE RESTRICT',
+    ),
+  );
+  static const VerificationMeta _ayahStartMeta = const VerificationMeta(
+    'ayahStart',
+  );
+  @override
+  late final GeneratedColumn<int> ayahStart = GeneratedColumn<int>(
+    'ayah_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ayahEndMeta = const VerificationMeta(
+    'ayahEnd',
+  );
+  @override
+  late final GeneratedColumn<int> ayahEnd = GeneratedColumn<int>(
+    'ayah_end',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _learningCycleMeta = const VerificationMeta(
+    'learningCycle',
+  );
+  @override
+  late final GeneratedColumn<int> learningCycle = GeneratedColumn<int>(
+    'learning_cycle',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant<int>(1),
+  );
+  static const VerificationMeta _resultMeta = const VerificationMeta('result');
+  @override
+  late final GeneratedColumn<String> result = GeneratedColumn<String>(
+    'result',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtUtcMeta = const VerificationMeta(
+    'createdAtUtc',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAtUtc = GeneratedColumn<DateTime>(
+    'created_at_utc',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localDateMeta = const VerificationMeta(
+    'localDate',
+  );
+  @override
+  late final GeneratedColumn<String> localDate = GeneratedColumn<String>(
+    'local_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sequence,
+    surahId,
+    ayahStart,
+    ayahEnd,
+    learningCycle,
+    result,
+    createdAtUtc,
+    localDate,
+    source,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recall_attempts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RecallAttemptRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('sequence')) {
+      context.handle(
+        _sequenceMeta,
+        sequence.isAcceptableOrUnknown(data['sequence']!, _sequenceMeta),
+      );
+    }
+    if (data.containsKey('surah_id')) {
+      context.handle(
+        _surahIdMeta,
+        surahId.isAcceptableOrUnknown(data['surah_id']!, _surahIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_surahIdMeta);
+    }
+    if (data.containsKey('ayah_start')) {
+      context.handle(
+        _ayahStartMeta,
+        ayahStart.isAcceptableOrUnknown(data['ayah_start']!, _ayahStartMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ayahStartMeta);
+    }
+    if (data.containsKey('ayah_end')) {
+      context.handle(
+        _ayahEndMeta,
+        ayahEnd.isAcceptableOrUnknown(data['ayah_end']!, _ayahEndMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ayahEndMeta);
+    }
+    if (data.containsKey('learning_cycle')) {
+      context.handle(
+        _learningCycleMeta,
+        learningCycle.isAcceptableOrUnknown(
+          data['learning_cycle']!,
+          _learningCycleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('result')) {
+      context.handle(
+        _resultMeta,
+        result.isAcceptableOrUnknown(data['result']!, _resultMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_resultMeta);
+    }
+    if (data.containsKey('created_at_utc')) {
+      context.handle(
+        _createdAtUtcMeta,
+        createdAtUtc.isAcceptableOrUnknown(
+          data['created_at_utc']!,
+          _createdAtUtcMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtUtcMeta);
+    }
+    if (data.containsKey('local_date')) {
+      context.handle(
+        _localDateMeta,
+        localDate.isAcceptableOrUnknown(data['local_date']!, _localDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_localDateMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sequence};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {id},
+  ];
+  @override
+  RecallAttemptRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RecallAttemptRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      sequence: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sequence'],
+      )!,
+      surahId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}surah_id'],
+      )!,
+      ayahStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ayah_start'],
+      )!,
+      ayahEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ayah_end'],
+      )!,
+      learningCycle: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}learning_cycle'],
+      )!,
+      result: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}result'],
+      )!,
+      createdAtUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at_utc'],
+      )!,
+      localDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_date'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+    );
+  }
+
+  @override
+  $RecallAttemptsTable createAlias(String alias) {
+    return $RecallAttemptsTable(attachedDatabase, alias);
+  }
+}
+
+class RecallAttemptRow extends DataClass
+    implements Insertable<RecallAttemptRow> {
+  final String id;
+  final int sequence;
+  final String surahId;
+  final int ayahStart;
+  final int ayahEnd;
+  final int learningCycle;
+  final String result;
+  final DateTime createdAtUtc;
+  final String localDate;
+  final String source;
+  const RecallAttemptRow({
+    required this.id,
+    required this.sequence,
+    required this.surahId,
+    required this.ayahStart,
+    required this.ayahEnd,
+    required this.learningCycle,
+    required this.result,
+    required this.createdAtUtc,
+    required this.localDate,
+    required this.source,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['sequence'] = Variable<int>(sequence);
+    map['surah_id'] = Variable<String>(surahId);
+    map['ayah_start'] = Variable<int>(ayahStart);
+    map['ayah_end'] = Variable<int>(ayahEnd);
+    map['learning_cycle'] = Variable<int>(learningCycle);
+    map['result'] = Variable<String>(result);
+    map['created_at_utc'] = Variable<DateTime>(createdAtUtc);
+    map['local_date'] = Variable<String>(localDate);
+    map['source'] = Variable<String>(source);
+    return map;
+  }
+
+  RecallAttemptsCompanion toCompanion(bool nullToAbsent) {
+    return RecallAttemptsCompanion(
+      id: Value(id),
+      sequence: Value(sequence),
+      surahId: Value(surahId),
+      ayahStart: Value(ayahStart),
+      ayahEnd: Value(ayahEnd),
+      learningCycle: Value(learningCycle),
+      result: Value(result),
+      createdAtUtc: Value(createdAtUtc),
+      localDate: Value(localDate),
+      source: Value(source),
+    );
+  }
+
+  factory RecallAttemptRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RecallAttemptRow(
+      id: serializer.fromJson<String>(json['id']),
+      sequence: serializer.fromJson<int>(json['sequence']),
+      surahId: serializer.fromJson<String>(json['surahId']),
+      ayahStart: serializer.fromJson<int>(json['ayahStart']),
+      ayahEnd: serializer.fromJson<int>(json['ayahEnd']),
+      learningCycle: serializer.fromJson<int>(json['learningCycle']),
+      result: serializer.fromJson<String>(json['result']),
+      createdAtUtc: serializer.fromJson<DateTime>(json['createdAtUtc']),
+      localDate: serializer.fromJson<String>(json['localDate']),
+      source: serializer.fromJson<String>(json['source']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'sequence': serializer.toJson<int>(sequence),
+      'surahId': serializer.toJson<String>(surahId),
+      'ayahStart': serializer.toJson<int>(ayahStart),
+      'ayahEnd': serializer.toJson<int>(ayahEnd),
+      'learningCycle': serializer.toJson<int>(learningCycle),
+      'result': serializer.toJson<String>(result),
+      'createdAtUtc': serializer.toJson<DateTime>(createdAtUtc),
+      'localDate': serializer.toJson<String>(localDate),
+      'source': serializer.toJson<String>(source),
+    };
+  }
+
+  RecallAttemptRow copyWith({
+    String? id,
+    int? sequence,
+    String? surahId,
+    int? ayahStart,
+    int? ayahEnd,
+    int? learningCycle,
+    String? result,
+    DateTime? createdAtUtc,
+    String? localDate,
+    String? source,
+  }) => RecallAttemptRow(
+    id: id ?? this.id,
+    sequence: sequence ?? this.sequence,
+    surahId: surahId ?? this.surahId,
+    ayahStart: ayahStart ?? this.ayahStart,
+    ayahEnd: ayahEnd ?? this.ayahEnd,
+    learningCycle: learningCycle ?? this.learningCycle,
+    result: result ?? this.result,
+    createdAtUtc: createdAtUtc ?? this.createdAtUtc,
+    localDate: localDate ?? this.localDate,
+    source: source ?? this.source,
+  );
+  RecallAttemptRow copyWithCompanion(RecallAttemptsCompanion data) {
+    return RecallAttemptRow(
+      id: data.id.present ? data.id.value : this.id,
+      sequence: data.sequence.present ? data.sequence.value : this.sequence,
+      surahId: data.surahId.present ? data.surahId.value : this.surahId,
+      ayahStart: data.ayahStart.present ? data.ayahStart.value : this.ayahStart,
+      ayahEnd: data.ayahEnd.present ? data.ayahEnd.value : this.ayahEnd,
+      learningCycle: data.learningCycle.present
+          ? data.learningCycle.value
+          : this.learningCycle,
+      result: data.result.present ? data.result.value : this.result,
+      createdAtUtc: data.createdAtUtc.present
+          ? data.createdAtUtc.value
+          : this.createdAtUtc,
+      localDate: data.localDate.present ? data.localDate.value : this.localDate,
+      source: data.source.present ? data.source.value : this.source,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecallAttemptRow(')
+          ..write('id: $id, ')
+          ..write('sequence: $sequence, ')
+          ..write('surahId: $surahId, ')
+          ..write('ayahStart: $ayahStart, ')
+          ..write('ayahEnd: $ayahEnd, ')
+          ..write('learningCycle: $learningCycle, ')
+          ..write('result: $result, ')
+          ..write('createdAtUtc: $createdAtUtc, ')
+          ..write('localDate: $localDate, ')
+          ..write('source: $source')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    sequence,
+    surahId,
+    ayahStart,
+    ayahEnd,
+    learningCycle,
+    result,
+    createdAtUtc,
+    localDate,
+    source,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RecallAttemptRow &&
+          other.id == this.id &&
+          other.sequence == this.sequence &&
+          other.surahId == this.surahId &&
+          other.ayahStart == this.ayahStart &&
+          other.ayahEnd == this.ayahEnd &&
+          other.learningCycle == this.learningCycle &&
+          other.result == this.result &&
+          other.createdAtUtc == this.createdAtUtc &&
+          other.localDate == this.localDate &&
+          other.source == this.source);
+}
+
+class RecallAttemptsCompanion extends UpdateCompanion<RecallAttemptRow> {
+  final Value<String> id;
+  final Value<int> sequence;
+  final Value<String> surahId;
+  final Value<int> ayahStart;
+  final Value<int> ayahEnd;
+  final Value<int> learningCycle;
+  final Value<String> result;
+  final Value<DateTime> createdAtUtc;
+  final Value<String> localDate;
+  final Value<String> source;
+  const RecallAttemptsCompanion({
+    this.id = const Value.absent(),
+    this.sequence = const Value.absent(),
+    this.surahId = const Value.absent(),
+    this.ayahStart = const Value.absent(),
+    this.ayahEnd = const Value.absent(),
+    this.learningCycle = const Value.absent(),
+    this.result = const Value.absent(),
+    this.createdAtUtc = const Value.absent(),
+    this.localDate = const Value.absent(),
+    this.source = const Value.absent(),
+  });
+  RecallAttemptsCompanion.insert({
+    required String id,
+    this.sequence = const Value.absent(),
+    required String surahId,
+    required int ayahStart,
+    required int ayahEnd,
+    this.learningCycle = const Value.absent(),
+    required String result,
+    required DateTime createdAtUtc,
+    required String localDate,
+    required String source,
+  }) : id = Value(id),
+       surahId = Value(surahId),
+       ayahStart = Value(ayahStart),
+       ayahEnd = Value(ayahEnd),
+       result = Value(result),
+       createdAtUtc = Value(createdAtUtc),
+       localDate = Value(localDate),
+       source = Value(source);
+  static Insertable<RecallAttemptRow> custom({
+    Expression<String>? id,
+    Expression<int>? sequence,
+    Expression<String>? surahId,
+    Expression<int>? ayahStart,
+    Expression<int>? ayahEnd,
+    Expression<int>? learningCycle,
+    Expression<String>? result,
+    Expression<DateTime>? createdAtUtc,
+    Expression<String>? localDate,
+    Expression<String>? source,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sequence != null) 'sequence': sequence,
+      if (surahId != null) 'surah_id': surahId,
+      if (ayahStart != null) 'ayah_start': ayahStart,
+      if (ayahEnd != null) 'ayah_end': ayahEnd,
+      if (learningCycle != null) 'learning_cycle': learningCycle,
+      if (result != null) 'result': result,
+      if (createdAtUtc != null) 'created_at_utc': createdAtUtc,
+      if (localDate != null) 'local_date': localDate,
+      if (source != null) 'source': source,
+    });
+  }
+
+  RecallAttemptsCompanion copyWith({
+    Value<String>? id,
+    Value<int>? sequence,
+    Value<String>? surahId,
+    Value<int>? ayahStart,
+    Value<int>? ayahEnd,
+    Value<int>? learningCycle,
+    Value<String>? result,
+    Value<DateTime>? createdAtUtc,
+    Value<String>? localDate,
+    Value<String>? source,
+  }) {
+    return RecallAttemptsCompanion(
+      id: id ?? this.id,
+      sequence: sequence ?? this.sequence,
+      surahId: surahId ?? this.surahId,
+      ayahStart: ayahStart ?? this.ayahStart,
+      ayahEnd: ayahEnd ?? this.ayahEnd,
+      learningCycle: learningCycle ?? this.learningCycle,
+      result: result ?? this.result,
+      createdAtUtc: createdAtUtc ?? this.createdAtUtc,
+      localDate: localDate ?? this.localDate,
+      source: source ?? this.source,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (sequence.present) {
+      map['sequence'] = Variable<int>(sequence.value);
+    }
+    if (surahId.present) {
+      map['surah_id'] = Variable<String>(surahId.value);
+    }
+    if (ayahStart.present) {
+      map['ayah_start'] = Variable<int>(ayahStart.value);
+    }
+    if (ayahEnd.present) {
+      map['ayah_end'] = Variable<int>(ayahEnd.value);
+    }
+    if (learningCycle.present) {
+      map['learning_cycle'] = Variable<int>(learningCycle.value);
+    }
+    if (result.present) {
+      map['result'] = Variable<String>(result.value);
+    }
+    if (createdAtUtc.present) {
+      map['created_at_utc'] = Variable<DateTime>(createdAtUtc.value);
+    }
+    if (localDate.present) {
+      map['local_date'] = Variable<String>(localDate.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecallAttemptsCompanion(')
+          ..write('id: $id, ')
+          ..write('sequence: $sequence, ')
+          ..write('surahId: $surahId, ')
+          ..write('ayahStart: $ayahStart, ')
+          ..write('ayahEnd: $ayahEnd, ')
+          ..write('learningCycle: $learningCycle, ')
+          ..write('result: $result, ')
+          ..write('createdAtUtc: $createdAtUtc, ')
+          ..write('localDate: $localDate, ')
+          ..write('source: $source')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AppSettingsTable extends AppSettings
     with TableInfo<$AppSettingsTable, AppSettingRow> {
   @override
@@ -8974,6 +9584,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $RotationAdjustmentsTable(this);
   late final $LearningSurahsTable learningSurahs = $LearningSurahsTable(this);
   late final $LearningEventsTable learningEvents = $LearningEventsTable(this);
+  late final $RecallAttemptsTable recallAttempts = $RecallAttemptsTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -8994,6 +9605,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     rotationAdjustments,
     learningSurahs,
     learningEvents,
+    recallAttempts,
     appSettings,
   ];
   @override
@@ -9110,6 +9722,24 @@ final class $$SurahMetadataTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$RecallAttemptsTable, List<RecallAttemptRow>>
+  _recallAttemptsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.recallAttempts,
+    aliasName: 'surah_metadata__id__recall_attempts__surah_id',
+  );
+
+  $$RecallAttemptsTableProcessedTableManager get recallAttemptsRefs {
+    final manager = $$RecallAttemptsTableTableManager(
+      $_db,
+      $_db.recallAttempts,
+    ).filter((f) => f.surahId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_recallAttemptsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$SurahMetadataTableFilterComposer
@@ -9192,6 +9822,31 @@ class $$SurahMetadataTableFilterComposer
           }) => $$LearningSurahsTableFilterComposer(
             $db: $db,
             $table: $db.learningSurahs,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> recallAttemptsRefs(
+    Expression<bool> Function($$RecallAttemptsTableFilterComposer f) f,
+  ) {
+    final $$RecallAttemptsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.recallAttempts,
+      getReferencedColumn: (t) => t.surahId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecallAttemptsTableFilterComposer(
+            $db: $db,
+            $table: $db.recallAttempts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -9324,6 +9979,31 @@ class $$SurahMetadataTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> recallAttemptsRefs<T extends Object>(
+    Expression<T> Function($$RecallAttemptsTableAnnotationComposer a) f,
+  ) {
+    final $$RecallAttemptsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.recallAttempts,
+      getReferencedColumn: (t) => t.surahId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecallAttemptsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.recallAttempts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$SurahMetadataTableTableManager
@@ -9342,6 +10022,7 @@ class $$SurahMetadataTableTableManager
           PrefetchHooks Function({
             bool masteredSurahsRefs,
             bool learningSurahsRefs,
+            bool recallAttemptsRefs,
           })
         > {
   $$SurahMetadataTableTableManager(_$AppDatabase db, $SurahMetadataTable table)
@@ -9400,12 +10081,17 @@ class $$SurahMetadataTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({masteredSurahsRefs = false, learningSurahsRefs = false}) {
+              ({
+                masteredSurahsRefs = false,
+                learningSurahsRefs = false,
+                recallAttemptsRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (masteredSurahsRefs) db.masteredSurahs,
                     if (learningSurahsRefs) db.learningSurahs,
+                    if (recallAttemptsRefs) db.recallAttempts,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -9452,6 +10138,27 @@ class $$SurahMetadataTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (recallAttemptsRefs)
+                        await $_getPrefetchedData<
+                          SurahMetadataRow,
+                          $SurahMetadataTable,
+                          RecallAttemptRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SurahMetadataTableReferences
+                              ._recallAttemptsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SurahMetadataTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).recallAttemptsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.surahId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -9472,7 +10179,11 @@ typedef $$SurahMetadataTableProcessedTableManager =
       $$SurahMetadataTableUpdateCompanionBuilder,
       (SurahMetadataRow, $$SurahMetadataTableReferences),
       SurahMetadataRow,
-      PrefetchHooks Function({bool masteredSurahsRefs, bool learningSurahsRefs})
+      PrefetchHooks Function({
+        bool masteredSurahsRefs,
+        bool learningSurahsRefs,
+        bool recallAttemptsRefs,
+      })
     >;
 typedef $$MasteredSurahsTableCreateCompanionBuilder =
     MasteredSurahsCompanion Function({
@@ -15020,6 +15731,424 @@ typedef $$LearningEventsTableProcessedTableManager =
       LearningEventRow,
       PrefetchHooks Function({bool learningSurahId})
     >;
+typedef $$RecallAttemptsTableCreateCompanionBuilder =
+    RecallAttemptsCompanion Function({
+      required String id,
+      Value<int> sequence,
+      required String surahId,
+      required int ayahStart,
+      required int ayahEnd,
+      Value<int> learningCycle,
+      required String result,
+      required DateTime createdAtUtc,
+      required String localDate,
+      required String source,
+    });
+typedef $$RecallAttemptsTableUpdateCompanionBuilder =
+    RecallAttemptsCompanion Function({
+      Value<String> id,
+      Value<int> sequence,
+      Value<String> surahId,
+      Value<int> ayahStart,
+      Value<int> ayahEnd,
+      Value<int> learningCycle,
+      Value<String> result,
+      Value<DateTime> createdAtUtc,
+      Value<String> localDate,
+      Value<String> source,
+    });
+
+final class $$RecallAttemptsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $RecallAttemptsTable, RecallAttemptRow> {
+  $$RecallAttemptsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SurahMetadataTable _surahIdTable(_$AppDatabase db) => db.surahMetadata
+      .createAlias('recall_attempts__surah_id__surah_metadata__id');
+
+  $$SurahMetadataTableProcessedTableManager get surahId {
+    final $_column = $_itemColumn<String>('surah_id')!;
+
+    final manager = $$SurahMetadataTableTableManager(
+      $_db,
+      $_db.surahMetadata,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_surahIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$RecallAttemptsTableFilterComposer
+    extends Composer<_$AppDatabase, $RecallAttemptsTable> {
+  $$RecallAttemptsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sequence => $composableBuilder(
+    column: $table.sequence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ayahStart => $composableBuilder(
+    column: $table.ayahStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ayahEnd => $composableBuilder(
+    column: $table.ayahEnd,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get learningCycle => $composableBuilder(
+    column: $table.learningCycle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get result => $composableBuilder(
+    column: $table.result,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAtUtc => $composableBuilder(
+    column: $table.createdAtUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localDate => $composableBuilder(
+    column: $table.localDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SurahMetadataTableFilterComposer get surahId {
+    final $$SurahMetadataTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.surahId,
+      referencedTable: $db.surahMetadata,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SurahMetadataTableFilterComposer(
+            $db: $db,
+            $table: $db.surahMetadata,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RecallAttemptsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RecallAttemptsTable> {
+  $$RecallAttemptsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sequence => $composableBuilder(
+    column: $table.sequence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ayahStart => $composableBuilder(
+    column: $table.ayahStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ayahEnd => $composableBuilder(
+    column: $table.ayahEnd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get learningCycle => $composableBuilder(
+    column: $table.learningCycle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get result => $composableBuilder(
+    column: $table.result,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAtUtc => $composableBuilder(
+    column: $table.createdAtUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localDate => $composableBuilder(
+    column: $table.localDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SurahMetadataTableOrderingComposer get surahId {
+    final $$SurahMetadataTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.surahId,
+      referencedTable: $db.surahMetadata,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SurahMetadataTableOrderingComposer(
+            $db: $db,
+            $table: $db.surahMetadata,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RecallAttemptsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RecallAttemptsTable> {
+  $$RecallAttemptsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get sequence =>
+      $composableBuilder(column: $table.sequence, builder: (column) => column);
+
+  GeneratedColumn<int> get ayahStart =>
+      $composableBuilder(column: $table.ayahStart, builder: (column) => column);
+
+  GeneratedColumn<int> get ayahEnd =>
+      $composableBuilder(column: $table.ayahEnd, builder: (column) => column);
+
+  GeneratedColumn<int> get learningCycle => $composableBuilder(
+    column: $table.learningCycle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get result =>
+      $composableBuilder(column: $table.result, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAtUtc => $composableBuilder(
+    column: $table.createdAtUtc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get localDate =>
+      $composableBuilder(column: $table.localDate, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  $$SurahMetadataTableAnnotationComposer get surahId {
+    final $$SurahMetadataTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.surahId,
+      referencedTable: $db.surahMetadata,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SurahMetadataTableAnnotationComposer(
+            $db: $db,
+            $table: $db.surahMetadata,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RecallAttemptsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RecallAttemptsTable,
+          RecallAttemptRow,
+          $$RecallAttemptsTableFilterComposer,
+          $$RecallAttemptsTableOrderingComposer,
+          $$RecallAttemptsTableAnnotationComposer,
+          $$RecallAttemptsTableCreateCompanionBuilder,
+          $$RecallAttemptsTableUpdateCompanionBuilder,
+          (RecallAttemptRow, $$RecallAttemptsTableReferences),
+          RecallAttemptRow,
+          PrefetchHooks Function({bool surahId})
+        > {
+  $$RecallAttemptsTableTableManager(
+    _$AppDatabase db,
+    $RecallAttemptsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RecallAttemptsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RecallAttemptsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RecallAttemptsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<int> sequence = const Value.absent(),
+                Value<String> surahId = const Value.absent(),
+                Value<int> ayahStart = const Value.absent(),
+                Value<int> ayahEnd = const Value.absent(),
+                Value<int> learningCycle = const Value.absent(),
+                Value<String> result = const Value.absent(),
+                Value<DateTime> createdAtUtc = const Value.absent(),
+                Value<String> localDate = const Value.absent(),
+                Value<String> source = const Value.absent(),
+              }) => RecallAttemptsCompanion(
+                id: id,
+                sequence: sequence,
+                surahId: surahId,
+                ayahStart: ayahStart,
+                ayahEnd: ayahEnd,
+                learningCycle: learningCycle,
+                result: result,
+                createdAtUtc: createdAtUtc,
+                localDate: localDate,
+                source: source,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<int> sequence = const Value.absent(),
+                required String surahId,
+                required int ayahStart,
+                required int ayahEnd,
+                Value<int> learningCycle = const Value.absent(),
+                required String result,
+                required DateTime createdAtUtc,
+                required String localDate,
+                required String source,
+              }) => RecallAttemptsCompanion.insert(
+                id: id,
+                sequence: sequence,
+                surahId: surahId,
+                ayahStart: ayahStart,
+                ayahEnd: ayahEnd,
+                learningCycle: learningCycle,
+                result: result,
+                createdAtUtc: createdAtUtc,
+                localDate: localDate,
+                source: source,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$RecallAttemptsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({surahId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (surahId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.surahId,
+                                referencedTable: $$RecallAttemptsTableReferences
+                                    ._surahIdTable(db),
+                                referencedColumn:
+                                    $$RecallAttemptsTableReferences
+                                        ._surahIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$RecallAttemptsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RecallAttemptsTable,
+      RecallAttemptRow,
+      $$RecallAttemptsTableFilterComposer,
+      $$RecallAttemptsTableOrderingComposer,
+      $$RecallAttemptsTableAnnotationComposer,
+      $$RecallAttemptsTableCreateCompanionBuilder,
+      $$RecallAttemptsTableUpdateCompanionBuilder,
+      (RecallAttemptRow, $$RecallAttemptsTableReferences),
+      RecallAttemptRow,
+      PrefetchHooks Function({bool surahId})
+    >;
 typedef $$AppSettingsTableCreateCompanionBuilder =
     AppSettingsCompanion Function({
       required String key,
@@ -15242,6 +16371,8 @@ class $AppDatabaseManager {
       $$LearningSurahsTableTableManager(_db, _db.learningSurahs);
   $$LearningEventsTableTableManager get learningEvents =>
       $$LearningEventsTableTableManager(_db, _db.learningEvents);
+  $$RecallAttemptsTableTableManager get recallAttempts =>
+      $$RecallAttemptsTableTableManager(_db, _db.recallAttempts);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
 }

@@ -933,4 +933,87 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get routineEditConflict =>
       'The prayer routine changed. The current state is shown — please repeat the action.';
+
+  @override
+  String get recallModeTitle => 'Memory check';
+
+  @override
+  String get recallStartAction => 'Check from memory';
+
+  @override
+  String get recallRangeTitle => 'Which ayahs?';
+
+  @override
+  String get recallRangeFrom => 'From ayah';
+
+  @override
+  String get recallRangeTo => 'To ayah';
+
+  @override
+  String get recallRangeInvalid =>
+      'The last ayah cannot come before the first.';
+
+  @override
+  String get recallBegin => 'Begin';
+
+  @override
+  String recallHiddenTitle(int number) {
+    return 'Ayah $number';
+  }
+
+  @override
+  String get recallHiddenHint => 'Recite it from memory, then open the text.';
+
+  @override
+  String get recallReveal => 'Show the ayah';
+
+  @override
+  String get recallResultRecalled => 'Recalled';
+
+  @override
+  String get recallResultWithMistake => 'With a mistake';
+
+  @override
+  String get recallResultNotRecalled => 'Did not recall';
+
+  @override
+  String get recallSkip => 'Next';
+
+  @override
+  String recallProgress(int done, int total) {
+    return '$done of $total';
+  }
+
+  @override
+  String get recallFinishedTitle => 'Check complete';
+
+  @override
+  String recallFinishedBody(int recalled, int withMistake, int notRecalled) {
+    return 'Recalled: $recalled · With a mistake: $withMistake · Did not recall: $notRecalled';
+  }
+
+  @override
+  String get recallSelfAssessment =>
+      'You grade yourself — the app does not listen to or check your recitation.';
+
+  @override
+  String get recallPriorityNote =>
+      'Ayahs you marked as a mistake move up in review suggestions. Nothing else changes.';
+
+  @override
+  String get recallSaveFailed => 'Could not save the result';
+
+  @override
+  String get recallClose => 'Done';
+
+  @override
+  String get recallHistoryTitle => 'Memory checks';
+
+  @override
+  String get recallNoHistory => 'No checks yet.';
+
+  @override
+  String recallSurahSummary(int recalled, int imperfect) {
+    return '$recalled recalled · $imperfect to revisit';
+  }
 }

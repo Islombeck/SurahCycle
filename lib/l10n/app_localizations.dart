@@ -1707,6 +1707,150 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Порядок намаза изменился. Показано актуальное состояние — повторите действие.'**
   String get routineEditConflict;
+
+  /// No description provided for @recallModeTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка по памяти'**
+  String get recallModeTitle;
+
+  /// No description provided for @recallStartAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить по памяти'**
+  String get recallStartAction;
+
+  /// No description provided for @recallRangeTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Какие аяты?'**
+  String get recallRangeTitle;
+
+  /// No description provided for @recallRangeFrom.
+  ///
+  /// In ru, this message translates to:
+  /// **'С аята'**
+  String get recallRangeFrom;
+
+  /// No description provided for @recallRangeTo.
+  ///
+  /// In ru, this message translates to:
+  /// **'По аят'**
+  String get recallRangeTo;
+
+  /// No description provided for @recallRangeInvalid.
+  ///
+  /// In ru, this message translates to:
+  /// **'Последний аят не может быть раньше первого.'**
+  String get recallRangeInvalid;
+
+  /// No description provided for @recallBegin.
+  ///
+  /// In ru, this message translates to:
+  /// **'Начать'**
+  String get recallBegin;
+
+  /// No description provided for @recallHiddenTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Аят {number}'**
+  String recallHiddenTitle(int number);
+
+  /// No description provided for @recallHiddenHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прочитайте его по памяти, затем откройте текст.'**
+  String get recallHiddenHint;
+
+  /// No description provided for @recallReveal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать аят'**
+  String get recallReveal;
+
+  /// No description provided for @recallResultRecalled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вспомнил'**
+  String get recallResultRecalled;
+
+  /// No description provided for @recallResultWithMistake.
+  ///
+  /// In ru, this message translates to:
+  /// **'С ошибкой'**
+  String get recallResultWithMistake;
+
+  /// No description provided for @recallResultNotRecalled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не вспомнил'**
+  String get recallResultNotRecalled;
+
+  /// No description provided for @recallSkip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дальше'**
+  String get recallSkip;
+
+  /// No description provided for @recallProgress.
+  ///
+  /// In ru, this message translates to:
+  /// **'{done} из {total}'**
+  String recallProgress(int done, int total);
+
+  /// No description provided for @recallFinishedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка завершена'**
+  String get recallFinishedTitle;
+
+  /// No description provided for @recallFinishedBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вспомнил: {recalled} · С ошибкой: {withMistake} · Не вспомнил: {notRecalled}'**
+  String recallFinishedBody(int recalled, int withMistake, int notRecalled);
+
+  /// No description provided for @recallSelfAssessment.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оценку ставите вы сами — приложение не слушает и не проверяет чтение.'**
+  String get recallSelfAssessment;
+
+  /// No description provided for @recallPriorityNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Аяты, отмеченные как ошибка, поднимаются в предложениях для повторения. Больше ничего не меняется.'**
+  String get recallPriorityNote;
+
+  /// No description provided for @recallSaveFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сохранить результат'**
+  String get recallSaveFailed;
+
+  /// No description provided for @recallClose.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готово'**
+  String get recallClose;
+
+  /// No description provided for @recallHistoryTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверки по памяти'**
+  String get recallHistoryTitle;
+
+  /// No description provided for @recallNoHistory.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверок пока нет.'**
+  String get recallNoHistory;
+
+  /// No description provided for @recallSurahSummary.
+  ///
+  /// In ru, this message translates to:
+  /// **'{recalled} вспомнил · {imperfect} повторить'**
+  String recallSurahSummary(int recalled, int imperfect);
 }
 
 class _AppLocalizationsDelegate

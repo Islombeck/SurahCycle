@@ -937,4 +937,87 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get routineEditConflict =>
       'Namoz tartibi o‘zgardi. Joriy holat ko‘rsatildi — amalni qaytaring.';
+
+  @override
+  String get recallModeTitle => 'Xotiradan tekshiruv';
+
+  @override
+  String get recallStartAction => 'Xotiradan tekshirish';
+
+  @override
+  String get recallRangeTitle => 'Qaysi oyatlar?';
+
+  @override
+  String get recallRangeFrom => 'Oyatdan';
+
+  @override
+  String get recallRangeTo => 'Oyatgacha';
+
+  @override
+  String get recallRangeInvalid =>
+      'Oxirgi oyat birinchisidan oldin bo‘la olmaydi.';
+
+  @override
+  String get recallBegin => 'Boshlash';
+
+  @override
+  String recallHiddenTitle(int number) {
+    return '$number-oyat';
+  }
+
+  @override
+  String get recallHiddenHint => 'Uni yoddan o‘qing, so‘ng matnni oching.';
+
+  @override
+  String get recallReveal => 'Oyatni ko‘rsatish';
+
+  @override
+  String get recallResultRecalled => 'Esladim';
+
+  @override
+  String get recallResultWithMistake => 'Xato bilan';
+
+  @override
+  String get recallResultNotRecalled => 'Eslay olmadim';
+
+  @override
+  String get recallSkip => 'Keyingi';
+
+  @override
+  String recallProgress(int done, int total) {
+    return '$total dan $done';
+  }
+
+  @override
+  String get recallFinishedTitle => 'Tekshiruv yakunlandi';
+
+  @override
+  String recallFinishedBody(int recalled, int withMistake, int notRecalled) {
+    return 'Esladim: $recalled · Xato bilan: $withMistake · Eslay olmadim: $notRecalled';
+  }
+
+  @override
+  String get recallSelfAssessment =>
+      'Bahoni o‘zingiz qo‘yasiz — ilova qiroatni tinglamaydi va tekshirmaydi.';
+
+  @override
+  String get recallPriorityNote =>
+      'Xato deb belgilangan oyatlar takrorlash takliflarida yuqoriga ko‘tariladi. Boshqa hech narsa o‘zgarmaydi.';
+
+  @override
+  String get recallSaveFailed => 'Natijani saqlab bo‘lmadi';
+
+  @override
+  String get recallClose => 'Tayyor';
+
+  @override
+  String get recallHistoryTitle => 'Xotira tekshiruvlari';
+
+  @override
+  String get recallNoHistory => 'Hozircha tekshiruv yo‘q.';
+
+  @override
+  String recallSurahSummary(int recalled, int imperfect) {
+    return '$recalled esladim · $imperfect takrorlash';
+  }
 }

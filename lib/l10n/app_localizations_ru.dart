@@ -936,4 +936,88 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get routineEditConflict =>
       'Порядок намаза изменился. Показано актуальное состояние — повторите действие.';
+
+  @override
+  String get recallModeTitle => 'Проверка по памяти';
+
+  @override
+  String get recallStartAction => 'Проверить по памяти';
+
+  @override
+  String get recallRangeTitle => 'Какие аяты?';
+
+  @override
+  String get recallRangeFrom => 'С аята';
+
+  @override
+  String get recallRangeTo => 'По аят';
+
+  @override
+  String get recallRangeInvalid =>
+      'Последний аят не может быть раньше первого.';
+
+  @override
+  String get recallBegin => 'Начать';
+
+  @override
+  String recallHiddenTitle(int number) {
+    return 'Аят $number';
+  }
+
+  @override
+  String get recallHiddenHint =>
+      'Прочитайте его по памяти, затем откройте текст.';
+
+  @override
+  String get recallReveal => 'Показать аят';
+
+  @override
+  String get recallResultRecalled => 'Вспомнил';
+
+  @override
+  String get recallResultWithMistake => 'С ошибкой';
+
+  @override
+  String get recallResultNotRecalled => 'Не вспомнил';
+
+  @override
+  String get recallSkip => 'Дальше';
+
+  @override
+  String recallProgress(int done, int total) {
+    return '$done из $total';
+  }
+
+  @override
+  String get recallFinishedTitle => 'Проверка завершена';
+
+  @override
+  String recallFinishedBody(int recalled, int withMistake, int notRecalled) {
+    return 'Вспомнил: $recalled · С ошибкой: $withMistake · Не вспомнил: $notRecalled';
+  }
+
+  @override
+  String get recallSelfAssessment =>
+      'Оценку ставите вы сами — приложение не слушает и не проверяет чтение.';
+
+  @override
+  String get recallPriorityNote =>
+      'Аяты, отмеченные как ошибка, поднимаются в предложениях для повторения. Больше ничего не меняется.';
+
+  @override
+  String get recallSaveFailed => 'Не удалось сохранить результат';
+
+  @override
+  String get recallClose => 'Готово';
+
+  @override
+  String get recallHistoryTitle => 'Проверки по памяти';
+
+  @override
+  String get recallNoHistory => 'Проверок пока нет.';
+
+  @override
+  String recallSurahSummary(int recalled, int imperfect) {
+    return '$recalled вспомнил · $imperfect повторить';
+  }
 }

@@ -7,6 +7,9 @@ import '../../../core/data/data.dart';
 import '../../../core/domain/domain.dart';
 import '../../quran/quran.dart';
 import '../../quran/audio/presentation/learning_audio_controls.dart';
+import '../application/recall_controller.dart';
+import 'recall_range_sheet.dart';
+import 'recall_screen.dart';
 
 final class LearningScreen extends ConsumerStatefulWidget {
   const LearningScreen({super.key, this.initialSurahId});
@@ -130,6 +133,10 @@ final class _LearningScreenState extends ConsumerState<LearningScreen> {
                                   state,
                                   descriptors[state.surahId],
                                 ),
+                                onRecall: () => _startRecall(
+                                  state,
+                                  descriptors[state.surahId],
+                                ),
                               ),
                             ),
                         ],
@@ -232,6 +239,55 @@ final class _LearningScreenState extends ConsumerState<LearningScreen> {
           .read(selectedLearningSurahProvider.notifier)
           .select(selected.id);
     }
+  }
+
+  /// Opens a memory check for one surah.
+  ///
+  /// The default range is the stage the user is already on, because that is
+  /// what they were just asked to memorise. Narrowing it is allowed, and the
+  /// learning stage itself is never touched by the check.
+  Future<void> _startRecall(
+    LearningSurahState state,
+    SurahDescriptor? descriptor,
+  ) async {
+    if (descriptor == null) return;
+    final range = await showRecallRangeSheet(
+      context: context,
+      ayahCount: descriptor.ayahCount,
+      initialStart: state.stage.startAyah,
+      initialEnd: state.stage.endAyah,
+    );
+    if (range == null || !mounted) return;
+
+    // Audio plays the learning stage, so it is offered only when the checked
+    // range is exactly that stage. A narrower check gets no audio rather than
+    // audio for the wrong ayahs.
+    final matchesStage =
+        range.start == state.stage.startAyah &&
+        range.end == state.stage.endAyah;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => RecallScreen(
+          request: RecallRequest(
+            surahId: state.surahId,
+            surahNumber: descriptor.surahNumber,
+            surahAyahCount: descriptor.ayahCount,
+            ayahStart: range.start,
+            ayahEnd: range.end,
+            learningCycle: state.learningCycle,
+            source: RecallSource.learning,
+          ),
+          surahTitle: descriptor.displayName,
+          audioControls: matchesStage
+              ? LearningAudioControls(
+                  key: ValueKey<String>('recall-audio-${state.id}'),
+                  learningState: state,
+                  surahNumber: descriptor.surahNumber,
+                )
+              : null,
+        ),
+      ),
+    );
   }
 
   Future<void> _changePlan(
@@ -376,6 +432,7 @@ final class _LearningCard extends ConsumerWidget {
     required this.onRepeated,
     required this.onLearned,
     required this.onChangePlan,
+    required this.onRecall,
   });
 
   final LearningSurahState state;
@@ -386,6 +443,7 @@ final class _LearningCard extends ConsumerWidget {
   final VoidCallback onRepeated;
   final VoidCallback onLearned;
   final VoidCallback onChangePlan;
+  final VoidCallback onRecall;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -497,6 +555,25 @@ final class _LearningCard extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
             ],
+            OutlinedButton.icon(
+              key: ValueKey<String>('recall-start-${state.surahId}'),
+              onPressed: descriptor == null || busy ? null : onRecall,
+              icon: const Icon(Icons.visibility_off_outlined),
+              label: Text(context.l10n.recallStartAction),
+            ),
+            if (ref.watch(recallSummariesProvider).valueOrNull?[state.surahId]
+                case final summary? when summary.total > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  context.l10n.recallSurahSummary(
+                    summary.recalled,
+                    summary.imperfect,
+                  ),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            const SizedBox(height: 12),
             Row(
               children: <Widget>[
                 Expanded(

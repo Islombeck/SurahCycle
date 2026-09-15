@@ -291,4 +291,32 @@
   ,"returnToAutomaticPrayer": "Avtomatikaga qaytish"
   ,"routineEditFailed": "Namoz tartibidagi o‘zgarishni saqlab bo‘lmadi"
   ,"routineEditConflict": "Namoz tartibi o‘zgardi. Joriy holat ko‘rsatildi — amalni qaytaring."
+  ,"recallModeTitle": "Xotiradan tekshiruv"
+  ,"recallStartAction": "Xotiradan tekshirish"
+  ,"recallRangeTitle": "Qaysi oyatlar?"
+  ,"recallRangeFrom": "Oyatdan"
+  ,"recallRangeTo": "Oyatgacha"
+  ,"recallRangeInvalid": "Oxirgi oyat birinchisidan oldin bo‘la olmaydi."
+  ,"recallBegin": "Boshlash"
+  ,"recallHiddenTitle": "{number}-oyat"
+  ,"@recallHiddenTitle": {"placeholders": {"number": {"type": "int"}}}
+  ,"recallHiddenHint": "Uni yoddan o‘qing, so‘ng matnni oching."
+  ,"recallReveal": "Oyatni ko‘rsatish"
+  ,"recallResultRecalled": "Esladim"
+  ,"recallResultWithMistake": "Xato bilan"
+  ,"recallResultNotRecalled": "Eslay olmadim"
+  ,"recallSkip": "Keyingi"
+  ,"recallProgress": "{total} dan {done}"
+  ,"@recallProgress": {"placeholders": {"done": {"type": "int"}, "total": {"type": "int"}}}
+  ,"recallFinishedTitle": "Tekshiruv yakunlandi"
+  ,"recallFinishedBody": "Esladim: {recalled} · Xato bilan: {withMistake} · Eslay olmadim: {notRecalled}"
+  ,"@recallFinishedBody": {"placeholders": {"recalled": {"type": "int"}, "withMistake": {"type": "int"}, "notRecalled": {"type": "int"}}}
+  ,"recallSelfAssessment": "Bahoni o‘zingiz qo‘yasiz — ilova qiroatni tinglamaydi va tekshirmaydi."
+  ,"recallPriorityNote": "Xato deb belgilangan oyatlar takrorlash takliflarida yuqoriga ko‘tariladi. Boshqa hech narsa o‘zgarmaydi."
+  ,"recallSaveFailed": "Natijani saqlab bo‘lmadi"
+  ,"recallClose": "Tayyor"
+  ,"recallHistoryTitle": "Xotira tekshiruvlari"
+  ,"recallNoHistory": "Hozircha tekshiruv yo‘q."
+  ,"recallSurahSummary": "{recalled} esladim · {imperfect} takrorlash"
+  ,"@recallSurahSummary": {"placeholders": {"recalled": {"type": "int"}, "imperfect": {"type": "int"}}}
 }

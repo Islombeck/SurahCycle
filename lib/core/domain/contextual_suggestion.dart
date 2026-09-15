@@ -10,6 +10,7 @@ final class ContextualRecommendationInputs {
     this.alreadyFilledInCurrentPartSurahIds = const <String>{},
     this.lastUsedInExactPart = const <String, DateTime>{},
     this.lastUsedInPrayerType = const <String, DateTime>{},
+    this.recallNeedsReviewSurahIds = const <String>{},
   });
 
   static const ContextualRecommendationInputs empty =
@@ -18,6 +19,13 @@ final class ContextualRecommendationInputs {
   final Set<String> alreadyFilledInCurrentPartSurahIds;
   final Map<String, DateTime> lastUsedInExactPart;
   final Map<String, DateTime> lastUsedInPrayerType;
+
+  /// Surahs whose most recent memory check did not go cleanly.
+  ///
+  /// This is a tie-break only. It never makes a surah eligible, never changes
+  /// how overdue anything is, and a later clean check removes the surah from
+  /// the set — so a single bad day cannot pin a surah to the top.
+  final Set<String> recallNeedsReviewSurahIds;
 
   /// Value equality matters here: this is rebuilt from several streams, and
   /// without it every unrelated emission would look like a change and force
@@ -32,13 +40,15 @@ final class ContextualRecommendationInputs {
             other.alreadyFilledInCurrentPartSurahIds,
           ) &&
           _sameMap(lastUsedInExactPart, other.lastUsedInExactPart) &&
-          _sameMap(lastUsedInPrayerType, other.lastUsedInPrayerType);
+          _sameMap(lastUsedInPrayerType, other.lastUsedInPrayerType) &&
+          _sameSet(recallNeedsReviewSurahIds, other.recallNeedsReviewSurahIds);
 
   @override
   int get hashCode => Object.hash(
     alreadyFilledInCurrentPartSurahIds.length,
     lastUsedInExactPart.length,
     lastUsedInPrayerType.length,
+    recallNeedsReviewSurahIds.length,
   );
 }
 
@@ -76,15 +86,21 @@ bool _sameMap(Map<String, DateTime> left, Map<String, DateTime> right) {
 /// 5. Still tied: the surah read least recently anywhere in this prayer
 ///    type (matching [isQada]) rises higher. Never read in this prayer
 ///    type sorts first.
-/// 6. Still tied: the existing global tie-break chain (recommended part's
+/// 6. Still tied: a surah whose last memory check was imperfect rises above
+///    one whose last check was clean or which was never checked. This is the
+///    only effect a recall attempt has on anything, and it is deliberately
+///    the weakest contextual tier: it cannot outrank urgency, and it is
+///    undone by one clean check.
+/// 7. Still tied: the existing global tie-break chain (recommended part's
 ///    own last-used time, display order, surah number, stable id).
 ///
-/// With empty [lastUsedInExactPart]/[lastUsedInPrayerType] maps and an empty
-/// [alreadyFilledInCurrentPartSurahIds] set — the state before any prayer
-/// context or contextual history exists — every inserted tier compares
-/// equal for every candidate, so the result is byte-for-byte identical to
-/// calling [suggestionService] directly. That is the intended "no context
-/// yet" fallback; there is no separate branch for it.
+/// With empty [lastUsedInExactPart]/[lastUsedInPrayerType] maps and empty
+/// [alreadyFilledInCurrentPartSurahIds]/[recallNeedsReviewSurahIds] sets —
+/// the state before any prayer context, contextual history or memory check
+/// exists — every inserted tier compares equal for every candidate, so the
+/// result is byte-for-byte identical to calling [suggestionService] directly.
+/// That is the intended "no context yet" fallback; there is no separate
+/// branch for it.
 ///
 /// Ordinary and Qada occurrences must never be mixed: callers are
 /// responsible for building [lastUsedInExactPart] and [lastUsedInPrayerType]
@@ -103,6 +119,7 @@ final class ContextualSurahSuggestionService {
     Set<String> alreadyFilledInCurrentPartSurahIds = const <String>{},
     Map<String, DateTime> lastUsedInExactPart = const <String, DateTime>{},
     Map<String, DateTime> lastUsedInPrayerType = const <String, DateTime>{},
+    Set<String> recallNeedsReviewSurahIds = const <String>{},
     int limit = maxRecommendationCount,
   }) {
     return suggestionService.suggest(
@@ -115,12 +132,25 @@ final class ContextualSurahSuggestionService {
           lastUsedInExactPart[right.id],
         );
         if (exactPartComparison != 0) return exactPartComparison;
-        return compareNullableLastUsed(
+        final prayerTypeComparison = compareNullableLastUsed(
           lastUsedInPrayerType[left.id],
           lastUsedInPrayerType[right.id],
         );
+        if (prayerTypeComparison != 0) return prayerTypeComparison;
+        return _compareRecall(left, right, recallNeedsReviewSurahIds);
       },
     );
+  }
+
+  /// A surah whose last check was imperfect sorts first among equals.
+  static int _compareRecall(
+    MasteredSurah left,
+    MasteredSurah right,
+    Set<String> needsReview,
+  ) {
+    final leftNeedsReview = needsReview.contains(left.id);
+    if (leftNeedsReview == needsReview.contains(right.id)) return 0;
+    return leftNeedsReview ? -1 : 1;
   }
 
   /// The whole eligible pool in the same contextual order, for a batch that
@@ -145,10 +175,12 @@ final class ContextualSurahSuggestionService {
       inputs.lastUsedInExactPart[right.id],
     );
     if (exactPartComparison != 0) return exactPartComparison;
-    return compareNullableLastUsed(
+    final prayerTypeComparison = compareNullableLastUsed(
       inputs.lastUsedInPrayerType[left.id],
       inputs.lastUsedInPrayerType[right.id],
     );
+    if (prayerTypeComparison != 0) return prayerTypeComparison;
+    return _compareRecall(left, right, inputs.recallNeedsReviewSurahIds);
   }
 
   /// Convenience overload taking a resolved [ContextualRecommendationInputs]
@@ -164,6 +196,7 @@ final class ContextualSurahSuggestionService {
         inputs.alreadyFilledInCurrentPartSurahIds,
     lastUsedInExactPart: inputs.lastUsedInExactPart,
     lastUsedInPrayerType: inputs.lastUsedInPrayerType,
+    recallNeedsReviewSurahIds: inputs.recallNeedsReviewSurahIds,
     limit: limit,
   );
 }
