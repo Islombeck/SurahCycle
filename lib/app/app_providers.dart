@@ -720,7 +720,21 @@ final recommendationBatchRepositoryProvider =
           RecommendationBatchRepository(ref.watch(settingsRepositoryProvider)),
     );
 
-/// The one stable batch Home and the Rotation widget both read.
+/// Read-only view of the stored batch.
+///
+/// Consumers that must never *start* a batch read this one. Only Home plans
+/// and persists: two planners writing to one stored slot would overwrite each
+/// other in a loop whenever their resolved prayer contexts differed, which is
+/// exactly what the widget driver would have done.
+final storedRecommendationBatchProvider = StreamProvider<RecommendationBatch?>(
+  (ref) => ref
+      .watch(recommendationBatchRepositoryProvider)
+      .watch()
+      .map((state) => state.batch),
+);
+
+/// The one stable batch Home plans; the Rotation widget reads the same stored
+/// value through [storedRecommendationBatchProvider].
 ///
 /// Sharing a single provider is what keeps their ranks and completed marks
 /// from ever disagreeing, and the stored batch is what stops the block from
@@ -879,6 +893,11 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
             localDate: localDate,
           )),
         );
+  // The same stored batch Home renders, read only: the widget never starts a
+  // batch of its own, so the two can never overwrite each other.
+  final recommendationBatch = ref
+      .watch(storedRecommendationBatchProvider)
+      .valueOrNull;
   final learningNotificationEnabled =
       ref.watch(learningNotificationEnabledProvider).valueOrNull ?? false;
   ref
@@ -897,6 +916,7 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
         translationSelection: translationSelection,
         selectedLearningSurahId: selectedLearningSurahId,
         contextualInputs: contextualInputs,
+        recommendationBatch: recommendationBatch,
         prayerTodaySchedule: prayerTodaySchedule,
         prayerScheduleResolution: settledScheduleResolution,
         prayerLocationDisplayName: settings?.location.displayName,
@@ -1631,6 +1651,7 @@ final class _AppWidgetSyncDriver {
     required String? selectedLearningSurahId,
     ContextualRecommendationInputs contextualInputs =
         ContextualRecommendationInputs.empty,
+    RecommendationBatch? recommendationBatch,
     PrayerTodaySchedule? prayerTodaySchedule,
     PrayerContextResolution? prayerScheduleResolution,
     String? prayerLocationDisplayName,
@@ -1652,6 +1673,7 @@ final class _AppWidgetSyncDriver {
             translationSelection: translationSelection,
             selectedLearningSurahId: selectedLearningSurahId,
             contextualInputs: contextualInputs,
+            recommendationBatch: recommendationBatch,
             prayerTodaySchedule: prayerTodaySchedule,
             prayerScheduleResolution: prayerScheduleResolution,
             prayerLocationDisplayName: prayerLocationDisplayName,
@@ -1702,6 +1724,7 @@ final class _AppWidgetSyncDriver {
     required String? selectedLearningSurahId,
     ContextualRecommendationInputs contextualInputs =
         ContextualRecommendationInputs.empty,
+    RecommendationBatch? recommendationBatch,
     PrayerTodaySchedule? prayerTodaySchedule,
     PrayerContextResolution? prayerScheduleResolution,
     String? prayerLocationDisplayName,
@@ -1749,6 +1772,7 @@ final class _AppWidgetSyncDriver {
           markedPartIds: markedPartIds,
           prayerPart: prayerPart,
           contextualInputs: contextualInputs,
+          batch: recommendationBatch,
         );
 
     final activeLearning = learning

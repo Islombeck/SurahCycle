@@ -84,13 +84,21 @@ final class RotationWidgetProjectionFactory {
     String? statusMessage,
     ContextualRecommendationInputs contextualInputs =
         ContextualRecommendationInputs.empty,
+    RecommendationBatch? batch,
   }) {
     final recommendations = const ContextualSurahSuggestionService()
         .suggestWith(rotation, contextualInputs);
-    final recommendationRanks = <String, int>{
-      for (var index = 0; index < recommendations.length; index += 1)
-        recommendations[index].surah.id: index,
-    };
+    // Ranks come from the stored batch whenever there is one, so the widget
+    // and Home can never disagree, and a completed entry keeps its position
+    // instead of dropping out of the widget as it stops being due.
+    final recommendationRanks = batch != null && !batch.isEmpty
+        ? <String, int>{
+            for (final entry in batch.entries) entry.surahId: entry.position,
+          }
+        : <String, int>{
+            for (var index = 0; index < recommendations.length; index += 1)
+              recommendations[index].surah.id: index,
+          };
     final recommendedPartIds = <String, String?>{
       for (final suggestion in recommendations)
         suggestion.surah.id: suggestion.recommendedPart?.id,
