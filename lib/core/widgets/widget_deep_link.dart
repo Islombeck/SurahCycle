@@ -3,9 +3,21 @@ sealed class WidgetDeepLink {
 
   Uri get uri;
 
+  /// The scheme the app is renaming to.
+  static const String scheme = 'salahcycle';
+
+  /// The pre-rename scheme, still accepted.
+  ///
+  /// A widget already placed on the launcher holds a `PendingIntent` built with
+  /// the old URI, and that intent survives an app update. Dropping the old
+  /// scheme would leave every existing widget opening nothing, so the parser
+  /// accepts both while the Kotlin side keeps emitting the legacy one. See
+  /// `docs/RENAME_TO_SALAHCYCLE.md`.
+  static const String legacyScheme = 'murajaah';
+
   static WidgetDeepLink? parse(Uri? uri) {
     if (uri == null ||
-        uri.scheme != 'murajaah' ||
+        (uri.scheme != scheme && uri.scheme != legacyScheme) ||
         uri.host != 'app' ||
         uri.userInfo.isNotEmpty ||
         uri.hasPort ||
@@ -54,7 +66,9 @@ final class WidgetLearningRootDeepLink extends WidgetDeepLink {
 
   @override
   Uri get uri => Uri(
-    scheme: 'murajaah',
+    // Step 1 of the transition still emits the legacy scheme, so widgets
+    // already on the launcher keep working. One constant to flip later.
+    scheme: WidgetDeepLink.legacyScheme,
     host: 'app',
     pathSegments: const <String>['learning'],
   );
@@ -71,7 +85,9 @@ final class WidgetHomeDeepLink extends WidgetDeepLink {
 
   @override
   Uri get uri => Uri(
-    scheme: 'murajaah',
+    // Step 1 of the transition still emits the legacy scheme, so widgets
+    // already on the launcher keep working. One constant to flip later.
+    scheme: WidgetDeepLink.legacyScheme,
     host: 'app',
     pathSegments: const <String>['home'],
   );
@@ -101,7 +117,9 @@ final class WidgetSurahDeepLink extends WidgetDeepLink {
 
   @override
   Uri get uri => Uri(
-    scheme: 'murajaah',
+    // Step 1 of the transition still emits the legacy scheme, so widgets
+    // already on the launcher keep working. One constant to flip later.
+    scheme: WidgetDeepLink.legacyScheme,
     host: 'app',
     pathSegments: <String>['surah', surahId],
     queryParameters: partId == null ? null : <String, String>{'part': partId!},
@@ -131,7 +149,9 @@ final class WidgetLearningDeepLink extends WidgetDeepLink {
 
   @override
   Uri get uri => Uri(
-    scheme: 'murajaah',
+    // Step 1 of the transition still emits the legacy scheme, so widgets
+    // already on the launcher keep working. One constant to flip later.
+    scheme: WidgetDeepLink.legacyScheme,
     host: 'app',
     pathSegments: <String>['learning', surahId],
   );

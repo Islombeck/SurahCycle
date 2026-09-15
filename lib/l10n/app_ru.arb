@@ -1,6 +1,6 @@
 {
   "@@locale": "ru",
-  "appName": "Murajaah",
+  "appName": "SalahCycle",
   "homeTab": "Главная",
   "surahsTab": "Суры",
   "learningTab": "Обучение",
@@ -120,7 +120,7 @@
   ,"widgetPart": "Часть"
   ,"widgetAyah": "Аят"
   ,"widgetAyahs": "Аяты"
-  ,"widgetOpenAppToLoadText": "Откройте Murajaah, чтобы загрузить проверенный текст"
+  ,"widgetOpenAppToLoadText": "Откройте SalahCycle, чтобы загрузить проверенный текст"
   ,"customParts": "Свой"
   ,"customPartCount": "Количество частей"
   ,"customPartCountRange": "От 1 до {max}"
@@ -217,7 +217,7 @@
   ,"@widgetAutomaticPrayerRange": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}, "end": {"type": "String"}}}
   ,"widgetAutomaticPrayerStart": "{prayer} · с {start} · Ротация"
   ,"@widgetAutomaticPrayerStart": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}}}
-  ,"widgetSelectPrayerInApp": "Выберите намаз в Murajaah"
+  ,"widgetSelectPrayerInApp": "Выберите намаз в SalahCycle"
   ,"widgetActionNotCompleted": "Не удалось отметить. Показаны актуальные данные."
   ,"learningHow": "Как учить?"
   ,"learningClassic": "Классически"

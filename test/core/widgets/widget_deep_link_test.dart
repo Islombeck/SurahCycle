@@ -25,6 +25,52 @@ void main() {
     );
   });
 
+  group('rename transition', () {
+    test('the new scheme parses to the same destinations', () {
+      expect(
+        WidgetDeepLink.tryParse('salahcycle://app/home'),
+        const WidgetHomeDeepLink(),
+      );
+      expect(
+        WidgetDeepLink.tryParse('salahcycle://app/learning'),
+        const WidgetLearningRootDeepLink(),
+      );
+      expect(
+        WidgetDeepLink.tryParse('salahcycle://app/surah/2?part=part-2'),
+        WidgetSurahDeepLink(surahId: '2', partId: 'part-2'),
+      );
+      expect(
+        WidgetDeepLink.tryParse('salahcycle://app/learning/112'),
+        WidgetLearningDeepLink('112'),
+      );
+    });
+
+    test('the legacy scheme keeps working', () {
+      // A widget already on the launcher holds a PendingIntent built with the
+      // old URI, and that intent survives an app update. Dropping the old
+      // scheme would leave every placed widget opening nothing.
+      expect(
+        WidgetDeepLink.tryParse('murajaah://app/home'),
+        const WidgetHomeDeepLink(),
+      );
+    });
+
+    test('an unrelated scheme is still refused', () {
+      expect(WidgetDeepLink.tryParse('salah://app/home'), isNull);
+      expect(WidgetDeepLink.tryParse('https://app/home'), isNull);
+      expect(WidgetDeepLink.tryParse('salahcycles://app/home'), isNull);
+    });
+
+    test('builders still emit the legacy scheme for now', () {
+      // Step 1 of the transition: Kotlin keeps emitting the old scheme so no
+      // placed widget breaks. Flipping this is a later, separate step.
+      expect(
+        const WidgetHomeDeepLink().uri.scheme,
+        WidgetDeepLink.legacyScheme,
+      );
+    });
+  });
+
   test('builders percent-safe known identifiers', () {
     expect(
       WidgetSurahDeepLink(surahId: 'surah_2', partId: 'part-2').uri.toString(),

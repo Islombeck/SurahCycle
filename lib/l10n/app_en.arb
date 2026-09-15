@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appName": "Murajaah",
+  "appName": "SalahCycle",
   "homeTab": "Home",
   "surahsTab": "Surahs",
   "learningTab": "Learning",
@@ -114,7 +114,7 @@
   ,"widgetPart": "Part"
   ,"widgetAyah": "Ayah"
   ,"widgetAyahs": "Ayahs"
-  ,"widgetOpenAppToLoadText": "Open Murajaah to load verified text"
+  ,"widgetOpenAppToLoadText": "Open SalahCycle to load verified text"
   ,"customParts": "Custom"
   ,"customPartCount": "Number of parts"
   ,"customPartCountRange": "From 1 to {max}"
@@ -211,7 +211,7 @@
   ,"@widgetAutomaticPrayerRange": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}, "end": {"type": "String"}}}
   ,"widgetAutomaticPrayerStart": "{prayer} · from {start} · Rotation"
   ,"@widgetAutomaticPrayerStart": {"placeholders": {"prayer": {"type": "String"}, "start": {"type": "String"}}}
-  ,"widgetSelectPrayerInApp": "Choose a prayer in Murajaah"
+  ,"widgetSelectPrayerInApp": "Choose a prayer in SalahCycle"
   ,"widgetActionNotCompleted": "Could not mark. Current data restored."
   ,"learningHow": "How do you want to learn?"
   ,"learningClassic": "Classic"

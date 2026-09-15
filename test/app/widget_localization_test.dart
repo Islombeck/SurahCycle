@@ -25,7 +25,7 @@ void main() {
     );
     expect(
       en.prayerContextLabel(null, isAutomatic: true),
-      'Choose a prayer in Murajaah',
+      'Choose a prayer in SalahCycle',
     );
   });
 
