@@ -119,7 +119,18 @@ Properties the outbox must have, and which the contract tests pin:
 - **Enqueuing is part of the local write's transaction.** `SyncAwareLocalStore`
   exists to make that explicit: a plain `write(); await outbox.enqueue()` pair
   loses the change if the process dies between the two calls, so the durable
-  implementation must commit both together.
+  implementation must commit both together. The port takes the caller's own
+  domain write as `applyLocalChange` rather than replaying the envelope's
+  payload: the repository that already knows how to write a record does so, and
+  a store that re-derived the row from transport payload would be a second,
+  competing writer for every table.
+- **Queue, cursor and activation belong to an owner, not to the device.** Every
+  durable sync row carries a `SyncOwnerKey`. Signing out of account A and into
+  account B is cheap to do and catastrophic to get wrong — B would push A's
+  recitation history under B's identity — so the separation is structural
+  rather than a `clear()` somebody has to remember to call. `SyncOwnerKey.local`
+  is the pre-account owner, which keeps "adopt this device's data into an
+  account" an explicit merge decision instead of two lifetimes sharing rows.
 
 `SyncEngine.drain` also validates the server's own answer before acting on it:
 the accepted and rejected id sets must be disjoint and must together cover
@@ -127,13 +138,36 @@ exactly what was sent. A malformed response is treated as a retryable failure
 rather than trusted, because acknowledging an envelope that was never stored is
 indistinguishable from data loss.
 
-Stage G ships the ports, an in-memory reference implementation and the contract
-suite. **A durable Drift-backed outbox is deliberately not added yet.** The one
-schema-migration slot this sprint reserved was spent on `recall_attempts`
-(v6), and adding a table that nothing writes to, for a server that does not
-exist, would be migration risk with no benefit. It ships with the migration that
-carries real sync — and the contract suite is what that implementation will have
-to pass.
+Stage G shipped the ports, an in-memory reference implementation and the
+contract suite, and deliberately stopped there: the v6 migration slot was spent
+on `recall_attempts`, and a table nothing writes to, for a server that did not
+exist, would have been migration risk with no benefit.
+
+**Stage J adds the durable side (schema v7).** Three tables, transport only:
+
+| Table | Holds |
+| --- | --- |
+| `sync_outbox_entries` | the retry queue **and** the quarantine, separated by `status`, one row per queued envelope, scoped by `owner_key` |
+| `sync_cursors` | where each owner's pull left off |
+| `sync_activations` | each owner's answer to the first-sync preview, the backup id it was shown with, and the last successful sync |
+
+`DriftSyncOutbox` passes the *same* `runSyncOutboxContract` as the in-memory
+reference — a weaker suite for the implementation that actually ships would move
+the guarantees to wherever they were easiest to keep. `DriftSyncStore` owns the
+two transactional guarantees (local change + enqueue; pulled page + cursor) and
+the owner scoping.
+
+Two invariants live in the schema rather than only in the code that maintains
+them: a partial unique index on `(owner_key, entity_key) WHERE status =
+'pending'` enforces coalescing, and
+`CHECK (is_active = 0 OR choice = 'merge')` makes it impossible to activate sync
+for a user who chose to keep the device local.
+
+The migration backfills nothing. Synthesizing one queue entry per historical
+recitation would push a user's entire journal the first time they ever sign in —
+exactly the merge the activation gate exists to make explicit. Nothing in
+`lib/app/` or `lib/features/` references any of it yet: the tables ship with the
+migration, the wiring ships with a real gateway.
 
 ## First sign-in must not overwrite local progress
 
