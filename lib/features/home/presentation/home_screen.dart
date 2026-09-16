@@ -136,6 +136,11 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
     final selectedLearningSurahId = ref.watch(selectedLearningSurahProvider);
     final rollbackQueue = ref.watch(learningRollbackQueueProvider);
+    if (currentRoutine?.valueOrNull != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _rememberRoutineCardHeight(),
+      );
+    }
 
     return Scaffold(
       key: const ValueKey<String>('home-screen'),
@@ -204,20 +209,27 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                       currentRoutine.when(
                         data: (routine) => routine == null
                             ? const SizedBox.shrink()
-                            : _PrayerRoutineCard(
-                                snapshot: routine,
-                                prayerContext: resolvedPrayerContext!,
-                                busyPartIds: _busyRoutinePartIds,
-                                onFollowedImam: _completeByFollowingImam,
+                            : KeyedSubtree(
+                                key: _routineCardKey,
+                                child: _PrayerRoutineCard(
+                                  snapshot: routine,
+                                  prayerContext: resolvedPrayerContext!,
+                                  busyPartIds: _busyRoutinePartIds,
+                                  onFollowedImam: _completeByFollowingImam,
+                                ),
                               ),
-                        loading: () => const SizedBox.shrink(),
+                        // Switching prayers loads a different routine, and
+                        // collapsing to nothing while it arrives made the page
+                        // shrink and then grow again — the two jumps the owner
+                        // reported. Holding the space the last card occupied
+                        // keeps the scroll position still without showing the
+                        // previous prayer's parts under the new prayer's name.
+                        loading: () => SizedBox(height: _lastRoutineCardHeight),
                         error: (error, stackTrace) => const SizedBox.shrink(),
                       ),
-                      if (currentRoutine.valueOrNull != null)
-                        const SizedBox(height: 16),
-                    ],
-                    if (currentRoutine?.valueOrNull == null)
                       const SizedBox(height: 16),
+                    ],
+                    if (currentRoutine == null) const SizedBox(height: 16),
                     if (rollbackQueue.isNotEmpty)
                       _RollbackNotice(
                         outcome: rollbackQueue.first,
@@ -271,6 +283,25 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
+  }
+
+  /// How tall the routine card was when it was last on screen.
+  ///
+  /// Used to hold that space while a different prayer's routine loads, so the
+  /// page does not shrink and grow again. Measured rather than guessed,
+  /// because the card's height is the number of parts and no constant is right
+  /// for every prayer.
+  final GlobalKey _routineCardKey = GlobalKey();
+  double _lastRoutineCardHeight = 0;
+
+  void _rememberRoutineCardHeight() {
+    final box =
+        _routineCardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final height = box.size.height;
+    // No setState: this is read by the *next* build, and asking for one here
+    // would schedule a rebuild that changes nothing.
+    if (height > 0) _lastRoutineCardHeight = height;
   }
 
   /// Remembered row order for the active-surah list.

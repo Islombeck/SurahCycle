@@ -1114,6 +1114,12 @@ PrayerContextResolution _applyIshaToWitrTransition(
       context.isQada) {
     return base;
   }
+  // A prayer the user picked himself never moves on its own. He reported
+  // choosing Иша and being taken straight to Витр because an earlier Иша of
+  // the same day was already complete — which left the Иша he had asked for
+  // impossible to look at or correct. An automatic context may still advance;
+  // an explicit choice is an instruction, not a guess to be improved on.
+  if (base.status == PrayerContextResolutionStatus.manual) return base;
   final offersWitrTransition =
       (ishaRoutine?.isCompleted ?? false) &&
       witrTemplate != null &&
