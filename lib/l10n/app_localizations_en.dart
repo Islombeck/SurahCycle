@@ -937,6 +937,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calendarQadaOriginUnknownEntry => 'original day unknown';
 
   @override
+  String get calendarRegisterForDay => 'Register for this day';
+
+  @override
+  String pendingRegistrationBanner(String date) {
+    return 'Recording for $date';
+  }
+
+  @override
+  String get pendingRegistrationCancel => 'Back to today';
+
+  @override
+  String get pendingRegistrationPickPrayer =>
+      'For a past day the prayer is chosen by hand.';
+
+  @override
   String get partKind => 'Part type';
 
   @override

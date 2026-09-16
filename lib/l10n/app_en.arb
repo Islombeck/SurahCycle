@@ -291,6 +291,11 @@
   ,"qadaOriginUnknown": "The day of the missed prayer is unknown"
   ,"qadaOriginUnknownHint": "For very old debts. The record goes on the day it was made up, and says so."
   ,"calendarQadaOriginUnknownEntry": "original day unknown"
+  ,"calendarRegisterForDay": "Register for this day"
+  ,"pendingRegistrationBanner": "Recording for {date}"
+  ,"@pendingRegistrationBanner": {"placeholders": {"date": {"type": "String"}}}
+  ,"pendingRegistrationCancel": "Back to today"
+  ,"pendingRegistrationPickPrayer": "For a past day the prayer is chosen by hand."
   ,"partKind": "Part type"
   ,"customPartLabel": "Custom label"
   ,"customPartLabelRequired": "Enter a label."

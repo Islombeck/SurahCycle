@@ -144,6 +144,85 @@ void main() {
 
     await _disposeWidgetTree(tester);
   });
+
+  testWidgets('choosing a past day hands it to the one registration flow', (
+    tester,
+  ) async {
+    final router = await pumpApp(tester);
+    router.go('/calendar');
+    await _pumpUntil(
+      tester,
+      () => find
+          .byKey(const ValueKey<String>('calendar-month-grid'))
+          .evaluate()
+          .isNotEmpty,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('calendar-day-2026-09-15')),
+    );
+    await _pumpUntil(
+      tester,
+      () => find
+          .byKey(const ValueKey<String>('calendar-register-for-day'))
+          .evaluate()
+          .isNotEmpty,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('calendar-register-for-day')),
+    );
+
+    // It lands on Home, which then states plainly which day is in force.
+    await _pumpUntil(
+      tester,
+      () => find
+          .byKey(const ValueKey<String>('pending-registration-banner'))
+          .evaluate()
+          .isNotEmpty,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('home-screen')),
+      findsOneWidget,
+      reason: 'the calendar never grows a second way to register a recitation',
+    );
+
+    await _disposeWidgetTree(tester);
+  });
+
+  testWidgets('a future day offers no way to register in advance', (
+    tester,
+  ) async {
+    final router = await pumpApp(tester);
+    router.go('/calendar');
+    await _pumpUntil(
+      tester,
+      () => find
+          .byKey(const ValueKey<String>('calendar-month-grid'))
+          .evaluate()
+          .isNotEmpty,
+    );
+
+    await tester.tap(
+      // The 17th rather than a later day only so the cell sits inside the test
+      // viewport; any future day would do.
+      find.byKey(const ValueKey<String>('calendar-day-2026-09-17')),
+    );
+    await _pumpUntil(
+      tester,
+      () => find
+          .byKey(const ValueKey<String>('calendar-day-details'))
+          .evaluate()
+          .isNotEmpty,
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('calendar-register-for-day')),
+      findsNothing,
+      reason: 'a reading cannot be registered before it happened',
+    );
+
+    await _disposeWidgetTree(tester);
+  });
 }
 
 Future<void> _pumpUntil(WidgetTester tester, bool Function() condition) async {

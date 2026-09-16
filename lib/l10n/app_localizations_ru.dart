@@ -938,6 +938,21 @@ class AppLocalizationsRu extends AppLocalizations {
   String get calendarQadaOriginUnknownEntry => 'исходный день неизвестен';
 
   @override
+  String get calendarRegisterForDay => 'Отметить за этот день';
+
+  @override
+  String pendingRegistrationBanner(String date) {
+    return 'Отмечаю за $date';
+  }
+
+  @override
+  String get pendingRegistrationCancel => 'Вернуться к сегодня';
+
+  @override
+  String get pendingRegistrationPickPrayer =>
+      'Для прошедшего дня намаз выбирается вручную.';
+
+  @override
   String get partKind => 'Тип части';
 
   @override

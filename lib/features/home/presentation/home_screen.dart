@@ -136,6 +136,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
     final selectedLearningSurahId = ref.watch(selectedLearningSurahProvider);
     final rollbackQueue = ref.watch(learningRollbackQueueProvider);
+    final pendingRegistrationDate = ref.watch(pendingRegistrationDateProvider);
     if (currentRoutine?.valueOrNull != null) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _rememberRoutineCardHeight(),
@@ -230,6 +231,22 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(height: 16),
                     ],
                     if (currentRoutine == null) const SizedBox(height: 16),
+                    // A historical date is never in force invisibly: while one
+                    // is chosen it is named on screen, with one way out.
+                    if (pendingRegistrationDate
+                        case final pending?) ...<Widget>[
+                      _PendingRegistrationBanner(
+                        date: pending,
+                        onCancel: () =>
+                            ref
+                                    .read(
+                                      pendingRegistrationDateProvider.notifier,
+                                    )
+                                    .state =
+                                null,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     if (rollbackQueue.isNotEmpty)
                       _RollbackNotice(
                         outcome: rollbackQueue.first,
@@ -332,6 +349,16 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     return <MasteredSurah>[for (final id in order) ?byId[id]];
   }
 
+  /// The past day chosen in the calendar, if one is in force right now.
+  ///
+  /// Today is never returned as "pending": a record for today is the ordinary
+  /// case and must not take the historical path.
+  LocalDate? _pendingRegistrationDate() {
+    final pending = ref.read(pendingRegistrationDateProvider);
+    if (pending == null) return null;
+    return pending == ref.read(localDateProvider).today() ? null : pending;
+  }
+
   /// What the prayer picker should open on: whatever is actually in effect.
   ///
   /// A sticky override never writes the persisted selection, so reading the
@@ -376,7 +403,8 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
           surah: surah,
           initialPrayerContext: actionPrayer!.context,
           initialPrayerIsAutomatic: actionPrayer.isAutomatic,
-          initialOccurrenceLocalDate: ref.read(localDateProvider).today(),
+          initialOccurrenceLocalDate:
+              _pendingRegistrationDate() ?? ref.read(localDateProvider).today(),
           timeProvider: ref.read(timeProviderProvider),
           localDates: ref.read(localDateProvider),
           utcOffsetMinutes: prayerSettings.locationConfirmed
@@ -426,6 +454,15 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// a write with an old prayer or an expired schedule.
   Future<_ActionPrayerContext?> _resolvePrayerForAction() async {
     final settings = await _loadPrayerTimeSettings();
+    // While a past day is chosen, today's schedule says nothing about which
+    // prayer a mark belongs to. Returning null here opens the picker, so a
+    // historical record always names its prayer explicitly instead of
+    // inheriting whichever one happens to be current.
+    if (_pendingRegistrationDate() != null &&
+        settings.contextSelectionMode != PrayerContextSelectionMode.manual &&
+        ref.read(activePrayerContextOverrideProvider) == null) {
+      return null;
+    }
     if (settings.contextSelectionMode == PrayerContextSelectionMode.manual) {
       final selected =
           ref.read(selectedPrayerProvider) ??
@@ -479,7 +516,9 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     setState(() => _busySurahIds.add(surah.id));
     try {
       final localDate =
-          occurrenceLocalDate ?? ref.read(localDateProvider).today();
+          occurrenceLocalDate ??
+          _pendingRegistrationDate() ??
+          ref.read(localDateProvider).today();
       final routine = await ref
           .read(prayerRoutineRepositoryProvider)
           .ensureCurrentSession(
@@ -1451,6 +1490,52 @@ bool _canOfferJumuahOverride({
   final date = schedule.day.date;
   return DateTime.utc(date.year, date.month, date.day).weekday ==
       DateTime.friday;
+}
+
+/// Says, for as long as it is true, that marks are going to a past day.
+final class _PendingRegistrationBanner extends StatelessWidget {
+  const _PendingRegistrationBanner({
+    required this.date,
+    required this.onCancel,
+  });
+
+  final LocalDate date;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    key: const ValueKey<String>('pending-registration-banner'),
+    color: Theme.of(context).colorScheme.secondaryContainer,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            context.l10n.pendingRegistrationBanner(
+              MaterialLocalizations.of(
+                context,
+              ).formatMediumDate(DateTime(date.year, date.month, date.day)),
+            ),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            context.l10n.pendingRegistrationPickPrayer,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton(
+              key: const ValueKey<String>('cancel-pending-registration'),
+              onPressed: onCancel,
+              child: Text(context.l10n.pendingRegistrationCancel),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 final class _PrayerContextCard extends StatelessWidget {

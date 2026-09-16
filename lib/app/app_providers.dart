@@ -985,6 +985,19 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
       );
 });
 
+/// A past day the user chose in the calendar to enter records for.
+///
+/// It exists because entering a forgotten prayer takes several marks, and
+/// having to re-pick the day for each one was the shape of the defect the
+/// sticky prayer context already fixed. It is in-memory only: a historical
+/// date is a deliberate, temporary mode, and one that silently survived a
+/// restart would be a trap — every mark would land on a day the user has long
+/// stopped thinking about. Home shows it as a banner the whole time it is set,
+/// so it is never in force invisibly.
+final pendingRegistrationDateProvider = StateProvider<LocalDate?>(
+  (ref) => null,
+);
+
 final prayerCalendarRepositoryProvider = Provider<PrayerCalendarRepository>(
   (ref) => PrayerCalendarRepository(ref.watch(appDatabaseProvider)),
 );

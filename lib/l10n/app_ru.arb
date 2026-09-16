@@ -297,6 +297,11 @@
   ,"qadaOriginUnknown": "День пропущенного намаза неизвестен"
   ,"qadaOriginUnknownHint": "Для очень старых долгов. Запись встанет на день восполнения, и это будет прямо указано."
   ,"calendarQadaOriginUnknownEntry": "исходный день неизвестен"
+  ,"calendarRegisterForDay": "Отметить за этот день"
+  ,"pendingRegistrationBanner": "Отмечаю за {date}"
+  ,"@pendingRegistrationBanner": {"placeholders": {"date": {"type": "String"}}}
+  ,"pendingRegistrationCancel": "Вернуться к сегодня"
+  ,"pendingRegistrationPickPrayer": "Для прошедшего дня намаз выбирается вручную."
   ,"partKind": "Тип части"
   ,"customPartLabel": "Своё название"
   ,"customPartLabelRequired": "Введите название."

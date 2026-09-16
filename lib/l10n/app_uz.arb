@@ -291,6 +291,11 @@
   ,"qadaOriginUnknown": "Qoldirilgan namoz kuni noma’lum"
   ,"qadaOriginUnknownHint": "Juda eski qarzlar uchun. Yozuv qazo qilingan kunga tushadi va bu ochiq ko‘rsatiladi."
   ,"calendarQadaOriginUnknownEntry": "asl kuni noma’lum"
+  ,"calendarRegisterForDay": "Shu kun uchun belgilash"
+  ,"pendingRegistrationBanner": "{date} uchun yozilmoqda"
+  ,"@pendingRegistrationBanner": {"placeholders": {"date": {"type": "String"}}}
+  ,"pendingRegistrationCancel": "Bugunga qaytish"
+  ,"pendingRegistrationPickPrayer": "O‘tgan kun uchun namoz qo‘lda tanlanadi."
   ,"partKind": "Qism turi"
   ,"customPartLabel": "Maxsus nom"
   ,"customPartLabelRequired": "Nom kiriting."

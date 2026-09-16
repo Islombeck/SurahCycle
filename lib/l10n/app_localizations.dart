@@ -1702,6 +1702,30 @@ abstract class AppLocalizations {
   /// **'исходный день неизвестен'**
   String get calendarQadaOriginUnknownEntry;
 
+  /// No description provided for @calendarRegisterForDay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отметить за этот день'**
+  String get calendarRegisterForDay;
+
+  /// No description provided for @pendingRegistrationBanner.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отмечаю за {date}'**
+  String pendingRegistrationBanner(String date);
+
+  /// No description provided for @pendingRegistrationCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вернуться к сегодня'**
+  String get pendingRegistrationCancel;
+
+  /// No description provided for @pendingRegistrationPickPrayer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Для прошедшего дня намаз выбирается вручную.'**
+  String get pendingRegistrationPickPrayer;
+
   /// No description provided for @partKind.
   ///
   /// In ru, this message translates to:

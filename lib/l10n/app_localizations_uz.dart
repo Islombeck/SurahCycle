@@ -940,6 +940,21 @@ class AppLocalizationsUz extends AppLocalizations {
   String get calendarQadaOriginUnknownEntry => 'asl kuni noma’lum';
 
   @override
+  String get calendarRegisterForDay => 'Shu kun uchun belgilash';
+
+  @override
+  String pendingRegistrationBanner(String date) {
+    return '$date uchun yozilmoqda';
+  }
+
+  @override
+  String get pendingRegistrationCancel => 'Bugunga qaytish';
+
+  @override
+  String get pendingRegistrationPickPrayer =>
+      'O‘tgan kun uchun namoz qo‘lda tanlanadi.';
+
+  @override
   String get partKind => 'Qism turi';
 
   @override

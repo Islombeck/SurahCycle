@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/localization_extensions.dart';
@@ -91,12 +92,25 @@ final class _PrayerCalendarScreenState
                 day: days.valueOrNull
                     ?.where((d) => d.date == selected)
                     .firstOrNull,
+                onRegister: selected.compareTo(today) > 0
+                    ? null
+                    : () => _registerFor(selected),
               ),
             ],
           ],
         ),
       ),
     );
+  }
+
+  /// Hands the chosen day to the ordinary marking flow on Home.
+  ///
+  /// The calendar deliberately does not grow a second way to register a
+  /// recitation: there is one registration path, and this only tells it which
+  /// day the next marks belong to.
+  void _registerFor(LocalDate date) {
+    ref.read(pendingRegistrationDateProvider.notifier).state = date;
+    context.go('/');
   }
 
   void _shiftMonth(int delta) => setState(() {
@@ -297,11 +311,15 @@ final class _DayDetails extends StatelessWidget {
     required this.date,
     required this.today,
     required this.day,
+    required this.onRegister,
   });
 
   final LocalDate date;
   final LocalDate today;
   final PrayerCalendarDay? day;
+
+  /// Null for a future day: a reading cannot be registered in advance.
+  final VoidCallback? onRegister;
 
   @override
   Widget build(BuildContext context) {
@@ -365,6 +383,18 @@ final class _DayDetails extends StatelessWidget {
               Text(
                 l10n.calendarQadaFulfilledUnknown,
                 style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+            if (onRegister case final register?) ...<Widget>[
+              const SizedBox(height: 12),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: FilledButton.tonalIcon(
+                  key: const ValueKey<String>('calendar-register-for-day'),
+                  onPressed: register,
+                  icon: const Icon(Icons.edit_calendar_outlined),
+                  label: Text(l10n.calendarRegisterForDay),
+                ),
               ),
             ],
           ],
