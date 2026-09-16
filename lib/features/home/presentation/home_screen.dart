@@ -82,10 +82,12 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     final prayerResolution = _settledAsyncValue(
       ref.watch(homePrayerContextResolutionProvider),
     );
-    final scheduleResolution = _settledAsyncValue(
+    // Presentation only: neither of these is a family key, so keeping the last
+    // known value across a reload cannot make the screen thrash.
+    final scheduleResolution = _lastKnownAsyncValue(
       ref.watch(prayerScheduleContextResolutionProvider),
     );
-    final prayerSettings = _settledAsyncValue(
+    final prayerSettings = _lastKnownAsyncValue(
       ref.watch(prayerTimeSettingsProvider),
     );
     final prayerSchedule = _matchingPrayerSchedule(
@@ -168,8 +170,12 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                       scheduleResolution: scheduleResolution,
                       settings: prayerSettings,
                       schedule: prayerSchedule,
+                      // What is in effect wins over what was once persisted.
+                      // The other order showed Магриб ticked while the card
+                      // read Иша, because a sticky override never writes the
+                      // stored selection.
                       onTap: () => _showPrayerPicker(
-                        manualPrayer ?? prayerResolution?.context,
+                        prayerResolution?.context ?? manualPrayer,
                       ),
                       onJumuahOverride: canOfferJumuahOverride
                           ? () => _setPrayerContextOverride(
@@ -255,6 +261,17 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  /// What the prayer picker should open on: whatever is actually in effect.
+  ///
+  /// A sticky override never writes the persisted selection, so reading the
+  /// stored value first showed a prayer the user had left behind — Магриб
+  /// ticked while the card read Иша, on video.
+  PrayerContext? _pickerInitialContext() =>
+      _settledAsyncValue(
+        ref.read(homePrayerContextResolutionProvider),
+      )?.context ??
+      ref.read(selectedPrayerProvider);
+
   /// The one UI entry point for marking a surah.
   Future<void> _handleMarkRequest(
     MasteredSurah surah, {
@@ -263,9 +280,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     var actionPrayer = await _resolvePrayerForAction();
     if (!mounted) return;
     if (actionPrayer == null) {
-      final selected = await _showPrayerPicker(
-        ref.read(selectedPrayerProvider),
-      );
+      final selected = await _showPrayerPicker(_pickerInitialContext());
       if (selected == null || !mounted) return;
       actionPrayer = _ActionPrayerContext(
         context: selected,
@@ -312,9 +327,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
         var latest = await _resolvePrayerForAction();
         if (!mounted) return;
         if (latest == null) {
-          final selected = await _showPrayerPicker(
-            ref.read(selectedPrayerProvider),
-          );
+          final selected = await _showPrayerPicker(_pickerInitialContext());
           if (selected == null || !mounted) return;
           latest = _ActionPrayerContext(context: selected, isAutomatic: false);
         }
@@ -1268,6 +1281,13 @@ LocalDate _shiftLocalDate(LocalDate date, int days) {
   return LocalDate.fromLocalDateTime(shifted);
 }
 
+/// The schedule to draw, or null when there is genuinely nothing to draw.
+///
+/// A reloading schedule still holds the one it last produced, and
+/// [PrayerTodaySchedule.matchesSettings] already decides whether that value is
+/// about the settings in force — a far better test than "is this provider busy
+/// this frame". Hiding the strip on every loading tick is visible jank, and the
+/// value is presentational: it keys nothing.
 PrayerTodaySchedule? _matchingPrayerSchedule(
   AsyncValue<PrayerTodaySchedule> state,
   PrayerTimeSettings? settings,
@@ -1275,8 +1295,6 @@ PrayerTodaySchedule? _matchingPrayerSchedule(
   final value = state.valueOrNull;
   if (settings == null ||
       !settings.locationConfirmed ||
-      state.isLoading ||
-      state.hasError ||
       value == null ||
       !value.matchesSettings(settings)) {
     return null;
@@ -1284,8 +1302,24 @@ PrayerTodaySchedule? _matchingPrayerSchedule(
   return value;
 }
 
+/// A value only while the provider is idle.
+///
+/// Used for the resolved context, and deliberately so. That context is a
+/// **family key** here — the routine, the batch and the occurrence are all
+/// watched as `family((context: ..., localDate: ...))`. Feeding a stale
+/// context back in makes the screen alternate between two family instances,
+/// each disposing the other's element and invalidating the provider that
+/// produced it: a rebuild loop that hangs the app. Presentation reads
+/// [_lastKnownAsyncValue] instead.
 T? _settledAsyncValue<T>(AsyncValue<T> state) =>
     state.isLoading || state.hasError ? null : state.valueOrNull;
+
+/// The last value a provider produced, kept across a reload.
+///
+/// Only for values this screen *draws*, never for a family key. Hiding the
+/// mode line and the whole prayer-time strip on every loading tick is what
+/// made the card read «Выбрать намаз · Автоматически» mid-session.
+T? _lastKnownAsyncValue<T>(AsyncValue<T> state) => state.valueOrNull;
 
 bool _canOfferJumuahOverride({
   required PrayerContextResolution? resolution,

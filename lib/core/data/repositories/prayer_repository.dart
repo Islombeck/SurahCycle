@@ -36,7 +36,16 @@ final class PrayerRepository {
     );
   });
 
-  Future<PrayerContext?> getSelectedContext() async {
+  /// The stored manual context, read as one consistent pair.
+  ///
+  /// The two keys are written together in [saveSelectedContext], but reading
+  /// them as two independent awaits let a reader straddle that write and see
+  /// the new type with the old flag missing — which threw
+  /// `Stored prayer context is incomplete.` at whoever asked. That exception
+  /// reaches the prayer-time settings stream, and an errored settings stream
+  /// blanks the whole prayer context on Home. Reading inside a transaction
+  /// gives the reader one snapshot, so it sees the old pair or the new pair.
+  Future<PrayerContext?> getSelectedContext() => database.transaction(() async {
     final type = await _settings.getString(_selectedTypeKey);
     final isQada = await _settings.getBool(_selectedQadaKey);
     if (type == null && isQada == null) return null;
@@ -47,7 +56,7 @@ final class PrayerRepository {
       prayerType: PrayerType.values.byName(type),
       isQada: isQada,
     );
-  }
+  });
 
   Stream<PrayerContext?> watchSelectedContext() => database
       .customSelect(

@@ -111,6 +111,57 @@ Not yet established, and not to be asserted until it is: why the schedule strip
 disappeared, what rebuilt the page, and whether the batch reset is a consequence
 of the context change or an independent fault.
 
+### What the frame at 41 s forces to be true
+
+Three signals appear together and only one combination of provider states
+produces all three. The card reads «Выбрать намаз», so the resolved context is
+null. The first detail line reads «Автоматически», which `_PrayerContextCard`
+prints when the status is not `manual` **and** `settings?.contextSelectionMode`
+is not `manual` — a null `settings` satisfies it. The strip is absent, which
+`_matchingPrayerSchedule` does when `settings == null`. And the
+«Вернуться к авто» chip is still there, which requires
+`activePrayerContextOverrideProvider != null`.
+
+A live override with null settings is the only consistent reading: the prayer
+time **settings** momentarily had no settled value, while the in-memory override
+was untouched. It cannot be an app restart, because a restart would take the
+in-memory override with it and the chip would be gone.
+
+So the amplifier is proven, and it is one line:
+
+```dart
+T? _settledValue<T>(AsyncValue<T> state) =>
+    state.isLoading || state.hasError ? null : state.valueOrNull;
+```
+
+A reloading Riverpod provider still carries the value it last emitted. This
+threw it away. Home derives the resolved context, the routine card, the
+recommendation batch and the whole prayer-time strip from these, so one loading
+tick empties all of them at once — and because the page then becomes much
+shorter, the scroll offset is clamped and the user is thrown back to the top.
+That single mechanism accounts for the lost context, the vanished strip, the
+`2×` badges disappearing and the jump, in one frame.
+
+### What is NOT yet proven
+
+**Which upstream event produced that loading/error tick.** A reproduction was
+built against the real database and the real provider graph
+(`test/app/prayer_context_stability_test.dart`) and it does **not** reproduce:
+an unrelated `app_settings` write — which is what storing the recommendation
+batch does on every mark — leaves both a sticky override and a persisted manual
+selection intact. That hypothesis is therefore recorded as **refuted for now**,
+not quietly dropped.
+
+One real defect did surface while building it, from a genuine exception rather
+than a guess: `PrayerRepository.getSelectedContext()` read its two keys with two
+independent awaits, so a reader could straddle the transaction that writes them
+and see the type without the flag — throwing `Stored prayer context is
+incomplete.`. That exception is reachable from the prayer-time settings stream,
+and an errored settings stream is exactly the null-settings state the frame
+requires. It is **a** path to the observed frame; whether it is *the* path the
+owner hit is still unproven. It is fixed regardless, by reading both keys in one
+transaction.
+
 **Stage J is under way. §6.0 (MCP) is blocked on one owner action; §6.4 (durable outbox, schema v7) is done.**
 
 - MCP: `claude` is not on PATH in this environment (it runs as the VSCode extension), so instead of `claude mcp add --transport http appwrite https://mcp.appwrite.io/` the server is declared in a project-scoped **`.mcp.json`** at the repo root — the same "only this local project" scope the prompt asked for, expressed as the file the command writes. No existing configuration was touched (there was none: no global `mcpServers`, no project entry). **Owner action: `/mcp` → `appwrite` → Authenticate**, then sign in to Appwrite through GitHub in his own browser and read the scope Appwrite actually requests before approving. A session restart may be needed for the extension to pick up a new `.mcp.json`. Nothing beyond §6.0 was attempted — no read of the project, no provisioning.

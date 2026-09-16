@@ -1023,7 +1023,9 @@ final activePrayerContextOverrideProvider = Provider<PrayerContext?>((ref) {
 
 final prayerContextResolutionProvider = StreamProvider<PrayerContextResolution>(
   (ref) {
-    final settings = _settledValue(ref.watch(prayerTimeSettingsProvider));
+    // Reloading settings must not read as "no settings": that is what turned
+    // a chosen Магриб into «Выбрать намаз · Автоматически» mid-session.
+    final settings = _lastKnownValue(ref.watch(prayerTimeSettingsProvider));
     if (settings == null) {
       return Stream<PrayerContextResolution>.value(
         const PrayerContextResolution(
@@ -1149,7 +1151,7 @@ final homePrayerContextResolutionProvider =
 /// while the user keeps recitation attribution in manual mode.
 final prayerScheduleContextResolutionProvider =
     StreamProvider<PrayerContextResolution>((ref) {
-      final settings = _settledValue(ref.watch(prayerTimeSettingsProvider));
+      final settings = _lastKnownValue(ref.watch(prayerTimeSettingsProvider));
       if (settings == null || !settings.locationConfirmed) {
         return Stream<PrayerContextResolution>.value(
           const PrayerContextResolution(
@@ -2047,5 +2049,24 @@ Duration _durationUntilNextMinute(DateTime now) {
   );
 }
 
+/// A value only while the provider is idle: a reload or an error reads as null.
+///
+/// Deliberately conservative, and kept that way for everything that drives a
+/// write — the widget snapshot, the local-date provider — where acting on a
+/// value that is about to change is worse than doing nothing for a frame.
 T? _settledValue<T>(AsyncValue<T> state) =>
     state.isLoading || state.hasError ? null : state.valueOrNull;
+
+/// The last value a provider actually produced, kept across a reload.
+///
+/// Riverpod keeps the previous value while a provider re-subscribes;
+/// [_settledValue] throws it away. That is right for a writer and wrong for
+/// the prayer context, because Home derives the resolved context, the routine
+/// card, the recommendation batch and the whole prayer-time strip from it. One
+/// loading tick empties all four at once, and since the page then becomes much
+/// shorter the scroll offset is clamped and the user is thrown back to the top
+/// — the "экран прыгает после отметок" reported on 2026-09-16.
+///
+/// A context one frame stale is not a lie. An empty one is: it reads as "no
+/// prayer selected" to a user who has selected a prayer.
+T? _lastKnownValue<T>(AsyncValue<T> state) => state.valueOrNull;
