@@ -6,6 +6,7 @@
 /// `docs/adr/ADR-0001-account-sync-backend.md`.
 library;
 
+export 'appwrite_config.dart';
 export 'fake_sync_backend.dart';
 export 'in_memory_sync_outbox.dart';
 export 'sync_engine.dart';
