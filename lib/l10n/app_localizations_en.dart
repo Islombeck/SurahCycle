@@ -927,6 +927,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'A future day. A reading cannot be registered in advance.';
 
   @override
+  String get qadaOriginUnknown => 'The day of the missed prayer is unknown';
+
+  @override
+  String get qadaOriginUnknownHint =>
+      'For very old debts. The record goes on the day it was made up, and says so.';
+
+  @override
+  String get calendarQadaOriginUnknownEntry => 'original day unknown';
+
+  @override
   String get partKind => 'Part type';
 
   @override

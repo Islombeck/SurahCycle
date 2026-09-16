@@ -930,6 +930,16 @@ class AppLocalizationsUz extends AppLocalizations {
       'Kelasi kun. O‘qishni oldindan belgilab bo‘lmaydi.';
 
   @override
+  String get qadaOriginUnknown => 'Qoldirilgan namoz kuni noma’lum';
+
+  @override
+  String get qadaOriginUnknownHint =>
+      'Juda eski qarzlar uchun. Yozuv qazo qilingan kunga tushadi va bu ochiq ko‘rsatiladi.';
+
+  @override
+  String get calendarQadaOriginUnknownEntry => 'asl kuni noma’lum';
+
+  @override
   String get partKind => 'Qism turi';
 
   @override

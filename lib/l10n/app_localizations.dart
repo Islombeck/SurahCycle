@@ -1684,6 +1684,24 @@ abstract class AppLocalizations {
   /// **'Будущий день. Отметить чтение заранее нельзя.'**
   String get calendarFutureDay;
 
+  /// No description provided for @qadaOriginUnknown.
+  ///
+  /// In ru, this message translates to:
+  /// **'День пропущенного намаза неизвестен'**
+  String get qadaOriginUnknown;
+
+  /// No description provided for @qadaOriginUnknownHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Для очень старых долгов. Запись встанет на день восполнения, и это будет прямо указано.'**
+  String get qadaOriginUnknownHint;
+
+  /// No description provided for @calendarQadaOriginUnknownEntry.
+  ///
+  /// In ru, this message translates to:
+  /// **'исходный день неизвестен'**
+  String get calendarQadaOriginUnknownEntry;
+
   /// No description provided for @partKind.
   ///
   /// In ru, this message translates to:

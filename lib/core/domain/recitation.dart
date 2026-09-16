@@ -148,9 +148,19 @@ final class SurahRecitationEvent implements RotationJournalEvent {
     String? rotationSchemeId,
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
+    bool qadaOriginIsUnknown = false,
   }) {
     if (id.isEmpty) {
       throw ArgumentError.value(id, 'id', 'Must not be empty.');
+    }
+    // Only a Qada can have an unknown origin. An ordinary record always knows
+    // the day it belongs to, because the user picked it.
+    if (qadaOriginIsUnknown && !prayerContext.isQada) {
+      throw ArgumentError.value(
+        qadaOriginIsUnknown,
+        'qadaOriginIsUnknown',
+        'Only a Qada recitation can have an unknown original day.',
+      );
     }
     if (surahId.isEmpty) {
       throw ArgumentError.value(surahId, 'surahId', 'Must not be empty.');
@@ -213,6 +223,7 @@ final class SurahRecitationEvent implements RotationJournalEvent {
       slotIndex: slotIndex,
       coverage: resolvedCoverage,
       rakaatSpanCount: rakaatSpanCount,
+      qadaOriginIsUnknown: qadaOriginIsUnknown,
     );
   }
 
@@ -227,6 +238,7 @@ final class SurahRecitationEvent implements RotationJournalEvent {
     required this.slotIndex,
     required this.coverage,
     required this.rakaatSpanCount,
+    required this.qadaOriginIsUnknown,
   });
 
   @override
@@ -241,6 +253,12 @@ final class SurahRecitationEvent implements RotationJournalEvent {
   final int? slotIndex;
   final RecitationCoverage? coverage;
   final int rakaatSpanCount;
+
+  /// The user is making up a prayer whose day he cannot name — someone closing
+  /// very old debts from before he began praying regularly. [localDate] then
+  /// means the day the make-up was entered for, and every screen says so
+  /// instead of placing the debt on a day nothing supports.
+  final bool qadaOriginIsUnknown;
 
   PrayerType get prayerType => prayerContext.prayerType;
   bool get isQada => prayerContext.isQada;
@@ -261,6 +279,7 @@ final class SurahRecitationEvent implements RotationJournalEvent {
         slotIndex: slotIndex,
         coverage: coverage,
         rakaatSpanCount: rakaatSpanCount,
+        qadaOriginIsUnknown: qadaOriginIsUnknown,
       );
 
   @override
@@ -276,7 +295,8 @@ final class SurahRecitationEvent implements RotationJournalEvent {
           prayerSessionPartId == other.prayerSessionPartId &&
           slotIndex == other.slotIndex &&
           coverage == other.coverage &&
-          rakaatSpanCount == other.rakaatSpanCount;
+          rakaatSpanCount == other.rakaatSpanCount &&
+          qadaOriginIsUnknown == other.qadaOriginIsUnknown;
 
   @override
   int get hashCode => Object.hash(
@@ -290,5 +310,6 @@ final class SurahRecitationEvent implements RotationJournalEvent {
     slotIndex,
     coverage,
     rakaatSpanCount,
+    qadaOriginIsUnknown,
   );
 }

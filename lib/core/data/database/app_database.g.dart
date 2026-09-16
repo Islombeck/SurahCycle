@@ -5069,6 +5069,20 @@ class $RecitationEventsTable extends RecitationEvents
     ),
     defaultValue: const Constant<bool>(false),
   );
+  static const VerificationMeta _qadaOriginIsUnknownMeta =
+      const VerificationMeta('qadaOriginIsUnknown');
+  @override
+  late final GeneratedColumn<bool> qadaOriginIsUnknown = GeneratedColumn<bool>(
+    'qada_origin_is_unknown',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("qada_origin_is_unknown" IN (0, 1))',
+    ),
+    defaultValue: const Constant<bool>(false),
+  );
   static const VerificationMeta _deletedAtUtcMeta = const VerificationMeta(
     'deletedAtUtc',
   );
@@ -5094,6 +5108,7 @@ class $RecitationEventsTable extends RecitationEvents
     localDate,
     prayerType,
     isQada,
+    qadaOriginIsUnknown,
     deletedAtUtc,
   ];
   @override
@@ -5211,6 +5226,15 @@ class $RecitationEventsTable extends RecitationEvents
         isQada.isAcceptableOrUnknown(data['is_qada']!, _isQadaMeta),
       );
     }
+    if (data.containsKey('qada_origin_is_unknown')) {
+      context.handle(
+        _qadaOriginIsUnknownMeta,
+        qadaOriginIsUnknown.isAcceptableOrUnknown(
+          data['qada_origin_is_unknown']!,
+          _qadaOriginIsUnknownMeta,
+        ),
+      );
+    }
     if (data.containsKey('deleted_at_utc')) {
       context.handle(
         _deletedAtUtcMeta,
@@ -5281,6 +5305,10 @@ class $RecitationEventsTable extends RecitationEvents
         DriftSqlType.bool,
         data['${effectivePrefix}is_qada'],
       )!,
+      qadaOriginIsUnknown: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}qada_origin_is_unknown'],
+      )!,
       deletedAtUtc: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}deleted_at_utc'],
@@ -5308,6 +5336,15 @@ class RecitationEventRow extends DataClass
   final String localDate;
   final String prayerType;
   final bool isQada;
+
+  /// Set only for a Qada whose original day the user could not name.
+  ///
+  /// Someone making up prayers from before he began praying regularly cannot
+  /// say which day a debt belongs to, and the app must not invent one. When
+  /// this is set, [localDate] means the day the make-up was entered for — the
+  /// only date that actually exists — and every screen says so rather than
+  /// placing the debt on a day it has no evidence for.
+  final bool qadaOriginIsUnknown;
   final DateTime? deletedAtUtc;
   const RecitationEventRow({
     required this.id,
@@ -5322,6 +5359,7 @@ class RecitationEventRow extends DataClass
     required this.localDate,
     required this.prayerType,
     required this.isQada,
+    required this.qadaOriginIsUnknown,
     this.deletedAtUtc,
   });
   @override
@@ -5345,6 +5383,7 @@ class RecitationEventRow extends DataClass
     map['local_date'] = Variable<String>(localDate);
     map['prayer_type'] = Variable<String>(prayerType);
     map['is_qada'] = Variable<bool>(isQada);
+    map['qada_origin_is_unknown'] = Variable<bool>(qadaOriginIsUnknown);
     if (!nullToAbsent || deletedAtUtc != null) {
       map['deleted_at_utc'] = Variable<DateTime>(deletedAtUtc);
     }
@@ -5371,6 +5410,7 @@ class RecitationEventRow extends DataClass
       localDate: Value(localDate),
       prayerType: Value(prayerType),
       isQada: Value(isQada),
+      qadaOriginIsUnknown: Value(qadaOriginIsUnknown),
       deletedAtUtc: deletedAtUtc == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAtUtc),
@@ -5397,6 +5437,9 @@ class RecitationEventRow extends DataClass
       localDate: serializer.fromJson<String>(json['localDate']),
       prayerType: serializer.fromJson<String>(json['prayerType']),
       isQada: serializer.fromJson<bool>(json['isQada']),
+      qadaOriginIsUnknown: serializer.fromJson<bool>(
+        json['qadaOriginIsUnknown'],
+      ),
       deletedAtUtc: serializer.fromJson<DateTime?>(json['deletedAtUtc']),
     );
   }
@@ -5416,6 +5459,7 @@ class RecitationEventRow extends DataClass
       'localDate': serializer.toJson<String>(localDate),
       'prayerType': serializer.toJson<String>(prayerType),
       'isQada': serializer.toJson<bool>(isQada),
+      'qadaOriginIsUnknown': serializer.toJson<bool>(qadaOriginIsUnknown),
       'deletedAtUtc': serializer.toJson<DateTime?>(deletedAtUtc),
     };
   }
@@ -5433,6 +5477,7 @@ class RecitationEventRow extends DataClass
     String? localDate,
     String? prayerType,
     bool? isQada,
+    bool? qadaOriginIsUnknown,
     Value<DateTime?> deletedAtUtc = const Value.absent(),
   }) => RecitationEventRow(
     id: id ?? this.id,
@@ -5451,6 +5496,7 @@ class RecitationEventRow extends DataClass
     localDate: localDate ?? this.localDate,
     prayerType: prayerType ?? this.prayerType,
     isQada: isQada ?? this.isQada,
+    qadaOriginIsUnknown: qadaOriginIsUnknown ?? this.qadaOriginIsUnknown,
     deletedAtUtc: deletedAtUtc.present ? deletedAtUtc.value : this.deletedAtUtc,
   );
   RecitationEventRow copyWithCompanion(RecitationEventsCompanion data) {
@@ -5481,6 +5527,9 @@ class RecitationEventRow extends DataClass
           ? data.prayerType.value
           : this.prayerType,
       isQada: data.isQada.present ? data.isQada.value : this.isQada,
+      qadaOriginIsUnknown: data.qadaOriginIsUnknown.present
+          ? data.qadaOriginIsUnknown.value
+          : this.qadaOriginIsUnknown,
       deletedAtUtc: data.deletedAtUtc.present
           ? data.deletedAtUtc.value
           : this.deletedAtUtc,
@@ -5502,6 +5551,7 @@ class RecitationEventRow extends DataClass
           ..write('localDate: $localDate, ')
           ..write('prayerType: $prayerType, ')
           ..write('isQada: $isQada, ')
+          ..write('qadaOriginIsUnknown: $qadaOriginIsUnknown, ')
           ..write('deletedAtUtc: $deletedAtUtc')
           ..write(')'))
         .toString();
@@ -5521,6 +5571,7 @@ class RecitationEventRow extends DataClass
     localDate,
     prayerType,
     isQada,
+    qadaOriginIsUnknown,
     deletedAtUtc,
   );
   @override
@@ -5539,6 +5590,7 @@ class RecitationEventRow extends DataClass
           other.localDate == this.localDate &&
           other.prayerType == this.prayerType &&
           other.isQada == this.isQada &&
+          other.qadaOriginIsUnknown == this.qadaOriginIsUnknown &&
           other.deletedAtUtc == this.deletedAtUtc);
 }
 
@@ -5555,6 +5607,7 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
   final Value<String> localDate;
   final Value<String> prayerType;
   final Value<bool> isQada;
+  final Value<bool> qadaOriginIsUnknown;
   final Value<DateTime?> deletedAtUtc;
   final Value<int> rowid;
   const RecitationEventsCompanion({
@@ -5570,6 +5623,7 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
     this.localDate = const Value.absent(),
     this.prayerType = const Value.absent(),
     this.isQada = const Value.absent(),
+    this.qadaOriginIsUnknown = const Value.absent(),
     this.deletedAtUtc = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -5586,6 +5640,7 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
     required String localDate,
     required String prayerType,
     this.isQada = const Value.absent(),
+    this.qadaOriginIsUnknown = const Value.absent(),
     this.deletedAtUtc = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -5609,6 +5664,7 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
     Expression<String>? localDate,
     Expression<String>? prayerType,
     Expression<bool>? isQada,
+    Expression<bool>? qadaOriginIsUnknown,
     Expression<DateTime>? deletedAtUtc,
     Expression<int>? rowid,
   }) {
@@ -5626,6 +5682,8 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
       if (localDate != null) 'local_date': localDate,
       if (prayerType != null) 'prayer_type': prayerType,
       if (isQada != null) 'is_qada': isQada,
+      if (qadaOriginIsUnknown != null)
+        'qada_origin_is_unknown': qadaOriginIsUnknown,
       if (deletedAtUtc != null) 'deleted_at_utc': deletedAtUtc,
       if (rowid != null) 'rowid': rowid,
     });
@@ -5644,6 +5702,7 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
     Value<String>? localDate,
     Value<String>? prayerType,
     Value<bool>? isQada,
+    Value<bool>? qadaOriginIsUnknown,
     Value<DateTime?>? deletedAtUtc,
     Value<int>? rowid,
   }) {
@@ -5660,6 +5719,7 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
       localDate: localDate ?? this.localDate,
       prayerType: prayerType ?? this.prayerType,
       isQada: isQada ?? this.isQada,
+      qadaOriginIsUnknown: qadaOriginIsUnknown ?? this.qadaOriginIsUnknown,
       deletedAtUtc: deletedAtUtc ?? this.deletedAtUtc,
       rowid: rowid ?? this.rowid,
     );
@@ -5706,6 +5766,9 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
     if (isQada.present) {
       map['is_qada'] = Variable<bool>(isQada.value);
     }
+    if (qadaOriginIsUnknown.present) {
+      map['qada_origin_is_unknown'] = Variable<bool>(qadaOriginIsUnknown.value);
+    }
     if (deletedAtUtc.present) {
       map['deleted_at_utc'] = Variable<DateTime>(deletedAtUtc.value);
     }
@@ -5730,6 +5793,7 @@ class RecitationEventsCompanion extends UpdateCompanion<RecitationEventRow> {
           ..write('localDate: $localDate, ')
           ..write('prayerType: $prayerType, ')
           ..write('isQada: $isQada, ')
+          ..write('qadaOriginIsUnknown: $qadaOriginIsUnknown, ')
           ..write('deletedAtUtc: $deletedAtUtc, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -14839,6 +14903,7 @@ typedef $$RecitationEventsTableCreateCompanionBuilder =
       required String localDate,
       required String prayerType,
       Value<bool> isQada,
+      Value<bool> qadaOriginIsUnknown,
       Value<DateTime?> deletedAtUtc,
       Value<int> rowid,
     });
@@ -14856,6 +14921,7 @@ typedef $$RecitationEventsTableUpdateCompanionBuilder =
       Value<String> localDate,
       Value<String> prayerType,
       Value<bool> isQada,
+      Value<bool> qadaOriginIsUnknown,
       Value<DateTime?> deletedAtUtc,
       Value<int> rowid,
     });
@@ -14965,6 +15031,11 @@ class $$RecitationEventsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get qadaOriginIsUnknown => $composableBuilder(
+    column: $table.qadaOriginIsUnknown,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get deletedAtUtc => $composableBuilder(
     column: $table.deletedAtUtc,
     builder: (column) => ColumnFilters(column),
@@ -15071,6 +15142,11 @@ class $$RecitationEventsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get qadaOriginIsUnknown => $composableBuilder(
+    column: $table.qadaOriginIsUnknown,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get deletedAtUtc => $composableBuilder(
     column: $table.deletedAtUtc,
     builder: (column) => ColumnOrderings(column),
@@ -15168,6 +15244,11 @@ class $$RecitationEventsTableAnnotationComposer
 
   GeneratedColumn<bool> get isQada =>
       $composableBuilder(column: $table.isQada, builder: (column) => column);
+
+  GeneratedColumn<bool> get qadaOriginIsUnknown => $composableBuilder(
+    column: $table.qadaOriginIsUnknown,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get deletedAtUtc => $composableBuilder(
     column: $table.deletedAtUtc,
@@ -15267,6 +15348,7 @@ class $$RecitationEventsTableTableManager
                 Value<String> localDate = const Value.absent(),
                 Value<String> prayerType = const Value.absent(),
                 Value<bool> isQada = const Value.absent(),
+                Value<bool> qadaOriginIsUnknown = const Value.absent(),
                 Value<DateTime?> deletedAtUtc = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RecitationEventsCompanion(
@@ -15282,6 +15364,7 @@ class $$RecitationEventsTableTableManager
                 localDate: localDate,
                 prayerType: prayerType,
                 isQada: isQada,
+                qadaOriginIsUnknown: qadaOriginIsUnknown,
                 deletedAtUtc: deletedAtUtc,
                 rowid: rowid,
               ),
@@ -15299,6 +15382,7 @@ class $$RecitationEventsTableTableManager
                 required String localDate,
                 required String prayerType,
                 Value<bool> isQada = const Value.absent(),
+                Value<bool> qadaOriginIsUnknown = const Value.absent(),
                 Value<DateTime?> deletedAtUtc = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RecitationEventsCompanion.insert(
@@ -15314,6 +15398,7 @@ class $$RecitationEventsTableTableManager
                 localDate: localDate,
                 prayerType: prayerType,
                 isQada: isQada,
+                qadaOriginIsUnknown: qadaOriginIsUnknown,
                 deletedAtUtc: deletedAtUtc,
                 rowid: rowid,
               ),

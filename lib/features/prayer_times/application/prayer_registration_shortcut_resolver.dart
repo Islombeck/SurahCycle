@@ -20,11 +20,26 @@ final class PrayerRegistrationSelection {
     required this.shortcut,
     required this.occurrenceLocalDate,
     required this.prayerContext,
+    this.qadaOriginIsUnknown = false,
   });
 
   final PrayerRegistrationShortcut shortcut;
   final LocalDate occurrenceLocalDate;
   final PrayerContext prayerContext;
+
+  /// The user is making up a prayer whose day he cannot name — very old debts
+  /// from before he began praying regularly. [occurrenceLocalDate] is then the
+  /// day of the make-up, because it is the only date that exists, and the
+  /// record carries this flag so no screen pretends otherwise.
+  final bool qadaOriginIsUnknown;
+
+  PrayerRegistrationSelection withQadaOriginUnknown(bool value) =>
+      PrayerRegistrationSelection(
+        shortcut: shortcut,
+        occurrenceLocalDate: occurrenceLocalDate,
+        prayerContext: prayerContext,
+        qadaOriginIsUnknown: value,
+      );
 
   @override
   bool operator ==(Object other) =>
@@ -32,10 +47,16 @@ final class PrayerRegistrationSelection {
       other is PrayerRegistrationSelection &&
           shortcut == other.shortcut &&
           occurrenceLocalDate == other.occurrenceLocalDate &&
-          prayerContext == other.prayerContext;
+          prayerContext == other.prayerContext &&
+          qadaOriginIsUnknown == other.qadaOriginIsUnknown;
 
   @override
-  int get hashCode => Object.hash(shortcut, occurrenceLocalDate, prayerContext);
+  int get hashCode => Object.hash(
+    shortcut,
+    occurrenceLocalDate,
+    prayerContext,
+    qadaOriginIsUnknown,
+  );
 }
 
 enum PrayerRegistrationShortcutStatus {

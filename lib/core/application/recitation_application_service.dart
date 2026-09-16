@@ -123,6 +123,7 @@ final class RecitationApplicationService {
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
     LocalDate? occurrenceLocalDate,
+    bool qadaOriginIsUnknown = false,
   }) async {
     final snapshot = await surahs.getRotationSnapshot();
     final mastered = snapshot.surahById(surahId);
@@ -136,7 +137,10 @@ final class RecitationApplicationService {
         // The journal keeps two deliberately separate facts: when the user
         // entered the record and the local prayer day on which it occurred.
         // Choosing a past day does not imply Qada; that remains an explicit
-        // property of [prayerContext].
+        // property of [prayerContext]. And a Qada whose original day the user
+        // cannot name keeps the day of the make-up here, with
+        // [SurahRecitationEvent.qadaOriginIsUnknown] saying why — rather than
+        // a guessed date that would read as evidence.
         localDate: occurrenceLocalDate ?? localDates.today(),
         prayerSessionId: prayerSessionId,
         prayerSessionPartId: prayerSessionPartId,
@@ -146,6 +150,7 @@ final class RecitationApplicationService {
             : mastered.rotationScheme.id,
         coveredPartIds: explicitPartIds,
         rakaatSpanCount: rakaatSpanCount,
+        qadaOriginIsUnknown: qadaOriginIsUnknown,
       ),
     );
   }

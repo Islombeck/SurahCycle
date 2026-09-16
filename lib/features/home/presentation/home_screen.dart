@@ -411,6 +411,10 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
         coveredPartIds: selection.coveredPartIds,
         rakaatSpanCount: selection.rakaatSpanCount,
         occurrenceLocalDate: occurrenceLocalDate,
+        // Re-resolving the prayer above can turn a Qada back into an ordinary
+        // one, and an ordinary record always knows its day.
+        qadaOriginIsUnknown:
+            selection.qadaOriginIsUnknown && prayerContext.isQada,
       );
     } finally {
       _openCoverageSheetSurahIds.remove(surah.id);
@@ -469,6 +473,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
     LocalDate? occurrenceLocalDate,
+    bool qadaOriginIsUnknown = false,
   }) async {
     if (_busySurahIds.contains(surah.id)) return;
     setState(() => _busySurahIds.add(surah.id));
@@ -516,6 +521,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
             coveredPartIds: coveredPartIds,
             rakaatSpanCount: rakaatSpanCount,
             occurrenceLocalDate: localDate,
+            qadaOriginIsUnknown: qadaOriginIsUnknown,
           );
       // A manual context deliberately survives this mark: it is cleared only
       // by the explicit "back to automatic" action or once its local date has
@@ -859,6 +865,7 @@ final class _RecitationSelection {
     required this.prayerContext,
     required this.occurrenceLocalDate,
     required this.shortcut,
+    this.qadaOriginIsUnknown = false,
   });
 
   final List<String> coveredPartIds;
@@ -866,6 +873,7 @@ final class _RecitationSelection {
   final PrayerContext prayerContext;
   final LocalDate occurrenceLocalDate;
   final PrayerRegistrationShortcut shortcut;
+  final bool qadaOriginIsUnknown;
 }
 
 final class _RecitationCoverageSheet extends StatefulWidget {
@@ -902,6 +910,7 @@ final class _RecitationCoverageSheetState
   late LocalDate _occurrenceLocalDate;
   PrayerRegistrationShortcut _registrationShortcut =
       PrayerRegistrationShortcut.now;
+  bool _qadaOriginIsUnknown = false;
 
   @override
   void initState() {
@@ -938,6 +947,7 @@ final class _RecitationCoverageSheetState
       _prayerContext = selected.prayerContext;
       _occurrenceLocalDate = selected.occurrenceLocalDate;
       _registrationShortcut = selected.shortcut;
+      _qadaOriginIsUnknown = selected.qadaOriginIsUnknown;
     });
   }
 
@@ -1042,6 +1052,7 @@ final class _RecitationCoverageSheetState
                             prayerContext: _prayerContext,
                             occurrenceLocalDate: _occurrenceLocalDate,
                             shortcut: _registrationShortcut,
+                            qadaOriginIsUnknown: _qadaOriginIsUnknown,
                           ),
                         );
                       },
@@ -1086,6 +1097,7 @@ final class _PrayerOccurrenceSheetState extends State<_PrayerOccurrenceSheet> {
   late PrayerContext _prayerContext;
   late LocalDate _occurrenceLocalDate;
   late PrayerRegistrationShortcut _shortcut;
+  bool _qadaOriginIsUnknown = false;
 
   @override
   void initState() {
@@ -1206,6 +1218,9 @@ final class _PrayerOccurrenceSheetState extends State<_PrayerOccurrenceSheet> {
       prayerType: _prayerContext.prayerType,
       isQada: value,
     );
+    // Turning Qada off takes the unknown-day claim with it: an ordinary record
+    // always knows the day it belongs to.
+    if (!value) _qadaOriginIsUnknown = false;
   });
 
   PrayerRegistrationSelection _yesterdaySelection() {
@@ -1225,19 +1240,33 @@ final class _PrayerOccurrenceSheetState extends State<_PrayerOccurrenceSheet> {
     );
   }
 
-  PrayerRegistrationSelection? _selectionForConfirmation() =>
-      switch (_shortcut) {
-        PrayerRegistrationShortcut.now => _now.selection,
-        PrayerRegistrationShortcut.previousPrayer => _previousPrayer.selection,
-        PrayerRegistrationShortcut.yesterday => _yesterdaySelection(),
-        PrayerRegistrationShortcut.customDateAndPrayer =>
-          PrayerRegistrationShortcutResolver(widget.timeProvider)
-              .resolveCustom(
-                occurrenceLocalDate: _occurrenceLocalDate,
-                prayerContext: _prayerContext,
-              )
-              .selection,
-      };
+  PrayerRegistrationSelection? _selectionForConfirmation() {
+    final resolved = _resolveSelection();
+    if (resolved == null) return null;
+    return _qadaOriginIsUnknown && resolved.prayerContext.isQada
+        // With no original day to stand on, the record belongs to the day the
+        // make-up actually happened — the only date that exists.
+        ? PrayerRegistrationSelection(
+            shortcut: resolved.shortcut,
+            occurrenceLocalDate: widget.localDates.today(),
+            prayerContext: resolved.prayerContext,
+            qadaOriginIsUnknown: true,
+          )
+        : resolved;
+  }
+
+  PrayerRegistrationSelection? _resolveSelection() => switch (_shortcut) {
+    PrayerRegistrationShortcut.now => _now.selection,
+    PrayerRegistrationShortcut.previousPrayer => _previousPrayer.selection,
+    PrayerRegistrationShortcut.yesterday => _yesterdaySelection(),
+    PrayerRegistrationShortcut.customDateAndPrayer =>
+      PrayerRegistrationShortcutResolver(widget.timeProvider)
+          .resolveCustom(
+            occurrenceLocalDate: _occurrenceLocalDate,
+            prayerContext: _prayerContext,
+          )
+          .selection,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -1318,6 +1347,22 @@ final class _PrayerOccurrenceSheetState extends State<_PrayerOccurrenceSheet> {
                   title: Text(context.l10n.isQadaLabel),
                   value: _prayerContext.isQada,
                   onChanged: _selectQada,
+                ),
+              // Only a Qada can have an unknown day, and only a Qada is
+              // offered the choice. Someone closing debts from before he began
+              // praying regularly has no day to give, and inventing one would
+              // put the debt on a date nothing supports.
+              if (_prayerContext.isQada)
+                SwitchListTile(
+                  key: const ValueKey<String>(
+                    'registration-qada-origin-unknown',
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(context.l10n.qadaOriginUnknown),
+                  subtitle: Text(context.l10n.qadaOriginUnknownHint),
+                  value: _qadaOriginIsUnknown,
+                  onChanged: (value) =>
+                      setState(() => _qadaOriginIsUnknown = value),
                 ),
               const SizedBox(height: 16),
               FilledButton(

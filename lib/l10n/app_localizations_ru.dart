@@ -928,6 +928,16 @@ class AppLocalizationsRu extends AppLocalizations {
       'Будущий день. Отметить чтение заранее нельзя.';
 
   @override
+  String get qadaOriginUnknown => 'День пропущенного намаза неизвестен';
+
+  @override
+  String get qadaOriginUnknownHint =>
+      'Для очень старых долгов. Запись встанет на день восполнения, и это будет прямо указано.';
+
+  @override
+  String get calendarQadaOriginUnknownEntry => 'исходный день неизвестен';
+
+  @override
   String get partKind => 'Тип части';
 
   @override

@@ -303,6 +303,16 @@ class RecitationEvents extends Table {
   TextColumn get localDate => text()();
   TextColumn get prayerType => text()();
   BoolColumn get isQada => boolean().withDefault(const Constant<bool>(false))();
+
+  /// Set only for a Qada whose original day the user could not name.
+  ///
+  /// Someone making up prayers from before he began praying regularly cannot
+  /// say which day a debt belongs to, and the app must not invent one. When
+  /// this is set, [localDate] means the day the make-up was entered for — the
+  /// only date that actually exists — and every screen says so rather than
+  /// placing the debt on a day it has no evidence for.
+  BoolColumn get qadaOriginIsUnknown =>
+      boolean().withDefault(const Constant<bool>(false))();
   DateTimeColumn get deletedAtUtc => dateTime().nullable()();
 
   @override
@@ -322,6 +332,9 @@ class RecitationEvents extends Table {
     "CHECK (is_qada = 0 OR prayer_type NOT IN ('nafl', 'jumuah'))",
     'CHECK (rakaat_span_count >= 1)',
     'CHECK (slot_index IS NULL OR slot_index >= 0)',
+    // Only a Qada can have an unknown origin: an ordinary record always knows
+    // the day it belongs to, because the user picked it.
+    'CHECK (qada_origin_is_unknown = 0 OR is_qada = 1)',
     'FOREIGN KEY (rotation_scheme_id, surah_id) '
         'REFERENCES rotation_schemes (id, surah_id) ON DELETE RESTRICT',
   ];
@@ -674,7 +687,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'murajaah_user'));
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -690,7 +703,7 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
       if (from == to) return;
-      if (from < 1 || from > 6 || to != 7) {
+      if (from < 1 || from > 7 || to != 8) {
         throw StateError('Unsupported database migration from $from to $to.');
       }
       if (from < 2) {
@@ -710,6 +723,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 7) {
         await _migrateVersionSixToSeven(migrator);
+      }
+      if (from < 8) {
+        await _migrateVersionSevenToEight(migrator);
       }
     },
     beforeOpen: (OpeningDetails details) async {
@@ -847,6 +863,48 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// Records that a Qada's original day can be genuinely unknown.
+  ///
+  /// Someone making up prayers from before he began praying regularly cannot
+  /// name the day a debt belongs to. Until now every recitation had to claim
+  /// one, which meant the app either guessed or refused the entry.
+  ///
+  /// Nothing is backfilled and no existing row changes meaning: every stored
+  /// Qada keeps the day it was entered for, and keeps `false` here, because
+  /// the user did name a day for it. The flag is only ever set going forward,
+  /// by someone explicitly saying he cannot.
+  Future<void> _migrateVersionSevenToEight(Migrator migrator) async {
+    final columns = await customSelect(
+      'PRAGMA table_info(recitation_events)',
+    ).get();
+    final alreadyPresent = columns.any(
+      (row) => row.read<String>('name') == 'qada_origin_is_unknown',
+    );
+    if (!alreadyPresent) {
+      // A rebuild rather than a plain ADD COLUMN, because the new CHECK has to
+      // become part of the table: SQLite cannot attach one afterwards. Drift
+      // copies every existing column, so ids, journal sequence numbers and the
+      // compound key `recitation_event_parts` depends on all survive.
+      await migrator.alterTable(
+        TableMigration(
+          recitationEvents,
+          newColumns: <GeneratedColumn<Object>>[
+            recitationEvents.qadaOriginIsUnknown,
+          ],
+        ),
+      );
+    }
+    await _createVersionTwoIndexes();
+    await _createVersionFiveIndexes();
+    final violations = await customSelect('PRAGMA foreign_key_check').get();
+    if (violations.isNotEmpty) {
+      throw StateError(
+        'Foreign-key violations after v7 to v8 migration: '
+        '${violations.length}.',
+      );
+    }
+  }
+
   /// Adds the durable sync transport tables.
   ///
   /// Nothing is backfilled and no existing table is touched. A queue entry
@@ -934,12 +992,18 @@ class AppDatabase extends _$AppDatabase {
       (row) => row.read<String>('name') == 'prayer_session_part_id',
     );
     if (!hasSessionPart) {
+      // A rebuild always produces the *current* table definition, so during a
+      // chained upgrade this step already creates every later column too. They
+      // have to be declared here as new, or Drift would try to copy them out
+      // of the old table and fail with "no such column" — the same reason
+      // `resets_rotation_baseline` is guarded in the v3 to v4 step.
       await migrator.alterTable(
         TableMigration(
           recitationEvents,
           newColumns: <GeneratedColumn<Object>>[
             recitationEvents.prayerSessionPartId,
             recitationEvents.slotIndex,
+            recitationEvents.qadaOriginIsUnknown,
           ],
         ),
       );

@@ -351,6 +351,8 @@ final class _DayDetails extends StatelessWidget {
                           <String>[
                             entry.prayerType.label(l10n),
                             if (entry.isQada) l10n.calendarLegendQada,
+                            if (entry.hasUnknownOrigin)
+                              l10n.calendarQadaOriginUnknownEntry,
                             if (entry.isPartial) l10n.calendarPartialSuffix,
                           ].join(' · '),
                         ),

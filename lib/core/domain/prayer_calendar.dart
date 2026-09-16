@@ -15,6 +15,7 @@ final class PrayerCalendarFact {
     required this.totalPartCount,
     required this.completedPartCount,
     required this.recitationCount,
+    this.hasUnknownQadaOrigin = false,
   });
 
   final LocalDate date;
@@ -31,6 +32,11 @@ final class PrayerCalendarFact {
   /// what a day looks like.
   final int completedPartCount;
   final int recitationCount;
+
+  /// At least one recitation here is a Qada whose original day the user could
+  /// not name, so this cell's date is the day of the make-up rather than the
+  /// day of the debt.
+  final bool hasUnknownQadaOrigin;
 }
 
 /// One prayer the calendar will actually draw.
@@ -40,12 +46,18 @@ final class PrayerCalendarEntry {
     required this.isQada,
     required this.hasSession,
     required this.isComplete,
+    this.hasUnknownOrigin = false,
   });
 
   final PrayerType prayerType;
   final bool isQada;
   final bool hasSession;
   final bool isComplete;
+
+  /// The day of the missed prayer was never known, so this entry sits on the
+  /// day it was made up. The screen says so rather than letting the position
+  /// read as evidence about when the debt arose.
+  final bool hasUnknownOrigin;
 
   bool get isPartial => hasSession && !isComplete;
 
@@ -56,10 +68,12 @@ final class PrayerCalendarEntry {
           prayerType == other.prayerType &&
           isQada == other.isQada &&
           hasSession == other.hasSession &&
-          isComplete == other.isComplete;
+          isComplete == other.isComplete &&
+          hasUnknownOrigin == other.hasUnknownOrigin;
 
   @override
-  int get hashCode => Object.hash(prayerType, isQada, hasSession, isComplete);
+  int get hashCode =>
+      Object.hash(prayerType, isQada, hasSession, isComplete, hasUnknownOrigin);
 
   @override
   String toString() =>
@@ -151,6 +165,7 @@ final class PrayerCalendarService {
           ? fact.totalPartCount > 0 &&
                 fact.completedPartCount >= fact.totalPartCount
           : true,
+      hasUnknownOrigin: fact.isQada && fact.hasUnknownQadaOrigin,
     );
   }
 }

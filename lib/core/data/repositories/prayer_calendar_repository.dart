@@ -101,6 +101,7 @@ final class PrayerCalendarRepository {
         ),
       );
       fact.recitationCount += 1;
+      if (event.qadaOriginIsUnknown) fact.hasUnknownQadaOrigin = true;
     }
 
     return const PrayerCalendarService().build(
@@ -135,6 +136,7 @@ final class _MutableFact {
   int totalPartCount = 0;
   int completedPartCount = 0;
   int recitationCount = 0;
+  bool hasUnknownQadaOrigin = false;
 
   PrayerCalendarFact toFact() => PrayerCalendarFact(
     date: date,
@@ -144,6 +146,7 @@ final class _MutableFact {
     totalPartCount: totalPartCount,
     completedPartCount: completedPartCount,
     recitationCount: recitationCount,
+    hasUnknownQadaOrigin: hasUnknownQadaOrigin,
   );
 }
 

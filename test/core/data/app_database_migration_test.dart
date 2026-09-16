@@ -10,7 +10,7 @@ import '../../generated_migrations/schema.dart';
 
 void main() {
   test(
-    'v1 to v7 preserves every legacy table and backfills v5 semantics',
+    'v1 to v8 preserves every legacy table and backfills v5 semantics',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(1);
@@ -21,19 +21,19 @@ void main() {
       final migrationDatabase = AppDatabase(schema.newConnection());
       await verifier.migrateAndValidate(
         migrationDatabase,
-        7,
+        8,
         // Runtime-only performance indexes are intentionally absent from the
         // generated Drift schema. Old tables are checked explicitly below.
         options: const ValidationOptions(),
       );
 
-      expect(migrationDatabase.schemaVersion, 7);
+      expect(migrationDatabase.schemaVersion, 8);
       expect(
         await migrationDatabase
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        7,
+        8,
       );
       expect(
         await migrationDatabase.customSelect('PRAGMA foreign_key_check').get(),
@@ -534,17 +534,17 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      7,
+      8,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 7);
+    expect(database.schemaVersion, 8);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      7,
+      8,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -946,18 +946,18 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      7,
+      8,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 7);
+    expect(database.schemaVersion, 8);
     await _expectEmptySyncTransport(database);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      7,
+      8,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1265,18 +1265,18 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      7,
+      8,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 7);
+    expect(database.schemaVersion, 8);
     await _expectEmptySyncTransport(database);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      7,
+      8,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1548,18 +1548,18 @@ void main() {
       });
       await verifier.migrateAndValidate(
         database,
-        7,
+        8,
         options: const ValidationOptions(),
       );
 
-      expect(database.schemaVersion, 7);
+      expect(database.schemaVersion, 8);
       await _expectEmptySyncTransport(database);
       expect(
         await database
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        7,
+        8,
       );
       expect(
         await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1743,7 +1743,7 @@ void main() {
   );
 
   test(
-    'v6 to v7 adds the sync transport and touches nothing the user owns',
+    'v6 to v8 adds the sync transport and touches nothing the user owns',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(6);
@@ -1758,17 +1758,17 @@ void main() {
       });
       await verifier.migrateAndValidate(
         database,
-        7,
+        8,
         options: const ValidationOptions(),
       );
 
-      expect(database.schemaVersion, 7);
+      expect(database.schemaVersion, 8);
       expect(
         await database
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        7,
+        8,
       );
       expect(
         await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1866,19 +1866,108 @@ void main() {
     },
   );
 
+  test('v7 to v8 keeps the sync transport and the journal intact', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(7);
+    final raw = schema.rawDatabase;
+    raw.execute('PRAGMA foreign_keys = ON');
+    _seedVersionSeven(raw);
+
+    final database = AppDatabase(schema.newConnection());
+    addTearDown(() async {
+      await database.close();
+      schema.close();
+    });
+    await verifier.migrateAndValidate(
+      database,
+      8,
+      options: const ValidationOptions(),
+    );
+
+    expect(database.schemaVersion, 8);
+    expect(
+      await database.customSelect('PRAGMA foreign_key_check').get(),
+      isEmpty,
+    );
+
+    // v8 rebuilds `recitation_events` to attach its CHECK, so the row that
+    // survives that rebuild is the whole point of this test.
+    final event = await database.select(database.recitationEvents).getSingle();
+    expect(event.id, 'v5-event');
+    expect(event.journalSequence, 1);
+    expect(event.rotationSchemeId, 'v5-scheme');
+    expect(event.prayerSessionPartId, 'v5-session-part');
+    expect(event.slotIndex, 1);
+    expect(event.isQada, isTrue);
+    expect(
+      event.qadaOriginIsUnknown,
+      isFalse,
+      reason: 'a stored Qada named its day; nothing is backfilled as unknown',
+    );
+    expect(
+      await database.select(database.recitationEventParts).get(),
+      hasLength(1),
+      reason: 'the compound key the coverage rows depend on survived',
+    );
+    expect(
+      (await database.select(database.recallAttempts).getSingle()).id,
+      'v6-recall',
+    );
+
+    // v7's own tables are untouched by v8.
+    final queued = await database.select(database.syncOutboxEntries).get();
+    expect(queued.map((row) => row.envelopeId), <String>['v7-envelope']);
+    expect(queued.single.ownerKey, 'local');
+    expect(
+      (await database.select(database.syncCursors).getSingle()).pullCursor,
+      'v7-cursor',
+    );
+    expect(
+      (await database.select(database.syncActivations).getSingle()).isActive,
+      isTrue,
+    );
+
+    // The new flag belongs to Qada alone: an ordinary record always knows the
+    // day it belongs to, because the user picked it.
+    await _expectConstraint(database, '''
+      INSERT INTO recitation_events
+        (id, journal_sequence, surah_id, rotation_scheme_id, rakaat_span_count,
+         created_at_utc, local_date, prayer_type, is_qada,
+         qada_origin_is_unknown)
+      VALUES ('bad-unknown', 2, 'v5-surah', 'v5-scheme', 1, 1,
+              '2026-08-24', 'witr', 0, 1)
+    ''');
+    await database.customStatement('''
+      INSERT INTO recitation_events
+        (id, journal_sequence, surah_id, rotation_scheme_id, rakaat_span_count,
+         created_at_utc, local_date, prayer_type, is_qada,
+         qada_origin_is_unknown)
+      VALUES ('old-debt', 2, 'v5-surah', 'v5-scheme', 1, 1,
+              '2026-08-24', 'witr', 1, 1)
+    ''');
+    final unknownOrigin = await (database.select(
+      database.recitationEvents,
+    )..where((row) => row.id.equals('old-debt'))).getSingle();
+    expect(unknownOrigin.qadaOriginIsUnknown, isTrue);
+    expect(
+      await database.customSelect('PRAGMA foreign_key_check').get(),
+      isEmpty,
+    );
+  });
+
   test(
     'a database from a newer app version is refused, not downgraded',
     () async {
-      final directory = await Directory.systemTemp.createTemp('murajaah-v7-');
+      final directory = await Directory.systemTemp.createTemp('murajaah-v8-');
       addTearDown(() => directory.delete(recursive: true));
       final file = File('${directory.path}/murajaah.sqlite');
 
       final created = AppDatabase(NativeDatabase(file));
-      await created.customStatement('PRAGMA user_version = 8');
+      await created.customStatement('PRAGMA user_version = 9');
       await created.close();
 
       // Opening someone else's future schema must fail loudly. Silently running
-      // v7 code against a v8 file would corrupt data we cannot recover.
+      // v8 code against a v9 file would corrupt data we cannot recover.
       final reopened = AppDatabase(NativeDatabase(file));
       addTearDown(reopened.close);
       await expectLater(
@@ -2625,6 +2714,42 @@ void _seedVersionSix(dynamic raw) {
       '2026-08-24',
       'surah',
     ],
+  );
+}
+
+/// A v7 database: everything v6 held, plus one row in each transport table.
+///
+/// v8 rebuilds `recitation_events`, so the point of the seed is to have
+/// something on both sides of that rebuild that must come through untouched.
+void _seedVersionSeven(dynamic raw) {
+  _seedVersionSix(raw);
+  raw.execute(
+    'INSERT INTO sync_outbox_entries '
+    '(owner_key, envelope_id, entity_key, status, is_tombstone, '
+    'enqueued_at_us, envelope_updated_at_us, attempt_count, envelope_json) '
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>[
+      'local',
+      'v7-envelope',
+      'appSetting:theme',
+      'pending',
+      0,
+      1,
+      1,
+      0,
+      '{"id":"v7-envelope"}',
+    ],
+  );
+  raw.execute(
+    'INSERT INTO sync_cursors (owner_key, pull_cursor, updated_at_utc) '
+    'VALUES (?, ?, ?)',
+    <Object?>['local', 'v7-cursor', _encoded(_utc(9))],
+  );
+  raw.execute(
+    'INSERT INTO sync_activations '
+    '(owner_key, is_active, choice, backup_id, decided_at_utc) '
+    'VALUES (?, ?, ?, ?, ?)',
+    <Object?>['local', 1, 'merge', 'v7-backup', _encoded(_utc(9))],
   );
 }
 

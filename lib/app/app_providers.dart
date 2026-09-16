@@ -1511,6 +1511,7 @@ final class AppActions {
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
     LocalDate? occurrenceLocalDate,
+    bool qadaOriginIsUnknown = false,
   }) {
     return recitationService.registerFromApp(
       surahId: surahId,
@@ -1521,6 +1522,7 @@ final class AppActions {
       coveredPartIds: coveredPartIds,
       rakaatSpanCount: rakaatSpanCount,
       occurrenceLocalDate: occurrenceLocalDate,
+      qadaOriginIsUnknown: qadaOriginIsUnknown,
     );
   }
 

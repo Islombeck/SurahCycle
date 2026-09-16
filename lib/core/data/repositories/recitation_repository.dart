@@ -219,6 +219,9 @@ final class RecitationRepository {
               localDate: persistedEvent.localDate.toString(),
               prayerType: persistedEvent.prayerType.name,
               isQada: Value<bool>(persistedEvent.isQada),
+              qadaOriginIsUnknown: Value<bool>(
+                persistedEvent.qadaOriginIsUnknown,
+              ),
             ),
           );
       for (final partId in persistedEvent.coveredPartIds) {
@@ -798,6 +801,7 @@ final class RecitationRepository {
     rotationSchemeId: row.rotationSchemeId,
     coveredPartIds: coveredPartIds,
     rakaatSpanCount: row.rakaatSpanCount,
+    qadaOriginIsUnknown: row.qadaOriginIsUnknown,
   );
 
   SurahDescriptor _descriptor(
@@ -1099,6 +1103,7 @@ SurahRecitationEvent _atDatabasePrecision(SurahRecitationEvent event) {
     slotIndex: event.slotIndex,
     coverage: event.coverage,
     rakaatSpanCount: event.rakaatSpanCount,
+    qadaOriginIsUnknown: event.qadaOriginIsUnknown,
   );
 }
 
