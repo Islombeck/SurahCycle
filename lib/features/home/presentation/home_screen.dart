@@ -155,6 +155,12 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                 title: Text(context.l10n.appName),
                 actions: <Widget>[
                   IconButton(
+                    key: const ValueKey<String>('open-calendar'),
+                    tooltip: context.l10n.openCalendar,
+                    onPressed: () => context.go('/calendar'),
+                    icon: const Icon(Icons.calendar_month_outlined),
+                  ),
+                  IconButton(
                     tooltip: context.l10n.openHistory,
                     onPressed: () => context.push('/history'),
                     icon: const Icon(Icons.history),

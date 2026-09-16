@@ -887,6 +887,49 @@ class AppLocalizationsUz extends AppLocalizations {
   }
 
   @override
+  String get calendarTitle => 'Kalendar';
+
+  @override
+  String get openCalendar => 'Kalendarni ochish';
+
+  @override
+  String get calendarPreviousMonth => 'Oldingi oy';
+
+  @override
+  String get calendarNextMonth => 'Keyingi oy';
+
+  @override
+  String get calendarLegendOrdinary => 'Oddiy belgi';
+
+  @override
+  String get calendarLegendQada => 'Qazo';
+
+  @override
+  String get calendarLegendPartial => 'Qisman belgilangan';
+
+  @override
+  String get calendarNoRecord => 'Belgi yo‘q';
+
+  @override
+  String get calendarNoRecordExplanation =>
+      'Bu yozuv kiritilmaganini bildiradi, namoz qoldirilganini emas.';
+
+  @override
+  String get calendarPartialSuffix => 'qisman';
+
+  @override
+  String get calendarQadaExplanation =>
+      'Qazo o‘rni to‘ldirilgan namoz kunida ko‘rsatiladi.';
+
+  @override
+  String get calendarQadaFulfilledUnknown =>
+      'Avvalgi yozuvlar uchun aslida qachon qazo qilingani saqlanmagan.';
+
+  @override
+  String get calendarFutureDay =>
+      'Kelasi kun. O‘qishni oldindan belgilab bo‘lmaydi.';
+
+  @override
   String get partKind => 'Qism turi';
 
   @override

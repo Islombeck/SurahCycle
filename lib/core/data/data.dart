@@ -1,6 +1,7 @@
 export 'database/app_database.dart';
 export 'database/quran_cache_database.dart';
 export 'repositories/learning_repository.dart';
+export 'repositories/prayer_calendar_repository.dart';
 export 'repositories/prayer_repository.dart';
 export 'repositories/prayer_routine_repository.dart';
 export 'repositories/quran_cache_repository.dart';

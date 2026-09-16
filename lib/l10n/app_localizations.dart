@@ -1606,6 +1606,84 @@ abstract class AppLocalizations {
   /// **'«{label}» осталась: в ней уже есть прочитанное.'**
   String applyToCurrentPrayerKept(String label);
 
+  /// No description provided for @calendarTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Календарь'**
+  String get calendarTitle;
+
+  /// No description provided for @openCalendar.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть календарь'**
+  String get openCalendar;
+
+  /// No description provided for @calendarPreviousMonth.
+  ///
+  /// In ru, this message translates to:
+  /// **'Предыдущий месяц'**
+  String get calendarPreviousMonth;
+
+  /// No description provided for @calendarNextMonth.
+  ///
+  /// In ru, this message translates to:
+  /// **'Следующий месяц'**
+  String get calendarNextMonth;
+
+  /// No description provided for @calendarLegendOrdinary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обычная отметка'**
+  String get calendarLegendOrdinary;
+
+  /// No description provided for @calendarLegendQada.
+  ///
+  /// In ru, this message translates to:
+  /// **'Каза'**
+  String get calendarLegendQada;
+
+  /// No description provided for @calendarLegendPartial.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отмечено частично'**
+  String get calendarLegendPartial;
+
+  /// No description provided for @calendarNoRecord.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет отметки'**
+  String get calendarNoRecord;
+
+  /// No description provided for @calendarNoRecordExplanation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это значит, что запись не вносилась, а не что намаз пропущен.'**
+  String get calendarNoRecordExplanation;
+
+  /// No description provided for @calendarPartialSuffix.
+  ///
+  /// In ru, this message translates to:
+  /// **'частично'**
+  String get calendarPartialSuffix;
+
+  /// No description provided for @calendarQadaExplanation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Каза показан на дне того намаза, который восполнен.'**
+  String get calendarQadaExplanation;
+
+  /// No description provided for @calendarQadaFulfilledUnknown.
+  ///
+  /// In ru, this message translates to:
+  /// **'День фактического восполнения не сохранён для прежних записей.'**
+  String get calendarQadaFulfilledUnknown;
+
+  /// No description provided for @calendarFutureDay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Будущий день. Отметить чтение заранее нельзя.'**
+  String get calendarFutureDay;
+
   /// No description provided for @partKind.
   ///
   /// In ru, this message translates to:

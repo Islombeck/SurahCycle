@@ -885,6 +885,49 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get calendarTitle => 'Календарь';
+
+  @override
+  String get openCalendar => 'Открыть календарь';
+
+  @override
+  String get calendarPreviousMonth => 'Предыдущий месяц';
+
+  @override
+  String get calendarNextMonth => 'Следующий месяц';
+
+  @override
+  String get calendarLegendOrdinary => 'Обычная отметка';
+
+  @override
+  String get calendarLegendQada => 'Каза';
+
+  @override
+  String get calendarLegendPartial => 'Отмечено частично';
+
+  @override
+  String get calendarNoRecord => 'Нет отметки';
+
+  @override
+  String get calendarNoRecordExplanation =>
+      'Это значит, что запись не вносилась, а не что намаз пропущен.';
+
+  @override
+  String get calendarPartialSuffix => 'частично';
+
+  @override
+  String get calendarQadaExplanation =>
+      'Каза показан на дне того намаза, который восполнен.';
+
+  @override
+  String get calendarQadaFulfilledUnknown =>
+      'День фактического восполнения не сохранён для прежних записей.';
+
+  @override
+  String get calendarFutureDay =>
+      'Будущий день. Отметить чтение заранее нельзя.';
+
+  @override
   String get partKind => 'Тип части';
 
   @override

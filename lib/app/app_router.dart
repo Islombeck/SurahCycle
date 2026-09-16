@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/calendar/presentation/prayer_calendar_screen.dart';
 import '../features/history/presentation/history_screen.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/learning/presentation/learning_screen.dart';
@@ -36,6 +37,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => HomeScreen(
                   primaryNavigationIndexListenable: primaryNavigationIndex,
                 ),
+                routes: <RouteBase>[
+                  // Nested inside the Home branch rather than pushed above the
+                  // shell, for the reason Stage D and Stage I both learned the
+                  // hard way: a screen on the root navigator loses the bottom
+                  // navigation and its back path into its own tab.
+                  GoRoute(
+                    path: 'calendar',
+                    builder: (context, state) => const PrayerCalendarScreen(),
+                  ),
+                ],
               ),
             ],
           ),

@@ -884,6 +884,49 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get calendarTitle => 'Calendar';
+
+  @override
+  String get openCalendar => 'Open the calendar';
+
+  @override
+  String get calendarPreviousMonth => 'Previous month';
+
+  @override
+  String get calendarNextMonth => 'Next month';
+
+  @override
+  String get calendarLegendOrdinary => 'Ordinary record';
+
+  @override
+  String get calendarLegendQada => 'Qada';
+
+  @override
+  String get calendarLegendPartial => 'Partly marked';
+
+  @override
+  String get calendarNoRecord => 'No mark';
+
+  @override
+  String get calendarNoRecordExplanation =>
+      'This means nothing was entered, not that a prayer was missed.';
+
+  @override
+  String get calendarPartialSuffix => 'partly';
+
+  @override
+  String get calendarQadaExplanation =>
+      'Qada is shown on the day of the prayer that was made up.';
+
+  @override
+  String get calendarQadaFulfilledUnknown =>
+      'The day it was actually made up is not stored for earlier records.';
+
+  @override
+  String get calendarFutureDay =>
+      'A future day. A reading cannot be registered in advance.';
+
+  @override
   String get partKind => 'Part type';
 
   @override

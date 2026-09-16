@@ -968,6 +968,18 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
       );
 });
 
+final prayerCalendarRepositoryProvider = Provider<PrayerCalendarRepository>(
+  (ref) => PrayerCalendarRepository(ref.watch(appDatabaseProvider)),
+);
+
+/// One month of the user's own records, keyed by year and month.
+final prayerCalendarMonthProvider =
+    StreamProvider.family<List<PrayerCalendarDay>, ({int year, int month})>(
+      (ref, key) => ref
+          .watch(prayerCalendarRepositoryProvider)
+          .watchMonth(year: key.year, month: key.month),
+    );
+
 final selectedPrayerProvider =
     StateNotifierProvider<SelectedPrayerController, PrayerContext?>((ref) {
       return SelectedPrayerController(

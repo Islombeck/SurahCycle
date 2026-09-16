@@ -1,6 +1,7 @@
 export 'contextual_suggestion.dart';
 export 'learning.dart';
 export 'prayer.dart';
+export 'prayer_calendar.dart';
 export 'prayer_routine.dart';
 export 'recall.dart';
 export 'recitation.dart';
