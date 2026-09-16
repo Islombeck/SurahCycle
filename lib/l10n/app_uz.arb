@@ -263,8 +263,18 @@
   ,"addPrayerPart": "Namoz qismini qo‘shish"
   ,"editPrayerPart": "Namoz qismini tahrirlash"
   ,"deletePrayerPartTitle": "Namoz qismi o‘chirilsinmi?"
-  ,"deletePrayerPartBody": "“{label}” o‘chirilsinmi? Avval yaratilgan namoz seanslari o‘zgarmaydi."
+  ,"deletePrayerPartBody": "“{label}” o‘chirilsinmi? Allaqachon o‘qilganlar o‘zgarmaydi."
   ,"@deletePrayerPartBody": {"placeholders": {"label": {"type": "String"}}}
+  ,"applyToCurrentPrayerTitle": "Joriy namozga ham qo‘llanilsinmi?"
+  ,"applyToCurrentPrayerBody": "{prayer}, {date} — bu qism hali rejada. Unda o‘qilganlar yo‘q, shuning uchun uni o‘sha rejadan ham olib tashlash mumkin."
+  ,"@applyToCurrentPrayerBody": {"placeholders": {"prayer": {"type": "String"}, "date": {"type": "String"}}}
+  ,"applyToCurrentPrayerComposition": "Qoladi: {parts}"
+  ,"@applyToCurrentPrayerComposition": {"placeholders": {"parts": {"type": "String"}}}
+  ,"applyToCurrentPrayerEmpty": "Namoz rejasi shablon bo‘yicha qaytadan tuziladi."
+  ,"applyToCurrentPrayerAction": "Joriysidan olib tashlash"
+  ,"keepCurrentPrayerUnchanged": "Shundayligicha qoldirish"
+  ,"applyToCurrentPrayerKept": "“{label}” qoldi: unda o‘qilganlar bor."
+  ,"@applyToCurrentPrayerKept": {"placeholders": {"label": {"type": "String"}}}
   ,"partKind": "Qism turi"
   ,"customPartLabel": "Maxsus nom"
   ,"customPartLabelRequired": "Nom kiriting."

@@ -84,6 +84,25 @@ final class PrayerSessionPartProgress {
   }
 }
 
+/// What applying a template edit to an already-open session actually did.
+///
+/// [keptBecauseUsedParts] is never silently empty-handed: a part the user has
+/// already prayed is reported back so the screen can say why it is still there
+/// instead of appearing to have ignored the request.
+final class PrayerRoutineSessionReconciliation {
+  const PrayerRoutineSessionReconciliation({
+    required this.session,
+    required this.removedParts,
+    required this.keptBecauseUsedParts,
+  });
+
+  final PrayerRoutineSessionSnapshot? session;
+  final List<PrayerSessionPart> removedParts;
+  final List<PrayerSessionPart> keptBecauseUsedParts;
+
+  bool get didChangeAnything => removedParts.isNotEmpty;
+}
+
 final class PrayerRoutineSessionSnapshot {
   PrayerRoutineSessionSnapshot({
     required this.session,
@@ -565,6 +584,126 @@ final class PrayerRoutineRepository {
     }
     return _routineSessionFromRow(sessionRow, parts: parts);
   });
+
+  /// The session that already exists for this prayer and day, if any.
+  ///
+  /// Read-only on purpose: [ensureCurrentSession] would create one, and asking
+  /// "is there anything to reconcile?" must not be the thing that starts a
+  /// prayer the user has not begun.
+  Future<PrayerRoutineSessionSnapshot?> findCurrentSession({
+    required PrayerContext context,
+    required LocalDate localDate,
+  }) async {
+    final dateValue = localDate.toString();
+    final candidates =
+        await (database.select(database.prayerSessions)
+              ..where(
+                (PrayerSessions row) =>
+                    row.prayerType.equals(context.prayerType.name) &
+                    row.isQada.equals(context.isQada) &
+                    row.localDate.equals(dateValue),
+              )
+              ..orderBy(<OrderingTerm Function(PrayerSessions)>[
+                (PrayerSessions row) => OrderingTerm.desc(row.startedAtUtc),
+              ]))
+            .get();
+    for (final candidate in candidates) {
+      final parts = await getSessionParts(candidate.id);
+      if (parts.isNotEmpty) {
+        return _routineSessionFromRow(candidate, parts: parts);
+      }
+    }
+    return null;
+  }
+
+  /// Removes parts the template no longer has from the session already open.
+  ///
+  /// A session's parts are a snapshot taken when it was created, and later
+  /// template edits deliberately never rewrite it — the delete dialog says so
+  /// in as many words. That is right for anything the user has actually prayed,
+  /// and wrong for a part added by mistake and never used: leaving it in
+  /// today's plan is what made a delete that *had* saved look like it had not.
+  ///
+  /// Only parts that never started are touched. A part is left exactly as it is
+  /// if it is completed, if it was completed by following the imam, or if any
+  /// recitation row still points at it — including a soft-deleted one, because
+  /// removing the part would quietly null that reference and break the link
+  /// back to what was recited. The whole reconciliation commits or does
+  /// nothing.
+  Future<PrayerRoutineSessionReconciliation> applyTemplateToCurrentSession({
+    required PrayerContext context,
+    required LocalDate localDate,
+  }) => database.transaction(() async {
+    final dateValue = localDate.toString();
+    final candidates =
+        await (database.select(database.prayerSessions)
+              ..where(
+                (PrayerSessions row) =>
+                    row.prayerType.equals(context.prayerType.name) &
+                    row.isQada.equals(context.isQada) &
+                    row.localDate.equals(dateValue),
+              )
+              ..orderBy(<OrderingTerm Function(PrayerSessions)>[
+                (PrayerSessions row) => OrderingTerm.desc(row.startedAtUtc),
+              ]))
+            .get();
+    for (final candidate in candidates) {
+      final parts = await getSessionParts(candidate.id);
+      if (parts.isEmpty) continue;
+
+      final template = await getTemplate(context.prayerType);
+      final keys = <String>{
+        for (final part in _qadaEligibleParts(context, template.parts))
+          part.stableKey,
+      };
+      final removable = <PrayerSessionPart>[];
+      final keptBecauseUsed = <PrayerSessionPart>[];
+      for (final part in parts) {
+        if (keys.contains(part.stableKey)) continue;
+        if (part.completedAtUtc != null ||
+            await _hasAnyRecitationReference(part.id)) {
+          keptBecauseUsed.add(part);
+        } else {
+          removable.add(part);
+        }
+      }
+      if (removable.isNotEmpty) {
+        await (database.delete(database.prayerSessionParts)..where(
+              (PrayerSessionParts row) =>
+                  row.id.isIn(<String>[for (final part in removable) part.id]),
+            ))
+            .go();
+      }
+      final remaining = await getSessionParts(candidate.id);
+      return PrayerRoutineSessionReconciliation(
+        // An emptied session is reported as absent, exactly like one that was
+        // never created: `ensureCurrentSession` then builds a fresh snapshot
+        // from the template rather than showing a plan with no parts.
+        session: remaining.isEmpty
+            ? null
+            : await _routineSessionFromRow(candidate, parts: remaining),
+        removedParts: removable,
+        keptBecauseUsedParts: keptBecauseUsed,
+      );
+    }
+    return const PrayerRoutineSessionReconciliation(
+      session: null,
+      removedParts: <PrayerSessionPart>[],
+      keptBecauseUsedParts: <PrayerSessionPart>[],
+    );
+  });
+
+  Future<bool> _hasAnyRecitationReference(String sessionPartId) async {
+    final row =
+        await (database.select(database.recitationEvents)
+              ..where(
+                (RecitationEvents event) =>
+                    event.prayerSessionPartId.equals(sessionPartId),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return row != null;
+  }
 
   Future<PrayerRoutineSessionSnapshot?> getRoutineSession(String id) async {
     final row =

@@ -207,6 +207,109 @@ final class _PrayerRoutineSettingsCardState
       () =>
           _editor.deletePart(prayerType: template.prayerType, partId: part.id),
     );
+    if (!mounted) return;
+    await _offerToApplyToCurrentSession(template.prayerType);
+  }
+
+  /// The second, explicitly scoped half of a delete.
+  ///
+  /// Deleting from the template changes tomorrow; the prayer the owner is
+  /// looking at right now keeps the snapshot it was created with, which is why
+  /// a delete that had in fact saved looked like it had not. This asks, once,
+  /// whether to apply it there too — naming the date, the prayer and what the
+  /// plan will be left with, so the scope of the change is visible before it
+  /// happens. Anything already recited is never touched, and is reported back
+  /// rather than silently skipped.
+  Future<void> _offerToApplyToCurrentSession(PrayerType prayerType) async {
+    final context = PrayerContext(prayerType: prayerType);
+    final localDate = ref.read(localDateProvider).today();
+    final repository = ref.read(prayerRoutineRepositoryProvider);
+    final current = await repository.findCurrentSession(
+      context: context,
+      localDate: localDate,
+    );
+    if (!mounted) return;
+    final stale = current?.parts
+        .where(
+          (progress) =>
+              progress.part.completedAtUtc == null &&
+              !_templateHasStableKey(prayerType, progress.part.stableKey),
+        )
+        .toList();
+    if (stale == null || stale.isEmpty) return;
+
+    final remaining = current!.parts
+        .where((progress) => !stale.contains(progress))
+        .map((progress) => progress.part.label)
+        .toList();
+    final l10n = this.context.l10n;
+    final apply = await showDialog<bool>(
+      context: this.context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.applyToCurrentPrayerTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              l10n.applyToCurrentPrayerBody(
+                prayerType.label(l10n),
+                '$localDate',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              remaining.isEmpty
+                  ? l10n.applyToCurrentPrayerEmpty
+                  : l10n.applyToCurrentPrayerComposition(remaining.join(' · ')),
+              style: Theme.of(dialogContext).textTheme.bodySmall,
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            key: const ValueKey<String>('keep-current-prayer-unchanged'),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.keepCurrentPrayerUnchanged),
+          ),
+          FilledButton(
+            key: const ValueKey<String>('apply-to-current-prayer'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.applyToCurrentPrayerAction),
+          ),
+        ],
+      ),
+    );
+    if (apply != true || !mounted) return;
+    setState(() => _busy = true);
+    final PrayerRoutineSessionReconciliation outcome;
+    try {
+      outcome = await repository.applyTemplateToCurrentSession(
+        context: context,
+        localDate: localDate,
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    final kept = outcome.keptBecauseUsedParts;
+    if (!mounted || kept.isEmpty) return;
+    ScaffoldMessenger.of(this.context).showSnackBar(
+      SnackBar(
+        content: Text(
+          kept
+              .map((part) => l10n.applyToCurrentPrayerKept(part.label))
+              .join('\n'),
+        ),
+      ),
+    );
+  }
+
+  bool _templateHasStableKey(PrayerType prayerType, String stableKey) {
+    final template = ref
+        .read(prayerRoutineTemplateProvider(prayerType))
+        .valueOrNull;
+    return template == null ||
+        template.parts.any((part) => part.stableKey == stableKey);
   }
 
   /// [newIndex] arrives **already adjusted** for the removal at [oldIndex]:

@@ -269,8 +269,18 @@
   ,"addPrayerPart": "Добавить часть намаза"
   ,"editPrayerPart": "Изменить часть намаза"
   ,"deletePrayerPartTitle": "Удалить часть намаза?"
-  ,"deletePrayerPartBody": "Удалить «{label}»? Уже созданные сессии намаза не изменятся."
+  ,"deletePrayerPartBody": "Удалить «{label}»? Уже прочитанное не изменится."
   ,"@deletePrayerPartBody": {"placeholders": {"label": {"type": "String"}}}
+  ,"applyToCurrentPrayerTitle": "Применить и к текущему намазу?"
+  ,"applyToCurrentPrayerBody": "{prayer}, {date} — часть ещё в плане. Чтений в ней нет, поэтому её можно убрать и оттуда."
+  ,"@applyToCurrentPrayerBody": {"placeholders": {"prayer": {"type": "String"}, "date": {"type": "String"}}}
+  ,"applyToCurrentPrayerComposition": "Останется: {parts}"
+  ,"@applyToCurrentPrayerComposition": {"placeholders": {"parts": {"type": "String"}}}
+  ,"applyToCurrentPrayerEmpty": "План намаза будет собран заново по шаблону."
+  ,"applyToCurrentPrayerAction": "Убрать из текущего"
+  ,"keepCurrentPrayerUnchanged": "Оставить как есть"
+  ,"applyToCurrentPrayerKept": "«{label}» осталась: в ней уже есть прочитанное."
+  ,"@applyToCurrentPrayerKept": {"placeholders": {"label": {"type": "String"}}}
   ,"partKind": "Тип части"
   ,"customPartLabel": "Своё название"
   ,"customPartLabelRequired": "Введите название."

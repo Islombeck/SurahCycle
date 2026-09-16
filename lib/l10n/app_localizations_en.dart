@@ -852,7 +852,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String deletePrayerPartBody(String label) {
-    return 'Delete “$label”? Existing prayer sessions will not change.';
+    return 'Delete “$label”? Nothing you have already recited will change.';
+  }
+
+  @override
+  String get applyToCurrentPrayerTitle => 'Apply to the current prayer too?';
+
+  @override
+  String applyToCurrentPrayerBody(String prayer, String date) {
+    return '$prayer, $date still lists this part. It has no readings, so it can be removed from that plan as well.';
+  }
+
+  @override
+  String applyToCurrentPrayerComposition(String parts) {
+    return 'What stays: $parts';
+  }
+
+  @override
+  String get applyToCurrentPrayerEmpty =>
+      'The plan will be rebuilt from the template.';
+
+  @override
+  String get applyToCurrentPrayerAction => 'Remove from the current one';
+
+  @override
+  String get keepCurrentPrayerUnchanged => 'Leave it as it is';
+
+  @override
+  String applyToCurrentPrayerKept(String label) {
+    return '“$label” stayed: it already has readings.';
   }
 
   @override

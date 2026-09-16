@@ -853,7 +853,35 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String deletePrayerPartBody(String label) {
-    return 'Удалить «$label»? Уже созданные сессии намаза не изменятся.';
+    return 'Удалить «$label»? Уже прочитанное не изменится.';
+  }
+
+  @override
+  String get applyToCurrentPrayerTitle => 'Применить и к текущему намазу?';
+
+  @override
+  String applyToCurrentPrayerBody(String prayer, String date) {
+    return '$prayer, $date — часть ещё в плане. Чтений в ней нет, поэтому её можно убрать и оттуда.';
+  }
+
+  @override
+  String applyToCurrentPrayerComposition(String parts) {
+    return 'Останется: $parts';
+  }
+
+  @override
+  String get applyToCurrentPrayerEmpty =>
+      'План намаза будет собран заново по шаблону.';
+
+  @override
+  String get applyToCurrentPrayerAction => 'Убрать из текущего';
+
+  @override
+  String get keepCurrentPrayerUnchanged => 'Оставить как есть';
+
+  @override
+  String applyToCurrentPrayerKept(String label) {
+    return '«$label» осталась: в ней уже есть прочитанное.';
   }
 
   @override

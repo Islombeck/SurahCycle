@@ -855,7 +855,35 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String deletePrayerPartBody(String label) {
-    return '“$label” o‘chirilsinmi? Avval yaratilgan namoz seanslari o‘zgarmaydi.';
+    return '“$label” o‘chirilsinmi? Allaqachon o‘qilganlar o‘zgarmaydi.';
+  }
+
+  @override
+  String get applyToCurrentPrayerTitle => 'Joriy namozga ham qo‘llanilsinmi?';
+
+  @override
+  String applyToCurrentPrayerBody(String prayer, String date) {
+    return '$prayer, $date — bu qism hali rejada. Unda o‘qilganlar yo‘q, shuning uchun uni o‘sha rejadan ham olib tashlash mumkin.';
+  }
+
+  @override
+  String applyToCurrentPrayerComposition(String parts) {
+    return 'Qoladi: $parts';
+  }
+
+  @override
+  String get applyToCurrentPrayerEmpty =>
+      'Namoz rejasi shablon bo‘yicha qaytadan tuziladi.';
+
+  @override
+  String get applyToCurrentPrayerAction => 'Joriysidan olib tashlash';
+
+  @override
+  String get keepCurrentPrayerUnchanged => 'Shundayligicha qoldirish';
+
+  @override
+  String applyToCurrentPrayerKept(String label) {
+    return '“$label” qoldi: unda o‘qilganlar bor.';
   }
 
   @override

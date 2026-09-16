@@ -166,7 +166,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Delete prayer part?'), findsOneWidget);
       expect(
-        find.text('Delete “Fard”? Existing prayer sessions will not change.'),
+        // The dialog no longer promises that nothing changes: a part with no
+        // readings can now be removed from the open session as a second,
+        // explicitly confirmed step.
+        find.text(
+          'Delete “Fard”? Nothing you have already recited will change.',
+        ),
         findsOneWidget,
       );
       await tester.tap(

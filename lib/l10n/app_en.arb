@@ -263,8 +263,18 @@
   ,"addPrayerPart": "Add prayer part"
   ,"editPrayerPart": "Edit prayer part"
   ,"deletePrayerPartTitle": "Delete prayer part?"
-  ,"deletePrayerPartBody": "Delete “{label}”? Existing prayer sessions will not change."
+  ,"deletePrayerPartBody": "Delete “{label}”? Nothing you have already recited will change."
   ,"@deletePrayerPartBody": {"placeholders": {"label": {"type": "String"}}}
+  ,"applyToCurrentPrayerTitle": "Apply to the current prayer too?"
+  ,"applyToCurrentPrayerBody": "{prayer}, {date} still lists this part. It has no readings, so it can be removed from that plan as well."
+  ,"@applyToCurrentPrayerBody": {"placeholders": {"prayer": {"type": "String"}, "date": {"type": "String"}}}
+  ,"applyToCurrentPrayerComposition": "What stays: {parts}"
+  ,"@applyToCurrentPrayerComposition": {"placeholders": {"parts": {"type": "String"}}}
+  ,"applyToCurrentPrayerEmpty": "The plan will be rebuilt from the template."
+  ,"applyToCurrentPrayerAction": "Remove from the current one"
+  ,"keepCurrentPrayerUnchanged": "Leave it as it is"
+  ,"applyToCurrentPrayerKept": "“{label}” stayed: it already has readings."
+  ,"@applyToCurrentPrayerKept": {"placeholders": {"label": {"type": "String"}}}
   ,"partKind": "Part type"
   ,"customPartLabel": "Custom label"
   ,"customPartLabelRequired": "Enter a label."

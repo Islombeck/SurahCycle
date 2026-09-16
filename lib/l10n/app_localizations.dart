@@ -1561,8 +1561,50 @@ abstract class AppLocalizations {
   /// No description provided for @deletePrayerPartBody.
   ///
   /// In ru, this message translates to:
-  /// **'Удалить «{label}»? Уже созданные сессии намаза не изменятся.'**
+  /// **'Удалить «{label}»? Уже прочитанное не изменится.'**
   String deletePrayerPartBody(String label);
+
+  /// No description provided for @applyToCurrentPrayerTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Применить и к текущему намазу?'**
+  String get applyToCurrentPrayerTitle;
+
+  /// No description provided for @applyToCurrentPrayerBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'{prayer}, {date} — часть ещё в плане. Чтений в ней нет, поэтому её можно убрать и оттуда.'**
+  String applyToCurrentPrayerBody(String prayer, String date);
+
+  /// No description provided for @applyToCurrentPrayerComposition.
+  ///
+  /// In ru, this message translates to:
+  /// **'Останется: {parts}'**
+  String applyToCurrentPrayerComposition(String parts);
+
+  /// No description provided for @applyToCurrentPrayerEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'План намаза будет собран заново по шаблону.'**
+  String get applyToCurrentPrayerEmpty;
+
+  /// No description provided for @applyToCurrentPrayerAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать из текущего'**
+  String get applyToCurrentPrayerAction;
+
+  /// No description provided for @keepCurrentPrayerUnchanged.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оставить как есть'**
+  String get keepCurrentPrayerUnchanged;
+
+  /// No description provided for @applyToCurrentPrayerKept.
+  ///
+  /// In ru, this message translates to:
+  /// **'«{label}» осталась: в ней уже есть прочитанное.'**
+  String applyToCurrentPrayerKept(String label);
 
   /// No description provided for @partKind.
   ///
