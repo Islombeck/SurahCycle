@@ -35,6 +35,10 @@ dev_dependencies:
   build_runner: 2.15.1
   drift_dev: ^2.34.0
   flutter_lints: ^6.0.0
+  # Direct because tool/dump_user_db.dart opens a pulled copy of a device
+  # database outside Flutter. Drift already resolves it; naming it here keeps
+  # the tool from depending on a transitive version by accident.
+  sqlite3: ^3.5.2
 
 flutter:
   uses-material-design: true
