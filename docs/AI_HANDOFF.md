@@ -143,14 +143,38 @@ tapping is not. What needs his eyes:
 **No longer owed:** the leftover test part in Зухр — he removed it himself, and
 the template now has 14 parts.
 
-**Open and deliberately unresolved: the Иша → Витр transition.** The owner
-clarified that this was a *previous day's* behaviour, before this build, and
-that it has to be re-checked properly — mark everything in Иша, wait for the
-next Иша, and see. The transition code is `_applyIshaToWitrTransition`, which
-applies in manual mode too; §D says a manual choice must only move on an
-explicit action. **Do not "fix" it before that observation exists**, and do not
-assume the videos showed it: on video the Иша → Витр change was the owner's own
-tap.
+**The Иша → Витр transition is closed.** The owner said not to wait for the
+observation, so `_applyIshaToWitrTransition` now applies only to an
+automatically resolved context: a prayer he chose himself never moves on its
+own. The agreed automatic behaviour is unchanged, and both halves are pinned by
+`test/app/isha_to_witr_transition_test.dart`.
+
+## §E and §F are done; what is left
+
+The month calendar ships, and a day chosen in it hands itself to the **one**
+registration path: Home then names that day in a banner with one way out, a past
+day forces the prayer to be named explicitly, and a future day offers no button
+at all. Qada can now say its original day is unknown (schema v8).
+
+**Verified on the device end to end on 2026-09-16** with sha256 `e7789500…`:
+14 September opened from the calendar showed «Фаджр / Зухр · частично / Аср /
+Магриб / Магриб · Каза» against real history, the button landed on Home with
+«Отмечаю за пн, 14 сент.», and «Вернуться к сегодня» cleared it. Row counts and
+`PRAGMA foreign_key_check` unchanged; the app was left out of historical mode.
+
+**Not done, and next:**
+
+1. **§E's remaining half — the day a Qada was actually made up**, editable for a
+   late entry. Only `qada_origin_is_unknown` went into v8; the fulfilment date is
+   a second column and was deliberately left out rather than added with nothing
+   writing it. For a Qada entered on the day it was made up, `created_at_utc`
+   already carries that moment.
+2. **Pre-selecting only the still-unmarked parts** for a chosen day. The
+   occurrence sheet shows a session's parts, but the calendar path does not yet
+   preselect the unfilled ones.
+3. **Stage J** continues: real Appwrite gateway, provisioning, owner
+   permissions, opt-in sync. Still blocked at §6.0 on one owner action —
+   `/mcp` → `appwrite` → Authenticate.
 
 ## Owner regression report of 2026-09-16 — what the two videos actually show
 
