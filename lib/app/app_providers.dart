@@ -802,7 +802,24 @@ final currentRecommendationBatchProvider = StreamProvider.autoDispose
       final pool = const ContextualSurahSuggestionService()
           .rankedCandidateIdsWith(snapshot, inputs);
 
-      return repository.watch().asyncMap((stored) async {
+      // Read once, plan, persist — deliberately **not** `repository.watch()`.
+      //
+      // Planning saves into `app_settings` and that watch listens to
+      // `app_settings`, so a save fed its own subscription. With a single live
+      // key that was harmless: the stored batch matched, the plan came back
+      // untouched and nothing was written again. With two live keys against
+      // the one stored slot it was an unbounded loop — each planner saw the
+      // other's batch, re-planned, saved, and woke the other. Every lap could
+      // advance the cycle counter, which is how the owner's device reached
+      // `cycleNumber = 5392` against 638 recitations.
+      //
+      // Nothing is lost by reading once. This provider is the only writer, the
+      // widget reads `storedRecommendationBatchProvider`, and anything that
+      // would change the plan — the rotation snapshot, the contextual inputs,
+      // the current routine part — is already watched above and rebuilds this
+      // body. A batch still lives until its own key changes.
+      return Stream<RecommendationBatch?>.fromFuture(() async {
+        final stored = await repository.load();
         final plan = const RecommendationBatchService().plan(
           key: batchKey,
           rankedEligibleSurahIds: pool,
@@ -816,7 +833,7 @@ final currentRecommendationBatchProvider = StreamProvider.autoDispose
           );
         }
         return plan.batch;
-      });
+      }());
     });
 
 final widgetSyncCoordinatorProvider = Provider<WidgetSyncCoordinator>((ref) {

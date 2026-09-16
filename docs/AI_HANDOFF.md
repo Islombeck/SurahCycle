@@ -40,24 +40,41 @@ The new prompt's order is: verify the baseline (done — HEAD `c5df1f6`, analyze
 1. **Re-check acceptance points 1 and 3** on the installed build — the part editor (add/edit/**reorder**/delete) and the eight-item block once entries read `2×`.
 2. **Delete the leftover test part in Зухр.** It is the 4th part, `order_index 3`, Фард, 3 рак., 2 слота, id `df2c79e9-c6a7-4db6-955f-adcdabf70f65` — added by me during Stage A QA and never removed. The other four Зухр parts (4 сунна, 4 фард, 2 сунна) are the owner's own. **I could not remove it:** the phone is locked with a credential (`dumpsys trust` → `deviceLocked=1`) and the lock screen renders black to `screencap`, so no UI automation was possible, and removing it by writing to the database directly would mean going behind the app. Deleting it through the part editor *is* smoke-test point 1, so the chore and the re-check are the same action.
 
-## Open defect found on the device, NOT fixed: the recommendation cycle runs away
+## The recommendation cycle ran away — found on the device, reproduced, fixed
 
 Reading the owner's own `app_settings` on 2026-09-16 showed
 `recommendationBatch.cycle.cycleNumber = **5392**`. A cycle is one pass over the
 eligible pool; with 27 mastered surahs and 8 per batch a pass is about four
-batches, so this counter implies on the order of twenty thousand re-plans. The
-app holds 638 recitations. Something re-plans the batch far more often than a
-new day, prayer, part or algorithm version should.
+batches, so that counter implied tens of thousands of re-plans against 638
+recitations.
 
-`RecommendationBatchService.plan` increments the cycle only when the first pass
-cannot fill the batch from surahs this cycle has not offered yet, so the likely
-shape is: the batch key changes far more often than intended, or a re-plan is
-triggered on ordinary rebuilds. **This is a hypothesis, not a diagnosis.** It is
-recorded with its evidence rather than guessed at in code.
+**Reproduced before anything was changed.**
+`test/app/recommendation_cycle_runaway_test.dart` builds the real provider graph
+over a real database and listens to `currentRecommendationBatchProvider` for two
+prayer contexts at once. With one context the counter reaches a fixed point;
+with two the test **hangs**, because the planners never stop.
 
-Nothing user-visible is known to depend on the counter's magnitude, but the same
-churn would flip `occurrence` between 1 and 2, which *is* what the owner sees as
-`2×`. Worth being the next thing looked at.
+The cause was a feedback edge visible in the code once you look for it: planning
+saves into `app_settings`, and the planner subscribed to `app_settings` through
+`repository.watch()`. A save fed its own subscription. With one live key that is
+harmless — the stored batch matches, the plan comes back untouched, nothing is
+written again. With two live keys against the one stored slot each planner saw
+the other's batch, re-planned, saved, and woke the other. Every lap could
+advance the cycle.
+
+The file's own comment already warned that "two planners writing to one stored
+slot would overwrite each other in a loop" — about the widget driver. It was
+true of the app itself, because a context change leaves the previous family
+instance alive for a while.
+
+Fix: read the stored state **once** per rebuild instead of subscribing to it.
+Nothing is lost — this provider is the only writer, the widget reads the
+read-only view, and everything that could change a plan is already watched.
+
+**A correction to an earlier note in this journal:** the `-4x`, `-5x`, `-6x`
+badges in the second video are **not** repeat counts. They are the remaining
+indicator showing how far *ahead* of the rotation target a surah is. The earlier
+reading of them as cycle repeats was wrong.
 
 **A correction to an earlier note in this journal:** the `-4x`, `-5x`, `-6x`
 badges in the second video are **not** repeat counts. They are the remaining
