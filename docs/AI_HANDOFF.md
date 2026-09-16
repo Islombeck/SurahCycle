@@ -40,6 +40,48 @@ The new prompt's order is: verify the baseline (done — HEAD `c5df1f6`, analyze
 1. **Re-check acceptance points 1 and 3** on the installed build — the part editor (add/edit/**reorder**/delete) and the eight-item block once entries read `2×`.
 2. **Delete the leftover test part in Зухр.** It is the 4th part, `order_index 3`, Фард, 3 рак., 2 слота, id `df2c79e9-c6a7-4db6-955f-adcdabf70f65` — added by me during Stage A QA and never removed. The other four Зухр parts (4 сунна, 4 фард, 2 сунна) are the owner's own. **I could not remove it:** the phone is locked with a credential (`dumpsys trust` → `deviceLocked=1`) and the lock screen renders black to `screencap`, so no UI automation was possible, and removing it by writing to the database directly would mean going behind the app. Deleting it through the part editor *is* smoke-test point 1, so the chore and the re-check are the same action.
 
+## Next exact action (2026-09-16, after the regression fixes)
+
+Fixed and committed this session, each with its own checkpoint:
+
+- `242a02c` — the prayer picker no longer opens on a stale selection; a
+  reloading settings provider no longer reads as "no settings"; the stored
+  context is read atomically.
+- `c296cb6` — the active-surah list no longer re-sorts under the finger.
+- `f99c255` — deleting a part offers to remove it from the prayer already open.
+
+**Not done, and next in this order:**
+
+1. **§E — historical date and registration mode.** The owner asked for it
+   directly on 2026-09-16: when choosing manually, also choose a *date*, mark
+   only the parts that are still unmarked, and say whether it is **каза** or
+   simply «забыл отметить». Default is the ordinary record; a past date alone
+   never means Qada. Extend the existing «Сейчас / Предыдущий намаз / Вчера /
+   Выбрать дату и намаз» flow rather than building a second one. Qada stores
+   two dates: the day of the missed prayer and the day it was made up.
+2. **§F — the month calendar**, reusing that same registration screen for the
+   chosen day. Green = ordinary record, orange = Qada placed on the day of the
+   prayer being made up, «Нет отметки» = neutral, partial ≠ fully green. Both
+   markers on a mixed day. Colour always paired with a caption or icon.
+3. **A fresh APK** with these fixes, installed as an update, with row counts
+   checked before and after. The APK the owner has (sha256 `9e1f0741…`)
+   predates **all** of them and also predates schema v7.
+4. **Stage J** continues after that.
+
+**Still owed to the owner and unchanged:** the leftover test part in his Зухр
+routine (`df2c79e9-c6a7-4db6-955f-adcdabf70f65`, Фард, 3 рак., 2 слота). With
+`f99c255` deleting it in the editor now offers to clear it from today's plan
+too, which is the whole round trip in one action.
+
+**Open and deliberately unresolved: the Иша → Витр transition.** The owner
+clarified that this was a *previous day's* behaviour, before this build, and
+that it has to be re-checked properly — mark everything in Иша, wait for the
+next Иша, and see. The transition code is `_applyIshaToWitrTransition`, which
+applies in manual mode too; §D says a manual choice must only move on an
+explicit action. **Do not "fix" it before that observation exists**, and do not
+assume the videos showed it: on video the Иша → Витр change was the owner's own
+tap.
+
 ## Owner regression report of 2026-09-16 — what the two videos actually show
 
 The owner recorded `video_2026-09-16_09-35-25.mp4` (57.7 s) and
