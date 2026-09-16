@@ -1787,11 +1787,23 @@ final class _RotationContent extends StatelessWidget {
         recommendations: fallback,
       );
     }
-    // The operational order changes the moment a surah is marked, because
-    // marking is what changes how overdue it is. Re-sorting mid-tap moved the
-    // next row out from under the user's finger; [stabilize] keeps rows where
-    // he last saw them until the context itself changes.
-    final active = stabilize(unstableActive);
+    // Only the unranked tail is stabilized. The ranked block is a stored
+    // decision and is already stable, and freezing it too meant a batch that
+    // arrived after the first frame never reached the top: the eight
+    // recommendations stayed buried in the list with no rank badges at all.
+    //
+    // The tail is the part that genuinely re-sorts on every mark, because
+    // marking is what changes how overdue a surah is. That is what moved the
+    // next row out from under the user's finger.
+    final ranked = <MasteredSurah>[
+      for (final surah in unstableActive)
+        if (positions.containsKey(surah.id)) surah,
+    ];
+    final tail = <MasteredSurah>[
+      for (final surah in unstableActive)
+        if (!positions.containsKey(surah.id)) surah,
+    ];
+    final active = <MasteredSurah>[...ranked, ...stabilize(tail)];
     if (active.isEmpty) {
       return Card(
         child: Padding(

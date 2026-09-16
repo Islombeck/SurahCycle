@@ -40,6 +40,30 @@ The new prompt's order is: verify the baseline (done — HEAD `c5df1f6`, analyze
 1. **Re-check acceptance points 1 and 3** on the installed build — the part editor (add/edit/**reorder**/delete) and the eight-item block once entries read `2×`.
 2. **Delete the leftover test part in Зухр.** It is the 4th part, `order_index 3`, Фард, 3 рак., 2 слота, id `df2c79e9-c6a7-4db6-955f-adcdabf70f65` — added by me during Stage A QA and never removed. The other four Зухр parts (4 сунна, 4 фард, 2 сунна) are the owner's own. **I could not remove it:** the phone is locked with a credential (`dumpsys trust` → `deviceLocked=1`) and the lock screen renders black to `screencap`, so no UI automation was possible, and removing it by writing to the database directly would mean going behind the app. Deleting it through the part editor *is* smoke-test point 1, so the chore and the re-check are the same action.
 
+## Open defect found on the device, NOT fixed: the recommendation cycle runs away
+
+Reading the owner's own `app_settings` on 2026-09-16 showed
+`recommendationBatch.cycle.cycleNumber = **5392**`. A cycle is one pass over the
+eligible pool; with 27 mastered surahs and 8 per batch a pass is about four
+batches, so this counter implies on the order of twenty thousand re-plans. The
+app holds 638 recitations. Something re-plans the batch far more often than a
+new day, prayer, part or algorithm version should.
+
+`RecommendationBatchService.plan` increments the cycle only when the first pass
+cannot fill the batch from surahs this cycle has not offered yet, so the likely
+shape is: the batch key changes far more often than intended, or a re-plan is
+triggered on ordinary rebuilds. **This is a hypothesis, not a diagnosis.** It is
+recorded with its evidence rather than guessed at in code.
+
+Nothing user-visible is known to depend on the counter's magnitude, but the same
+churn would flip `occurrence` between 1 and 2, which *is* what the owner sees as
+`2×`. Worth being the next thing looked at.
+
+**A correction to an earlier note in this journal:** the `-4x`, `-5x`, `-6x`
+badges in the second video are **not** repeat counts. They are the remaining
+indicator showing how far *ahead* of the rotation target a surah is. The earlier
+reading of them as cycle repeats was wrong.
+
 ## Next exact action (2026-09-16, after the regression fixes)
 
 Fixed and committed this session, each with its own checkpoint:
