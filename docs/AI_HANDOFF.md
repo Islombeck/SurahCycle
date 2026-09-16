@@ -40,6 +40,77 @@ The new prompt's order is: verify the baseline (done — HEAD `c5df1f6`, analyze
 1. **Re-check acceptance points 1 and 3** on the installed build — the part editor (add/edit/**reorder**/delete) and the eight-item block once entries read `2×`.
 2. **Delete the leftover test part in Зухр.** It is the 4th part, `order_index 3`, Фард, 3 рак., 2 слота, id `df2c79e9-c6a7-4db6-955f-adcdabf70f65` — added by me during Stage A QA and never removed. The other four Зухр parts (4 сунна, 4 фард, 2 сунна) are the owner's own. **I could not remove it:** the phone is locked with a credential (`dumpsys trust` → `deviceLocked=1`) and the lock screen renders black to `screencap`, so no UI automation was possible, and removing it by writing to the database directly would mean going behind the app. Deleting it through the part editor *is* smoke-test point 1, so the chore and the re-check are the same action.
 
+## Owner regression report of 2026-09-16 — what the two videos actually show
+
+The owner recorded `video_2026-09-16_09-35-25.mp4` (57.7 s) and
+`video_2026-09-16_09-35-42.mp4` (48.3 s), both 606×1280, in the repo root
+alongside his other QA media (untracked, never to be committed or renamed).
+**They were watched.** No decoder existed on this PC, so a portable ffmpeg was
+unpacked into the project's own gitignored `.tools/` (the same place the
+portable Flutter/Git toolchain already lives) and frames were extracted at 2 fps
+into the session scratchpad, outside the repository.
+
+Below is what the frames *show*. Causes are a separate question and are marked
+as open; nothing here is a diagnosis yet.
+
+**Video 1 — the part editor.**
+
+- 0–13 s: context is **Зухр, ручной режим**. The Зухр plan has four parts, the
+  fourth being `Фард · 3 рак. · слотов для сур: 2` — the agent's leftover test
+  part. **Every part reads `Слоты для сур: 0/N`, so the session has no
+  recitations at all.**
+- 10–11 s: Настройки → редактор частей Зухра → корзина на четвёртой части →
+  dialog «Удалить часть намаза? Удалить «Фард»? Уже созданные сессии намаза не
+  изменятся.» → Удалить.
+- 12 s: **the editor now lists three parts — the template write succeeded.**
+- 13 s: Home still lists **four** parts, including the deleted one.
+- **So "удаление не сохраняется" is not what happened.** The template changed;
+  the already-created Зухр session kept its own four-part snapshot, exactly as
+  the dialog warned. What the owner sees as "не сохранилось" is the plan he is
+  actually looking at not changing. Open question: what the right scope choice
+  is for a part with no events (prompt §C).
+
+**Video 1 — the prayer picker disagrees with the context.**
+
+- ~18 s: the owner presses «Вернуться к авто» himself; the card becomes
+  «Между намазами · Автоматически · Далее: Зухр в 12:18».
+- 20 s: he opens «Выбрать намаз». The sheet shows **Магриб** checked — while the
+  context is automatic.
+- 31–35 s: context is **Иша** (ручной режим); at 35 s he taps the chevron.
+- 36 s: the sheet again shows **Магриб** checked while the card reads **Иша**.
+  He taps **Витр**.
+- 38 s: context is Витр.
+- **Correction to the relayed observation:** the Иша → Витр change at ~37 s was
+  the owner's own tap in the picker, not an automatic transition. What the
+  frames *do* prove is different and was not in the report: **the picker's
+  pre-checked prayer is stale** — it stays on Магриб across an auto context and
+  two different manual selections. Open question: whether the stored manual
+  selection and the displayed context are two different values that diverge.
+
+**Video 2 — marking re-sorts under the finger, then the context is lost.**
+
+- 0–10 s: context is **Магриб, ручной режим**, plan `Магриб · Фард` (Фард 3 рак.
+  0/2, Сунна 2 рак. 0/2). The ranked block carries `2×` on ranks 3–8;
+  «К повторению: 17».
+- 34 s: he taps **Al-Falaq** in «Активные суры».
+- 36 s: Al-Falaq is green, snackbar «Сура отмечена / Отменить» — **and Al-Falaq
+  and An-Naas have swapped rows.** The row under his finger is now a different
+  surah. This is the "прыгает" complaint, captured directly.
+- 38 s: after the second mark the viewport has jumped elsewhere in the list.
+- 40 → 41 s: the page jumps to the top, and the context becomes
+  **«Выбрать намаз · Автоматически»** — with the prayer-time strip **gone
+  entirely** (at 20 s in video 1 the automatic state still showed the full strip
+  and «Далее: Зухр в 12:18»). The ranked block has lost its `2×` badges and
+  «К повторению» reads 15.
+- **So the manual Магриб was lost, and the batch identity changed with it.**
+  Open question: whether the context collapses because the prayer schedule
+  momentarily has no data, and whether a manual choice should depend on the
+  schedule at all.
+
+Not yet established, and not to be asserted until it is: why the schedule strip
+disappeared, what rebuilt the page, and whether the batch reset is a consequence
+of the context change or an independent fault.
+
 **Stage J is under way. §6.0 (MCP) is blocked on one owner action; §6.4 (durable outbox, schema v7) is done.**
 
 - MCP: `claude` is not on PATH in this environment (it runs as the VSCode extension), so instead of `claude mcp add --transport http appwrite https://mcp.appwrite.io/` the server is declared in a project-scoped **`.mcp.json`** at the repo root — the same "only this local project" scope the prompt asked for, expressed as the file the command writes. No existing configuration was touched (there was none: no global `mcpServers`, no project entry). **Owner action: `/mcp` → `appwrite` → Authenticate**, then sign in to Appwrite through GitHub in his own browser and read the scope Appwrite actually requests before approving. A session restart may be needed for the extension to pick up a new `.mcp.json`. Nothing beyond §6.0 was attempted — no read of the project, no provisioning.
