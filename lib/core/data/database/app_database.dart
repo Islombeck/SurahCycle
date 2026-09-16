@@ -548,6 +548,104 @@ class AppSettings extends Table {
   ];
 }
 
+/// The durable outbox: local changes that have not reached the account yet.
+///
+/// Both the retry queue and the quarantine live here under one [status], so a
+/// permanently rejected change is never lost — only moved out of the way of the
+/// ones behind it. The envelope is stored as its own JSON rather than shredded
+/// into columns: it is transport payload, and re-deriving it from local tables
+/// after a later schema change would risk pushing something the user never did.
+@DataClassName('SyncOutboxEntryRow')
+class SyncOutboxEntries extends Table {
+  @override
+  String get tableName => 'sync_outbox_entries';
+
+  TextColumn get ownerKey => text()();
+  TextColumn get envelopeId => text()();
+
+  /// `entityType:entityId` — what the queued change is about, across devices.
+  TextColumn get entityKey => text()();
+  TextColumn get status => text()();
+  BoolColumn get isTombstone =>
+      boolean().withDefault(const Constant<bool>(false))();
+
+  /// Microseconds since epoch, UTC. An integer rather than a `DateTime`
+  /// column because Drift stores those as whole seconds by default, and the
+  /// drain order must not depend on two entries landing in the same second.
+  IntColumn get enqueuedAtUs => integer()();
+  IntColumn get envelopeUpdatedAtUs => integer()();
+  IntColumn get attemptCount => integer().withDefault(const Constant<int>(0))();
+  TextColumn get lastFailureReason => text().nullable()();
+  TextColumn get envelopeJson => text()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{ownerKey, envelopeId};
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK (length(owner_key) > 0)',
+    'CHECK (length(envelope_id) > 0)',
+    'CHECK (length(entity_key) > 0)',
+    "CHECK (status IN ('pending', 'quarantined'))",
+    'CHECK (attempt_count >= 0)',
+    'CHECK (last_failure_reason IS NULL OR length(last_failure_reason) > 0)',
+    'CHECK (length(envelope_json) > 0)',
+  ];
+}
+
+/// Where a pull left off, per owner.
+@DataClassName('SyncCursorRow')
+class SyncCursors extends Table {
+  @override
+  String get tableName => 'sync_cursors';
+
+  TextColumn get ownerKey => text()();
+
+  /// Opaque server token. An empty string means "from the beginning".
+  TextColumn get pullCursor => text()();
+  DateTimeColumn get updatedAtUtc => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{ownerKey};
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK (length(owner_key) > 0)',
+  ];
+}
+
+/// Whether an account has been allowed to touch this device's data yet.
+///
+/// Signing in is not activation. The CHECK keeps that distinction in the
+/// schema: a row can only be active if its recorded choice was `merge`, so no
+/// code path can flip activation on while the user chose to stay local.
+@DataClassName('SyncActivationRow')
+class SyncActivations extends Table {
+  @override
+  String get tableName => 'sync_activations';
+
+  TextColumn get ownerKey => text()();
+  BoolColumn get isActive =>
+      boolean().withDefault(const Constant<bool>(false))();
+  TextColumn get choice => text().nullable()();
+
+  /// The local backup taken before the merge preview was shown.
+  TextColumn get backupId => text().nullable()();
+  DateTimeColumn get decidedAtUtc => dateTime().nullable()();
+  DateTimeColumn get lastSuccessAtUtc => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{ownerKey};
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK (length(owner_key) > 0)',
+    "CHECK (choice IS NULL OR choice IN ('merge', 'keepDeviceLocalOnly'))",
+    "CHECK (is_active = 0 OR choice = 'merge')",
+    'CHECK (choice IS NULL OR decided_at_utc IS NOT NULL)',
+  ];
+}
+
 @DriftDatabase(
   tables: <Type>[
     SurahMetadata,
@@ -566,6 +664,9 @@ class AppSettings extends Table {
     LearningEvents,
     RecallAttempts,
     AppSettings,
+    SyncOutboxEntries,
+    SyncCursors,
+    SyncActivations,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -573,7 +674,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'murajaah_user'));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -583,12 +684,13 @@ class AppDatabase extends _$AppDatabase {
       await _createVersionFourIndexesAndGuards();
       await _createVersionFiveIndexes();
       await _createVersionSixIndexes();
+      await _createVersionSevenIndexes();
       await _ensureEmptyRoutineTemplates();
       await _ensureRotationSingleton();
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
       if (from == to) return;
-      if (from < 1 || from > 5 || to != 6) {
+      if (from < 1 || from > 6 || to != 7) {
         throw StateError('Unsupported database migration from $from to $to.');
       }
       if (from < 2) {
@@ -606,12 +708,16 @@ class AppDatabase extends _$AppDatabase {
       if (from < 6) {
         await _migrateVersionFiveToSix(migrator);
       }
+      if (from < 7) {
+        await _migrateVersionSixToSeven(migrator);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
       await _createVersionFourIndexesAndGuards();
       await _createVersionFiveIndexes();
       await _createVersionSixIndexes();
+      await _createVersionSevenIndexes();
       await _ensureRotationSingleton();
       await _ensureEmptyRoutineTemplates();
     },
@@ -723,6 +829,49 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_recall_attempts_date '
       'ON recall_attempts (local_date, sequence)',
     );
+  }
+
+  Future<void> _createVersionSevenIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_sync_outbox_drain '
+      'ON sync_outbox_entries '
+      '(owner_key, status, enqueued_at_us, envelope_id)',
+    );
+    // One queued change per entity per owner. Coalescing is what keeps ten
+    // offline edits to one template from becoming ten pushes, and a database
+    // constraint is what keeps a future code path from breaking that quietly.
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_outbox_pending_entity '
+      'ON sync_outbox_entries (owner_key, entity_key) '
+      "WHERE status = 'pending'",
+    );
+  }
+
+  /// Adds the durable sync transport tables.
+  ///
+  /// Nothing is backfilled and no existing table is touched. A queue entry
+  /// describes a change that has not reached an account yet; synthesizing one
+  /// per historical recitation would push a user's whole journal the first time
+  /// they ever sign in, which is exactly the merge the activation gate exists
+  /// to make explicit.
+  Future<void> _migrateVersionSixToSeven(Migrator migrator) async {
+    if (!await _tableExists('sync_outbox_entries')) {
+      await migrator.createTable(syncOutboxEntries);
+    }
+    if (!await _tableExists('sync_cursors')) {
+      await migrator.createTable(syncCursors);
+    }
+    if (!await _tableExists('sync_activations')) {
+      await migrator.createTable(syncActivations);
+    }
+    await _createVersionSevenIndexes();
+    final violations = await customSelect('PRAGMA foreign_key_check').get();
+    if (violations.isNotEmpty) {
+      throw StateError(
+        'Foreign-key violations after v6 to v7 migration: '
+        '${violations.length}.',
+      );
+    }
   }
 
   /// Adds the append-only recall journal. Nothing is backfilled: recall

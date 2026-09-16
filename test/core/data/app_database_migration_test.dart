@@ -10,7 +10,7 @@ import '../../generated_migrations/schema.dart';
 
 void main() {
   test(
-    'v1 to v6 preserves every legacy table and backfills v5 semantics',
+    'v1 to v7 preserves every legacy table and backfills v5 semantics',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(1);
@@ -21,24 +21,25 @@ void main() {
       final migrationDatabase = AppDatabase(schema.newConnection());
       await verifier.migrateAndValidate(
         migrationDatabase,
-        6,
+        7,
         // Runtime-only performance indexes are intentionally absent from the
         // generated Drift schema. Old tables are checked explicitly below.
         options: const ValidationOptions(),
       );
 
-      expect(migrationDatabase.schemaVersion, 6);
+      expect(migrationDatabase.schemaVersion, 7);
       expect(
         await migrationDatabase
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        6,
+        7,
       );
       expect(
         await migrationDatabase.customSelect('PRAGMA foreign_key_check').get(),
         isEmpty,
       );
+      await _expectEmptySyncTransport(migrationDatabase);
       await _expectVersionSixScaffold(migrationDatabase, <String>{
         'legacy-live-1',
         'legacy-deleted',
@@ -519,7 +520,7 @@ void main() {
     },
   );
 
-  test('v2 to v6 preserves four-part state and accepts a fifth part', () async {
+  test('v2 to v7 preserves four-part state and accepts a fifth part', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(2);
     final raw = schema.rawDatabase;
@@ -533,22 +534,23 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      6,
+      7,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 6);
+    expect(database.schemaVersion, 7);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      6,
+      7,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
       isEmpty,
     );
+    await _expectEmptySyncTransport(database);
     await _expectVersionSixScaffold(database, <String>{
       'v2-live',
       'v2-deleted',
@@ -930,7 +932,7 @@ void main() {
     );
   });
 
-  test('v3 to v6 preserves all data and backfills generic learning', () async {
+  test('v3 to v7 preserves all data and backfills generic learning', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(3);
     final raw = schema.rawDatabase;
@@ -944,17 +946,18 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      6,
+      7,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 6);
+    expect(database.schemaVersion, 7);
+    await _expectEmptySyncTransport(database);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      6,
+      7,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1248,7 +1251,7 @@ void main() {
     expect(await database.select(database.rotationSchemes).get(), hasLength(1));
   });
 
-  test('v4 to v6 preserves all legacy rows and relationships', () async {
+  test('v4 to v7 preserves all legacy rows and relationships', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(4);
     final raw = schema.rawDatabase;
@@ -1262,17 +1265,18 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      6,
+      7,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 6);
+    expect(database.schemaVersion, 7);
+    await _expectEmptySyncTransport(database);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      6,
+      7,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1529,7 +1533,7 @@ void main() {
   });
 
   test(
-    'v5 to v6 keeps the routine scaffold and adds the recall journal',
+    'v5 to v7 keeps the routine scaffold and adds the recall journal',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(5);
@@ -1544,17 +1548,18 @@ void main() {
       });
       await verifier.migrateAndValidate(
         database,
-        6,
+        7,
         options: const ValidationOptions(),
       );
 
-      expect(database.schemaVersion, 6);
+      expect(database.schemaVersion, 7);
+      await _expectEmptySyncTransport(database);
       expect(
         await database
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        6,
+        7,
       );
       expect(
         await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1738,18 +1743,142 @@ void main() {
   );
 
   test(
+    'v6 to v7 adds the sync transport and touches nothing the user owns',
+    () async {
+      final verifier = SchemaVerifier(GeneratedHelper());
+      final schema = await verifier.schemaAt(6);
+      final raw = schema.rawDatabase;
+      raw.execute('PRAGMA foreign_keys = ON');
+      _seedVersionSix(raw);
+
+      final database = AppDatabase(schema.newConnection());
+      addTearDown(() async {
+        await database.close();
+        schema.close();
+      });
+      await verifier.migrateAndValidate(
+        database,
+        7,
+        options: const ValidationOptions(),
+      );
+
+      expect(database.schemaVersion, 7);
+      expect(
+        await database
+            .customSelect('PRAGMA user_version')
+            .map((row) => row.read<int>('user_version'))
+            .getSingle(),
+        7,
+      );
+      expect(
+        await database.customSelect('PRAGMA foreign_key_check').get(),
+        isEmpty,
+      );
+
+      // Everything the user owns is byte-for-byte what v6 held.
+      final attempt = await database
+          .select(database.recallAttempts)
+          .getSingle();
+      expect(
+        <Object?>[
+          attempt.id,
+          attempt.surahId,
+          attempt.ayahStart,
+          attempt.ayahEnd,
+          attempt.learningCycle,
+          attempt.result,
+          attempt.createdAtUtc.toUtc(),
+          attempt.localDate,
+          attempt.source,
+        ],
+        <Object?>[
+          'v6-recall',
+          'v5-surah',
+          2,
+          4,
+          1,
+          'recalledWithMistake',
+          _utc(7),
+          '2026-08-24',
+          'surah',
+        ],
+      );
+      final event = await database
+          .select(database.recitationEvents)
+          .getSingle();
+      expect(event.id, 'v5-event');
+      expect(event.prayerSessionPartId, 'v5-session-part');
+      expect(event.deletedAtUtc, isNull);
+      final setting = await database.select(database.appSettings).getSingle();
+      expect(
+        <Object?>[setting.key, setting.value],
+        <Object?>['v5-setting', 'preserved'],
+      );
+      final partTemplate = await database
+          .select(database.prayerRoutinePartTemplates)
+          .getSingle();
+      expect(partTemplate.id, 'v5-part-template');
+      expect(partTemplate.requiredSurahSlots, 2);
+
+      // The transport arrives empty. Synthesizing one queue entry per
+      // historical recitation would push the user's whole journal the first
+      // time they ever sign in — the exact merge the activation gate exists to
+      // make explicit.
+      await _expectEmptySyncTransport(database);
+
+      // The schema's own guards for the new tables.
+      await _expectConstraint(database, '''
+      INSERT INTO sync_outbox_entries
+        (owner_key, envelope_id, entity_key, status, is_tombstone,
+         enqueued_at_us, envelope_updated_at_us, attempt_count, envelope_json)
+      VALUES ('local', 'e1', 'appSetting:a', 'sent', 0, 1, 1, 0, '{}')
+    ''');
+      await _expectConstraint(database, '''
+      INSERT INTO sync_activations
+        (owner_key, is_active, choice, backup_id, decided_at_utc)
+      VALUES ('local', 1, 'keepDeviceLocalOnly', 'backup-1', 1)
+    ''');
+      await database.customStatement('''
+      INSERT INTO sync_outbox_entries
+        (owner_key, envelope_id, entity_key, status, is_tombstone,
+         enqueued_at_us, envelope_updated_at_us, attempt_count, envelope_json)
+      VALUES ('local', 'e1', 'appSetting:a', 'pending', 0, 1, 1, 0, '{}')
+    ''');
+      // One pending change per entity per owner, enforced by the schema and
+      // not only by the outbox code that normally maintains it.
+      await _expectConstraint(database, '''
+      INSERT INTO sync_outbox_entries
+        (owner_key, envelope_id, entity_key, status, is_tombstone,
+         enqueued_at_us, envelope_updated_at_us, attempt_count, envelope_json)
+      VALUES ('local', 'e2', 'appSetting:a', 'pending', 0, 2, 2, 0, '{}')
+    ''');
+      // A different owner is a different queue, never a collision.
+      await database.customStatement('''
+      INSERT INTO sync_outbox_entries
+        (owner_key, envelope_id, entity_key, status, is_tombstone,
+         enqueued_at_us, envelope_updated_at_us, attempt_count, envelope_json)
+      VALUES ('user:b', 'e2', 'appSetting:a', 'pending', 0, 2, 2, 0, '{}')
+    ''');
+      expect(
+        await database.customSelect('PRAGMA foreign_key_check').get(),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
     'a database from a newer app version is refused, not downgraded',
     () async {
-      final directory = await Directory.systemTemp.createTemp('murajaah-v6-');
+      final directory = await Directory.systemTemp.createTemp('murajaah-v7-');
       addTearDown(() => directory.delete(recursive: true));
       final file = File('${directory.path}/murajaah.sqlite');
 
       final created = AppDatabase(NativeDatabase(file));
-      await created.customStatement('PRAGMA user_version = 7');
+      await created.customStatement('PRAGMA user_version = 8');
       await created.close();
 
       // Opening someone else's future schema must fail loudly. Silently running
-      // v6 code against a v7 file would corrupt data we cannot recover.
+      // v7 code against a v8 file would corrupt data we cannot recover.
       final reopened = AppDatabase(NativeDatabase(file));
       addTearDown(reopened.close);
       await expectLater(
@@ -1758,6 +1887,14 @@ void main() {
       );
     },
   );
+}
+
+/// v7 adds transport only. Every upgrade path must arrive with all three
+/// tables present and empty.
+Future<void> _expectEmptySyncTransport(AppDatabase database) async {
+  expect(await database.select(database.syncOutboxEntries).get(), isEmpty);
+  expect(await database.select(database.syncCursors).get(), isEmpty);
+  expect(await database.select(database.syncActivations).get(), isEmpty);
 }
 
 DateTime _utc(int minute) => DateTime.utc(2026, 8, 24, 10, minute);
@@ -2463,6 +2600,31 @@ void _seedVersionFive(dynamic raw) {
     'INSERT INTO app_settings (key, value, value_type, updated_at_utc) '
     'VALUES (?, ?, ?, ?)',
     <Object?>['v5-setting', 'preserved', 'string', _encoded(_utc(6))],
+  );
+}
+
+/// A v6 database: everything v5 held, plus one real recall attempt.
+///
+/// The recall row is the point of the seed. v6 was the version that introduced
+/// the append-only journal, so a v6 → v7 upgrade is the first one that can lose
+/// it, and the test has to have something to lose.
+void _seedVersionSix(dynamic raw) {
+  _seedVersionFive(raw);
+  raw.execute(
+    'INSERT INTO recall_attempts '
+    '(id, surah_id, ayah_start, ayah_end, learning_cycle, result, '
+    'created_at_utc, local_date, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    <Object?>[
+      'v6-recall',
+      'v5-surah',
+      2,
+      4,
+      1,
+      'recalledWithMistake',
+      _encoded(_utc(7)),
+      '2026-08-24',
+      'surah',
+    ],
   );
 }
 

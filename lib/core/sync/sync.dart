@@ -11,4 +11,5 @@ export 'in_memory_sync_outbox.dart';
 export 'sync_engine.dart';
 export 'sync_envelope.dart';
 export 'sync_app_setting_policy.dart';
+export 'sync_owner.dart';
 export 'sync_ports.dart';

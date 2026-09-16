@@ -9558,6 +9558,1383 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingRow> {
   }
 }
 
+class $SyncOutboxEntriesTable extends SyncOutboxEntries
+    with TableInfo<$SyncOutboxEntriesTable, SyncOutboxEntryRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncOutboxEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _ownerKeyMeta = const VerificationMeta(
+    'ownerKey',
+  );
+  @override
+  late final GeneratedColumn<String> ownerKey = GeneratedColumn<String>(
+    'owner_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _envelopeIdMeta = const VerificationMeta(
+    'envelopeId',
+  );
+  @override
+  late final GeneratedColumn<String> envelopeId = GeneratedColumn<String>(
+    'envelope_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityKeyMeta = const VerificationMeta(
+    'entityKey',
+  );
+  @override
+  late final GeneratedColumn<String> entityKey = GeneratedColumn<String>(
+    'entity_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isTombstoneMeta = const VerificationMeta(
+    'isTombstone',
+  );
+  @override
+  late final GeneratedColumn<bool> isTombstone = GeneratedColumn<bool>(
+    'is_tombstone',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_tombstone" IN (0, 1))',
+    ),
+    defaultValue: const Constant<bool>(false),
+  );
+  static const VerificationMeta _enqueuedAtUsMeta = const VerificationMeta(
+    'enqueuedAtUs',
+  );
+  @override
+  late final GeneratedColumn<int> enqueuedAtUs = GeneratedColumn<int>(
+    'enqueued_at_us',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _envelopeUpdatedAtUsMeta =
+      const VerificationMeta('envelopeUpdatedAtUs');
+  @override
+  late final GeneratedColumn<int> envelopeUpdatedAtUs = GeneratedColumn<int>(
+    'envelope_updated_at_us',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _attemptCountMeta = const VerificationMeta(
+    'attemptCount',
+  );
+  @override
+  late final GeneratedColumn<int> attemptCount = GeneratedColumn<int>(
+    'attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant<int>(0),
+  );
+  static const VerificationMeta _lastFailureReasonMeta = const VerificationMeta(
+    'lastFailureReason',
+  );
+  @override
+  late final GeneratedColumn<String> lastFailureReason =
+      GeneratedColumn<String>(
+        'last_failure_reason',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _envelopeJsonMeta = const VerificationMeta(
+    'envelopeJson',
+  );
+  @override
+  late final GeneratedColumn<String> envelopeJson = GeneratedColumn<String>(
+    'envelope_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    ownerKey,
+    envelopeId,
+    entityKey,
+    status,
+    isTombstone,
+    enqueuedAtUs,
+    envelopeUpdatedAtUs,
+    attemptCount,
+    lastFailureReason,
+    envelopeJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_outbox_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncOutboxEntryRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('owner_key')) {
+      context.handle(
+        _ownerKeyMeta,
+        ownerKey.isAcceptableOrUnknown(data['owner_key']!, _ownerKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ownerKeyMeta);
+    }
+    if (data.containsKey('envelope_id')) {
+      context.handle(
+        _envelopeIdMeta,
+        envelopeId.isAcceptableOrUnknown(data['envelope_id']!, _envelopeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_envelopeIdMeta);
+    }
+    if (data.containsKey('entity_key')) {
+      context.handle(
+        _entityKeyMeta,
+        entityKey.isAcceptableOrUnknown(data['entity_key']!, _entityKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityKeyMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('is_tombstone')) {
+      context.handle(
+        _isTombstoneMeta,
+        isTombstone.isAcceptableOrUnknown(
+          data['is_tombstone']!,
+          _isTombstoneMeta,
+        ),
+      );
+    }
+    if (data.containsKey('enqueued_at_us')) {
+      context.handle(
+        _enqueuedAtUsMeta,
+        enqueuedAtUs.isAcceptableOrUnknown(
+          data['enqueued_at_us']!,
+          _enqueuedAtUsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_enqueuedAtUsMeta);
+    }
+    if (data.containsKey('envelope_updated_at_us')) {
+      context.handle(
+        _envelopeUpdatedAtUsMeta,
+        envelopeUpdatedAtUs.isAcceptableOrUnknown(
+          data['envelope_updated_at_us']!,
+          _envelopeUpdatedAtUsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_envelopeUpdatedAtUsMeta);
+    }
+    if (data.containsKey('attempt_count')) {
+      context.handle(
+        _attemptCountMeta,
+        attemptCount.isAcceptableOrUnknown(
+          data['attempt_count']!,
+          _attemptCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_failure_reason')) {
+      context.handle(
+        _lastFailureReasonMeta,
+        lastFailureReason.isAcceptableOrUnknown(
+          data['last_failure_reason']!,
+          _lastFailureReasonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('envelope_json')) {
+      context.handle(
+        _envelopeJsonMeta,
+        envelopeJson.isAcceptableOrUnknown(
+          data['envelope_json']!,
+          _envelopeJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_envelopeJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {ownerKey, envelopeId};
+  @override
+  SyncOutboxEntryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncOutboxEntryRow(
+      ownerKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_key'],
+      )!,
+      envelopeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}envelope_id'],
+      )!,
+      entityKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_key'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      isTombstone: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_tombstone'],
+      )!,
+      enqueuedAtUs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}enqueued_at_us'],
+      )!,
+      envelopeUpdatedAtUs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}envelope_updated_at_us'],
+      )!,
+      attemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempt_count'],
+      )!,
+      lastFailureReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_failure_reason'],
+      ),
+      envelopeJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}envelope_json'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncOutboxEntriesTable createAlias(String alias) {
+    return $SyncOutboxEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class SyncOutboxEntryRow extends DataClass
+    implements Insertable<SyncOutboxEntryRow> {
+  final String ownerKey;
+  final String envelopeId;
+
+  /// `entityType:entityId` — what the queued change is about, across devices.
+  final String entityKey;
+  final String status;
+  final bool isTombstone;
+
+  /// Microseconds since epoch, UTC. An integer rather than a `DateTime`
+  /// column because Drift stores those as whole seconds by default, and the
+  /// drain order must not depend on two entries landing in the same second.
+  final int enqueuedAtUs;
+  final int envelopeUpdatedAtUs;
+  final int attemptCount;
+  final String? lastFailureReason;
+  final String envelopeJson;
+  const SyncOutboxEntryRow({
+    required this.ownerKey,
+    required this.envelopeId,
+    required this.entityKey,
+    required this.status,
+    required this.isTombstone,
+    required this.enqueuedAtUs,
+    required this.envelopeUpdatedAtUs,
+    required this.attemptCount,
+    this.lastFailureReason,
+    required this.envelopeJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['owner_key'] = Variable<String>(ownerKey);
+    map['envelope_id'] = Variable<String>(envelopeId);
+    map['entity_key'] = Variable<String>(entityKey);
+    map['status'] = Variable<String>(status);
+    map['is_tombstone'] = Variable<bool>(isTombstone);
+    map['enqueued_at_us'] = Variable<int>(enqueuedAtUs);
+    map['envelope_updated_at_us'] = Variable<int>(envelopeUpdatedAtUs);
+    map['attempt_count'] = Variable<int>(attemptCount);
+    if (!nullToAbsent || lastFailureReason != null) {
+      map['last_failure_reason'] = Variable<String>(lastFailureReason);
+    }
+    map['envelope_json'] = Variable<String>(envelopeJson);
+    return map;
+  }
+
+  SyncOutboxEntriesCompanion toCompanion(bool nullToAbsent) {
+    return SyncOutboxEntriesCompanion(
+      ownerKey: Value(ownerKey),
+      envelopeId: Value(envelopeId),
+      entityKey: Value(entityKey),
+      status: Value(status),
+      isTombstone: Value(isTombstone),
+      enqueuedAtUs: Value(enqueuedAtUs),
+      envelopeUpdatedAtUs: Value(envelopeUpdatedAtUs),
+      attemptCount: Value(attemptCount),
+      lastFailureReason: lastFailureReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastFailureReason),
+      envelopeJson: Value(envelopeJson),
+    );
+  }
+
+  factory SyncOutboxEntryRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncOutboxEntryRow(
+      ownerKey: serializer.fromJson<String>(json['ownerKey']),
+      envelopeId: serializer.fromJson<String>(json['envelopeId']),
+      entityKey: serializer.fromJson<String>(json['entityKey']),
+      status: serializer.fromJson<String>(json['status']),
+      isTombstone: serializer.fromJson<bool>(json['isTombstone']),
+      enqueuedAtUs: serializer.fromJson<int>(json['enqueuedAtUs']),
+      envelopeUpdatedAtUs: serializer.fromJson<int>(
+        json['envelopeUpdatedAtUs'],
+      ),
+      attemptCount: serializer.fromJson<int>(json['attemptCount']),
+      lastFailureReason: serializer.fromJson<String?>(
+        json['lastFailureReason'],
+      ),
+      envelopeJson: serializer.fromJson<String>(json['envelopeJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'ownerKey': serializer.toJson<String>(ownerKey),
+      'envelopeId': serializer.toJson<String>(envelopeId),
+      'entityKey': serializer.toJson<String>(entityKey),
+      'status': serializer.toJson<String>(status),
+      'isTombstone': serializer.toJson<bool>(isTombstone),
+      'enqueuedAtUs': serializer.toJson<int>(enqueuedAtUs),
+      'envelopeUpdatedAtUs': serializer.toJson<int>(envelopeUpdatedAtUs),
+      'attemptCount': serializer.toJson<int>(attemptCount),
+      'lastFailureReason': serializer.toJson<String?>(lastFailureReason),
+      'envelopeJson': serializer.toJson<String>(envelopeJson),
+    };
+  }
+
+  SyncOutboxEntryRow copyWith({
+    String? ownerKey,
+    String? envelopeId,
+    String? entityKey,
+    String? status,
+    bool? isTombstone,
+    int? enqueuedAtUs,
+    int? envelopeUpdatedAtUs,
+    int? attemptCount,
+    Value<String?> lastFailureReason = const Value.absent(),
+    String? envelopeJson,
+  }) => SyncOutboxEntryRow(
+    ownerKey: ownerKey ?? this.ownerKey,
+    envelopeId: envelopeId ?? this.envelopeId,
+    entityKey: entityKey ?? this.entityKey,
+    status: status ?? this.status,
+    isTombstone: isTombstone ?? this.isTombstone,
+    enqueuedAtUs: enqueuedAtUs ?? this.enqueuedAtUs,
+    envelopeUpdatedAtUs: envelopeUpdatedAtUs ?? this.envelopeUpdatedAtUs,
+    attemptCount: attemptCount ?? this.attemptCount,
+    lastFailureReason: lastFailureReason.present
+        ? lastFailureReason.value
+        : this.lastFailureReason,
+    envelopeJson: envelopeJson ?? this.envelopeJson,
+  );
+  SyncOutboxEntryRow copyWithCompanion(SyncOutboxEntriesCompanion data) {
+    return SyncOutboxEntryRow(
+      ownerKey: data.ownerKey.present ? data.ownerKey.value : this.ownerKey,
+      envelopeId: data.envelopeId.present
+          ? data.envelopeId.value
+          : this.envelopeId,
+      entityKey: data.entityKey.present ? data.entityKey.value : this.entityKey,
+      status: data.status.present ? data.status.value : this.status,
+      isTombstone: data.isTombstone.present
+          ? data.isTombstone.value
+          : this.isTombstone,
+      enqueuedAtUs: data.enqueuedAtUs.present
+          ? data.enqueuedAtUs.value
+          : this.enqueuedAtUs,
+      envelopeUpdatedAtUs: data.envelopeUpdatedAtUs.present
+          ? data.envelopeUpdatedAtUs.value
+          : this.envelopeUpdatedAtUs,
+      attemptCount: data.attemptCount.present
+          ? data.attemptCount.value
+          : this.attemptCount,
+      lastFailureReason: data.lastFailureReason.present
+          ? data.lastFailureReason.value
+          : this.lastFailureReason,
+      envelopeJson: data.envelopeJson.present
+          ? data.envelopeJson.value
+          : this.envelopeJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncOutboxEntryRow(')
+          ..write('ownerKey: $ownerKey, ')
+          ..write('envelopeId: $envelopeId, ')
+          ..write('entityKey: $entityKey, ')
+          ..write('status: $status, ')
+          ..write('isTombstone: $isTombstone, ')
+          ..write('enqueuedAtUs: $enqueuedAtUs, ')
+          ..write('envelopeUpdatedAtUs: $envelopeUpdatedAtUs, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('lastFailureReason: $lastFailureReason, ')
+          ..write('envelopeJson: $envelopeJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    ownerKey,
+    envelopeId,
+    entityKey,
+    status,
+    isTombstone,
+    enqueuedAtUs,
+    envelopeUpdatedAtUs,
+    attemptCount,
+    lastFailureReason,
+    envelopeJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncOutboxEntryRow &&
+          other.ownerKey == this.ownerKey &&
+          other.envelopeId == this.envelopeId &&
+          other.entityKey == this.entityKey &&
+          other.status == this.status &&
+          other.isTombstone == this.isTombstone &&
+          other.enqueuedAtUs == this.enqueuedAtUs &&
+          other.envelopeUpdatedAtUs == this.envelopeUpdatedAtUs &&
+          other.attemptCount == this.attemptCount &&
+          other.lastFailureReason == this.lastFailureReason &&
+          other.envelopeJson == this.envelopeJson);
+}
+
+class SyncOutboxEntriesCompanion extends UpdateCompanion<SyncOutboxEntryRow> {
+  final Value<String> ownerKey;
+  final Value<String> envelopeId;
+  final Value<String> entityKey;
+  final Value<String> status;
+  final Value<bool> isTombstone;
+  final Value<int> enqueuedAtUs;
+  final Value<int> envelopeUpdatedAtUs;
+  final Value<int> attemptCount;
+  final Value<String?> lastFailureReason;
+  final Value<String> envelopeJson;
+  final Value<int> rowid;
+  const SyncOutboxEntriesCompanion({
+    this.ownerKey = const Value.absent(),
+    this.envelopeId = const Value.absent(),
+    this.entityKey = const Value.absent(),
+    this.status = const Value.absent(),
+    this.isTombstone = const Value.absent(),
+    this.enqueuedAtUs = const Value.absent(),
+    this.envelopeUpdatedAtUs = const Value.absent(),
+    this.attemptCount = const Value.absent(),
+    this.lastFailureReason = const Value.absent(),
+    this.envelopeJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncOutboxEntriesCompanion.insert({
+    required String ownerKey,
+    required String envelopeId,
+    required String entityKey,
+    required String status,
+    this.isTombstone = const Value.absent(),
+    required int enqueuedAtUs,
+    required int envelopeUpdatedAtUs,
+    this.attemptCount = const Value.absent(),
+    this.lastFailureReason = const Value.absent(),
+    required String envelopeJson,
+    this.rowid = const Value.absent(),
+  }) : ownerKey = Value(ownerKey),
+       envelopeId = Value(envelopeId),
+       entityKey = Value(entityKey),
+       status = Value(status),
+       enqueuedAtUs = Value(enqueuedAtUs),
+       envelopeUpdatedAtUs = Value(envelopeUpdatedAtUs),
+       envelopeJson = Value(envelopeJson);
+  static Insertable<SyncOutboxEntryRow> custom({
+    Expression<String>? ownerKey,
+    Expression<String>? envelopeId,
+    Expression<String>? entityKey,
+    Expression<String>? status,
+    Expression<bool>? isTombstone,
+    Expression<int>? enqueuedAtUs,
+    Expression<int>? envelopeUpdatedAtUs,
+    Expression<int>? attemptCount,
+    Expression<String>? lastFailureReason,
+    Expression<String>? envelopeJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (ownerKey != null) 'owner_key': ownerKey,
+      if (envelopeId != null) 'envelope_id': envelopeId,
+      if (entityKey != null) 'entity_key': entityKey,
+      if (status != null) 'status': status,
+      if (isTombstone != null) 'is_tombstone': isTombstone,
+      if (enqueuedAtUs != null) 'enqueued_at_us': enqueuedAtUs,
+      if (envelopeUpdatedAtUs != null)
+        'envelope_updated_at_us': envelopeUpdatedAtUs,
+      if (attemptCount != null) 'attempt_count': attemptCount,
+      if (lastFailureReason != null) 'last_failure_reason': lastFailureReason,
+      if (envelopeJson != null) 'envelope_json': envelopeJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncOutboxEntriesCompanion copyWith({
+    Value<String>? ownerKey,
+    Value<String>? envelopeId,
+    Value<String>? entityKey,
+    Value<String>? status,
+    Value<bool>? isTombstone,
+    Value<int>? enqueuedAtUs,
+    Value<int>? envelopeUpdatedAtUs,
+    Value<int>? attemptCount,
+    Value<String?>? lastFailureReason,
+    Value<String>? envelopeJson,
+    Value<int>? rowid,
+  }) {
+    return SyncOutboxEntriesCompanion(
+      ownerKey: ownerKey ?? this.ownerKey,
+      envelopeId: envelopeId ?? this.envelopeId,
+      entityKey: entityKey ?? this.entityKey,
+      status: status ?? this.status,
+      isTombstone: isTombstone ?? this.isTombstone,
+      enqueuedAtUs: enqueuedAtUs ?? this.enqueuedAtUs,
+      envelopeUpdatedAtUs: envelopeUpdatedAtUs ?? this.envelopeUpdatedAtUs,
+      attemptCount: attemptCount ?? this.attemptCount,
+      lastFailureReason: lastFailureReason ?? this.lastFailureReason,
+      envelopeJson: envelopeJson ?? this.envelopeJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (ownerKey.present) {
+      map['owner_key'] = Variable<String>(ownerKey.value);
+    }
+    if (envelopeId.present) {
+      map['envelope_id'] = Variable<String>(envelopeId.value);
+    }
+    if (entityKey.present) {
+      map['entity_key'] = Variable<String>(entityKey.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (isTombstone.present) {
+      map['is_tombstone'] = Variable<bool>(isTombstone.value);
+    }
+    if (enqueuedAtUs.present) {
+      map['enqueued_at_us'] = Variable<int>(enqueuedAtUs.value);
+    }
+    if (envelopeUpdatedAtUs.present) {
+      map['envelope_updated_at_us'] = Variable<int>(envelopeUpdatedAtUs.value);
+    }
+    if (attemptCount.present) {
+      map['attempt_count'] = Variable<int>(attemptCount.value);
+    }
+    if (lastFailureReason.present) {
+      map['last_failure_reason'] = Variable<String>(lastFailureReason.value);
+    }
+    if (envelopeJson.present) {
+      map['envelope_json'] = Variable<String>(envelopeJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncOutboxEntriesCompanion(')
+          ..write('ownerKey: $ownerKey, ')
+          ..write('envelopeId: $envelopeId, ')
+          ..write('entityKey: $entityKey, ')
+          ..write('status: $status, ')
+          ..write('isTombstone: $isTombstone, ')
+          ..write('enqueuedAtUs: $enqueuedAtUs, ')
+          ..write('envelopeUpdatedAtUs: $envelopeUpdatedAtUs, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('lastFailureReason: $lastFailureReason, ')
+          ..write('envelopeJson: $envelopeJson, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncCursorsTable extends SyncCursors
+    with TableInfo<$SyncCursorsTable, SyncCursorRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncCursorsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _ownerKeyMeta = const VerificationMeta(
+    'ownerKey',
+  );
+  @override
+  late final GeneratedColumn<String> ownerKey = GeneratedColumn<String>(
+    'owner_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pullCursorMeta = const VerificationMeta(
+    'pullCursor',
+  );
+  @override
+  late final GeneratedColumn<String> pullCursor = GeneratedColumn<String>(
+    'pull_cursor',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtUtcMeta = const VerificationMeta(
+    'updatedAtUtc',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAtUtc = GeneratedColumn<DateTime>(
+    'updated_at_utc',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [ownerKey, pullCursor, updatedAtUtc];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_cursors';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncCursorRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('owner_key')) {
+      context.handle(
+        _ownerKeyMeta,
+        ownerKey.isAcceptableOrUnknown(data['owner_key']!, _ownerKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ownerKeyMeta);
+    }
+    if (data.containsKey('pull_cursor')) {
+      context.handle(
+        _pullCursorMeta,
+        pullCursor.isAcceptableOrUnknown(data['pull_cursor']!, _pullCursorMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pullCursorMeta);
+    }
+    if (data.containsKey('updated_at_utc')) {
+      context.handle(
+        _updatedAtUtcMeta,
+        updatedAtUtc.isAcceptableOrUnknown(
+          data['updated_at_utc']!,
+          _updatedAtUtcMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtUtcMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {ownerKey};
+  @override
+  SyncCursorRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncCursorRow(
+      ownerKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_key'],
+      )!,
+      pullCursor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pull_cursor'],
+      )!,
+      updatedAtUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at_utc'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncCursorsTable createAlias(String alias) {
+    return $SyncCursorsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncCursorRow extends DataClass implements Insertable<SyncCursorRow> {
+  final String ownerKey;
+
+  /// Opaque server token. An empty string means "from the beginning".
+  final String pullCursor;
+  final DateTime updatedAtUtc;
+  const SyncCursorRow({
+    required this.ownerKey,
+    required this.pullCursor,
+    required this.updatedAtUtc,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['owner_key'] = Variable<String>(ownerKey);
+    map['pull_cursor'] = Variable<String>(pullCursor);
+    map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc);
+    return map;
+  }
+
+  SyncCursorsCompanion toCompanion(bool nullToAbsent) {
+    return SyncCursorsCompanion(
+      ownerKey: Value(ownerKey),
+      pullCursor: Value(pullCursor),
+      updatedAtUtc: Value(updatedAtUtc),
+    );
+  }
+
+  factory SyncCursorRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncCursorRow(
+      ownerKey: serializer.fromJson<String>(json['ownerKey']),
+      pullCursor: serializer.fromJson<String>(json['pullCursor']),
+      updatedAtUtc: serializer.fromJson<DateTime>(json['updatedAtUtc']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'ownerKey': serializer.toJson<String>(ownerKey),
+      'pullCursor': serializer.toJson<String>(pullCursor),
+      'updatedAtUtc': serializer.toJson<DateTime>(updatedAtUtc),
+    };
+  }
+
+  SyncCursorRow copyWith({
+    String? ownerKey,
+    String? pullCursor,
+    DateTime? updatedAtUtc,
+  }) => SyncCursorRow(
+    ownerKey: ownerKey ?? this.ownerKey,
+    pullCursor: pullCursor ?? this.pullCursor,
+    updatedAtUtc: updatedAtUtc ?? this.updatedAtUtc,
+  );
+  SyncCursorRow copyWithCompanion(SyncCursorsCompanion data) {
+    return SyncCursorRow(
+      ownerKey: data.ownerKey.present ? data.ownerKey.value : this.ownerKey,
+      pullCursor: data.pullCursor.present
+          ? data.pullCursor.value
+          : this.pullCursor,
+      updatedAtUtc: data.updatedAtUtc.present
+          ? data.updatedAtUtc.value
+          : this.updatedAtUtc,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncCursorRow(')
+          ..write('ownerKey: $ownerKey, ')
+          ..write('pullCursor: $pullCursor, ')
+          ..write('updatedAtUtc: $updatedAtUtc')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(ownerKey, pullCursor, updatedAtUtc);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncCursorRow &&
+          other.ownerKey == this.ownerKey &&
+          other.pullCursor == this.pullCursor &&
+          other.updatedAtUtc == this.updatedAtUtc);
+}
+
+class SyncCursorsCompanion extends UpdateCompanion<SyncCursorRow> {
+  final Value<String> ownerKey;
+  final Value<String> pullCursor;
+  final Value<DateTime> updatedAtUtc;
+  final Value<int> rowid;
+  const SyncCursorsCompanion({
+    this.ownerKey = const Value.absent(),
+    this.pullCursor = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncCursorsCompanion.insert({
+    required String ownerKey,
+    required String pullCursor,
+    required DateTime updatedAtUtc,
+    this.rowid = const Value.absent(),
+  }) : ownerKey = Value(ownerKey),
+       pullCursor = Value(pullCursor),
+       updatedAtUtc = Value(updatedAtUtc);
+  static Insertable<SyncCursorRow> custom({
+    Expression<String>? ownerKey,
+    Expression<String>? pullCursor,
+    Expression<DateTime>? updatedAtUtc,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (ownerKey != null) 'owner_key': ownerKey,
+      if (pullCursor != null) 'pull_cursor': pullCursor,
+      if (updatedAtUtc != null) 'updated_at_utc': updatedAtUtc,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncCursorsCompanion copyWith({
+    Value<String>? ownerKey,
+    Value<String>? pullCursor,
+    Value<DateTime>? updatedAtUtc,
+    Value<int>? rowid,
+  }) {
+    return SyncCursorsCompanion(
+      ownerKey: ownerKey ?? this.ownerKey,
+      pullCursor: pullCursor ?? this.pullCursor,
+      updatedAtUtc: updatedAtUtc ?? this.updatedAtUtc,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (ownerKey.present) {
+      map['owner_key'] = Variable<String>(ownerKey.value);
+    }
+    if (pullCursor.present) {
+      map['pull_cursor'] = Variable<String>(pullCursor.value);
+    }
+    if (updatedAtUtc.present) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncCursorsCompanion(')
+          ..write('ownerKey: $ownerKey, ')
+          ..write('pullCursor: $pullCursor, ')
+          ..write('updatedAtUtc: $updatedAtUtc, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncActivationsTable extends SyncActivations
+    with TableInfo<$SyncActivationsTable, SyncActivationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncActivationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _ownerKeyMeta = const VerificationMeta(
+    'ownerKey',
+  );
+  @override
+  late final GeneratedColumn<String> ownerKey = GeneratedColumn<String>(
+    'owner_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant<bool>(false),
+  );
+  static const VerificationMeta _choiceMeta = const VerificationMeta('choice');
+  @override
+  late final GeneratedColumn<String> choice = GeneratedColumn<String>(
+    'choice',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _backupIdMeta = const VerificationMeta(
+    'backupId',
+  );
+  @override
+  late final GeneratedColumn<String> backupId = GeneratedColumn<String>(
+    'backup_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _decidedAtUtcMeta = const VerificationMeta(
+    'decidedAtUtc',
+  );
+  @override
+  late final GeneratedColumn<DateTime> decidedAtUtc = GeneratedColumn<DateTime>(
+    'decided_at_utc',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastSuccessAtUtcMeta = const VerificationMeta(
+    'lastSuccessAtUtc',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSuccessAtUtc =
+      GeneratedColumn<DateTime>(
+        'last_success_at_utc',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    ownerKey,
+    isActive,
+    choice,
+    backupId,
+    decidedAtUtc,
+    lastSuccessAtUtc,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_activations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncActivationRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('owner_key')) {
+      context.handle(
+        _ownerKeyMeta,
+        ownerKey.isAcceptableOrUnknown(data['owner_key']!, _ownerKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ownerKeyMeta);
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('choice')) {
+      context.handle(
+        _choiceMeta,
+        choice.isAcceptableOrUnknown(data['choice']!, _choiceMeta),
+      );
+    }
+    if (data.containsKey('backup_id')) {
+      context.handle(
+        _backupIdMeta,
+        backupId.isAcceptableOrUnknown(data['backup_id']!, _backupIdMeta),
+      );
+    }
+    if (data.containsKey('decided_at_utc')) {
+      context.handle(
+        _decidedAtUtcMeta,
+        decidedAtUtc.isAcceptableOrUnknown(
+          data['decided_at_utc']!,
+          _decidedAtUtcMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_success_at_utc')) {
+      context.handle(
+        _lastSuccessAtUtcMeta,
+        lastSuccessAtUtc.isAcceptableOrUnknown(
+          data['last_success_at_utc']!,
+          _lastSuccessAtUtcMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {ownerKey};
+  @override
+  SyncActivationRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncActivationRow(
+      ownerKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_key'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      choice: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}choice'],
+      ),
+      backupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}backup_id'],
+      ),
+      decidedAtUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}decided_at_utc'],
+      ),
+      lastSuccessAtUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_success_at_utc'],
+      ),
+    );
+  }
+
+  @override
+  $SyncActivationsTable createAlias(String alias) {
+    return $SyncActivationsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncActivationRow extends DataClass
+    implements Insertable<SyncActivationRow> {
+  final String ownerKey;
+  final bool isActive;
+  final String? choice;
+
+  /// The local backup taken before the merge preview was shown.
+  final String? backupId;
+  final DateTime? decidedAtUtc;
+  final DateTime? lastSuccessAtUtc;
+  const SyncActivationRow({
+    required this.ownerKey,
+    required this.isActive,
+    this.choice,
+    this.backupId,
+    this.decidedAtUtc,
+    this.lastSuccessAtUtc,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['owner_key'] = Variable<String>(ownerKey);
+    map['is_active'] = Variable<bool>(isActive);
+    if (!nullToAbsent || choice != null) {
+      map['choice'] = Variable<String>(choice);
+    }
+    if (!nullToAbsent || backupId != null) {
+      map['backup_id'] = Variable<String>(backupId);
+    }
+    if (!nullToAbsent || decidedAtUtc != null) {
+      map['decided_at_utc'] = Variable<DateTime>(decidedAtUtc);
+    }
+    if (!nullToAbsent || lastSuccessAtUtc != null) {
+      map['last_success_at_utc'] = Variable<DateTime>(lastSuccessAtUtc);
+    }
+    return map;
+  }
+
+  SyncActivationsCompanion toCompanion(bool nullToAbsent) {
+    return SyncActivationsCompanion(
+      ownerKey: Value(ownerKey),
+      isActive: Value(isActive),
+      choice: choice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(choice),
+      backupId: backupId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(backupId),
+      decidedAtUtc: decidedAtUtc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(decidedAtUtc),
+      lastSuccessAtUtc: lastSuccessAtUtc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSuccessAtUtc),
+    );
+  }
+
+  factory SyncActivationRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncActivationRow(
+      ownerKey: serializer.fromJson<String>(json['ownerKey']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      choice: serializer.fromJson<String?>(json['choice']),
+      backupId: serializer.fromJson<String?>(json['backupId']),
+      decidedAtUtc: serializer.fromJson<DateTime?>(json['decidedAtUtc']),
+      lastSuccessAtUtc: serializer.fromJson<DateTime?>(
+        json['lastSuccessAtUtc'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'ownerKey': serializer.toJson<String>(ownerKey),
+      'isActive': serializer.toJson<bool>(isActive),
+      'choice': serializer.toJson<String?>(choice),
+      'backupId': serializer.toJson<String?>(backupId),
+      'decidedAtUtc': serializer.toJson<DateTime?>(decidedAtUtc),
+      'lastSuccessAtUtc': serializer.toJson<DateTime?>(lastSuccessAtUtc),
+    };
+  }
+
+  SyncActivationRow copyWith({
+    String? ownerKey,
+    bool? isActive,
+    Value<String?> choice = const Value.absent(),
+    Value<String?> backupId = const Value.absent(),
+    Value<DateTime?> decidedAtUtc = const Value.absent(),
+    Value<DateTime?> lastSuccessAtUtc = const Value.absent(),
+  }) => SyncActivationRow(
+    ownerKey: ownerKey ?? this.ownerKey,
+    isActive: isActive ?? this.isActive,
+    choice: choice.present ? choice.value : this.choice,
+    backupId: backupId.present ? backupId.value : this.backupId,
+    decidedAtUtc: decidedAtUtc.present ? decidedAtUtc.value : this.decidedAtUtc,
+    lastSuccessAtUtc: lastSuccessAtUtc.present
+        ? lastSuccessAtUtc.value
+        : this.lastSuccessAtUtc,
+  );
+  SyncActivationRow copyWithCompanion(SyncActivationsCompanion data) {
+    return SyncActivationRow(
+      ownerKey: data.ownerKey.present ? data.ownerKey.value : this.ownerKey,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      choice: data.choice.present ? data.choice.value : this.choice,
+      backupId: data.backupId.present ? data.backupId.value : this.backupId,
+      decidedAtUtc: data.decidedAtUtc.present
+          ? data.decidedAtUtc.value
+          : this.decidedAtUtc,
+      lastSuccessAtUtc: data.lastSuccessAtUtc.present
+          ? data.lastSuccessAtUtc.value
+          : this.lastSuccessAtUtc,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncActivationRow(')
+          ..write('ownerKey: $ownerKey, ')
+          ..write('isActive: $isActive, ')
+          ..write('choice: $choice, ')
+          ..write('backupId: $backupId, ')
+          ..write('decidedAtUtc: $decidedAtUtc, ')
+          ..write('lastSuccessAtUtc: $lastSuccessAtUtc')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    ownerKey,
+    isActive,
+    choice,
+    backupId,
+    decidedAtUtc,
+    lastSuccessAtUtc,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncActivationRow &&
+          other.ownerKey == this.ownerKey &&
+          other.isActive == this.isActive &&
+          other.choice == this.choice &&
+          other.backupId == this.backupId &&
+          other.decidedAtUtc == this.decidedAtUtc &&
+          other.lastSuccessAtUtc == this.lastSuccessAtUtc);
+}
+
+class SyncActivationsCompanion extends UpdateCompanion<SyncActivationRow> {
+  final Value<String> ownerKey;
+  final Value<bool> isActive;
+  final Value<String?> choice;
+  final Value<String?> backupId;
+  final Value<DateTime?> decidedAtUtc;
+  final Value<DateTime?> lastSuccessAtUtc;
+  final Value<int> rowid;
+  const SyncActivationsCompanion({
+    this.ownerKey = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.choice = const Value.absent(),
+    this.backupId = const Value.absent(),
+    this.decidedAtUtc = const Value.absent(),
+    this.lastSuccessAtUtc = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncActivationsCompanion.insert({
+    required String ownerKey,
+    this.isActive = const Value.absent(),
+    this.choice = const Value.absent(),
+    this.backupId = const Value.absent(),
+    this.decidedAtUtc = const Value.absent(),
+    this.lastSuccessAtUtc = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : ownerKey = Value(ownerKey);
+  static Insertable<SyncActivationRow> custom({
+    Expression<String>? ownerKey,
+    Expression<bool>? isActive,
+    Expression<String>? choice,
+    Expression<String>? backupId,
+    Expression<DateTime>? decidedAtUtc,
+    Expression<DateTime>? lastSuccessAtUtc,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (ownerKey != null) 'owner_key': ownerKey,
+      if (isActive != null) 'is_active': isActive,
+      if (choice != null) 'choice': choice,
+      if (backupId != null) 'backup_id': backupId,
+      if (decidedAtUtc != null) 'decided_at_utc': decidedAtUtc,
+      if (lastSuccessAtUtc != null) 'last_success_at_utc': lastSuccessAtUtc,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncActivationsCompanion copyWith({
+    Value<String>? ownerKey,
+    Value<bool>? isActive,
+    Value<String?>? choice,
+    Value<String?>? backupId,
+    Value<DateTime?>? decidedAtUtc,
+    Value<DateTime?>? lastSuccessAtUtc,
+    Value<int>? rowid,
+  }) {
+    return SyncActivationsCompanion(
+      ownerKey: ownerKey ?? this.ownerKey,
+      isActive: isActive ?? this.isActive,
+      choice: choice ?? this.choice,
+      backupId: backupId ?? this.backupId,
+      decidedAtUtc: decidedAtUtc ?? this.decidedAtUtc,
+      lastSuccessAtUtc: lastSuccessAtUtc ?? this.lastSuccessAtUtc,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (ownerKey.present) {
+      map['owner_key'] = Variable<String>(ownerKey.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (choice.present) {
+      map['choice'] = Variable<String>(choice.value);
+    }
+    if (backupId.present) {
+      map['backup_id'] = Variable<String>(backupId.value);
+    }
+    if (decidedAtUtc.present) {
+      map['decided_at_utc'] = Variable<DateTime>(decidedAtUtc.value);
+    }
+    if (lastSuccessAtUtc.present) {
+      map['last_success_at_utc'] = Variable<DateTime>(lastSuccessAtUtc.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncActivationsCompanion(')
+          ..write('ownerKey: $ownerKey, ')
+          ..write('isActive: $isActive, ')
+          ..write('choice: $choice, ')
+          ..write('backupId: $backupId, ')
+          ..write('decidedAtUtc: $decidedAtUtc, ')
+          ..write('lastSuccessAtUtc: $lastSuccessAtUtc, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -9586,6 +10963,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $LearningEventsTable learningEvents = $LearningEventsTable(this);
   late final $RecallAttemptsTable recallAttempts = $RecallAttemptsTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
+  late final $SyncOutboxEntriesTable syncOutboxEntries =
+      $SyncOutboxEntriesTable(this);
+  late final $SyncCursorsTable syncCursors = $SyncCursorsTable(this);
+  late final $SyncActivationsTable syncActivations = $SyncActivationsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -9607,6 +10990,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     learningEvents,
     recallAttempts,
     appSettings,
+    syncOutboxEntries,
+    syncCursors,
+    syncActivations,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -16332,6 +17718,723 @@ typedef $$AppSettingsTableProcessedTableManager =
       AppSettingRow,
       PrefetchHooks Function()
     >;
+typedef $$SyncOutboxEntriesTableCreateCompanionBuilder =
+    SyncOutboxEntriesCompanion Function({
+      required String ownerKey,
+      required String envelopeId,
+      required String entityKey,
+      required String status,
+      Value<bool> isTombstone,
+      required int enqueuedAtUs,
+      required int envelopeUpdatedAtUs,
+      Value<int> attemptCount,
+      Value<String?> lastFailureReason,
+      required String envelopeJson,
+      Value<int> rowid,
+    });
+typedef $$SyncOutboxEntriesTableUpdateCompanionBuilder =
+    SyncOutboxEntriesCompanion Function({
+      Value<String> ownerKey,
+      Value<String> envelopeId,
+      Value<String> entityKey,
+      Value<String> status,
+      Value<bool> isTombstone,
+      Value<int> enqueuedAtUs,
+      Value<int> envelopeUpdatedAtUs,
+      Value<int> attemptCount,
+      Value<String?> lastFailureReason,
+      Value<String> envelopeJson,
+      Value<int> rowid,
+    });
+
+class $$SyncOutboxEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncOutboxEntriesTable> {
+  $$SyncOutboxEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get ownerKey => $composableBuilder(
+    column: $table.ownerKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get envelopeId => $composableBuilder(
+    column: $table.envelopeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityKey => $composableBuilder(
+    column: $table.entityKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isTombstone => $composableBuilder(
+    column: $table.isTombstone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get enqueuedAtUs => $composableBuilder(
+    column: $table.enqueuedAtUs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get envelopeUpdatedAtUs => $composableBuilder(
+    column: $table.envelopeUpdatedAtUs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastFailureReason => $composableBuilder(
+    column: $table.lastFailureReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncOutboxEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncOutboxEntriesTable> {
+  $$SyncOutboxEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get ownerKey => $composableBuilder(
+    column: $table.ownerKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get envelopeId => $composableBuilder(
+    column: $table.envelopeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityKey => $composableBuilder(
+    column: $table.entityKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isTombstone => $composableBuilder(
+    column: $table.isTombstone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get enqueuedAtUs => $composableBuilder(
+    column: $table.enqueuedAtUs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get envelopeUpdatedAtUs => $composableBuilder(
+    column: $table.envelopeUpdatedAtUs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastFailureReason => $composableBuilder(
+    column: $table.lastFailureReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncOutboxEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncOutboxEntriesTable> {
+  $$SyncOutboxEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get ownerKey =>
+      $composableBuilder(column: $table.ownerKey, builder: (column) => column);
+
+  GeneratedColumn<String> get envelopeId => $composableBuilder(
+    column: $table.envelopeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entityKey =>
+      $composableBuilder(column: $table.entityKey, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<bool> get isTombstone => $composableBuilder(
+    column: $table.isTombstone,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get enqueuedAtUs => $composableBuilder(
+    column: $table.enqueuedAtUs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get envelopeUpdatedAtUs => $composableBuilder(
+    column: $table.envelopeUpdatedAtUs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastFailureReason => $composableBuilder(
+    column: $table.lastFailureReason,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => column,
+  );
+}
+
+class $$SyncOutboxEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncOutboxEntriesTable,
+          SyncOutboxEntryRow,
+          $$SyncOutboxEntriesTableFilterComposer,
+          $$SyncOutboxEntriesTableOrderingComposer,
+          $$SyncOutboxEntriesTableAnnotationComposer,
+          $$SyncOutboxEntriesTableCreateCompanionBuilder,
+          $$SyncOutboxEntriesTableUpdateCompanionBuilder,
+          (
+            SyncOutboxEntryRow,
+            BaseReferences<
+              _$AppDatabase,
+              $SyncOutboxEntriesTable,
+              SyncOutboxEntryRow
+            >,
+          ),
+          SyncOutboxEntryRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncOutboxEntriesTableTableManager(
+    _$AppDatabase db,
+    $SyncOutboxEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncOutboxEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncOutboxEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncOutboxEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> ownerKey = const Value.absent(),
+                Value<String> envelopeId = const Value.absent(),
+                Value<String> entityKey = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<bool> isTombstone = const Value.absent(),
+                Value<int> enqueuedAtUs = const Value.absent(),
+                Value<int> envelopeUpdatedAtUs = const Value.absent(),
+                Value<int> attemptCount = const Value.absent(),
+                Value<String?> lastFailureReason = const Value.absent(),
+                Value<String> envelopeJson = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncOutboxEntriesCompanion(
+                ownerKey: ownerKey,
+                envelopeId: envelopeId,
+                entityKey: entityKey,
+                status: status,
+                isTombstone: isTombstone,
+                enqueuedAtUs: enqueuedAtUs,
+                envelopeUpdatedAtUs: envelopeUpdatedAtUs,
+                attemptCount: attemptCount,
+                lastFailureReason: lastFailureReason,
+                envelopeJson: envelopeJson,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String ownerKey,
+                required String envelopeId,
+                required String entityKey,
+                required String status,
+                Value<bool> isTombstone = const Value.absent(),
+                required int enqueuedAtUs,
+                required int envelopeUpdatedAtUs,
+                Value<int> attemptCount = const Value.absent(),
+                Value<String?> lastFailureReason = const Value.absent(),
+                required String envelopeJson,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncOutboxEntriesCompanion.insert(
+                ownerKey: ownerKey,
+                envelopeId: envelopeId,
+                entityKey: entityKey,
+                status: status,
+                isTombstone: isTombstone,
+                enqueuedAtUs: enqueuedAtUs,
+                envelopeUpdatedAtUs: envelopeUpdatedAtUs,
+                attemptCount: attemptCount,
+                lastFailureReason: lastFailureReason,
+                envelopeJson: envelopeJson,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncOutboxEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncOutboxEntriesTable,
+      SyncOutboxEntryRow,
+      $$SyncOutboxEntriesTableFilterComposer,
+      $$SyncOutboxEntriesTableOrderingComposer,
+      $$SyncOutboxEntriesTableAnnotationComposer,
+      $$SyncOutboxEntriesTableCreateCompanionBuilder,
+      $$SyncOutboxEntriesTableUpdateCompanionBuilder,
+      (
+        SyncOutboxEntryRow,
+        BaseReferences<
+          _$AppDatabase,
+          $SyncOutboxEntriesTable,
+          SyncOutboxEntryRow
+        >,
+      ),
+      SyncOutboxEntryRow,
+      PrefetchHooks Function()
+    >;
+typedef $$SyncCursorsTableCreateCompanionBuilder =
+    SyncCursorsCompanion Function({
+      required String ownerKey,
+      required String pullCursor,
+      required DateTime updatedAtUtc,
+      Value<int> rowid,
+    });
+typedef $$SyncCursorsTableUpdateCompanionBuilder =
+    SyncCursorsCompanion Function({
+      Value<String> ownerKey,
+      Value<String> pullCursor,
+      Value<DateTime> updatedAtUtc,
+      Value<int> rowid,
+    });
+
+class $$SyncCursorsTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncCursorsTable> {
+  $$SyncCursorsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get ownerKey => $composableBuilder(
+    column: $table.ownerKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pullCursor => $composableBuilder(
+    column: $table.pullCursor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncCursorsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncCursorsTable> {
+  $$SyncCursorsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get ownerKey => $composableBuilder(
+    column: $table.ownerKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pullCursor => $composableBuilder(
+    column: $table.pullCursor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncCursorsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncCursorsTable> {
+  $$SyncCursorsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get ownerKey =>
+      $composableBuilder(column: $table.ownerKey, builder: (column) => column);
+
+  GeneratedColumn<String> get pullCursor => $composableBuilder(
+    column: $table.pullCursor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => column,
+  );
+}
+
+class $$SyncCursorsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncCursorsTable,
+          SyncCursorRow,
+          $$SyncCursorsTableFilterComposer,
+          $$SyncCursorsTableOrderingComposer,
+          $$SyncCursorsTableAnnotationComposer,
+          $$SyncCursorsTableCreateCompanionBuilder,
+          $$SyncCursorsTableUpdateCompanionBuilder,
+          (
+            SyncCursorRow,
+            BaseReferences<_$AppDatabase, $SyncCursorsTable, SyncCursorRow>,
+          ),
+          SyncCursorRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncCursorsTableTableManager(_$AppDatabase db, $SyncCursorsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncCursorsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncCursorsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncCursorsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> ownerKey = const Value.absent(),
+                Value<String> pullCursor = const Value.absent(),
+                Value<DateTime> updatedAtUtc = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncCursorsCompanion(
+                ownerKey: ownerKey,
+                pullCursor: pullCursor,
+                updatedAtUtc: updatedAtUtc,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String ownerKey,
+                required String pullCursor,
+                required DateTime updatedAtUtc,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncCursorsCompanion.insert(
+                ownerKey: ownerKey,
+                pullCursor: pullCursor,
+                updatedAtUtc: updatedAtUtc,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncCursorsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncCursorsTable,
+      SyncCursorRow,
+      $$SyncCursorsTableFilterComposer,
+      $$SyncCursorsTableOrderingComposer,
+      $$SyncCursorsTableAnnotationComposer,
+      $$SyncCursorsTableCreateCompanionBuilder,
+      $$SyncCursorsTableUpdateCompanionBuilder,
+      (
+        SyncCursorRow,
+        BaseReferences<_$AppDatabase, $SyncCursorsTable, SyncCursorRow>,
+      ),
+      SyncCursorRow,
+      PrefetchHooks Function()
+    >;
+typedef $$SyncActivationsTableCreateCompanionBuilder =
+    SyncActivationsCompanion Function({
+      required String ownerKey,
+      Value<bool> isActive,
+      Value<String?> choice,
+      Value<String?> backupId,
+      Value<DateTime?> decidedAtUtc,
+      Value<DateTime?> lastSuccessAtUtc,
+      Value<int> rowid,
+    });
+typedef $$SyncActivationsTableUpdateCompanionBuilder =
+    SyncActivationsCompanion Function({
+      Value<String> ownerKey,
+      Value<bool> isActive,
+      Value<String?> choice,
+      Value<String?> backupId,
+      Value<DateTime?> decidedAtUtc,
+      Value<DateTime?> lastSuccessAtUtc,
+      Value<int> rowid,
+    });
+
+class $$SyncActivationsTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncActivationsTable> {
+  $$SyncActivationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get ownerKey => $composableBuilder(
+    column: $table.ownerKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get choice => $composableBuilder(
+    column: $table.choice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get backupId => $composableBuilder(
+    column: $table.backupId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get decidedAtUtc => $composableBuilder(
+    column: $table.decidedAtUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSuccessAtUtc => $composableBuilder(
+    column: $table.lastSuccessAtUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncActivationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncActivationsTable> {
+  $$SyncActivationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get ownerKey => $composableBuilder(
+    column: $table.ownerKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get choice => $composableBuilder(
+    column: $table.choice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get backupId => $composableBuilder(
+    column: $table.backupId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get decidedAtUtc => $composableBuilder(
+    column: $table.decidedAtUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSuccessAtUtc => $composableBuilder(
+    column: $table.lastSuccessAtUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncActivationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncActivationsTable> {
+  $$SyncActivationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get ownerKey =>
+      $composableBuilder(column: $table.ownerKey, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<String> get choice =>
+      $composableBuilder(column: $table.choice, builder: (column) => column);
+
+  GeneratedColumn<String> get backupId =>
+      $composableBuilder(column: $table.backupId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get decidedAtUtc => $composableBuilder(
+    column: $table.decidedAtUtc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSuccessAtUtc => $composableBuilder(
+    column: $table.lastSuccessAtUtc,
+    builder: (column) => column,
+  );
+}
+
+class $$SyncActivationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncActivationsTable,
+          SyncActivationRow,
+          $$SyncActivationsTableFilterComposer,
+          $$SyncActivationsTableOrderingComposer,
+          $$SyncActivationsTableAnnotationComposer,
+          $$SyncActivationsTableCreateCompanionBuilder,
+          $$SyncActivationsTableUpdateCompanionBuilder,
+          (
+            SyncActivationRow,
+            BaseReferences<
+              _$AppDatabase,
+              $SyncActivationsTable,
+              SyncActivationRow
+            >,
+          ),
+          SyncActivationRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncActivationsTableTableManager(
+    _$AppDatabase db,
+    $SyncActivationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncActivationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncActivationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncActivationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> ownerKey = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<String?> choice = const Value.absent(),
+                Value<String?> backupId = const Value.absent(),
+                Value<DateTime?> decidedAtUtc = const Value.absent(),
+                Value<DateTime?> lastSuccessAtUtc = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncActivationsCompanion(
+                ownerKey: ownerKey,
+                isActive: isActive,
+                choice: choice,
+                backupId: backupId,
+                decidedAtUtc: decidedAtUtc,
+                lastSuccessAtUtc: lastSuccessAtUtc,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String ownerKey,
+                Value<bool> isActive = const Value.absent(),
+                Value<String?> choice = const Value.absent(),
+                Value<String?> backupId = const Value.absent(),
+                Value<DateTime?> decidedAtUtc = const Value.absent(),
+                Value<DateTime?> lastSuccessAtUtc = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncActivationsCompanion.insert(
+                ownerKey: ownerKey,
+                isActive: isActive,
+                choice: choice,
+                backupId: backupId,
+                decidedAtUtc: decidedAtUtc,
+                lastSuccessAtUtc: lastSuccessAtUtc,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncActivationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncActivationsTable,
+      SyncActivationRow,
+      $$SyncActivationsTableFilterComposer,
+      $$SyncActivationsTableOrderingComposer,
+      $$SyncActivationsTableAnnotationComposer,
+      $$SyncActivationsTableCreateCompanionBuilder,
+      $$SyncActivationsTableUpdateCompanionBuilder,
+      (
+        SyncActivationRow,
+        BaseReferences<_$AppDatabase, $SyncActivationsTable, SyncActivationRow>,
+      ),
+      SyncActivationRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -16375,4 +18478,10 @@ class $AppDatabaseManager {
       $$RecallAttemptsTableTableManager(_db, _db.recallAttempts);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
+  $$SyncOutboxEntriesTableTableManager get syncOutboxEntries =>
+      $$SyncOutboxEntriesTableTableManager(_db, _db.syncOutboxEntries);
+  $$SyncCursorsTableTableManager get syncCursors =>
+      $$SyncCursorsTableTableManager(_db, _db.syncCursors);
+  $$SyncActivationsTableTableManager get syncActivations =>
+      $$SyncActivationsTableTableManager(_db, _db.syncActivations);
 }

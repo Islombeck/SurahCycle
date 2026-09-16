@@ -66,7 +66,7 @@ void main() {
 
         final value = await repository.load();
 
-        expect(database.schemaVersion, 6);
+        expect(database.schemaVersion, 7);
         expect(value.location.providerSlug, 'toshkent-shahri');
         expect(
           value.locationSelectionMode,
@@ -119,7 +119,7 @@ void main() {
 
         expect(await repository.load(), expected);
         expect(await repository.watch().first, expected);
-        expect(database.schemaVersion, 6);
+        expect(database.schemaVersion, 7);
       },
     );
 

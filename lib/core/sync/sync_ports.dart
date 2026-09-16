@@ -242,15 +242,22 @@ abstract interface class LocalBackupGateway {
   Future<void> restoreBackup(String backupId);
 }
 
-/// Transaction boundary required of the future Drift sync adapter.
+/// Transaction boundary required of a durable sync adapter.
 ///
-/// Applying the local payload and enqueuing its envelope must commit together.
+/// Applying the local change and enqueuing its envelope must commit together.
 /// A separate `local write; await outbox.enqueue(...)` sequence can lose a
 /// change if the process dies between those calls and is not conforming.
+///
+/// [applyLocalChange] is the caller's own domain write. The envelope is not
+/// replayed to produce it: the repository that already knows how to write the
+/// record does so, and this only guarantees that the queue entry shares its
+/// fate. A store that derived the local row from the envelope's payload would
+/// be a second, competing writer for every table.
 abstract interface class SyncAwareLocalStore {
   Future<void> commitLocalChangeAndEnqueue(
     SyncEnvelope envelope, {
     required DateTime enqueuedAtUtc,
+    required Future<void> Function() applyLocalChange,
   });
 }
 
