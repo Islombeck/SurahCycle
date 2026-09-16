@@ -71,6 +71,19 @@ Fix: read the stored state **once** per rebuild instead of subscribing to it.
 Nothing is lost — this provider is the only writer, the widget reads the
 read-only view, and everything that could change a plan is already watched.
 
+**Verified on the owner's device** with the build carrying the fix (sha256
+`0101eea9…`): the counter advanced once on launch, 5392 → 5393, which is one
+legitimate re-plan for a changed key, and then stayed at 5393 through 45 seconds
+of the app being open **and** through an explicit prayer switch — the two-live-
+key scenario that used to be the loop. Row counts and `PRAGMA foreign_key_check`
+unchanged. The stored number itself stays at 5393; it is a counter, nothing
+depends on its magnitude, and resetting it would mean writing to his data for
+cosmetic reasons.
+
+Also verified on the device in the same session: the prayer picker now opens
+with **Зухр** ticked while the card reads Зухр, where it used to show a stale
+Магриб.
+
 **A correction to an earlier note in this journal:** the `-4x`, `-5x`, `-6x`
 badges in the second video are **not** repeat counts. They are the remaining
 indicator showing how far *ahead* of the rotation target a surah is. The earlier
