@@ -226,6 +226,12 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                         markingEnabled: routineMarkingEnabled,
                         batch: recommendationBatch,
                         completedSurahIds: completedSurahIds,
+                        stabilize: (rows) => _stabilizeRowOrder(
+                          rows,
+                          contextKey:
+                              '${resolvedPrayerContext?.prayerType.name}|'
+                              '${resolvedPrayerContext?.isQada}|$localDate',
+                        ),
                         onMarkRequested: (surah) => _handleMarkRequest(surah),
                         onAdvancedMarkRequested: (surah) =>
                             _handleMarkRequest(surah, advanced: true),
@@ -259,6 +265,34 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
+  }
+
+  /// Remembered row order for the active-surah list.
+  ///
+  /// Marking a surah changes how overdue it is, which changes the operational
+  /// order, which moved the next row out from under the user's finger. This is
+  /// a presentation cache written during build on purpose: the value is
+  /// consumed in the same frame that computes it, so there is nothing to
+  /// notify and `setState` would only schedule a redundant rebuild.
+  String? _rowOrderContextKey;
+  List<String> _rowOrder = const <String>[];
+
+  List<MasteredSurah> _stabilizeRowOrder(
+    List<MasteredSurah> rows, {
+    required String contextKey,
+  }) {
+    if (_rowOrderContextKey != contextKey) {
+      _rowOrderContextKey = contextKey;
+      _rowOrder = <String>[for (final row in rows) row.id];
+      return rows;
+    }
+    final order = const StableOrderService().reorder(
+      previous: _rowOrder,
+      current: <String>[for (final row in rows) row.id],
+    );
+    _rowOrder = order;
+    final byId = <String, MasteredSurah>{for (final row in rows) row.id: row};
+    return <MasteredSurah>[for (final id in order) ?byId[id]];
   }
 
   /// What the prayer picker should open on: whatever is actually in effect.
@@ -1612,6 +1646,7 @@ final class _RotationContent extends StatelessWidget {
     required this.markingEnabled,
     required this.batch,
     required this.completedSurahIds,
+    required this.stabilize,
     required this.onMarkRequested,
     required this.onAdvancedMarkRequested,
   });
@@ -1621,6 +1656,9 @@ final class _RotationContent extends StatelessWidget {
   final bool markingEnabled;
   final RecommendationBatch? batch;
   final Set<String> completedSurahIds;
+
+  /// Applies the caller's remembered row order to a freshly computed list.
+  final List<MasteredSurah> Function(List<MasteredSurah>) stabilize;
   final ValueChanged<MasteredSurah> onMarkRequested;
   final ValueChanged<MasteredSurah> onAdvancedMarkRequested;
 
@@ -1635,7 +1673,7 @@ final class _RotationContent extends StatelessWidget {
             snapshot,
             ContextualRecommendationInputs.empty,
           );
-    final List<MasteredSurah> active;
+    final List<MasteredSurah> unstableActive;
     final Map<String, int> positions;
     final Map<String, int> occurrences;
     if (hasBatch) {
@@ -1651,7 +1689,7 @@ final class _RotationContent extends StatelessWidget {
       occurrences = <String, int>{
         for (final entry in batch!.entries) entry.surahId: entry.occurrence,
       };
-      active = <MasteredSurah>[
+      unstableActive = <MasteredSurah>[
         for (final surahId in batchIds)
           ...ordered.where((surah) => surah.id == surahId),
         ...ordered.where((surah) => !positions.containsKey(surah.id)),
@@ -1662,11 +1700,16 @@ final class _RotationContent extends StatelessWidget {
           suggestion.surah.id: suggestion.recommendationRank,
       };
       occurrences = const <String, int>{};
-      active = const SurahOperationalOrderService().order(
+      unstableActive = const SurahOperationalOrderService().order(
         snapshot,
         recommendations: fallback,
       );
     }
+    // The operational order changes the moment a surah is marked, because
+    // marking is what changes how overdue it is. Re-sorting mid-tap moved the
+    // next row out from under the user's finger; [stabilize] keeps rows where
+    // he last saw them until the context itself changes.
+    final active = stabilize(unstableActive);
     if (active.isEmpty) {
       return Card(
         child: Padding(

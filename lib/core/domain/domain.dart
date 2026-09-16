@@ -7,6 +7,7 @@ export 'recitation.dart';
 export 'recommendation_batch.dart';
 export 'rotation.dart';
 export 'rotation_scheme.dart';
+export 'stable_order.dart';
 export 'suggestion.dart';
 export 'surah.dart';
 export 'time_provider.dart';
