@@ -100,6 +100,12 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
       schedule: prayerSchedule,
     );
     final localDate = ref.watch(localDateProvider).today();
+    final pendingRegistrationDate = ref.watch(pendingRegistrationDateProvider);
+    // The day a mark will actually belong to. While a past day is chosen, the
+    // plan on screen has to be that day's — otherwise the user reads today's
+    // filled and unfilled slots while filling yesterday's, which is a trap
+    // rather than a feature.
+    final registrationLocalDate = pendingRegistrationDate ?? localDate;
     final resolvedPrayerContext = prayerResolution?.context;
     final AsyncValue<PrayerRoutineSessionSnapshot?>? currentRoutine =
         resolvedPrayerContext == null
@@ -107,9 +113,13 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
         : ref.watch(
             currentPrayerRoutineProvider((
               context: resolvedPrayerContext,
-              localDate: localDate,
+              localDate: registrationLocalDate,
             )),
           );
+    // The recommendation block deliberately stays on today. It answers "what
+    // is worth reciting now", not "what was read then", and it lives in one
+    // stored slot — keying it to a past day would rewrite the real batch on
+    // the way into this mode and again on the way out.
     final recommendationBatch = resolvedPrayerContext == null
         ? null
         : ref
@@ -125,7 +135,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
         : ref.watch(
             recitedInCurrentOccurrenceProvider((
               context: resolvedPrayerContext,
-              localDate: localDate,
+              localDate: registrationLocalDate,
             )),
           );
     var routineMarkingEnabled = true;
@@ -136,7 +146,6 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
     final selectedLearningSurahId = ref.watch(selectedLearningSurahProvider);
     final rollbackQueue = ref.watch(learningRollbackQueueProvider);
-    final pendingRegistrationDate = ref.watch(pendingRegistrationDateProvider);
     if (currentRoutine?.valueOrNull != null) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _rememberRoutineCardHeight(),
@@ -263,9 +272,13 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                         completedSurahIds: completedSurahIds,
                         stabilize: (rows) => _stabilizeRowOrder(
                           rows,
+                          // The remembered order resets when the day being
+                          // recorded changes, so entering or leaving the
+                          // historical mode starts from the real order again.
                           contextKey:
                               '${resolvedPrayerContext?.prayerType.name}|'
-                              '${resolvedPrayerContext?.isQada}|$localDate',
+                              '${resolvedPrayerContext?.isQada}|'
+                              '$registrationLocalDate',
                         ),
                         onMarkRequested: (surah) => _handleMarkRequest(surah),
                         onAdvancedMarkRequested: (surah) =>

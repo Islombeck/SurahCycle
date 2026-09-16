@@ -168,6 +168,82 @@ void main() {
     await _disposeWidgetTree(tester);
   });
 
+  testWidgets('the plan on screen belongs to the chosen day', (tester) async {
+    // Yesterday's Maghrib was already finished; today's has not started. If
+    // Home kept showing today's plan while marks went to yesterday, the user
+    // would read one session's filled slots while filling another's.
+    final routines = PrayerRoutineRepository(database);
+    final template = await routines.getTemplate(PrayerType.maghrib);
+    await routines.replaceTemplate(
+      prayerType: PrayerType.maghrib,
+      expectedRevision: template.revision,
+      displayName: template.displayName,
+      enabled: true,
+      parts: <PrayerRoutinePartTemplate>[
+        PrayerRoutinePartTemplate(
+          id: 'maghrib-fard',
+          stableKey: 'fard',
+          orderIndex: 0,
+          kind: PrayerRoutinePartKind.fard,
+          rakaatCount: 3,
+          requiredSurahSlots: 2,
+        ),
+      ],
+    );
+    // Yesterday's session snapshots the template as it was then.
+    await routines.ensureCurrentSession(
+      context: PrayerContext(prayerType: PrayerType.maghrib),
+      localDate: yesterday,
+      startedAtUtc: DateTime.utc(2026, 9, 15, 18),
+    );
+    // The template has since changed, so today's session would look different.
+    // That difference is what makes the two plans tellable apart on screen.
+    final edited = await routines.getTemplate(PrayerType.maghrib);
+    await routines.replaceTemplate(
+      prayerType: PrayerType.maghrib,
+      expectedRevision: edited.revision,
+      displayName: edited.displayName,
+      enabled: true,
+      parts: <PrayerRoutinePartTemplate>[
+        PrayerRoutinePartTemplate(
+          id: 'maghrib-fard',
+          stableKey: 'fard',
+          orderIndex: 0,
+          kind: PrayerRoutinePartKind.fard,
+          rakaatCount: 4,
+          requiredSurahSlots: 3,
+        ),
+      ],
+    );
+
+    final container = await pumpApp(tester);
+    container.read(pendingRegistrationDateProvider.notifier).state = yesterday;
+    await _pumpUntil(
+      tester,
+      () => find
+          .byKey(const ValueKey<String>('pending-registration-banner'))
+          .evaluate()
+          .isNotEmpty,
+    );
+
+    await _pumpUntil(
+      tester,
+      () => find.textContaining('rakaats').evaluate().isNotEmpty,
+    );
+    expect(
+      find.textContaining('3 rakaats'),
+      findsWidgets,
+      reason: 'the plan shown is the one yesterday was actually prayed with',
+    );
+    expect(
+      find.textContaining('4 rakaats'),
+      findsNothing,
+      reason: 'today\'s plan must not be shown while recording a past day',
+    );
+
+    await _disposeWidgetTree(tester);
+  });
+
   testWidgets('today is never treated as a historical entry', (tester) async {
     final container = await pumpApp(tester);
     // Choosing today from the calendar is the ordinary case and must not put
