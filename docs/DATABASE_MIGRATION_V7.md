@@ -153,6 +153,12 @@ The committed schema artifacts are:
 - `test/generated_migrations/schema_v7.dart`;
 - the v7 export in `test/generated_migrations/schema.dart`.
 
-**Not yet verified on a real device.** The v6 migration has run on the owner's
-own data; v7 has not, because no build carrying it has been installed. Do not
-report it as device-verified until it has.
+**Verified on a real device on 2026-09-16.** A build carrying v7 (sha256
+`750d7333…`) was installed over the owner's existing app after a copy of his
+database was pulled as a backup. On first launch `user_version` became **7**
+and every pre-existing count was unchanged — 638 recitation events, 640 event
+parts, 32 prayer sessions, 47 session parts, 14 part templates, 27 mastered
+surahs, 4 recall attempts, 32 learning events, 10 settings, 114 surah metadata
+rows. The three sync tables exist and are empty, both v7 indexes are present,
+`PRAGMA foreign_key_check` returns nothing and `integrity_check` is `ok`. So
+this migration has run on real data, not only on fixtures.

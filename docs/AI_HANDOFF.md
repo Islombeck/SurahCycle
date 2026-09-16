@@ -49,29 +49,45 @@ Fixed and committed this session, each with its own checkpoint:
   context is read atomically.
 - `c296cb6` — the active-surah list no longer re-sorts under the finger.
 - `f99c255` — deleting a part offers to remove it from the prayer already open.
+- `7bdacd3` — the month calendar.
 
-**Not done, and next in this order:**
+**APK built and installed 2026-09-16 11:52, and schema v7 ran on real data for
+the first time.**
 
-1. **§E — historical date and registration mode.** The owner asked for it
-   directly on 2026-09-16: when choosing manually, also choose a *date*, mark
-   only the parts that are still unmarked, and say whether it is **каза** or
-   simply «забыл отметить». Default is the ordinary record; a past date alone
-   never means Qada. Extend the existing «Сейчас / Предыдущий намаз / Вчера /
-   Выбрать дату и намаз» flow rather than building a second one. Qada stores
-   two dates: the day of the missed prayer and the day it was made up.
-2. **§F — the month calendar**, reusing that same registration screen for the
-   chosen day. Green = ordinary record, orange = Qada placed on the day of the
-   prayer being made up, «Нет отметки» = neutral, partial ≠ fully green. Both
-   markers on a mixed day. Colour always paired with a caption or icon.
-3. **A fresh APK** with these fixes, installed as an update, with row counts
-   checked before and after. The APK the owner has (sha256 `9e1f0741…`)
-   predates **all** of them and also predates schema v7.
-4. **Stage J** continues after that.
+- `app-debug.apk`, sha256
+  `750d73331ae5c2004f565e41b24c16a2127c2ff8415cb88da500193826262fee`,
+  229 368 904 bytes, from HEAD `7bdacd3`.
+- Before installing, a copy of the owner's database was pulled as a backup. It
+  had already moved since the previous build — 638 recitation events, 32
+  sessions, **14** part templates (he deleted the leftover test part himself)
+  — so this is live data, not a fixture.
+- After installing and launching, `user_version` reads **7** and **every
+  pre-existing count is identical**: `recitation_events=638`,
+  `recitation_event_parts=640`, `prayer_sessions=32`,
+  `prayer_session_parts=47`, `prayer_routine_part_templates=14`,
+  `mastered_surahs=27`, `recall_attempts=4`, `learning_events=32`,
+  `app_settings=10`, `surah_metadata=114`. The three sync tables exist and are
+  empty, both v7 indexes are present, `PRAGMA foreign_key_check` returns
+  nothing and `integrity_check` is `ok`.
+- So `docs/DATABASE_MIGRATION_V7.md`'s "not yet verified on a real device" no
+  longer holds: it has now run on the owner's own data, with a backup taken
+  first. It was **not** interactively smoke-tested, because the phone is locked
+  with a credential — see below.
 
-**Still owed to the owner and unchanged:** the leftover test part in his Зухр
-routine (`df2c79e9-c6a7-4db6-955f-adcdabf70f65`, Фард, 3 рак., 2 слота). With
-`f99c255` deleting it in the editor now offers to clear it from today's plan
-too, which is the whole round trip in one action.
+**Still owed and requiring the owner:** every UI-level check. The phone is
+locked (`deviceLocked=1`) and its lock screen renders black to `screencap`, so
+installing, launching and reading the database are possible from here and
+tapping is not. What needs his eyes:
+
+1. that marking a surah no longer moves the row under his finger, and that the
+   page stops jumping — the thing that blocked him from entering yesterday's
+   prayers;
+2. that the prayer picker opens on the prayer actually in effect;
+3. the new calendar (icon on Home, next to the history icon);
+4. the Иша → Витр observation described below.
+
+**No longer owed:** the leftover test part in Зухр — he removed it himself, and
+the template now has 14 parts.
 
 **Open and deliberately unresolved: the Иша → Витр transition.** The owner
 clarified that this was a *previous day's* behaviour, before this build, and
