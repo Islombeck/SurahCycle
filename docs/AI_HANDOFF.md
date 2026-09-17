@@ -2,6 +2,8 @@
 
 ## Current state
 
+- 2026-09-17: Google and Yandex OAuth applications now exist for end-user sign-in; both Appwrite providers are still `disabled` pending the owner pasting their client ids and secrets. Full detail, the two exact redirect URIs and the open Android-platform question are under **Stage J §6.3**. A new untracked `brand/` folder holds the app's first real logo. No source file changed; HEAD is `3fafbf0` on `main` and the tracked tree is clean.
+
 - 2026-09-15 Codex resumed after Claude's continuation. Reconciled the real repository at `831c54cbf95df120c954aa85ac34348486d11665`: Stages A-F and their device-verification notes are committed. Claude also left an uncommitted Stage G draft consisting only of `docs/ACCOUNT_SYNC_ARCHITECTURE.md`, `docs/adr/ADR-0001-account-sync-backend.md`, `lib/core/sync/`, and `test/core/sync/`; `docs/DATABASE_MIGRATION_V6.md` is an untracked Stage F document that also needs reconciliation. These files are being reviewed and verified before staging. No tracked source change was present when Codex resumed. The photo and `Скринсейверы до v6/` remain user-owned and excluded.
 - ADB currently sees `JELLYMAX00003540` (`Jelly_Max`) as `device`. Prior handoff proves Stage A and Stages D-F foreground scenarios on the device, but widget placement/lifecycle, selected DreamService, and opted-in notification remain physically open. Device settings `stay_on_while_plugged_in=3`, `accelerometer_rotation=0`, and `user_rotation=0` are temporary QA changes that must be restored when device QA ends.
 
@@ -358,6 +360,155 @@ agent's**, and the Console-by-hand provisioning route stays open either way.
 - **No Appwrite resource was created, modified or deleted.** The only calls made
   were `appwrite_get_context` (refused) and `appwrite_search_docs` (public
   documentation). No repository source file changed.
+
+## Stage J §6.3 — Google and Yandex sign-in for app users (2026-09-17)
+
+**This is not §6.0.** §6.0 is the owner's *console* grant that lets an MCP client
+read and write the SurahCycle project. This section is end-user social login: what
+a person tapping "Sign in with Google" inside the app goes through. The two share
+the word OAuth and nothing else. A working §6.0 grant does not enable sign-in, and
+none of this section's work unblocks §6.0.
+
+Baseline at the time of writing: HEAD `3fafbf0` on `main`, tracked tree clean;
+untracked are the owner's QA media, an unrelated `.codex/`, and the new `brand/`
+below. `git` is not on PATH — use `.\.tools\mingit\cmd\git.exe`.
+
+**Appwrite Console, Auth → Social providers.** The tab is called *Social
+providers* in the current Console, not "OAuth2 Providers"; the adjacent *OAuth2
+server* tab is Appwrite acting as a provider and is unrelated. Google is split
+into two independent switches:
+
+- **Native sign-in** — sessions from ID tokens obtained on device (Google
+  Credential Manager). No client secret; a `Native client IDs` list holds extra
+  accepted ID-token audiences. The redirect URI plays no part here.
+- **Browser sign-in** — the redirect flow. `Client ID` and `Client Secret` are
+  both required, and the Redirect URI belongs to this half.
+
+Yandex has a single Enabled switch with the same two required fields.
+
+**Both providers are still `disabled` in Appwrite.** Client ID and Client Secret
+are required and the owner enters them himself, so nothing could be saved. Note
+that the Update button is *not* disabled while they are empty, so a careless
+click would either trip validation or store an enabled-but-empty provider;
+neither was attempted. Both dialogs were closed with Cancel and the Appwrite
+project is untouched.
+
+**The exact redirect URIs, read out of the Console's own fields rather than
+derived from the documented pattern:**
+
+```
+https://fra.cloud.appwrite.io/v1/account/sessions/oauth2/callback/google/6aa91956000d1d490a3e
+https://fra.cloud.appwrite.io/v1/account/sessions/oauth2/callback/yandex/6aa91956000d1d490a3e
+```
+
+The host is the regional `fra.` one, matching `AppwriteConfig`, not
+`cloud.appwrite.io`.
+
+### Google side — done
+
+A new Google Cloud project **SurahCycle** (id `surahcycle`, no organization) was
+created, and Google Auth Platform configured: app name **SurahCycle**, user
+support email and developer contact `<owner's Google account>`, audience
+**External**. The owner explicitly authorised ticking the *Google API Services:
+User Data Policy* checkbox. An OAuth client of type **Web application** named
+`Appwrite SurahCycle (browser)` carries the Google redirect URI above, verified
+against the field's DOM value after typing. Google answered `OAuth client
+created`.
+
+Type **Web application** is correct even though the target is Android: the
+redirect flow terminates on Appwrite's server, not on the device. A separate
+**Android** client (package `dev.murajaah.murajaah` plus the signing SHA-1) is
+only needed if native sign-in is turned on later, and its id then goes in the
+`Native client IDs` field.
+
+**Deliberately not done.** The client id and secret were never read,
+screenshotted or recorded; the creation dialog was left open for the owner. The
+app sits in **Testing** publishing status, so only accounts on the test-user list
+can sign in — publishing is public-facing and was left to the owner. No
+consent-screen logo was uploaded, because adding one puts the app into Google's
+brand-verification queue while bare `email`/`profile` work without it.
+
+### Yandex side — done
+
+A Yandex ID application **SurahCycle** was created at `oauth.yandex.ru`, platform
+**Веб-сервисы**, contact `<owner's Yandex account>`, carrying the Yandex redirect URI
+above — verified by reading the stored field back after creation. Requested
+rights are exactly the three Appwrite's Yandex adapter asks for — `login:email`,
+`login:info`, `login:avatar` — and nothing else; birthday and phone were left
+unchecked.
+
+Two things worth knowing before anyone repeats this:
+
+- Yandex **requires an application icon** before it will advance past step 1.
+  There was none in the repository (see the brand section below).
+- Yandex offers Gosuslugi identity verification in a modal that **re-opens and
+  swallows the next click**, which is why the create button appears not to work.
+  It was declined and closed twice. Without it the consent screen carries a
+  "Сервис не верифицирован" note; clearing that is the owner's own identity step
+  and no agent should attempt it.
+
+Creating the application accepts Yandex's «API авторизации через Яндекс ID» terms
+implicitly — there is no separate checkbox, the agreement is attached to the
+create button.
+
+**Neither client id nor secret was read or recorded, here or anywhere.**
+
+### What is left, and it needs the owner
+
+1. Copy the Google client id and secret into Appwrite → Auth → Social providers →
+   Google → Browser sign-in, then Update.
+2. Copy the Yandex client id and secret into the same screen under Yandex, then
+   Update. **Only after these two steps are the providers actually enabled.**
+3. **Unverified, and outside this task's remit:** for the redirect to return into
+   the Android app, Appwrite needs a registered Android platform with package
+   `dev.murajaah.murajaah` (callback scheme
+   `appwrite-callback-6aa91956000d1d490a3e`). The owner's instruction forbade
+   touching anything outside Auth → OAuth2 Providers, so the Apps/Platforms
+   section was never opened. Check it before trusting a device test.
+4. Optional: publish the Google app out of Testing; add an Android OAuth client if
+   native sign-in is wanted.
+
+### One correction to the record
+
+§6.0's finding that `/mcp → appwrite → Authenticate` can never succeed still
+stands as written — and the session that opened this conversation was still
+telling the owner to go there. That instruction is stale; do not repeat it.
+
+In this session the Appwrite MCP server's real tools (`appwrite_get_context`,
+`appwrite_call_tool`, `appwrite_search_tools`, `appwrite_search_docs`) are
+present, which §6.0 names as the only trustworthy signal that a grant landed.
+**Whether that grant is project-bound was not tested here** — no Appwrite MCP
+call was made in this session. Do not read this as §6.0 being closed.
+
+## Brand: the app had no logo at all (2026-09-17)
+
+`android/app/src/main/res/mipmap-*/ic_launcher.png` is still the stock Flutter
+placeholder — the blue Flutter mark, 0.4–1.4 KB per density — and `assets/` holds
+only Quran text and licences. There was no app logo anywhere in the tree, so
+Yandex's mandatory icon could not be satisfied from existing material, and the
+owner's assumption that "the one the app uses" could be reused was wrong.
+
+A logo was drawn: a rub el hizb (۞, the Quran's own section marker) inside a ring
+of eight segments, two of them amber for "due for revision". The green is derived
+from `seed = Color(0xFF246B55)` in `lib/app/app_theme.dart`; the amber is a
+relative of the qada oranges in `prayer_calendar_screen.dart`. Checked for
+legibility down to 64 px.
+
+New, untracked, touching nothing else:
+
+- `brand/surahcycle_logo.svg` — the master, all geometry explicit
+- `brand/surahcycle_512.png` — 19 KB, used as the Yandex application icon
+- `brand/surahcycle_1024.png` — 41 KB, for stores
+
+Rasterised through .NET `System.Drawing` from PowerShell, because this machine has
+no Python (the `python.exe` on PATH is the Microsoft Store stub — it prints
+`Python` and exits 49), no ImageMagick, no Inkscape and no Node. The generator
+script was kept out of the repository; the SVG is the master and can be
+re-rasterised by any means.
+
+**The launcher icons were deliberately not replaced.** That is a change to the
+app, and only a logo was asked for. Doing it would mean regenerating every
+`mipmap-*` density plus an adaptive icon, and it belongs in its own checkpoint.
 
 ## Owner regression report of 2026-09-16 — what the two videos actually show
 
@@ -744,9 +895,14 @@ Non-goals: cloud sync/accounts/server, gamification, Qibla, adhan alarms, full Q
 - 2026-09-15: Stage G steps 1–2 are about to be committed (the ADR, `ACCOUNT_SYNC_ARCHITECTURE.md`, the missing `DATABASE_MIGRATION_V6.md`, the `SERVER_PLAN.md` pointer, `lib/core/sync/`, `test/core/sync/` and this handoff update).
 - 2026-09-15: Stage F was committed as `2655f2d` (domain, schema v6 + generated fixtures, repository, controller, screen, range sheet, both entry points, l10n for en/ru/uz, the review-priority tie-break, and all new tests). Only this handoff update, recording the device verification, remains to be committed.
 - Pre-existing user-owned files, excluded from commits: `photo_2026-09-03_10-59-07.jpg` and the videos under `Скринсейверы до v6/`. Never add, move, rename or delete them.
+- 2026-09-17: `brand/` is new and untracked — `surahcycle_logo.svg`, `surahcycle_512.png`, `surahcycle_1024.png` — plus this handoff update. No `lib/`, `android/`, `test/` or `assets/` file was touched. `.codex/` is also untracked and is not mine.
 
 ## Decision log
 
+- 2026-09-17: Registered the Google and Yandex OAuth applications for end-user sign-in, but left both Appwrite providers `disabled`, because Client ID and Client Secret are required fields the owner fills in himself. Chose not to press Update with empty required fields even though the button is enabled: the two possible outcomes are a validation error or an enabled-but-broken provider, and neither is worth guessing at on a live project. Read both redirect URIs out of the Console's own fields rather than deriving them from the documented pattern, because the regional `fra.` host makes a derived guess a plausible `redirect_uri_mismatch`.
+- 2026-09-17: Picked **Web application** for the Google client although the target is Android, since the redirect flow terminates on Appwrite's server; an Android client is only needed if native sign-in is enabled later. Left the Google app in **Testing** and uploaded no consent-screen logo — publishing is public-facing and a logo triggers brand verification, so both are the owner's calls, not an agent's.
+- 2026-09-17: Granted Yandex exactly `login:email`, `login:info`, `login:avatar` — the three Appwrite's Yandex adapter requests — and refused Gosuslugi identity verification outright. The "Сервис не верифицирован" note is the accepted cost; an agent must never drive a government identity flow on the owner's behalf.
+- 2026-09-17: Discovered the app has no logo at all (stock Flutter placeholder) when Yandex demanded a mandatory icon, so drew one rather than shipping someone else's mark to a consent screen. Kept it in a new `brand/` folder and did **not** replace the launcher icons: only a logo was asked for, and swapping every `mipmap-*` density plus an adaptive icon is its own checkpoint.
 - 2026-09-03: Adopted one shared handoff file for Codex and Claude; no parallel divergent journal.
 - 2026-09-03: Reconciled baseline `a640f50`; recorded user-owned untracked QA media instead of cleaning or committing it.
 - 2026-09-03: Confirmed checkpoint order: widget reliability precedes schema v5 prayer routines and all later feature work.
