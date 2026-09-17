@@ -616,6 +616,12 @@ abstract class AppLocalizations {
   /// **'Не удалось выполнить действие'**
   String get errorGeneric;
 
+  /// No description provided for @registrationContextChanged.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дата или намаз изменились. Отметка не сохранена. Повторите действие для выбранного намаза.'**
+  String get registrationContextChanged;
+
   /// No description provided for @loading.
   ///
   /// In ru, this message translates to:
@@ -1689,6 +1695,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'День пропущенного намаза неизвестен'**
   String get qadaOriginUnknown;
+
+  /// No description provided for @historyQadaMadeUpOn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восполнено: {date}'**
+  String historyQadaMadeUpOn(String date);
 
   /// No description provided for @qadaOriginUnknownHint.
   ///

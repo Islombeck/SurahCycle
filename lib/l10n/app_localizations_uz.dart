@@ -289,6 +289,10 @@ class AppLocalizationsUz extends AppLocalizations {
   String get errorGeneric => 'Amalni bajarib bo‘lmadi';
 
   @override
+  String get registrationContextChanged =>
+      'Sana yoki namoz o‘zgardi. Qayd saqlanmadi. Tanlangan namoz uchun amalni takrorlang.';
+
+  @override
   String get loading => 'Yuklanmoqda…';
 
   @override
@@ -931,6 +935,11 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get qadaOriginUnknown => 'Qoldirilgan namoz kuni noma’lum';
+
+  @override
+  String historyQadaMadeUpOn(String date) {
+    return 'Qazo qilingan sana: $date';
+  }
 
   @override
   String get qadaOriginUnknownHint =>

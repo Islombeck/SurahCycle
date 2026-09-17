@@ -24,8 +24,10 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
   static const Duration _recitationSnackBarDuration = Duration(seconds: 4);
 
   final Set<String> _busySurahIds = <String>{};
+  final Set<String> _pendingMarkRequestSurahIds = <String>{};
   final Set<String> _openCoverageSheetSurahIds = <String>{};
   final Set<String> _busyRoutinePartIds = <String>{};
+  int _registrationGeneration = 0;
 
   @override
   void initState() {
@@ -75,6 +77,28 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Keep a generation, rather than comparing the final values: A -> B -> A
+    // still invalidates a dialog opened for the original A. Unrelated schedule
+    // refreshes and recommendation writes do not change this generation.
+    ref.listen(
+      pendingRegistrationDateProvider,
+      (_, _) => _registrationGeneration++,
+    );
+    ref.listen(selectedPrayerProvider, (_, _) => _registrationGeneration++);
+    ref.listen(
+      prayerContextOverrideProvider,
+      (_, _) => _registrationGeneration++,
+    );
+    ref.listen(
+      prayerTimeSettingsProvider.select(
+        (value) => value.valueOrNull?.contextSelectionMode,
+      ),
+      (previous, next) {
+        if (previous != null && next != null && previous != next) {
+          _registrationGeneration++;
+        }
+      },
+    );
     final rotation = ref.watch(rotationSnapshotProvider);
     final learning = ref.watch(activeLearningProvider);
     final catalog = ref.watch(fullCatalogProvider);
@@ -388,18 +412,74 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     MasteredSurah surah, {
     bool advanced = false,
   }) async {
+    // A request already includes the picker/loading phase, not only the final
+    // database write. Repeated taps must not open two independent requests.
+    if (!_pendingMarkRequestSurahIds.add(surah.id)) return;
+    try {
+      await _handleSingleMarkRequest(surah, advanced: advanced);
+    } on _RegistrationContextChanged {
+      _showRegistrationContextChanged();
+    } finally {
+      _pendingMarkRequestSurahIds.remove(surah.id);
+    }
+  }
+
+  _RegistrationContextToken _captureRegistrationContext() =>
+      _RegistrationContextToken(
+        generation: _registrationGeneration,
+        localDate:
+            _pendingRegistrationDate() ?? ref.read(localDateProvider).today(),
+      );
+
+  bool _isRegistrationContextCurrent(_RegistrationContextToken token) =>
+      mounted &&
+      token.generation == _registrationGeneration &&
+      token.localDate ==
+          (_pendingRegistrationDate() ?? ref.read(localDateProvider).today());
+
+  void _requireRegistrationContext(_RegistrationContextToken token) {
+    if (!_isRegistrationContextCurrent(token)) {
+      throw const _RegistrationContextChanged();
+    }
+  }
+
+  void _showRegistrationContextChanged() {
+    if (!mounted || !_isPrimaryHomeSectionActive) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.removeCurrentSnackBar(reason: SnackBarClosedReason.hide);
+    messenger.showSnackBar(
+      SnackBar(
+        key: const ValueKey<String>('registration-context-changed'),
+        content: Text(context.l10n.registrationContextChanged),
+      ),
+    );
+  }
+
+  Future<void> _handleSingleMarkRequest(
+    MasteredSurah surah, {
+    required bool advanced,
+  }) async {
+    var token = _captureRegistrationContext();
+    final actionLocalDate = token.localDate;
     var actionPrayer = await _resolvePrayerForAction();
     if (!mounted) return;
+    _requireRegistrationContext(token);
     if (actionPrayer == null) {
       final selected = await _showPrayerPicker(_pickerInitialContext());
       if (selected == null || !mounted) return;
+      token = _captureRegistrationContext();
       actionPrayer = _ActionPrayerContext(
         context: selected,
         isAutomatic: false,
       );
     }
     if (!surah.rotationScheme.isSplit && !advanced) {
-      return _registerRecitation(surah, actionPrayer.context);
+      return _registerRecitation(
+        surah,
+        actionPrayer.context,
+        contextToken: token,
+        occurrenceLocalDate: actionLocalDate,
+      );
     }
     if (_busySurahIds.contains(surah.id) ||
         !_openCoverageSheetSurahIds.add(surah.id)) {
@@ -408,6 +488,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final prayerSettings = await _loadPrayerTimeSettings();
       if (!mounted) return;
+      _requireRegistrationContext(token);
       final selection = await showModalBottomSheet<_RecitationSelection>(
         context: context,
         showDragHandle: true,
@@ -416,8 +497,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
           surah: surah,
           initialPrayerContext: actionPrayer!.context,
           initialPrayerIsAutomatic: actionPrayer.isAutomatic,
-          initialOccurrenceLocalDate:
-              _pendingRegistrationDate() ?? ref.read(localDateProvider).today(),
+          initialOccurrenceLocalDate: actionLocalDate,
           timeProvider: ref.read(timeProviderProvider),
           localDates: ref.read(localDateProvider),
           utcOffsetMinutes: prayerSettings.locationConfirmed
@@ -432,23 +512,27 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       );
       if (selection == null || !mounted) return;
+      _requireRegistrationContext(token);
       var prayerContext = selection.prayerContext;
       var occurrenceLocalDate = selection.occurrenceLocalDate;
       if (actionPrayer.isAutomatic &&
           selection.shortcut == PrayerRegistrationShortcut.now) {
         var latest = await _resolvePrayerForAction();
         if (!mounted) return;
+        _requireRegistrationContext(token);
         if (latest == null) {
           final selected = await _showPrayerPicker(_pickerInitialContext());
           if (selected == null || !mounted) return;
+          token = _captureRegistrationContext();
           latest = _ActionPrayerContext(context: selected, isAutomatic: false);
         }
         prayerContext = latest.context;
-        occurrenceLocalDate = ref.read(localDateProvider).today();
+        occurrenceLocalDate = actionLocalDate;
       }
       await _registerRecitation(
         surah,
         prayerContext,
+        contextToken: token,
         coveredPartIds: selection.coveredPartIds,
         rakaatSpanCount: selection.rakaatSpanCount,
         occurrenceLocalDate: occurrenceLocalDate,
@@ -520,6 +604,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _registerRecitation(
     MasteredSurah surah,
     PrayerContext prayer, {
+    required _RegistrationContextToken contextToken,
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
     LocalDate? occurrenceLocalDate,
@@ -528,10 +613,8 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (_busySurahIds.contains(surah.id)) return;
     setState(() => _busySurahIds.add(surah.id));
     try {
-      final localDate =
-          occurrenceLocalDate ??
-          _pendingRegistrationDate() ??
-          ref.read(localDateProvider).today();
+      _requireRegistrationContext(contextToken);
+      final localDate = occurrenceLocalDate ?? contextToken.localDate;
       final routine = await ref
           .read(prayerRoutineRepositoryProvider)
           .ensureCurrentSession(
@@ -539,6 +622,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
             localDate: localDate,
             startedAtUtc: ref.read(timeProviderProvider).nowUtc(),
           );
+      _requireRegistrationContext(contextToken);
       final routinePart = routine?.currentPart;
       final slotIndex = routinePart?.nextSlotIndex;
       if (routine != null && slotIndex == null) {
@@ -578,7 +662,15 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
       // A manual context deliberately survives this mark: it is cleared only
       // by the explicit "back to automatic" action or once its local date has
       // passed. Re-picking Witr or Nafl for every surah was the reported bug.
-      if (!mounted || !_isPrimaryHomeSectionActive) return;
+      // `mounted` is repeated here although `_isRegistrationContextCurrent`
+      // already checks it: the analyzer cannot follow that through a method
+      // call, and `use_build_context_synchronously` is not a lint worth
+      // silencing on a path that touches `context` after an await.
+      if (!mounted ||
+          !_isRegistrationContextCurrent(contextToken) ||
+          !_isPrimaryHomeSectionActive) {
+        return;
+      }
       final messenger = ScaffoldMessenger.of(context);
       // An action makes SnackBar persistent by default in current Flutter.
       // Remove any older Undo action and opt out of that persistence explicitly.
@@ -600,6 +692,8 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       );
+    } on _RegistrationContextChanged {
+      _showRegistrationContextChanged();
     } catch (_) {
       if (mounted && _isPrimaryHomeSectionActive) {
         ScaffoldMessenger.of(
@@ -682,6 +776,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<PrayerContext?> _showPrayerPicker(PrayerContext? current) async {
+    final token = _captureRegistrationContext();
     var prayerType = current?.prayerType;
     var isQada = current?.isQada ?? false;
     final selected = await showModalBottomSheet<PrayerContext>(
@@ -744,7 +839,15 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
     if (selected != null) {
+      if (!_isRegistrationContextCurrent(token)) {
+        _showRegistrationContextChanged();
+        return null;
+      }
       final prayerTimeSettings = await _loadPrayerTimeSettings();
+      if (!_isRegistrationContextCurrent(token)) {
+        _showRegistrationContextChanged();
+        return null;
+      }
       if (prayerTimeSettings.contextSelectionMode ==
           PrayerContextSelectionMode.manual) {
         await ref.read(selectedPrayerProvider.notifier).select(selected);
@@ -789,6 +892,20 @@ final class _ActionPrayerContext {
 
   final PrayerContext context;
   final bool isAutomatic;
+}
+
+final class _RegistrationContextToken {
+  const _RegistrationContextToken({
+    required this.generation,
+    required this.localDate,
+  });
+
+  final int generation;
+  final LocalDate localDate;
+}
+
+final class _RegistrationContextChanged implements Exception {
+  const _RegistrationContextChanged();
 }
 
 final class _PrayerRoutineCard extends StatelessWidget {

@@ -288,6 +288,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errorGeneric => 'Не удалось выполнить действие';
 
   @override
+  String get registrationContextChanged =>
+      'Дата или намаз изменились. Отметка не сохранена. Повторите действие для выбранного намаза.';
+
+  @override
   String get loading => 'Загрузка…';
 
   @override
@@ -929,6 +933,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get qadaOriginUnknown => 'День пропущенного намаза неизвестен';
+
+  @override
+  String historyQadaMadeUpOn(String date) {
+    return 'Восполнено: $date';
+  }
 
   @override
   String get qadaOriginUnknownHint =>

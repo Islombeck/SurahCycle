@@ -289,6 +289,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorGeneric => 'The action could not be completed';
 
   @override
+  String get registrationContextChanged =>
+      'The date or prayer changed. Nothing was marked. Repeat the action for the selected prayer.';
+
+  @override
   String get loading => 'Loading…';
 
   @override
@@ -928,6 +932,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get qadaOriginUnknown => 'The day of the missed prayer is unknown';
+
+  @override
+  String historyQadaMadeUpOn(String date) {
+    return 'Made up on $date';
+  }
 
   @override
   String get qadaOriginUnknownHint =>

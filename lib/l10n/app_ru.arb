@@ -92,6 +92,7 @@
   "offlineReady": "Работает офлайн",
   "retry": "Повторить",
   "errorGeneric": "Не удалось выполнить действие",
+  "registrationContextChanged": "Дата или намаз изменились. Отметка не сохранена. Повторите действие для выбранного намаза.",
   "loading": "Загрузка…",
   "noLearningSurahs": "Изучаемых сур пока нет.",
   "openHistory": "Открыть историю",
@@ -295,6 +296,8 @@
   ,"calendarQadaFulfilledUnknown": "День фактического восполнения не сохранён для прежних записей."
   ,"calendarFutureDay": "Будущий день. Отметить чтение заранее нельзя."
   ,"qadaOriginUnknown": "День пропущенного намаза неизвестен"
+  ,"historyQadaMadeUpOn": "Восполнено: {date}"
+  ,"@historyQadaMadeUpOn": {"placeholders": {"date": {"type": "String"}}}
   ,"qadaOriginUnknownHint": "Для очень старых долгов. Запись встанет на день восполнения, и это будет прямо указано."
   ,"calendarQadaOriginUnknownEntry": "исходный день неизвестен"
   ,"calendarRegisterForDay": "Отметить за этот день"

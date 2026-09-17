@@ -264,6 +264,13 @@ final class _HistoryEntryPresentation {
         (sameYear ? DateFormat.MMMd(locale) : DateFormat.yMMMd(locale)).format(
           occurrenceDate,
         );
+    // v8 explicitly stores the make-up day here when the original prayer day
+    // is unknown. Keep that meaning visible in both the row and its details;
+    // the separate added timestamp is still only the moment of entry.
+    final occurrenceDescription = entry.event.qadaOriginIsUnknown
+        ? '${context.l10n.historyQadaMadeUpOn(occurrenceDateText)}\n'
+              '${context.l10n.qadaOriginUnknown}'
+        : occurrenceDateText;
     final addedDateText =
         (sameYear ? DateFormat.MMMd(locale) : DateFormat.yMMMd(locale)).format(
           addedLocalTime,
@@ -294,7 +301,7 @@ final class _HistoryEntryPresentation {
     return _HistoryEntryPresentation(
       occurrence:
           '${entry.event.prayerContext.label(context.l10n)} · '
-          '$occurrenceDateText',
+          '$occurrenceDescription',
       coverage: coverage,
       compactCoverage: showCompactRakaatCount
           ? '$coverage · ${context.l10n.rakaatSpan(entry.event.rakaatSpanCount)}'

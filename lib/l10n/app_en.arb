@@ -87,6 +87,7 @@
   "offlineReady": "Works offline",
   "retry": "Retry",
   "errorGeneric": "The action could not be completed",
+  "registrationContextChanged": "The date or prayer changed. Nothing was marked. Repeat the action for the selected prayer.",
   "loading": "Loading…",
   "noLearningSurahs": "No surahs are being learned.",
   "openHistory": "Open history",
@@ -289,6 +290,8 @@
   ,"calendarQadaFulfilledUnknown": "The day it was actually made up is not stored for earlier records."
   ,"calendarFutureDay": "A future day. A reading cannot be registered in advance."
   ,"qadaOriginUnknown": "The day of the missed prayer is unknown"
+  ,"historyQadaMadeUpOn": "Made up on {date}"
+  ,"@historyQadaMadeUpOn": {"placeholders": {"date": {"type": "String"}}}
   ,"qadaOriginUnknownHint": "For very old debts. The record goes on the day it was made up, and says so."
   ,"calendarQadaOriginUnknownEntry": "original day unknown"
   ,"calendarRegisterForDay": "Register for this day"

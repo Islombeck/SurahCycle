@@ -103,6 +103,102 @@ void main() {
     },
   );
 
+  for (final (language, makeUpLabel, originUnknown)
+      in <(String, String, String)>[
+        ('en', 'Made up on', 'The day of the missed prayer is unknown'),
+        ('ru', 'Восполнено:', 'День пропущенного намаза неизвестен'),
+        ('uz', 'Qazo qilingan sana:', 'Qoldirilgan namoz kuni noma’lum'),
+      ]) {
+    testWidgets(
+      'unknown-origin Qada labels its make-up date in list and details ($language)',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 800);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final createdAtUtc = DateTime.utc(2026, 8, 26, 12, 15);
+        final entry = _entry(
+          id: 'qada-unknown-origin',
+          prayerType: PrayerType.witr,
+          isQada: true,
+          qadaOriginIsUnknown: true,
+          localDate: LocalDate(2026, 8, 25),
+          createdAtUtc: createdAtUtc,
+        );
+
+        await _pumpHistory(tester, <RecitationHistoryEntry>[
+          entry,
+        ], locale: Locale(language));
+
+        final occurrence = tester.widget<Text>(
+          find.byKey(
+            const ValueKey<String>('history-occurrence-qada-unknown-origin'),
+          ),
+        );
+        final savedDate = DateFormat.MMMd(
+          language,
+        ).format(DateTime(2026, 8, 25));
+        expect(occurrence.data, contains('$makeUpLabel $savedDate'));
+        expect(occurrence.data, contains(originUnknown));
+        expect(
+          occurrence.data,
+          isNot(
+            contains(DateFormat.Hm(language).format(createdAtUtc.toLocal())),
+          ),
+        );
+        final added = tester.widget<Text>(
+          find.byKey(
+            const ValueKey<String>('history-added-qada-unknown-origin'),
+          ),
+        );
+        expect(
+          added.data,
+          contains(DateFormat.MMMd(language).format(createdAtUtc.toLocal())),
+        );
+        expect(added.data, isNot(contains(originUnknown)));
+
+        await tester.tap(
+          find.byKey(
+            const ValueKey<String>('history-open-details-qada-unknown-origin'),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.descendant(
+            of: find.byType(BottomSheet),
+            matching: find.text(occurrence.data!),
+          ),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets(
+    'Qada without an unknown-origin flag keeps its saved date label',
+    (tester) async {
+      await _pumpHistory(tester, <RecitationHistoryEntry>[
+        _entry(
+          id: 'qada-legacy',
+          isQada: true,
+          localDate: LocalDate(2026, 8, 25),
+        ),
+      ]);
+
+      final occurrence = tester.widget<Text>(
+        find.byKey(const ValueKey<String>('history-occurrence-qada-legacy')),
+      );
+      expect(
+        occurrence.data,
+        contains(DateFormat.MMMd('en').format(DateTime(2026, 8, 25))),
+      );
+      expect(occurrence.data, isNot(contains('Made up on')));
+      expect(occurrence.data, isNot(contains('unknown')));
+    },
+  );
+
   testWidgets('compact primary one-tap row also hides one rakaat', (
     tester,
   ) async {
@@ -176,8 +272,9 @@ void main() {
 
 Future<void> _pumpHistory(
   WidgetTester tester,
-  List<RecitationHistoryEntry> entries,
-) async {
+  List<RecitationHistoryEntry> entries, {
+  Locale locale = const Locale('en'),
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: <Override>[
@@ -186,7 +283,7 @@ Future<void> _pumpHistory(
         ),
       ],
       child: MaterialApp(
-        locale: const Locale('en'),
+        locale: locale,
         localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
@@ -210,6 +307,8 @@ RecitationHistoryEntry _entry({
   bool isWholeSurah = true,
   List<AyahRange>? ranges,
   bool implicitWhole = false,
+  bool isQada = false,
+  bool qadaOriginIsUnknown = false,
 }) {
   final resolvedRanges = implicitWhole
       ? const <AyahRange>[]
@@ -227,12 +326,13 @@ RecitationHistoryEntry _entry({
     event: SurahRecitationEvent(
       id: id,
       surahId: 'surah-1',
-      prayerContext: PrayerContext(prayerType: prayerType),
+      prayerContext: PrayerContext(prayerType: prayerType, isQada: isQada),
       createdAtUtc: createdAtUtc ?? DateTime.utc(2026, 8, 26, 12),
       localDate: localDate ?? LocalDate(2026, 8, 26),
       rotationSchemeId: implicitWhole ? null : '$id-scheme',
       coveredPartIds: implicitWhole ? null : parts.map((part) => part.id),
       rakaatSpanCount: rakaatSpanCount,
+      qadaOriginIsUnknown: qadaOriginIsUnknown,
     ),
     surah: SurahDescriptor(
       id: 'surah-1',

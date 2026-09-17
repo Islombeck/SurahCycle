@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,7 +46,10 @@ void main() {
     await quranCacheDatabase.close();
   });
 
-  Future<ProviderContainer> pumpApp(WidgetTester tester) async {
+  Future<ProviderContainer> pumpApp(
+    WidgetTester tester, {
+    LocalDateProvider? localDates,
+  }) async {
     tester.binding.platformDispatcher.localeTestValue = const Locale('en');
     addTearDown(tester.binding.platformDispatcher.clearLocaleTestValue);
     tester.view.physicalSize = const Size(1080, 2400);
@@ -60,7 +65,9 @@ void main() {
           timeProviderProvider.overrideWithValue(
             _FixedTimeProvider(DateTime.utc(2026, 9, 16, 9)),
           ),
-          localDateProvider.overrideWithValue(_FixedLocalDateProvider(today)),
+          localDateProvider.overrideWithValue(
+            localDates ?? _FixedLocalDateProvider(today),
+          ),
           prayerContextResolutionProvider.overrideWith(
             (ref) => Stream<PrayerContextResolution>.value(
               PrayerContextResolution(
@@ -165,6 +172,177 @@ void main() {
       reason: 'the manual prayer in force is still what it attributes to',
     );
 
+    await _disposeWidgetTree(tester);
+  });
+
+  for (final change in <String>['date', 'prayer', 'date and back']) {
+    testWidgets('a pending picker cannot overwrite a changed $change', (
+      tester,
+    ) async {
+      final container = await pumpApp(tester);
+      container.read(pendingRegistrationDateProvider.notifier).state =
+          yesterday;
+      final control = find.byKey(
+        const ValueKey<String>('mark-surah-surah-112'),
+      );
+      await _pumpUntil(tester, () => control.evaluate().isNotEmpty);
+      await tester.ensureVisible(control);
+      await tester.tap(control);
+      await _pumpUntil(
+        tester,
+        () => find.text('Confirm').evaluate().isNotEmpty,
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+
+      // A calendar/deep-link/resume change while the original picker is open.
+      // The late dialog result must neither write under the new day nor restore
+      // its old prayer over the newer selection (including A -> B -> A).
+      final newerPrayer = PrayerContextOverride(
+        context: PrayerContext(prayerType: PrayerType.witr),
+        localDate: today,
+      );
+      if (change == 'prayer') {
+        container.read(prayerContextOverrideProvider.notifier).state =
+            newerPrayer;
+      } else {
+        container.read(pendingRegistrationDateProvider.notifier).state =
+            LocalDate(2026, 9, 14);
+        if (change == 'date and back') {
+          container.read(pendingRegistrationDateProvider.notifier).state =
+              yesterday;
+        }
+      }
+      await tester.tap(find.text('Maghrib').last);
+      await tester.pump();
+      await tester.tap(find.text('Confirm').last);
+      await tester.pump(const Duration(milliseconds: 600));
+      for (var frame = 0; frame < 20; frame += 1) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+
+      expect(
+        await container.read(recitationRepositoryProvider).getHistory(),
+        isEmpty,
+      );
+      expect(
+        container.read(prayerContextOverrideProvider),
+        change == 'prayer' ? newerPrayer : isNull,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('registration-context-changed')),
+        findsOneWidget,
+      );
+      await _disposeWidgetTree(tester);
+    });
+  }
+
+  testWidgets('a pending quick mark cannot move to a different date', (
+    tester,
+  ) async {
+    final container = await pumpApp(tester);
+    container.read(pendingRegistrationDateProvider.notifier).state = yesterday;
+    container
+        .read(prayerContextOverrideProvider.notifier)
+        .state = PrayerContextOverride(
+      context: PrayerContext(prayerType: PrayerType.maghrib),
+      localDate: today,
+    );
+    final control = find.byKey(const ValueKey<String>('mark-surah-surah-112'));
+    await _pumpUntil(tester, () => control.evaluate().isNotEmpty);
+    await tester.ensureVisible(control);
+    await tester.pump();
+
+    final entered = Completer<void>();
+    final release = Completer<void>();
+    final held = database.transaction(() async {
+      entered.complete();
+      await release.future;
+    });
+    await entered.future;
+    try {
+      await tester.tap(control);
+      await _pumpUntil(
+        tester,
+        () => find
+            .byKey(const ValueKey<String>('mark-surah-busy-surah-112'))
+            .evaluate()
+            .isNotEmpty,
+      );
+      container.read(pendingRegistrationDateProvider.notifier).state =
+          LocalDate(2026, 9, 14);
+    } finally {
+      release.complete();
+      await held;
+    }
+    await _pumpUntil(
+      tester,
+      () => find
+          .byKey(const ValueKey<String>('registration-context-changed'))
+          .evaluate()
+          .isNotEmpty,
+    );
+    expect(
+      await container.read(recitationRepositoryProvider).getHistory(),
+      isEmpty,
+    );
+    expect(
+      container.read(pendingRegistrationDateProvider),
+      LocalDate(2026, 9, 14),
+    );
+    await _disposeWidgetTree(tester);
+  });
+
+  testWidgets('repeated mark callbacks open only one prayer picker', (
+    tester,
+  ) async {
+    final container = await pumpApp(tester);
+    container.read(pendingRegistrationDateProvider.notifier).state = yesterday;
+    final control = find.byKey(const ValueKey<String>('mark-surah-surah-112'));
+    await _pumpUntil(tester, () => control.evaluate().isNotEmpty);
+    final mark = tester.widget<IconButton>(control).onPressed!;
+    mark();
+    mark();
+    await _pumpUntil(tester, () => find.text('Confirm').evaluate().isNotEmpty);
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Confirm', skipOffstage: false), findsOneWidget);
+    Navigator.of(tester.element(find.text('Confirm'))).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Confirm', skipOffstage: false), findsNothing);
+    expect(
+      await container.read(recitationRepositoryProvider).getHistory(),
+      isEmpty,
+    );
+    await _disposeWidgetTree(tester);
+  });
+
+  testWidgets('midnight cannot retarget a picker opened for today', (
+    tester,
+  ) async {
+    final localDates = _MutableLocalDateProvider(today);
+    final container = await pumpApp(tester, localDates: localDates);
+    final control = find.byKey(const ValueKey<String>('mark-surah-surah-112'));
+    await _pumpUntil(tester, () => control.evaluate().isNotEmpty);
+    await tester.ensureVisible(control);
+    await tester.tap(control);
+    await _pumpUntil(tester, () => find.text('Confirm').evaluate().isNotEmpty);
+    await tester.pump(const Duration(milliseconds: 600));
+    localDates.value = LocalDate(2026, 9, 17);
+    await tester.tap(find.text('Maghrib').last);
+    await tester.pump();
+    await tester.tap(find.text('Confirm').last);
+    await _pumpUntil(
+      tester,
+      () => find
+          .byKey(const ValueKey<String>('registration-context-changed'))
+          .evaluate()
+          .isNotEmpty,
+    );
+    expect(
+      await container.read(recitationRepositoryProvider).getHistory(),
+      isEmpty,
+    );
+    expect(container.read(prayerContextOverrideProvider), isNull);
     await _disposeWidgetTree(tester);
   });
 
@@ -300,6 +478,15 @@ final class _FixedLocalDateProvider implements LocalDateProvider {
   const _FixedLocalDateProvider(this.value);
 
   final LocalDate value;
+
+  @override
+  LocalDate today() => value;
+}
+
+final class _MutableLocalDateProvider implements LocalDateProvider {
+  _MutableLocalDateProvider(this.value);
+
+  LocalDate value;
 
   @override
   LocalDate today() => value;

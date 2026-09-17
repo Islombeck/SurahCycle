@@ -87,6 +87,7 @@
   "offlineReady": "Oflayn ishlaydi",
   "retry": "Qayta urinish",
   "errorGeneric": "Amalni bajarib bo‘lmadi",
+  "registrationContextChanged": "Sana yoki namoz o‘zgardi. Qayd saqlanmadi. Tanlangan namoz uchun amalni takrorlang.",
   "loading": "Yuklanmoqda…",
   "noLearningSurahs": "Hali o‘rganilayotgan sura yo‘q.",
   "openHistory": "Tarixni ochish",
@@ -289,6 +290,8 @@
   ,"calendarQadaFulfilledUnknown": "Avvalgi yozuvlar uchun aslida qachon qazo qilingani saqlanmagan."
   ,"calendarFutureDay": "Kelasi kun. O‘qishni oldindan belgilab bo‘lmaydi."
   ,"qadaOriginUnknown": "Qoldirilgan namoz kuni noma’lum"
+  ,"historyQadaMadeUpOn": "Qazo qilingan sana: {date}"
+  ,"@historyQadaMadeUpOn": {"placeholders": {"date": {"type": "String"}}}
   ,"qadaOriginUnknownHint": "Juda eski qarzlar uchun. Yozuv qazo qilingan kunga tushadi va bu ochiq ko‘rsatiladi."
   ,"calendarQadaOriginUnknownEntry": "asl kuni noma’lum"
   ,"calendarRegisterForDay": "Shu kun uchun belgilash"
