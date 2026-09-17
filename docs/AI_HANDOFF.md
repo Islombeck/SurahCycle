@@ -3,7 +3,7 @@
 ## Current state
 
 - 2026-09-17: Google and Yandex OAuth applications now exist for end-user sign-in; both Appwrite providers are still `disabled` pending the owner pasting their client ids and secrets. Full detail and the two exact redirect URIs are under **Stage J §6.3**; the Android platform question there is closed. `brand/` holds the app's first real logo.
-- 2026-09-17: **§6.3 client wiring part 1 is in** — the `appwrite` SDK, a real `AccountGateway`, and the OAuth callback filter, at analyze-clean and **872/872**. Identity only: no data moves, because §6.2 provisioning was never applied. The account screen is the next piece and nothing renders `SyncStatus` yet. See **Stage J §6.3 client wiring, part 1**.
+- 2026-09-17: **§6.3 client wiring is in, parts 1 and 2** — the `appwrite` SDK, a real `AccountGateway`, the OAuth callback filter, and an account screen at `/settings/account` inside the Settings branch. Analyze clean, **881/881**. Identity only: signing in moves no data, and the screen says so rather than implying a backup. `lib/core/sync/` is referenced by the app for the first time. Activation and the data gateway remain blocked on §6.2 provisioning. Nothing has run on a device, and sign-in cannot complete until the owner pastes the four client values into the Console.
 
 - 2026-09-15 Codex resumed after Claude's continuation. Reconciled the real repository at `831c54cbf95df120c954aa85ac34348486d11665`: Stages A-F and their device-verification notes are committed. Claude also left an uncommitted Stage G draft consisting only of `docs/ACCOUNT_SYNC_ARCHITECTURE.md`, `docs/adr/ADR-0001-account-sync-backend.md`, `lib/core/sync/`, and `test/core/sync/`; `docs/DATABASE_MIGRATION_V6.md` is an untracked Stage F document that also needs reconciliation. These files are being reviewed and verified before staging. No tracked source change was present when Codex resumed. The photo and `Скринсейверы до v6/` remain user-owned and excluded.
 - ADB currently sees `JELLYMAX00003540` (`Jelly_Max`) as `device`. Prior handoff proves Stage A and Stages D-F foreground scenarios on the device, but widget placement/lifecycle, selected DreamService, and opted-in notification remain physically open. Device settings `stay_on_while_plugged_in=3`, `accelerometer_rotation=0`, and `user_rotation=0` are temporary QA changes that must be restored when device QA ends.
@@ -608,6 +608,95 @@ future Flutter versions will reject. Not blocking today; worth a backlog item.
   the owner pastes the Google and Yandex client ids and secrets into the
   Console. The code path is testable; the round trip is not, yet.
 - `SyncGateway`, `SyncActivationGateway`: blocked on §6.2.
+
+## Stage J §6.3 client wiring, part 2 — the account screen (2026-09-17)
+
+`lib/core/sync/` is no longer unreferenced by the app. The count of references
+from `lib/app/` and `lib/features/` was zero for three stages; it is now one
+screen, one card, one route and one provider file.
+
+### The screen renders `SyncStatus` and nothing else
+
+`SyncStatus.resolve` already decides, in one ordered place, what may be said.
+The screen adds no judgement of its own — it maps a health to words. That is
+what stops a cheerful summary from appearing over a queue that never drained.
+
+**One state is deliberately not a `SyncStatus` at all: not knowing.** When the
+account cannot be reached the provider carries an error, and the screen renders
+"could not reach the account", explicitly *not* "signed out". Those two look
+identical to an offline device and mean opposite things to the person holding
+it — being told you are signed out invites a second OAuth round trip, which is
+the last thing a dropped connection needs. Pinned by
+`an unreachable account is not reported as signed out`.
+
+`SyncHealth` has nine cases and four are reachable today; the other five all
+require `isActivated`, which no code can set yet. They are rendered from the
+counts `SyncStatus` already carries rather than from invented copy, so the
+screen stays truthful the day activation lands instead of needing to be
+remembered.
+
+### A trap that is written down rather than left to be discovered
+
+`syncStatusProvider` passes `queuedCount: 0` and `quarantinedCount: 0`. That is
+provably honest today — nothing enqueues, because no repository is sync-aware,
+and `SyncStatus.resolve` decides `notActivated` before it ever reads a count.
+**It stops being honest the moment activation exists.** The provider says so in
+capitals at the exact line that would have to change; a queue full of unsent
+work behind a screen that says everything is fine is precisely the failure this
+architecture exists to prevent.
+
+### Where it lives, and why there
+
+`/settings/account`, nested inside the Settings branch — the same shape as
+`calendar` under Home and `detail/:id` under Surahs. Three screens in this
+project have already been declared on the root navigator and opened without the
+bottom navigation (`/learning/:id` in Stage D, surah details in Stage I, the
+calendar before it was moved). `test/app/account_route_test.dart` is what keeps
+this one from becoming the fourth: it asserts the `NavigationBar` is present and
+that the Settings tab stays selected at index 4.
+
+The Settings entry is `AccountSettingsCard`, matching the existing
+`PrayerTimeSettingsCard` / `PrayerRoutineSettingsCard` /
+`LearningNotificationSettingsCard` pattern. Its subtitle reads "Signing in does
+not turn on sync" on purpose: "Account" next to a sign-in button reads as "turn
+on backup" to most people, and this app backs nothing up.
+
+### Other decisions worth keeping
+
+- **Providers live in `lib/features/account/application/account_providers.dart`,
+  not in `app_providers.dart`.** They are the only thing that reaches
+  `appwrite_account_api.dart`, and that file imports `package:appwrite`.
+  Declaring them in the shared provider file would pull the SDK into every
+  widget test that only wanted a database.
+- **A failed sign-in shows a fixed message, never the reason.** Provider errors
+  quote the user's own email address back at them, and a snackbar is a poor
+  place for it. Pinned by a test that asserts the address does not appear.
+- **Every action re-reads who is signed in** rather than assuming the call
+  worked. The gateway's answer is the only thing that decides what the screen
+  shows.
+- 25 new l10n keys in all three of `app_en`/`app_ru`/`app_uz`, `flutter gen-l10n`
+  re-run.
+
+### Verified
+
+`flutter analyze --no-pub` → `No issues found!`. Full `flutter test` →
+**881/881** (was 872; +7 screen, +2 route). `dart format lib test` touched 2
+files, both new, and both checks were re-run after it. **No Kotlin or Android
+file changed in this part**, so no Gradle run was required — the manifest change
+was part 1's and is already verified in a merged manifest.
+
+### Still not done
+
+- **Activation.** `SyncActivationGateway` has no implementation, so the screen
+  deliberately offers no way to switch sync on. It stops at "sync is off" and
+  says the feature does not exist yet, which is true.
+- **Nothing runs on a device**, and sign-in cannot complete end to end until the
+  owner pastes the Google and Yandex client ids and secrets into the Console.
+  Every path here is covered by fakes; the real round trip is not covered by
+  anything.
+- Backlog candidate: Flutter now warns that `flutter_web_auth_2` and
+  `home_widget` apply the Kotlin Gradle Plugin, which future Flutter versions
+  will reject.
 
 ## Brand: the app had no logo at all (2026-09-17)
 

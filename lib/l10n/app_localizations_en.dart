@@ -1112,4 +1112,88 @@ class AppLocalizationsEn extends AppLocalizations {
   String recallSurahSummary(int recalled, int imperfect) {
     return '$recalled recalled · $imperfect to revisit';
   }
+
+  @override
+  String get accountTitle => 'Account';
+
+  @override
+  String get accountCardSubtitle => 'Signing in does not turn on sync';
+
+  @override
+  String get accountOpenAction => 'Open';
+
+  @override
+  String get accountSignedOutTitle => 'Not signed in';
+
+  @override
+  String get accountSignedOutBody =>
+      'Your history lives on this device. Signing in creates an account and nothing more — nothing of yours is uploaded.';
+
+  @override
+  String get accountSignInWithGoogle => 'Sign in with Google';
+
+  @override
+  String get accountSignInWithYandex => 'Sign in with Yandex';
+
+  @override
+  String get accountSignedInTitle => 'Signed in';
+
+  @override
+  String accountLinkedProviders(String providers) {
+    return 'Connected: $providers';
+  }
+
+  @override
+  String get accountSignOut => 'Sign out';
+
+  @override
+  String get accountSyncOffTitle => 'Sync is off';
+
+  @override
+  String get accountSyncOffBody =>
+      'Nothing is being uploaded or downloaded. Sync is not available yet, and when it arrives it will stay a separate, explicit choice.';
+
+  @override
+  String get accountUnavailableTitle => 'No cloud in this build';
+
+  @override
+  String get accountUnavailableBody =>
+      'The app works fully without an account.';
+
+  @override
+  String get accountMisconfiguredTitle => 'Cloud settings are wrong';
+
+  @override
+  String get accountMisconfiguredBody =>
+      'This is a problem with the build, not with your connection.';
+
+  @override
+  String get accountUnknownTitle => 'Could not reach the account';
+
+  @override
+  String get accountUnknownBody =>
+      'You may be offline. This does not mean you were signed out.';
+
+  @override
+  String get accountRetry => 'Try again';
+
+  @override
+  String get accountSignInFailed => 'Sign-in did not complete';
+
+  @override
+  String get accountSignOutFailed => 'Could not sign out';
+
+  @override
+  String get accountProviderGoogle => 'Google';
+
+  @override
+  String get accountProviderYandex => 'Yandex';
+
+  @override
+  String get accountSyncOnTitle => 'Sync is on';
+
+  @override
+  String accountSyncCounts(int queued, int refused) {
+    return 'Waiting to send: $queued · Refused: $refused';
+  }
 }

@@ -1,0 +1,234 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:murajaah/core/sync/sync.dart';
+import 'package:murajaah/features/account/application/account_providers.dart';
+import 'package:murajaah/features/account/presentation/account_screen.dart';
+import 'package:murajaah/l10n/app_localizations.dart';
+
+void main() {
+  late AppLocalizations l10n;
+
+  setUpAll(() async {
+    l10n = await AppLocalizations.delegate.load(const Locale('en'));
+  });
+
+  testWidgets('a build with no cloud says so and offers no sign-in', (
+    tester,
+  ) async {
+    await _pump(tester, config: _absent);
+
+    expect(find.text(l10n.accountUnavailableTitle), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('account-sign-in-google')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('account-sign-in-yandex')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('a broken configuration is shown as a build fault, with reason', (
+    tester,
+  ) async {
+    await _pump(tester, config: _malformed);
+
+    expect(find.text(l10n.accountMisconfiguredTitle), findsOneWidget);
+    // The reason is developer-facing but shown anyway: a fault the owner can
+    // report beats a tidy screen that hides it behind "check your connection".
+    expect(find.textContaining('https'), findsOneWidget);
+  });
+
+  testWidgets('signed out offers both providers', (tester) async {
+    await _pump(tester, account: null);
+
+    expect(find.text(l10n.accountSignedOutTitle), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('account-sign-in-google')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('account-sign-in-yandex')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('account-sign-out')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('signed in says sync is off, and never implies otherwise', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      account: SyncAccount(
+        userId: 'user-1',
+        linkedProviders: const <SyncAuthProvider>{SyncAuthProvider.google},
+      ),
+    );
+
+    expect(find.text(l10n.accountSignedInTitle), findsOneWidget);
+    expect(find.text(l10n.accountSyncOffTitle), findsOneWidget);
+    expect(find.text(l10n.accountSyncOnTitle), findsNothing);
+    expect(
+      find.text(l10n.accountLinkedProviders(l10n.accountProviderGoogle)),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('account-sign-out')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('an unreachable account is not reported as signed out', (
+    tester,
+  ) async {
+    // The whole point of the gateway throwing instead of returning null. An
+    // offline device shown as "not signed in" invites the user to sign in
+    // again, and a second OAuth round trip is not what a dropped connection
+    // needs.
+    await _pump(tester, accountError: const SyncAccountException('offline'));
+
+    expect(find.text(l10n.accountUnknownTitle), findsOneWidget);
+    expect(find.text(l10n.accountSignedOutTitle), findsNothing);
+    expect(
+      find.byKey(const ValueKey<String>('account-sign-in-google')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey<String>('account-retry')), findsOneWidget);
+  });
+
+  testWidgets('tapping Google asks the gateway for exactly that provider', (
+    tester,
+  ) async {
+    final gateway = _FakeAccountGateway();
+    await _pump(tester, account: null, gateway: gateway);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('account-sign-in-google')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(gateway.signInCalls, <SyncAuthProvider>[SyncAuthProvider.google]);
+  });
+
+  testWidgets('a failed sign-in reports failure without leaking the reason', (
+    tester,
+  ) async {
+    final gateway = _FakeAccountGateway(
+      failure: const SyncAccountException(
+        'oauth-failed-401-secret@example.com',
+      ),
+    );
+    await _pump(tester, account: null, gateway: gateway);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('account-sign-in-google')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.accountSignInFailed), findsOneWidget);
+    // Provider errors quote the user's own address back at them; the screen
+    // must not put that on a snackbar.
+    expect(find.textContaining('example.com'), findsNothing);
+  });
+}
+
+final AppwriteConfig _absent = AppwriteConfig.resolve(
+  endpoint: '',
+  projectId: '',
+);
+
+final AppwriteConfig _malformed = AppwriteConfig.resolve(
+  endpoint: 'http://fra.cloud.appwrite.io/v1',
+  projectId: 'project-1',
+);
+
+final AppwriteConfig _ready = AppwriteConfig.resolve(
+  endpoint: 'https://fra.cloud.appwrite.io/v1',
+  projectId: 'project-1',
+);
+
+final class _FakeAccountGateway implements AccountGateway {
+  _FakeAccountGateway({this.failure});
+
+  final Object? failure;
+  final List<SyncAuthProvider> signInCalls = <SyncAuthProvider>[];
+  int signOutCalls = 0;
+
+  @override
+  Future<SyncAccount?> currentAccount() async => null;
+
+  @override
+  Future<SyncAccount> signIn(SyncAuthProvider provider) async {
+    signInCalls.add(provider);
+    if (failure != null) {
+      throw failure!;
+    }
+    return SyncAccount(
+      userId: 'user-1',
+      linkedProviders: <SyncAuthProvider>{provider},
+    );
+  }
+
+  @override
+  Future<SyncAccount> linkIdentity(SyncAuthProvider provider) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> signOut() async {
+    signOutCalls++;
+  }
+
+  @override
+  Future<Map<String, Object?>> exportCloudData() async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteCloudAccount() async => throw UnimplementedError();
+}
+
+Future<void> _pump(
+  WidgetTester tester, {
+  AppwriteConfig? config,
+  SyncAccount? account,
+  Object? accountError,
+  AccountGateway? gateway,
+}) async {
+  tester.view.physicalSize = const Size(1080, 2400);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: <Override>[
+        appwriteConfigProvider.overrideWithValue(config ?? _ready),
+        accountGatewayProvider.overrideWithValue(
+          gateway ?? _FakeAccountGateway(),
+        ),
+        currentAccountProvider.overrideWith((ref) async {
+          if (accountError != null) {
+            throw accountError;
+          }
+          return account;
+        }),
+      ],
+      child: MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const AccountScreen(),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}

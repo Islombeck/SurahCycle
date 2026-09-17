@@ -2013,6 +2013,156 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'{recalled} вспомнил · {imperfect} повторить'**
   String recallSurahSummary(int recalled, int imperfect);
+
+  /// No description provided for @accountTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Аккаунт'**
+  String get accountTitle;
+
+  /// No description provided for @accountCardSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вход не включает синхронизацию'**
+  String get accountCardSubtitle;
+
+  /// No description provided for @accountOpenAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть'**
+  String get accountOpenAction;
+
+  /// No description provided for @accountSignedOutTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вход не выполнен'**
+  String get accountSignedOutTitle;
+
+  /// No description provided for @accountSignedOutBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'История хранится на этом устройстве. Вход создаёт аккаунт и только — ничего вашего никуда не отправляется.'**
+  String get accountSignedOutBody;
+
+  /// No description provided for @accountSignInWithGoogle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Войти через Google'**
+  String get accountSignInWithGoogle;
+
+  /// No description provided for @accountSignInWithYandex.
+  ///
+  /// In ru, this message translates to:
+  /// **'Войти через Яндекс'**
+  String get accountSignInWithYandex;
+
+  /// No description provided for @accountSignedInTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вход выполнен'**
+  String get accountSignedInTitle;
+
+  /// No description provided for @accountLinkedProviders.
+  ///
+  /// In ru, this message translates to:
+  /// **'Привязано: {providers}'**
+  String accountLinkedProviders(String providers);
+
+  /// No description provided for @accountSignOut.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выйти'**
+  String get accountSignOut;
+
+  /// No description provided for @accountSyncOffTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Синхронизация выключена'**
+  String get accountSyncOffTitle;
+
+  /// No description provided for @accountSyncOffBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ничего не отправляется и не загружается. Синхронизации пока нет вовсе, а когда появится — останется отдельным явным решением.'**
+  String get accountSyncOffBody;
+
+  /// No description provided for @accountUnavailableTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'В этой сборке нет облака'**
+  String get accountUnavailableTitle;
+
+  /// No description provided for @accountUnavailableBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приложение полностью работает без аккаунта.'**
+  String get accountUnavailableBody;
+
+  /// No description provided for @accountMisconfiguredTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки облака неверны'**
+  String get accountMisconfiguredTitle;
+
+  /// No description provided for @accountMisconfiguredBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это проблема сборки, а не вашего соединения.'**
+  String get accountMisconfiguredBody;
+
+  /// No description provided for @accountUnknownTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось связаться с аккаунтом'**
+  String get accountUnknownTitle;
+
+  /// No description provided for @accountUnknownBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Возможно, нет сети. Это не значит, что вас разлогинили.'**
+  String get accountUnknownBody;
+
+  /// No description provided for @accountRetry.
+  ///
+  /// In ru, this message translates to:
+  /// **'Повторить'**
+  String get accountRetry;
+
+  /// No description provided for @accountSignInFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вход не завершился'**
+  String get accountSignInFailed;
+
+  /// No description provided for @accountSignOutFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось выйти'**
+  String get accountSignOutFailed;
+
+  /// No description provided for @accountProviderGoogle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Google'**
+  String get accountProviderGoogle;
+
+  /// No description provided for @accountProviderYandex.
+  ///
+  /// In ru, this message translates to:
+  /// **'Яндекс'**
+  String get accountProviderYandex;
+
+  /// No description provided for @accountSyncOnTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Синхронизация включена'**
+  String get accountSyncOnTitle;
+
+  /// No description provided for @accountSyncCounts.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ждут отправки: {queued} · Отклонено: {refused}'**
+  String accountSyncCounts(int queued, int refused);
 }
 
 class _AppLocalizationsDelegate

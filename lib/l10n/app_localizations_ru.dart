@@ -1116,4 +1116,88 @@ class AppLocalizationsRu extends AppLocalizations {
   String recallSurahSummary(int recalled, int imperfect) {
     return '$recalled вспомнил · $imperfect повторить';
   }
+
+  @override
+  String get accountTitle => 'Аккаунт';
+
+  @override
+  String get accountCardSubtitle => 'Вход не включает синхронизацию';
+
+  @override
+  String get accountOpenAction => 'Открыть';
+
+  @override
+  String get accountSignedOutTitle => 'Вход не выполнен';
+
+  @override
+  String get accountSignedOutBody =>
+      'История хранится на этом устройстве. Вход создаёт аккаунт и только — ничего вашего никуда не отправляется.';
+
+  @override
+  String get accountSignInWithGoogle => 'Войти через Google';
+
+  @override
+  String get accountSignInWithYandex => 'Войти через Яндекс';
+
+  @override
+  String get accountSignedInTitle => 'Вход выполнен';
+
+  @override
+  String accountLinkedProviders(String providers) {
+    return 'Привязано: $providers';
+  }
+
+  @override
+  String get accountSignOut => 'Выйти';
+
+  @override
+  String get accountSyncOffTitle => 'Синхронизация выключена';
+
+  @override
+  String get accountSyncOffBody =>
+      'Ничего не отправляется и не загружается. Синхронизации пока нет вовсе, а когда появится — останется отдельным явным решением.';
+
+  @override
+  String get accountUnavailableTitle => 'В этой сборке нет облака';
+
+  @override
+  String get accountUnavailableBody =>
+      'Приложение полностью работает без аккаунта.';
+
+  @override
+  String get accountMisconfiguredTitle => 'Настройки облака неверны';
+
+  @override
+  String get accountMisconfiguredBody =>
+      'Это проблема сборки, а не вашего соединения.';
+
+  @override
+  String get accountUnknownTitle => 'Не удалось связаться с аккаунтом';
+
+  @override
+  String get accountUnknownBody =>
+      'Возможно, нет сети. Это не значит, что вас разлогинили.';
+
+  @override
+  String get accountRetry => 'Повторить';
+
+  @override
+  String get accountSignInFailed => 'Вход не завершился';
+
+  @override
+  String get accountSignOutFailed => 'Не удалось выйти';
+
+  @override
+  String get accountProviderGoogle => 'Google';
+
+  @override
+  String get accountProviderYandex => 'Яндекс';
+
+  @override
+  String get accountSyncOnTitle => 'Синхронизация включена';
+
+  @override
+  String accountSyncCounts(int queued, int refused) {
+    return 'Ждут отправки: $queued · Отклонено: $refused';
+  }
 }

@@ -1116,4 +1116,86 @@ class AppLocalizationsUz extends AppLocalizations {
   String recallSurahSummary(int recalled, int imperfect) {
     return '$recalled esladim · $imperfect takrorlash';
   }
+
+  @override
+  String get accountTitle => 'Hisob';
+
+  @override
+  String get accountCardSubtitle => 'Kirish sinxronizatsiyani yoqmaydi';
+
+  @override
+  String get accountOpenAction => 'Ochish';
+
+  @override
+  String get accountSignedOutTitle => 'Kirilmagan';
+
+  @override
+  String get accountSignedOutBody =>
+      'Tarix shu qurilmada saqlanadi. Kirish faqat hisob yaratadi — sizning hech narsangiz yuborilmaydi.';
+
+  @override
+  String get accountSignInWithGoogle => 'Google orqali kirish';
+
+  @override
+  String get accountSignInWithYandex => 'Yandex orqali kirish';
+
+  @override
+  String get accountSignedInTitle => 'Kirildi';
+
+  @override
+  String accountLinkedProviders(String providers) {
+    return 'Bogʻlangan: $providers';
+  }
+
+  @override
+  String get accountSignOut => 'Chiqish';
+
+  @override
+  String get accountSyncOffTitle => 'Sinxronizatsiya oʻchiq';
+
+  @override
+  String get accountSyncOffBody =>
+      'Hech narsa yuborilmayapti va yuklanmayapti. Sinxronizatsiya hali yoʻq, u paydo boʻlganda ham alohida, aniq tanlov boʻlib qoladi.';
+
+  @override
+  String get accountUnavailableTitle => 'Bu yigʻmada bulut yoʻq';
+
+  @override
+  String get accountUnavailableBody => 'Ilova hisobsiz ham toʻliq ishlaydi.';
+
+  @override
+  String get accountMisconfiguredTitle => 'Bulut sozlamalari notoʻgʻri';
+
+  @override
+  String get accountMisconfiguredBody => 'Bu yigʻma muammosi, aloqangiz emas.';
+
+  @override
+  String get accountUnknownTitle => 'Hisobga ulanib boʻlmadi';
+
+  @override
+  String get accountUnknownBody =>
+      'Internet yoʻq boʻlishi mumkin. Bu chiqib ketdingiz degani emas.';
+
+  @override
+  String get accountRetry => 'Qayta urinish';
+
+  @override
+  String get accountSignInFailed => 'Kirish yakunlanmadi';
+
+  @override
+  String get accountSignOutFailed => 'Chiqib boʻlmadi';
+
+  @override
+  String get accountProviderGoogle => 'Google';
+
+  @override
+  String get accountProviderYandex => 'Yandex';
+
+  @override
+  String get accountSyncOnTitle => 'Sinxronizatsiya yoqilgan';
+
+  @override
+  String accountSyncCounts(int queued, int refused) {
+    return 'Yuborilishi kutilmoqda: $queued · Rad etilgan: $refused';
+  }
 }
