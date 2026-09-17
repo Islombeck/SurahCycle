@@ -313,6 +313,19 @@ class RecitationEvents extends Table {
   /// placing the debt on a day it has no evidence for.
   BoolColumn get qadaOriginIsUnknown =>
       boolean().withDefault(const Constant<bool>(false))();
+
+  /// The local day the make-up was actually performed, for a Qada.
+  ///
+  /// [localDate] answers "which prayer is this making up"; this answers "when
+  /// did he pray it". They differ whenever a debt is entered late, which is the
+  /// ordinary case — someone reconstructing last week's misses today. Before
+  /// v9 only `created_at_utc` carried any trace of the second question, and
+  /// that is the moment of *entry*, which is a different thing again.
+  ///
+  /// Null means not recorded: every row written before v9, and every ordinary
+  /// record. It is deliberately not back-filled from `created_at_utc` — that
+  /// would turn "we do not know" into a date the user never gave.
+  TextColumn get qadaFulfilledLocalDate => text().nullable()();
   DateTimeColumn get deletedAtUtc => dateTime().nullable()();
 
   @override
@@ -335,6 +348,9 @@ class RecitationEvents extends Table {
     // Only a Qada can have an unknown origin: an ordinary record always knows
     // the day it belongs to, because the user picked it.
     'CHECK (qada_origin_is_unknown = 0 OR is_qada = 1)',
+    // Only a Qada is made up. An ordinary record happened on its own day, and
+    // a second date there would be meaningless.
+    'CHECK (qada_fulfilled_local_date IS NULL OR is_qada = 1)',
     'FOREIGN KEY (rotation_scheme_id, surah_id) '
         'REFERENCES rotation_schemes (id, surah_id) ON DELETE RESTRICT',
   ];
@@ -687,7 +703,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'murajaah_user'));
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -703,7 +719,7 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
       if (from == to) return;
-      if (from < 1 || from > 7 || to != 8) {
+      if (from < 1 || from > 8 || to != 9) {
         throw StateError('Unsupported database migration from $from to $to.');
       }
       if (from < 2) {
@@ -726,6 +742,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 8) {
         await _migrateVersionSevenToEight(migrator);
+      }
+      if (from < 9) {
+        await _migrateVersionEightToNine(migrator);
       }
     },
     beforeOpen: (OpeningDetails details) async {
@@ -863,6 +882,51 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// Separates the day a Qada was made up from the day it belongs to.
+  ///
+  /// `local_date` answers "which prayer is this making up"; the new column
+  /// answers "when did he pray it". They differ whenever a debt is entered
+  /// late, which is the ordinary case. Until now only `created_at_utc` carried
+  /// any trace of the second question, and that is the moment of *entry* —
+  /// a third thing again, and the one that is wrong for a late entry.
+  ///
+  /// **Nothing is back-filled.** Every stored row keeps `NULL`, meaning "not
+  /// recorded". Deriving it from `created_at_utc` would look helpful and would
+  /// turn "we do not know" into a date the user never gave — the one mistake
+  /// this whole column exists to stop making.
+  Future<void> _migrateVersionEightToNine(Migrator migrator) async {
+    final columns = await customSelect(
+      'PRAGMA table_info(recitation_events)',
+    ).get();
+    final alreadyPresent = columns.any(
+      (row) => row.read<String>('name') == 'qada_fulfilled_local_date',
+    );
+    if (!alreadyPresent) {
+      // A rebuild rather than ADD COLUMN, for the same reason as v8: the new
+      // CHECK has to become part of the table and SQLite cannot attach one
+      // afterwards. Drift copies every existing column, so ids, journal
+      // sequence numbers and the compound key `recitation_event_parts` depends
+      // on all survive.
+      await migrator.alterTable(
+        TableMigration(
+          recitationEvents,
+          newColumns: <GeneratedColumn<Object>>[
+            recitationEvents.qadaFulfilledLocalDate,
+          ],
+        ),
+      );
+    }
+    await _createVersionTwoIndexes();
+    await _createVersionFiveIndexes();
+    final violations = await customSelect('PRAGMA foreign_key_check').get();
+    if (violations.isNotEmpty) {
+      throw StateError(
+        'Foreign-key violations after v8 to v9 migration: '
+        '${violations.length}.',
+      );
+    }
+  }
+
   /// Records that a Qada's original day can be genuinely unknown.
   ///
   /// Someone making up prayers from before he began praying regularly cannot
@@ -885,11 +949,19 @@ class AppDatabase extends _$AppDatabase {
       // become part of the table: SQLite cannot attach one afterwards. Drift
       // copies every existing column, so ids, journal sequence numbers and the
       // compound key `recitation_event_parts` depends on all survive.
+      // Every later column has to be declared here too. A rebuild produces the
+      // *current* table definition, so during a chained upgrade this step
+      // already creates them; without this Drift copies a column out of a
+      // table that does not have it yet. This is the third place that trap has
+      // appeared — `resets_rotation_baseline` in v3 to v4 and
+      // `qada_origin_is_unknown` in v4 to v5 are the others — so treat it as a
+      // rule: **every rebuild lists every column added after it.**
       await migrator.alterTable(
         TableMigration(
           recitationEvents,
           newColumns: <GeneratedColumn<Object>>[
             recitationEvents.qadaOriginIsUnknown,
+            recitationEvents.qadaFulfilledLocalDate,
           ],
         ),
       );
@@ -1004,6 +1076,7 @@ class AppDatabase extends _$AppDatabase {
             recitationEvents.prayerSessionPartId,
             recitationEvents.slotIndex,
             recitationEvents.qadaOriginIsUnknown,
+            recitationEvents.qadaFulfilledLocalDate,
           ],
         ),
       );

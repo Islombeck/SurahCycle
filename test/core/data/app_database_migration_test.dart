@@ -10,7 +10,7 @@ import '../../generated_migrations/schema.dart';
 
 void main() {
   test(
-    'v1 to v8 preserves every legacy table and backfills v5 semantics',
+    'v1 to v9 preserves every legacy table and backfills v5 semantics',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(1);
@@ -21,19 +21,19 @@ void main() {
       final migrationDatabase = AppDatabase(schema.newConnection());
       await verifier.migrateAndValidate(
         migrationDatabase,
-        8,
+        9,
         // Runtime-only performance indexes are intentionally absent from the
         // generated Drift schema. Old tables are checked explicitly below.
         options: const ValidationOptions(),
       );
 
-      expect(migrationDatabase.schemaVersion, 8);
+      expect(migrationDatabase.schemaVersion, 9);
       expect(
         await migrationDatabase
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        8,
+        9,
       );
       expect(
         await migrationDatabase.customSelect('PRAGMA foreign_key_check').get(),
@@ -520,7 +520,7 @@ void main() {
     },
   );
 
-  test('v2 to v7 preserves four-part state and accepts a fifth part', () async {
+  test('v2 to v9 preserves four-part state and accepts a fifth part', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(2);
     final raw = schema.rawDatabase;
@@ -534,17 +534,17 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      8,
+      9,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 8);
+    expect(database.schemaVersion, 9);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      8,
+      9,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -932,7 +932,7 @@ void main() {
     );
   });
 
-  test('v3 to v7 preserves all data and backfills generic learning', () async {
+  test('v3 to v9 preserves all data and backfills generic learning', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(3);
     final raw = schema.rawDatabase;
@@ -946,18 +946,18 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      8,
+      9,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 8);
+    expect(database.schemaVersion, 9);
     await _expectEmptySyncTransport(database);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      8,
+      9,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1251,7 +1251,7 @@ void main() {
     expect(await database.select(database.rotationSchemes).get(), hasLength(1));
   });
 
-  test('v4 to v7 preserves all legacy rows and relationships', () async {
+  test('v4 to v9 preserves all legacy rows and relationships', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(4);
     final raw = schema.rawDatabase;
@@ -1265,18 +1265,18 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      8,
+      9,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 8);
+    expect(database.schemaVersion, 9);
     await _expectEmptySyncTransport(database);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      8,
+      9,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1533,7 +1533,7 @@ void main() {
   });
 
   test(
-    'v5 to v7 keeps the routine scaffold and adds the recall journal',
+    'v5 to v9 keeps the routine scaffold and adds the recall journal',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(5);
@@ -1548,18 +1548,18 @@ void main() {
       });
       await verifier.migrateAndValidate(
         database,
-        8,
+        9,
         options: const ValidationOptions(),
       );
 
-      expect(database.schemaVersion, 8);
+      expect(database.schemaVersion, 9);
       await _expectEmptySyncTransport(database);
       expect(
         await database
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        8,
+        9,
       );
       expect(
         await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1743,7 +1743,7 @@ void main() {
   );
 
   test(
-    'v6 to v8 adds the sync transport and touches nothing the user owns',
+    'v6 to v9 adds the sync transport and touches nothing the user owns',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(6);
@@ -1758,17 +1758,17 @@ void main() {
       });
       await verifier.migrateAndValidate(
         database,
-        8,
+        9,
         options: const ValidationOptions(),
       );
 
-      expect(database.schemaVersion, 8);
+      expect(database.schemaVersion, 9);
       expect(
         await database
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        8,
+        9,
       );
       expect(
         await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1866,7 +1866,7 @@ void main() {
     },
   );
 
-  test('v7 to v8 keeps the sync transport and the journal intact', () async {
+  test('v7 to v9 keeps the sync transport and the journal intact', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(7);
     final raw = schema.rawDatabase;
@@ -1880,11 +1880,11 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      8,
+      9,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 8);
+    expect(database.schemaVersion, 9);
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
       isEmpty,
@@ -1955,19 +1955,95 @@ void main() {
     );
   });
 
+  test('v8 to v9 adds the make-up day and invents none', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(8);
+    final raw = schema.rawDatabase;
+    raw.execute('PRAGMA foreign_keys = ON');
+    _seedVersionSeven(raw);
+
+    final database = AppDatabase(schema.newConnection());
+    addTearDown(() async {
+      await database.close();
+      schema.close();
+    });
+    await verifier.migrateAndValidate(
+      database,
+      9,
+      options: const ValidationOptions(),
+    );
+
+    expect(database.schemaVersion, 9);
+    expect(
+      await database.customSelect('PRAGMA foreign_key_check').get(),
+      isEmpty,
+    );
+
+    final event = await database.select(database.recitationEvents).getSingle();
+    expect(event.id, 'v5-event');
+    expect(event.journalSequence, 1);
+    expect(event.isQada, isTrue);
+    expect(
+      event.qadaFulfilledLocalDate,
+      isNull,
+      reason:
+          'the make-up day was never recorded for this row, and deriving '
+          'it from created_at_utc would turn "we do not know" into a date the '
+          'user never gave — the one mistake this column exists to prevent',
+    );
+    expect(
+      await database.select(database.recitationEventParts).get(),
+      hasLength(1),
+      reason: 'the compound key the coverage rows depend on survived again',
+    );
+    expect(
+      (await database.select(database.syncOutboxEntries).getSingle())
+          .envelopeId,
+      'v7-envelope',
+    );
+
+    // Only a Qada is made up: an ordinary record happened on its own day.
+    await _expectConstraint(database, '''
+      INSERT INTO recitation_events
+        (id, journal_sequence, surah_id, rotation_scheme_id, rakaat_span_count,
+         created_at_utc, local_date, prayer_type, is_qada,
+         qada_fulfilled_local_date)
+      VALUES ('bad-fulfilled', 2, 'v5-surah', 'v5-scheme', 1, 1,
+              '2026-08-24', 'witr', 0, '2026-09-17')
+    ''');
+    await database.customStatement('''
+      INSERT INTO recitation_events
+        (id, journal_sequence, surah_id, rotation_scheme_id, rakaat_span_count,
+         created_at_utc, local_date, prayer_type, is_qada,
+         qada_fulfilled_local_date)
+      VALUES ('late-entry', 2, 'v5-surah', 'v5-scheme', 1, 1,
+              '2026-08-24', 'witr', 1, '2026-09-17')
+    ''');
+    final lateEntry = await (database.select(
+      database.recitationEvents,
+    )..where((row) => row.id.equals('late-entry'))).getSingle();
+    expect(
+      <Object?>[lateEntry.localDate, lateEntry.qadaFulfilledLocalDate],
+      <Object?>['2026-08-24', '2026-09-17'],
+      reason:
+          'the day it belongs to and the day it was prayed are different '
+          'questions, and a late entry answers them differently',
+    );
+  });
+
   test(
     'a database from a newer app version is refused, not downgraded',
     () async {
-      final directory = await Directory.systemTemp.createTemp('murajaah-v8-');
+      final directory = await Directory.systemTemp.createTemp('murajaah-v9-');
       addTearDown(() => directory.delete(recursive: true));
       final file = File('${directory.path}/murajaah.sqlite');
 
       final created = AppDatabase(NativeDatabase(file));
-      await created.customStatement('PRAGMA user_version = 9');
+      await created.customStatement('PRAGMA user_version = 10');
       await created.close();
 
       // Opening someone else's future schema must fail loudly. Silently running
-      // v8 code against a v9 file would corrupt data we cannot recover.
+      // v9 code against a v10 file would corrupt data we cannot recover.
       final reopened = AppDatabase(NativeDatabase(file));
       addTearDown(reopened.close);
       await expectLater(

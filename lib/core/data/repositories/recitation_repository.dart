@@ -222,6 +222,9 @@ final class RecitationRepository {
               qadaOriginIsUnknown: Value<bool>(
                 persistedEvent.qadaOriginIsUnknown,
               ),
+              qadaFulfilledLocalDate: Value<String?>(
+                persistedEvent.qadaFulfilledLocalDate?.toString(),
+              ),
             ),
           );
       for (final partId in persistedEvent.coveredPartIds) {
@@ -802,6 +805,9 @@ final class RecitationRepository {
     coveredPartIds: coveredPartIds,
     rakaatSpanCount: row.rakaatSpanCount,
     qadaOriginIsUnknown: row.qadaOriginIsUnknown,
+    qadaFulfilledLocalDate: row.qadaFulfilledLocalDate == null
+        ? null
+        : _parseLocalDate(row.qadaFulfilledLocalDate!),
   );
 
   SurahDescriptor _descriptor(
@@ -1104,6 +1110,7 @@ SurahRecitationEvent _atDatabasePrecision(SurahRecitationEvent event) {
     coverage: event.coverage,
     rakaatSpanCount: event.rakaatSpanCount,
     qadaOriginIsUnknown: event.qadaOriginIsUnknown,
+    qadaFulfilledLocalDate: event.qadaFulfilledLocalDate,
   );
 }
 

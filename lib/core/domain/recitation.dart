@@ -149,9 +149,19 @@ final class SurahRecitationEvent implements RotationJournalEvent {
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
     bool qadaOriginIsUnknown = false,
+    LocalDate? qadaFulfilledLocalDate,
   }) {
     if (id.isEmpty) {
       throw ArgumentError.value(id, 'id', 'Must not be empty.');
+    }
+    // Only a Qada is made up. An ordinary record happened on its own day, and
+    // a second date there would describe nothing.
+    if (qadaFulfilledLocalDate != null && !prayerContext.isQada) {
+      throw ArgumentError.value(
+        qadaFulfilledLocalDate,
+        'qadaFulfilledLocalDate',
+        'Only a Qada recitation has a make-up day.',
+      );
     }
     // Only a Qada can have an unknown origin. An ordinary record always knows
     // the day it belongs to, because the user picked it.
@@ -224,6 +234,7 @@ final class SurahRecitationEvent implements RotationJournalEvent {
       coverage: resolvedCoverage,
       rakaatSpanCount: rakaatSpanCount,
       qadaOriginIsUnknown: qadaOriginIsUnknown,
+      qadaFulfilledLocalDate: qadaFulfilledLocalDate,
     );
   }
 
@@ -239,6 +250,7 @@ final class SurahRecitationEvent implements RotationJournalEvent {
     required this.coverage,
     required this.rakaatSpanCount,
     required this.qadaOriginIsUnknown,
+    required this.qadaFulfilledLocalDate,
   });
 
   @override
@@ -260,6 +272,19 @@ final class SurahRecitationEvent implements RotationJournalEvent {
   /// instead of placing the debt on a day nothing supports.
   final bool qadaOriginIsUnknown;
 
+  /// The day the make-up was actually performed.
+  ///
+  /// [localDate] says which prayer is being made up; this says when it was
+  /// prayed, and [createdAtUtc] says when it was typed in. All three are
+  /// different questions, and only conflating them loses information: a debt
+  /// reconstructed a week later has three distinct dates and every one of them
+  /// is true.
+  ///
+  /// Null means not recorded, which is every row written before schema v9. It
+  /// is never derived from [createdAtUtc], because that would turn "we do not
+  /// know" into a date the user never gave.
+  final LocalDate? qadaFulfilledLocalDate;
+
   PrayerType get prayerType => prayerContext.prayerType;
   bool get isQada => prayerContext.isQada;
   String? get rotationSchemeId => coverage?.rotationSchemeId;
@@ -280,6 +305,7 @@ final class SurahRecitationEvent implements RotationJournalEvent {
         coverage: coverage,
         rakaatSpanCount: rakaatSpanCount,
         qadaOriginIsUnknown: qadaOriginIsUnknown,
+        qadaFulfilledLocalDate: qadaFulfilledLocalDate,
       );
 
   @override
@@ -296,7 +322,8 @@ final class SurahRecitationEvent implements RotationJournalEvent {
           slotIndex == other.slotIndex &&
           coverage == other.coverage &&
           rakaatSpanCount == other.rakaatSpanCount &&
-          qadaOriginIsUnknown == other.qadaOriginIsUnknown;
+          qadaOriginIsUnknown == other.qadaOriginIsUnknown &&
+          qadaFulfilledLocalDate == other.qadaFulfilledLocalDate;
 
   @override
   int get hashCode => Object.hash(
@@ -311,5 +338,6 @@ final class SurahRecitationEvent implements RotationJournalEvent {
     coverage,
     rakaatSpanCount,
     qadaOriginIsUnknown,
+    qadaFulfilledLocalDate,
   );
 }
