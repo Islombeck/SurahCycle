@@ -962,6 +962,18 @@ class AppLocalizationsRu extends AppLocalizations {
       'Для прошедшего дня намаз выбирается вручную.';
 
   @override
+  String qadaFulfilledOn(String date) {
+    return 'Восполнено: $date';
+  }
+
+  @override
+  String get qadaFulfilledHint =>
+      'День, когда вы фактически прочитали. По умолчанию сегодня; измените, если вносите позже.';
+
+  @override
+  String get changeQadaFulfilledDate => 'Изменить день восполнения';
+
+  @override
   String get partKind => 'Тип части';
 
   @override

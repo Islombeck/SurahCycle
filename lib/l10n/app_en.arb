@@ -299,6 +299,10 @@
   ,"@pendingRegistrationBanner": {"placeholders": {"date": {"type": "String"}}}
   ,"pendingRegistrationCancel": "Back to today"
   ,"pendingRegistrationPickPrayer": "For a past day the prayer is chosen by hand."
+  ,"qadaFulfilledOn": "Made up on {date}"
+  ,"@qadaFulfilledOn": {"placeholders": {"date": {"type": "String"}}}
+  ,"qadaFulfilledHint": "The day you actually prayed it. Today by default; change it if you are entering this later."
+  ,"changeQadaFulfilledDate": "Change the make-up day"
   ,"partKind": "Part type"
   ,"customPartLabel": "Custom label"
   ,"customPartLabelRequired": "Enter a label."

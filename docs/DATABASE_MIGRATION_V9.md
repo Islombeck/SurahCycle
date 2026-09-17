@@ -84,8 +84,23 @@ compound key, that the queued sync envelope is untouched, that the new column is
 a make-up day, and that a Qada may hold a `local_date` and a
 `qada_fulfilled_local_date` that genuinely differ.
 
-**Not yet verified on a real device, and the UI half is not written.** Nothing
-writes the column yet: the registration sheet still has no field for choosing
-the make-up day. Do not report §E as finished until it does, and do not report
-v9 as device-verified until a build carrying it has been installed and the
-owner's row counts checked before and after.
+## The UI half
+
+The registration sheet now offers the make-up day whenever the prayer is a Qada
+**and** its original day is known. With an unknown origin the field is hidden:
+the record already sits on the day it was made up, so a second date would ask
+the same question twice — and both fields are written with that same day, so
+stored Qada rows have one shape rather than two.
+
+The picker is bounded at both ends. Not before the day the prayer belongs to,
+because a prayer cannot be made up before it was due; not after today, because
+neither is a day on which it could have been prayed. The same rule is enforced
+in `SurahRecitationEvent`, so a caller that skips the sheet cannot store an
+impossible pair.
+
+Default is today, which is right for the ordinary case — praying a debt and
+recording it immediately — and one tap away from correct for a late entry.
+
+**Not yet verified on a real device.** Do not report v9 as device-verified
+until a build carrying it has been installed and the owner's row counts checked
+before and after.

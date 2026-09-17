@@ -1542,6 +1542,7 @@ final class AppActions {
     int rakaatSpanCount = 1,
     LocalDate? occurrenceLocalDate,
     bool qadaOriginIsUnknown = false,
+    LocalDate? qadaFulfilledLocalDate,
   }) {
     return recitationService.registerFromApp(
       surahId: surahId,
@@ -1553,6 +1554,7 @@ final class AppActions {
       rakaatSpanCount: rakaatSpanCount,
       occurrenceLocalDate: occurrenceLocalDate,
       qadaOriginIsUnknown: qadaOriginIsUnknown,
+      qadaFulfilledLocalDate: qadaFulfilledLocalDate,
     );
   }
 

@@ -21,6 +21,7 @@ final class PrayerRegistrationSelection {
     required this.occurrenceLocalDate,
     required this.prayerContext,
     this.qadaOriginIsUnknown = false,
+    this.qadaFulfilledLocalDate,
   });
 
   final PrayerRegistrationShortcut shortcut;
@@ -33,12 +34,17 @@ final class PrayerRegistrationSelection {
   /// record carries this flag so no screen pretends otherwise.
   final bool qadaOriginIsUnknown;
 
+  /// The day the make-up was actually prayed, which is not the day it belongs
+  /// to and not the moment it was typed in.
+  final LocalDate? qadaFulfilledLocalDate;
+
   PrayerRegistrationSelection withQadaOriginUnknown(bool value) =>
       PrayerRegistrationSelection(
         shortcut: shortcut,
         occurrenceLocalDate: occurrenceLocalDate,
         prayerContext: prayerContext,
         qadaOriginIsUnknown: value,
+        qadaFulfilledLocalDate: qadaFulfilledLocalDate,
       );
 
   @override
@@ -48,7 +54,8 @@ final class PrayerRegistrationSelection {
           shortcut == other.shortcut &&
           occurrenceLocalDate == other.occurrenceLocalDate &&
           prayerContext == other.prayerContext &&
-          qadaOriginIsUnknown == other.qadaOriginIsUnknown;
+          qadaOriginIsUnknown == other.qadaOriginIsUnknown &&
+          qadaFulfilledLocalDate == other.qadaFulfilledLocalDate;
 
   @override
   int get hashCode => Object.hash(
@@ -56,6 +63,7 @@ final class PrayerRegistrationSelection {
     occurrenceLocalDate,
     prayerContext,
     qadaOriginIsUnknown,
+    qadaFulfilledLocalDate,
   );
 }
 

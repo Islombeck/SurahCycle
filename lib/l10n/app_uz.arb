@@ -299,6 +299,10 @@
   ,"@pendingRegistrationBanner": {"placeholders": {"date": {"type": "String"}}}
   ,"pendingRegistrationCancel": "Bugunga qaytish"
   ,"pendingRegistrationPickPrayer": "O‘tgan kun uchun namoz qo‘lda tanlanadi."
+  ,"qadaFulfilledOn": "Qazo qilingan kun: {date}"
+  ,"@qadaFulfilledOn": {"placeholders": {"date": {"type": "String"}}}
+  ,"qadaFulfilledHint": "Siz aslida o‘qigan kun. Standart holatda bugun; keyinroq kiritayotgan bo‘lsangiz, o‘zgartiring."
+  ,"changeQadaFulfilledDate": "Qazo kunini o‘zgartirish"
   ,"partKind": "Qism turi"
   ,"customPartLabel": "Maxsus nom"
   ,"customPartLabelRequired": "Nom kiriting."

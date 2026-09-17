@@ -964,6 +964,18 @@ class AppLocalizationsUz extends AppLocalizations {
       'O‘tgan kun uchun namoz qo‘lda tanlanadi.';
 
   @override
+  String qadaFulfilledOn(String date) {
+    return 'Qazo qilingan kun: $date';
+  }
+
+  @override
+  String get qadaFulfilledHint =>
+      'Siz aslida o‘qigan kun. Standart holatda bugun; keyinroq kiritayotgan bo‘lsangiz, o‘zgartiring.';
+
+  @override
+  String get changeQadaFulfilledDate => 'Qazo kunini o‘zgartirish';
+
+  @override
   String get partKind => 'Qism turi';
 
   @override

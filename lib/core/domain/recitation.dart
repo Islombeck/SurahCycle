@@ -163,6 +163,17 @@ final class SurahRecitationEvent implements RotationJournalEvent {
         'Only a Qada recitation has a make-up day.',
       );
     }
+    // A prayer cannot be made up before it was due. When the original day is
+    // unknown, [localDate] already *is* the make-up day, so the two are equal
+    // and this still holds.
+    if (qadaFulfilledLocalDate != null &&
+        qadaFulfilledLocalDate.compareTo(localDate) < 0) {
+      throw ArgumentError.value(
+        qadaFulfilledLocalDate,
+        'qadaFulfilledLocalDate',
+        'A prayer cannot be made up before the day it belongs to.',
+      );
+    }
     // Only a Qada can have an unknown origin. An ordinary record always knows
     // the day it belongs to, because the user picked it.
     if (qadaOriginIsUnknown && !prayerContext.isQada) {

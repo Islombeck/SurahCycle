@@ -305,6 +305,10 @@
   ,"@pendingRegistrationBanner": {"placeholders": {"date": {"type": "String"}}}
   ,"pendingRegistrationCancel": "Вернуться к сегодня"
   ,"pendingRegistrationPickPrayer": "Для прошедшего дня намаз выбирается вручную."
+  ,"qadaFulfilledOn": "Восполнено: {date}"
+  ,"@qadaFulfilledOn": {"placeholders": {"date": {"type": "String"}}}
+  ,"qadaFulfilledHint": "День, когда вы фактически прочитали. По умолчанию сегодня; измените, если вносите позже."
+  ,"changeQadaFulfilledDate": "Изменить день восполнения"
   ,"partKind": "Тип части"
   ,"customPartLabel": "Своё название"
   ,"customPartLabelRequired": "Введите название."

@@ -1738,6 +1738,24 @@ abstract class AppLocalizations {
   /// **'Для прошедшего дня намаз выбирается вручную.'**
   String get pendingRegistrationPickPrayer;
 
+  /// No description provided for @qadaFulfilledOn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восполнено: {date}'**
+  String qadaFulfilledOn(String date);
+
+  /// No description provided for @qadaFulfilledHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'День, когда вы фактически прочитали. По умолчанию сегодня; измените, если вносите позже.'**
+  String get qadaFulfilledHint;
+
+  /// No description provided for @changeQadaFulfilledDate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Изменить день восполнения'**
+  String get changeQadaFulfilledDate;
+
   /// No description provided for @partKind.
   ///
   /// In ru, this message translates to:

@@ -124,6 +124,7 @@ final class RecitationApplicationService {
     int rakaatSpanCount = 1,
     LocalDate? occurrenceLocalDate,
     bool qadaOriginIsUnknown = false,
+    LocalDate? qadaFulfilledLocalDate,
   }) async {
     final snapshot = await surahs.getRotationSnapshot();
     final mastered = snapshot.surahById(surahId);
@@ -151,6 +152,7 @@ final class RecitationApplicationService {
         coveredPartIds: explicitPartIds,
         rakaatSpanCount: rakaatSpanCount,
         qadaOriginIsUnknown: qadaOriginIsUnknown,
+        qadaFulfilledLocalDate: qadaFulfilledLocalDate,
       ),
     );
   }

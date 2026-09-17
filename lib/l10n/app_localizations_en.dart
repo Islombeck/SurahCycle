@@ -961,6 +961,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'For a past day the prayer is chosen by hand.';
 
   @override
+  String qadaFulfilledOn(String date) {
+    return 'Made up on $date';
+  }
+
+  @override
+  String get qadaFulfilledHint =>
+      'The day you actually prayed it. Today by default; change it if you are entering this later.';
+
+  @override
+  String get changeQadaFulfilledDate => 'Change the make-up day';
+
+  @override
   String get partKind => 'Part type';
 
   @override
