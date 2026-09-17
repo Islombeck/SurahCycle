@@ -459,12 +459,29 @@ create button.
    Google → Browser sign-in, then Update.
 2. Copy the Yandex client id and secret into the same screen under Yandex, then
    Update. **Only after these two steps are the providers actually enabled.**
-3. **Unverified, and outside this task's remit:** for the redirect to return into
-   the Android app, Appwrite needs a registered Android platform with package
-   `dev.murajaah.murajaah` (callback scheme
-   `appwrite-callback-6aa91956000d1d490a3e`). The owner's instruction forbade
-   touching anything outside Auth → OAuth2 Providers, so the Apps/Platforms
-   section was never opened. Check it before trusting a device test.
+3. ~~**Unverified, and outside this task's remit:** Appwrite needs a registered
+   Android platform.~~ **Checked and closed on 2026-09-17.** It was not
+   "possibly missing" — `project_list_platforms` returned `total: 0`, so the
+   project had no platforms at all, and every sign-in would have looked
+   successful in the browser and then failed to return to the app. That is the
+   worst failure shape available: nothing in the app reports an error, so it
+   gets blamed on the provider setup that is actually fine.
+
+   Registered through MCP and read back to confirm: platform `android-surahcycle`,
+   type `android`, `applicationId` **`dev.murajaah.murajaah`** — taken from
+   `android/app/src/main/build.gradle.kts`, not from memory. Appwrite's Android
+   platform needs only the application id; no signing SHA-1 is involved.
+
+   Undo, if it is ever wrong: `project_delete_platform` with
+   `platform_id: android-surahcycle`. It is additive and reversible, which is
+   why it was done without waiting.
+
+   **The other half is deliberately still absent.** The app has no
+   `appwrite-callback-6aa91956000d1d490a3e` intent filter in
+   `AndroidManifest.xml`, and it should not get one yet: nothing in the app
+   signs in, there is no Appwrite SDK dependency, and a manifest entry nothing
+   uses is dead configuration. It belongs with the client wiring, in that
+   checkpoint.
 4. Optional: publish the Google app out of Testing; add an Android OAuth client if
    native sign-in is wanted.
 
