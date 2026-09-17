@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="SurahCycle">
+  <title>SurahCycle</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2E8268"/>
+      <stop offset="1" stop-color="#17493B"/>
+    </linearGradient>
+  </defs>
+
+  <!-- plate -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- rotation ring: 8 segments, 2 amber = due for revision -->
+  <g fill="none" stroke-width="34" stroke-linecap="butt">
+    <path d="M 195.433 69.593 A 196 196 0 0 1 316.567 69.593" stroke="#F2B450"/>
+    <path d="M 344.982 81.363 A 196 196 0 0 1 430.637 167.018" stroke="#F2B450"/>
+    <path d="M 442.407 195.433 A 196 196 0 0 1 442.407 316.567" stroke="#74BCA3"/>
+    <path d="M 430.637 344.982 A 196 196 0 0 1 344.982 430.637" stroke="#74BCA3"/>
+    <path d="M 316.567 442.407 A 196 196 0 0 1 195.433 442.407" stroke="#74BCA3"/>
+    <path d="M 167.018 430.637 A 196 196 0 0 1 81.363 344.982" stroke="#74BCA3"/>
+    <path d="M 69.593 316.567 A 196 196 0 0 1 69.593 195.433" stroke="#74BCA3"/>
+    <path d="M 81.363 167.018 A 196 196 0 0 1 167.018 81.363" stroke="#74BCA3"/>
+  </g>
+
+  <!-- rub el hizb: two overlapping squares -->
+  <g fill="#F7F2E8">
+    <polygon points="329.539,329.539 182.461,329.539 182.461,182.461 329.539,182.461"/>
+    <polygon points="256,360 152,256 256,152 360,256"/>
+  </g>
+  <circle cx="256" cy="256" r="30" fill="#205E4B"/>
+</svg>
