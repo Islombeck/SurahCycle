@@ -173,8 +173,125 @@ at all. Qada can now say its original day is unknown (schema v8).
    occurrence sheet shows a session's parts, but the calendar path does not yet
    preselect the unfilled ones.
 3. **Stage J** continues: real Appwrite gateway, provisioning, owner
-   permissions, opt-in sync. Still blocked at §6.0 on one owner action —
-   `/mcp` → `appwrite` → Authenticate.
+   permissions, opt-in sync. §6.0 is **no longer blocked on the owner** — the
+   OAuth grant succeeded on 2026-09-17. It is blocked on **one more authorize
+   round trip** carrying `authorization_details`, because the first grant came
+   back bound to no project. See "Stage J §6.0 — the Appwrite OAuth grant"
+   below for the exact recipe; do not re-run `/mcp` → Authenticate, which
+   cannot work.
+
+## Stage J §6.0 — the Appwrite OAuth grant (2026-09-17)
+
+The owner authenticated successfully. `claude mcp list` reported
+`appwrite: https://mcp.appwrite.io/ (HTTP) - √ Connected` and the server's real
+tools (`appwrite_get_context`, `appwrite_search_tools`, `appwrite_call_tool`,
+`appwrite_search_docs`) replaced the two authentication stubs. **That tool swap
+is the only trustworthy signal that a grant landed** — `/mcp` panels and browser
+redirect pages both lie about it. Two earlier attempts appeared to succeed and
+had not.
+
+**Project `6aa91956000d1d490a3e` exists and is reachable.** It came back in the
+context listing under the owner's account. Nothing else about it could be read
+(see below), so `Databases`-vs-`TablesDB` is **still unsettled** and no
+provisioning definition may be written yet. Note the MCP connection reports
+endpoint `https://cloud.appwrite.io/v1`, not the `fra.` regional host the app
+is compiled against; that is the console API, not a contradiction of
+`AppwriteConfig`.
+
+### Three things that are now established, and cost four round trips to learn
+
+**1. Appwrite's authorize endpoint corrupts a long scope list. This is their
+bug, not ours.** The MCP client requests 130 scopes (3102 chars raw, 3352
+URL-encoded). Appwrite answered `error=invalid_scope`, naming
+`project:proxy.invalidations.ject:apps.write` — a token nobody sent. Exactly 27
+characters (`write project:apps.read pro`) were deleted from the **middle** of
+the parameter at offset 2552 (2766 encoded), welding two scope names together.
+Not a tail truncation, not a round buffer boundary. **Consequence: `/mcp` →
+`appwrite` → Authenticate can never succeed for this server**, because it builds
+that same 130-scope URL. Do not send the owner there again.
+
+**2. The workaround is a hand-built authorize URL with few scopes.** Start a
+flow with the `authenticate` tool to obtain a fresh `code_challenge`, `state`
+and callback port, then rebuild the URL keeping `client_id`,
+`code_challenge`, `code_challenge_method`, `redirect_uri`, `state` and
+`resource` **exactly as issued**, replacing only `scope`. The local listener
+still accepts the result. 12 scopes came to 233 chars / 639-char URL and passed.
+
+**3. §6.0.4's open question is ANSWERED: the grant can be project-limited, but
+not through scopes.** Appwrite's own docs (`docs/products/auth/oauth-server/scopes`):
+a scope "cannot identify which projects the permission applies to"; rich
+authorization requests (RFC 9396) carry that, and Appwrite reserves the
+`project` and `organization` detail types, where each `project` identifier is a
+project ID or `*`. The MCP client sends **no** `authorization_details`, which is
+why its own URL asks for `all`, `project:all` and `organization:all` — an
+account-wide grant across every organization and project on the owner's GitHub
+account, including `organization:projects.write`, `project:keys.write` and
+`project:users.write`. **A hand-built URL can bind the grant to SurahCycle
+alone.** The earlier note that the documentation "does not say whether the grant
+can be limited to one project" is superseded.
+
+### Why the grant still does not work, and the exact next action
+
+The successful grant was requested **without** `authorization_details`, so it is
+bound to no project. Every read failed identically:
+
+```
+project.read   → <owner account> (role: users) missing scopes (["project.read"])
+databases.read → ... (code=401, type=general_unauthorized_scope)
+```
+
+`role: users` — the token authenticates the owner but carries no project
+authority. This is consistent with an unbound grant and is the leading
+explanation; it is **not proven**, because the granted scope set could not be
+introspected (`project:oauth2.introspect` was not requested).
+
+**Next action, in order.** The `authenticate` tool is gone once the server
+connects, and removing/re-adding the server mid-session drops the connection
+without restoring it, so:
+
+1. **Restart the session** (or reload the VSCode window) so the MCP client
+   reconnects and `mcp__appwrite__authenticate` returns. The registration is
+   already reset and reads `! Needs authentication`.
+2. Call `authenticate`, take the fresh `code_challenge`/`state`/port.
+3. Rebuild the URL with these 10 scopes plus `openid profile email` —
+   `project:project.read`, `project:databases.read`, `project:tables.read`,
+   `project:columns.read`, `project:indexes.read`, `project:rows.read`,
+   `project:documentsdb.read`, `project:documentsdb.collections.read`,
+   `organization:organization.read`, `organization:projects.read` — and add
+   `&authorization_details=` URL-encoding
+   `[{"type":"project","identifiers":["6aa91956000d1d490a3e"]}]`.
+   `organization:organization.read` is new: without it the organizations list
+   came back empty. Still **zero write scopes** — provisioning needs a second,
+   deliberate grant, or the Console by hand.
+4. Owner approves in his browser within ~350 s (the code's `exp` is about 350 s
+   after `authTime`; one attempt died on that).
+5. Verify by the tool swap, then re-run `appwrite_get_context` with
+   `project_id`. Only once a real read succeeds may §6.1's
+   `Databases`-vs-`TablesDB` question be called settled.
+
+If the bound grant still refuses reads, the remaining suspect is that console
+project access needs the broad `all` / `project:all` scopes, i.e. the trade is
+account-wide or nothing over MCP. **That is the owner's decision, not the
+agent's**, and the Console-by-hand provisioning route stays open either way.
+
+### Operational notes
+
+- The `claude` CLI is **not** on PATH but is bundled with the VSCode extension.
+  Three versions are installed; use the newest:
+  `C:\Users\User\.vscode\extensions\anthropic.claude-code-2.1.273-win32-x64\resources\native-binary\claude.exe`
+- Reset the registration (clears a stuck OAuth state) with, from the project
+  folder: `& $claude mcp remove appwrite -s local` then
+  `& $claude mcp add --transport http appwrite https://mcp.appwrite.io/ --scope local`.
+  This rewrites one entry in `~/.claude.json` under this project. `.mcp.json`
+  at the repo root is untouched and still shadowed by local scope.
+- **Owner housekeeping:** three or four grants were created on
+  `fra.cloud.appwrite.io` during this session (grant ids include
+  `6aab639ba5595deff759` and `6aab646488fbe6dd14b9`). The unbound one is live
+  and should be revoked in the Appwrite Console once a working grant replaces
+  it.
+- **No Appwrite resource was created, modified or deleted.** The only calls made
+  were `appwrite_get_context` (refused) and `appwrite_search_docs` (public
+  documentation). No repository source file changed.
 
 ## Owner regression report of 2026-09-16 — what the two videos actually show
 
@@ -298,7 +415,7 @@ requires. It is **a** path to the observed frame; whether it is *the* path the
 owner hit is still unproven. It is fixed regardless, by reading both keys in one
 transaction.
 
-**Stage J is under way. §6.0 (MCP) is blocked on one owner action; §6.4 (durable outbox, schema v7) is done.**
+**Stage J is under way. §6.4 (durable outbox, schema v7) is done. §6.0's "blocked on one owner action" below is SUPERSEDED — the owner authenticated on 2026-09-17; see "Stage J §6.0 — the Appwrite OAuth grant" above for what actually happened and what is owed now.**
 
 - MCP: `claude` is not on PATH in this environment (it runs as the VSCode extension), so instead of `claude mcp add --transport http appwrite https://mcp.appwrite.io/` the server is declared in a project-scoped **`.mcp.json`** at the repo root — the same "only this local project" scope the prompt asked for, expressed as the file the command writes. No existing configuration was touched (there was none: no global `mcpServers`, no project entry). **Owner action: `/mcp` → `appwrite` → Authenticate**, then sign in to Appwrite through GitHub in his own browser and read the scope Appwrite actually requests before approving. A session restart may be needed for the extension to pick up a new `.mcp.json`. Nothing beyond §6.0 was attempted — no read of the project, no provisioning.
 - Schema **v7** adds `sync_outbox_entries`, `sync_cursors`, `sync_activations`, and nothing else. `DriftSyncOutbox` passes the existing `runSyncOutboxContract` unchanged; `DriftSyncStore` owns the two transactional guarantees and the owner scoping. Migration tests cover v1→v7 … **v6→v7**. Full details in `docs/DATABASE_MIGRATION_V7.md`. **Still not wired into the app** — no file in `lib/app/` or `lib/features/` references any of it, because the wiring belongs with a real gateway (§6.3), which is behind the MCP step.
@@ -358,7 +475,11 @@ Non-goals: cloud sync/accounts/server, gamification, Qibla, adhan alarms, full Q
   `/mcp` → `appwrite` → Authenticate — reloading the VSCode window first if the
   panel still shows nothing — and then approving, in his own browser, whatever
   scope Appwrite actually requests.
-- **Stage J §6.0/§6.1 — documentation re-verified against the primary source on 2026-09-16, and one claim must NOT be made.** Appwrite's own pages confirm the remote HTTP MCP at `https://mcp.appwrite.io/`, that it authenticates by OAuth with no API key to create, and the exact Claude Code flow (`claude mcp add --transport http appwrite https://mcp.appwrite.io/`, then `/mcp` → `appwrite` → Authenticate; `claude mcp login appwrite --no-browser` is the remote-host variant). **What the documentation does not say is whether the OAuth grant can be limited to one project — it documents no scopes at all.** §6.0.4 forbids calling it project-limited on an assumption, so the owner must read the consent screen Appwrite actually shows him before approving, and if it grants account-wide access that is what it is. The Flutter SDK re-check also came back unchanged from Stage G: `appwrite` 26.2.0 on pub.dev, published ~2026-09-08, so the ADR needs no revision. `Databases`-vs-`TablesDB` naming is **not** settled from the public package page and must be confirmed against the live project before any provisioning definition is written.
+  **[Superseded 2026-09-17: `/mcp` → Authenticate CANNOT succeed for this
+  server. It builds a 130-scope URL that Appwrite's own authorize endpoint
+  corrupts, answering `invalid_scope` for a scope name nobody sent. A
+  hand-built short-scope URL is required. Do not send the owner to `/mcp`.]**
+- **Stage J §6.0/§6.1 — documentation re-verified against the primary source on 2026-09-16, and one claim must NOT be made.** Appwrite's own pages confirm the remote HTTP MCP at `https://mcp.appwrite.io/`, that it authenticates by OAuth with no API key to create, and the exact Claude Code flow (`claude mcp add --transport http appwrite https://mcp.appwrite.io/`, then `/mcp` → `appwrite` → Authenticate; `claude mcp login appwrite --no-browser` is the remote-host variant). **What the documentation does not say is whether the OAuth grant can be limited to one project — it documents no scopes at all.** §6.0.4 forbids calling it project-limited on an assumption, so the owner must read the consent screen Appwrite actually shows him before approving, and if it grants account-wide access that is what it is. **[Superseded 2026-09-17: it CAN be limited, via RFC 9396 `authorization_details` with type `project`, and the scope vocabulary is documented after all under `docs/products/auth/oauth-server/scopes`. The MCP client's own request is account-wide because it sends no authorization details. See "Stage J §6.0 — the Appwrite OAuth grant".]** The Flutter SDK re-check also came back unchanged from Stage G: `appwrite` 26.2.0 on pub.dev, published ~2026-09-08, so the ADR needs no revision. `Databases`-vs-`TablesDB` naming is **not** settled from the public package page and must be confirmed against the live project before any provisioning definition is written.
 - **Acceptance-fix APK built and installed (2026-09-16), data verified rather than assumed.** sha256 `9e1f0741b5c7e55c954fcb13e129a1c3d41c81f137a2586d16c62bf7fc1754ce`. The prompt (§5) explicitly says not to infer survival from the database file size, so the check was row counts from a pulled copy before and after `adb install -r`: identical across all sixteen tables, `user_version = 6` unchanged. The leftover Зухр test part could **not** be removed — the phone is locked with a credential and its lock screen renders black to `screencap`, so no UI automation was possible, and writing to the database directly would have gone behind the app's own guarantees. It is listed under Next exact action as an owner action, which doubles as smoke-test point 1.
 - **Stage H final name is SurahCycle, not SalahCycle** (2026-09-15, same day). After the `Salah Circle` near-miss below was reported, the owner chose **SurahCycle**, which removes the collision outright — both words differ rather than one vowel — and describes the product more exactly, since the app cycles surahs. Clearance for the new name: no app on Google Play or the App Store, no product in web search, and `github.com/surahcycle` returns 404 so the namespace is free (**nothing was registered — claiming it is the owner's action**). Renamed the same surfaces a second time, plus the deep-link scheme constant `surahcycle`, and re-verified on the device: the system App-info screen and Home both read **SurahCycle**, storage still 330 MB with the owner's data intact, and a cold `surahcycle://app/home` deep link lands on Home. `docs/RENAME_TO_SURAHCYCLE.md` is now `docs/RENAME_TO_SURAHCYCLE.md` and records both steps. **Lesson recorded in that file: the first attempt to switch the prose used a regex and flattened the historical mentions too, briefly claiming the name moved "from SurahCycle to SurahCycle" — the exact mechanical find-and-replace the document warns against, applied to itself.** The entries below describing the SalahCycle step are left as written: they are the record of what happened.
 - Stage H (2026-09-15, new prompt section 13): user-facing rename to **SalahCycle**, **verified on the device**. The clearance ran first and found no direct conflict — no app, project, organization or trademark surfaced for "SalahCycle" on Google Play, the App Store, GitHub or in web search — so the reversible rename proceeded as the brief instructs. **One near-miss is recorded rather than swallowed: `Salah Circle` (`com.salahcircle.app`) is live on Google Play** with prayer times, a tracker, a Qada calculator, Quran and tasbih — an overlapping audience. "SalahCycle" and "Salah Circle" share the consonant skeleton *s-k-l*, syllable count and stress; only the vowel differs, which is thin for a largely non-native-English audience. That is exactly the "конфликт по звучанию и транслитерации" check the brief asks for, so it went to the owner as a branding judgement rather than being treated as an engineering blocker. **Caveat that must not be dropped: these were web searches, not a legal clearance — no trademark register (USPTO, EUIPO, UZ, RU) was queried directly, and a real search is still required before publishing.** Full plan and the kept/changed table: `docs/RENAME_TO_SURAHCYCLE.md`.
