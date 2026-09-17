@@ -180,6 +180,37 @@ at all. Qada can now say its original day is unknown (schema v8).
    below for the exact recipe; do not re-run `/mcp` → Authenticate, which
    cannot work.
 
+## Stage J §6.1 — SETTLED against the live project: it is TablesDB (2026-09-17)
+
+The grant works. `appwrite_get_context` with `project_id=6aa91956000d1d490a3e`
+returned, read-only and with nothing created:
+
+- project **SurahCycle**, region `fra`, status `active`, created 2026-09-15,
+  organization `6aa917cc000c85881d14` ("Personal projects", plan `tier-0`);
+- services, all empty: `tablesdb` 0, `users` 0, `storage` 0, `functions` 0,
+  `sites` 0, `messaging` 0, `teams` 0;
+- connection `mode: oauth_console`, endpoint `https://cloud.appwrite.io/v1` —
+  the console API, not the `fra.` regional host the app is compiled against.
+  Both are correct for their own purpose; `AppwriteConfig` is unaffected.
+
+**The `Databases`-vs-`TablesDB` question the handoff has been carrying since
+Stage G is answered: this project speaks TablesDB.** The context summary has a
+`tablesdb` key and no `databases` key at all, and the operator catalog exposes
+`tables_db_*` tools — `tables_db_create_index`, `tables_db_create_enum_column`,
+`tables_db_create_relationship_column` and so on — every one keyed by
+`database_id` + `table_id`, with **columns** and **rows**, not attributes and
+documents. A provisioning definition may now be written against that vocabulary.
+
+**What this does NOT establish: whether the grant is limited to SurahCycle.**
+Exactly one project and one organization came back, but the account only *has*
+one of each, so the result is identical either way. Determining it needs the
+Appwrite Console's own record of the grant — which is the owner's housekeeping
+pass anyway. Until then, treat the grant as possibly account-wide and say so.
+
+Read-only throughout: the only calls were `appwrite_get_context` and
+`appwrite_search_tools`. Nothing in the project was created, modified, or
+deleted, and no write tool was invoked.
+
 ## Stage J §6.0 — the Appwrite OAuth grant (2026-09-17)
 
 The owner authenticated successfully. `claude mcp list` reported
