@@ -231,6 +231,33 @@ interesting combination was never tested: broad scopes *with*
 experiment, and it may give full capability inside one project. Do not conclude
 "account-wide or nothing" until it has been run.
 
+**Update 2026-09-17 — the capability half is answered; the apply is blocked
+somewhere else entirely.**
+
+- **The current grant can write to the project.** The Android platform was
+  created through it today and independently read back, so "will a write even
+  work" is settled. What remains is breadth, i.e. risk. Worth stating plainly:
+  the account has exactly one organization and one project, so account-wide and
+  project-bound presently grant the same access — the difference starts to
+  matter the day a second project exists.
+- **The owner chose to proceed now and revoke the grant afterwards.**
+- **The apply was refused by Claude Code's own permission classifier**, not by
+  Appwrite and not by the owner. `tables_db_create` returned `Permission for
+  this action was denied by the Claude Code auto mode classifier. Reason:
+  [Modify Shared Resources]`. **Nothing was created; the project is unchanged.**
+  The refusal was not worked around, and a future session should not work around
+  it either: the Appwrite Console ships an authenticated CLI in a terminal pane
+  that could run the same operation, and using it would be the same modification
+  by another route.
+- **What unblocks it:** the owner runs the two operations in the Console
+  himself, or allows these MCP writes for the session, or applies them from a
+  session whose permission mode permits them.
+
+`tool/appwrite_provisioning.dart` gained `--json`, printing each operation's
+exact `tool_name` and `arguments`. Applying a plan by reading a one-line summary
+and retyping it is how the thing that ships stops matching the thing that was
+reviewed. 15/15 planner tests pass unchanged, analyzer clean.
+
 ## Stage J §6.1 — SETTLED against the live project: it is TablesDB (2026-09-17)
 
 The grant works. `appwrite_get_context` with `project_id=6aa91956000d1d490a3e`
@@ -469,10 +496,12 @@ create button.
 
 ### What is left, and it needs the owner
 
-1. Copy the Google client id and secret into Appwrite → Auth → Social providers →
-   Google → Browser sign-in, then Update.
-2. Copy the Yandex client id and secret into the same screen under Yandex, then
-   Update. **Only after these two steps are the providers actually enabled.**
+1. ~~Copy the Google client id and secret into Appwrite → Auth → Social providers
+   → Google → Browser sign-in, then Update.~~ **Done by the owner 2026-09-17.**
+2. ~~Copy the Yandex client id and secret into the same screen under Yandex, then
+   Update.~~ **Done by the owner 2026-09-17.** Both providers now read `enabled`
+   in the Console's provider list — verified from that list, which shows status
+   without secrets, and deliberately **not** by fetching the project object.
 
    **Do not check whether they are enabled by fetching the project object.**
    Appwrite returns `oAuthProviders` with each provider's `secret` inline, so a

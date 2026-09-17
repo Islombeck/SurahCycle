@@ -17,6 +17,8 @@
 ///   separate, explicit exercise with the owner in the room.
 library;
 
+import 'dart:convert';
+
 /// Appwrite column types this declaration uses, spelled exactly as the
 /// `tables_db` operator surface spells them.
 enum AppwriteColumnType { string, integer, datetime, enumeration, longtext }
@@ -347,12 +349,35 @@ final class AppwriteProvisioner {
 }
 
 /// Prints the plan. Reads nothing and writes nothing.
+///
+/// `--json` prints each operation's exact tool name and arguments. The apply
+/// step is performed by an agent through the MCP connection, and without this
+/// it would be retyping the declaration from a one-line summary — which is how
+/// the thing that ships stops matching the thing that was reviewed.
 void main(List<String> arguments) {
+  final asJson = arguments.contains('--json');
   final observed = const AppwriteObservedState();
   final operations = const AppwriteProvisioner().plan(observed);
   if (operations.isEmpty) {
     // ignore: avoid_print
-    print('Nothing to do: the project already matches the declaration.');
+    print(
+      asJson
+          ? '[]'
+          : 'Nothing to do: the project already matches the declaration.',
+    );
+    return;
+  }
+  if (asJson) {
+    // ignore: avoid_print
+    print(
+      const JsonEncoder.withIndent('  ').convert(<Map<String, Object?>>[
+        for (final operation in operations)
+          <String, Object?>{
+            'tool_name': operation.toolName,
+            'arguments': operation.arguments,
+          },
+      ]),
+    );
     return;
   }
   // ignore: avoid_print
