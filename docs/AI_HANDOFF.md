@@ -2,7 +2,8 @@
 
 ## Current state
 
-- 2026-09-17: Google and Yandex OAuth applications now exist for end-user sign-in; both Appwrite providers are still `disabled` pending the owner pasting their client ids and secrets. Full detail, the two exact redirect URIs and the open Android-platform question are under **Stage J §6.3**. A new untracked `brand/` folder holds the app's first real logo. No source file changed; HEAD is `3fafbf0` on `main` and the tracked tree is clean.
+- 2026-09-17: Google and Yandex OAuth applications now exist for end-user sign-in; both Appwrite providers are still `disabled` pending the owner pasting their client ids and secrets. Full detail and the two exact redirect URIs are under **Stage J §6.3**; the Android platform question there is closed. `brand/` holds the app's first real logo.
+- 2026-09-17: **§6.3 client wiring part 1 is in** — the `appwrite` SDK, a real `AccountGateway`, and the OAuth callback filter, at analyze-clean and **872/872**. Identity only: no data moves, because §6.2 provisioning was never applied. The account screen is the next piece and nothing renders `SyncStatus` yet. See **Stage J §6.3 client wiring, part 1**.
 
 - 2026-09-15 Codex resumed after Claude's continuation. Reconciled the real repository at `831c54cbf95df120c954aa85ac34348486d11665`: Stages A-F and their device-verification notes are committed. Claude also left an uncommitted Stage G draft consisting only of `docs/ACCOUNT_SYNC_ARCHITECTURE.md`, `docs/adr/ADR-0001-account-sync-backend.md`, `lib/core/sync/`, and `test/core/sync/`; `docs/DATABASE_MIGRATION_V6.md` is an untracked Stage F document that also needs reconciliation. These files are being reviewed and verified before staging. No tracked source change was present when Codex resumed. The photo and `Скринсейверы до v6/` remain user-owned and excluded.
 - ADB currently sees `JELLYMAX00003540` (`Jelly_Max`) as `device`. Prior handoff proves Stage A and Stages D-F foreground scenarios on the device, but widget placement/lifecycle, selected DreamService, and opted-in notification remain physically open. Device settings `stay_on_while_plugged_in=3`, `accelerometer_rotation=0`, and `user_rotation=0` are temporary QA changes that must be restored when device QA ends.
@@ -511,6 +512,102 @@ In this session the Appwrite MCP server's real tools (`appwrite_get_context`,
 present, which §6.0 names as the only trustworthy signal that a grant landed.
 **Whether that grant is project-bound was not tested here** — no Appwrite MCP
 call was made in this session. Do not read this as §6.0 being closed.
+
+## Stage J §6.3 client wiring, part 1 — identity only (2026-09-17)
+
+Baseline re-verified before touching anything, as CLAUDE.md requires: HEAD
+`0cd53cf` on `main`, tracked tree clean, `flutter analyze --no-pub` →
+`No issues found!` (119.1 s), full `flutter test` → **861/861**.
+
+**Scope, and why it stops where it does.** Sign-in is implemented; moving data
+is not. §6.2's provisioning was never applied, so the project has no database
+and no `sync_log` table — there is nothing for a `SyncGateway` to talk to, and
+applying the provisioning is still blocked on the owner's grant-breadth
+decision recorded in §6.2. So this part lands `AccountGateway` and stops at
+`SyncHealth.notActivated`, which is an honest terminal state rather than a
+half-built one.
+
+### Two facts read out of the SDK, not remembered
+
+1. **The Android callback scheme is not configurable.** `Client.webAuth`
+   (`appwrite-26.2.0/lib/src/client_io.dart:485`) honours the `success`
+   parameter's scheme **only on Windows and Linux**; everywhere else it
+   hardcodes `appwrite-callback-${project}`. So the manifest filter must carry
+   the literal project id, and a build overriding `APPWRITE_PROJECT_ID` silently
+   stops receiving the redirect. That coupling is commented at the filter.
+2. **`flutter_web_auth_2` declares only its own `AuthenticationManagementActivity`.**
+   `CallbackActivity` is left to the app, because only the app knows its scheme.
+   Without that declaration sign-in opens, succeeds in the browser and never
+   returns, with nothing to show the user — the same silent shape as the missing
+   platform.
+
+### What was added
+
+- `pubspec.yaml`: `appwrite: ^26.2.0`, resolving to exactly **26.2.0**, the
+  version ADR-0001 was written against. 18 transitive packages came with it,
+  including `url_launcher` and `flutter_web_auth_2` 5.1.0.
+- `lib/core/sync/appwrite_account_gateway.dart` — the rules, with **no**
+  dependency on `package:appwrite`, so they are unit-testable without a network,
+  a browser or a project.
+- `lib/core/sync/appwrite_account_api.dart` — the only file that imports the
+  SDK. It holds no rules; its whole job is turning SDK exceptions into two
+  honest outcomes. **401 alone means "signed out"**; every other failure throws,
+  because reporting an offline device as signed out would strand its queued work
+  and show a reassuring empty screen.
+- `android/app/src/main/AndroidManifest.xml` — the `CallbackActivity` filter.
+- `test/core/sync/appwrite_account_gateway_test.dart` — 11 tests.
+
+`sync.dart` exports the gateway but deliberately **not** the adapter:
+re-exporting it would drag the Appwrite SDK into every unit test that only
+wanted an envelope.
+
+### Three things it refuses to pretend, each pinned by a test
+
+- **`deleteCloudAccount` throws.** Appwrite's client-side call is
+  `account.updateStatus()`, and the SDK's own documentation says it plainly:
+  "the user record is not deleted but permanently blocked from any access. To
+  completely delete a user, use the Users API instead." The Users API needs an
+  admin key this repository forbids shipping. Blocking is not erasure, and
+  offering it under that name would misinform someone exercising a deletion
+  right. It needs a server-side path.
+- **`exportCloudData` throws.** Nothing of the user's has ever left the device.
+  An empty map shaped like a successful export reads as "backed up, nothing to
+  restore".
+- **A link that changes the user id is refused.** Appwrite attaches a new OAuth
+  session to the logged-in account — but if that provider's email already
+  belongs to a different user it signs into *that* user instead. The caller
+  asked to link, so returning a stranger's account would quietly attach this
+  device's history to it. `linkIdentity` also refuses to even open the flow
+  while signed out, because an anonymous OAuth login *is* a sign-in.
+
+An identity provider this build does not model is dropped rather than guessed
+at; the Console may have others enabled.
+
+### Verified
+
+`flutter analyze --no-pub` → `No issues found!`. Full `flutter test` →
+**872/872** (was 861; +11). `dart format lib test` touched 2 files, both new,
+and both checks were re-run after it. `gradlew.bat :app:compileDebugKotlin
+:app:processDebugManifest` from `M:\android` → `BUILD SUCCESSFUL` in 6m14s.
+The merged manifest at
+`M:\build\app\intermediates\merged_manifest\debug\outputDebugAppLinkSettings\AndroidManifest.xml`
+was read back and contains the activity with
+`android:scheme="appwrite-callback-6aa91956000d1d490a3e"` — checked, not assumed.
+
+Note a new Gradle warning, pre-existing in kind: Flutter now warns that
+`flutter_web_auth_2` and `home_widget` apply the Kotlin Gradle Plugin, which
+future Flutter versions will reject. Not blocking today; worth a backlog item.
+
+### Not done, and next
+
+- **The account screen and its providers.** `SyncStatus` already decides
+  everything such a screen may say; nothing renders it yet. No file in
+  `lib/app/` or `lib/features/` references `lib/core/sync/` — that count is
+  still zero, so this part changed no app behaviour.
+- **Nothing was run on a device**, and sign-in cannot succeed end to end until
+  the owner pastes the Google and Yandex client ids and secrets into the
+  Console. The code path is testable; the round trip is not, yet.
+- `SyncGateway`, `SyncActivationGateway`: blocked on §6.2.
 
 ## Brand: the app had no logo at all (2026-09-17)
 

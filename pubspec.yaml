@@ -27,6 +27,10 @@ dependencies:
   xml: ^7.0.1
   just_audio: ^0.10.6
   just_audio_background: ^0.0.1-beta.17
+  # Account sign-in only, per ADR-0001. The SDK ships no secret: the build
+  # carries the public endpoint and project id from AppwriteConfig, and the
+  # OAuth client secrets live in the Appwrite Console.
+  appwrite: ^26.2.0
 
 dev_dependencies:
   flutter_test:

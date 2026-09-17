@@ -90,6 +90,30 @@
                 android:name="android.service.dream"
                 android:resource="@xml/dream_info" />
         </service>
+        <!-- Catches the OAuth redirect coming back from Appwrite.
+
+             The scheme is NOT configurable at runtime: appwrite 26.2.0 ignores
+             the `success` callback URL on Android and always listens on
+             "appwrite-callback-${project}" (Client.webAuth in client_io.dart),
+             falling back to a custom scheme only on Windows and Linux. So this
+             literal must stay equal to AppwriteConfig's project id. A build
+             overriding APPWRITE_PROJECT_ID needs this line changed too —
+             otherwise sign-in opens, succeeds in the browser, and never
+             returns, with nothing to show the user.
+
+             flutter_web_auth_2 declares only its AuthenticationManagementActivity;
+             CallbackActivity is deliberately left to the app, because only the
+             app knows its scheme. -->
+        <activity
+            android:name="com.linusu.flutter_web_auth_2.CallbackActivity"
+            android:exported="true">
+            <intent-filter android:label="flutter_web_auth_2">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="appwrite-callback-6aa91956000d1d490a3e" />
+            </intent-filter>
+        </activity>
         <!-- Required by home_widget 0.9.3 for headless interactive callbacks. -->
         <receiver
             android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver"

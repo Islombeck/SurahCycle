@@ -1,11 +1,18 @@
 /// Account and progress sync.
 ///
-/// Design and local contracts only: nothing here is wired into the running app,
-/// and there is no production [SyncGateway] or [AccountGateway] while no
-/// backend project exists. See `docs/ACCOUNT_SYNC_ARCHITECTURE.md` and
+/// [AccountGateway] now has a production implementation
+/// ([AppwriteAccountGateway]); [SyncGateway] still does not, because no cloud
+/// table has been provisioned. Signing in is therefore possible and moving data
+/// is not — which is exactly the split the architecture asks for, not a gap.
+/// See `docs/ACCOUNT_SYNC_ARCHITECTURE.md` and
 /// `docs/adr/ADR-0001-account-sync-backend.md`.
+///
+/// `appwrite_account_api.dart` is deliberately **not** exported here: it is the
+/// one file that imports `package:appwrite`, and re-exporting it would drag the
+/// SDK into every unit test that only wanted an envelope.
 library;
 
+export 'appwrite_account_gateway.dart';
 export 'appwrite_config.dart';
 export 'fake_sync_backend.dart';
 export 'in_memory_sync_outbox.dart';
