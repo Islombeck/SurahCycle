@@ -459,6 +459,12 @@ create button.
    Google → Browser sign-in, then Update.
 2. Copy the Yandex client id and secret into the same screen under Yandex, then
    Update. **Only after these two steps are the providers actually enabled.**
+
+   **Do not check whether they are enabled by fetching the project object.**
+   Appwrite returns `oAuthProviders` with each provider's `secret` inline, so a
+   casual `project_get` dumps both client secrets into the transcript of whoever
+   asked. The owner's standing instruction is that these secrets never reach an
+   agent. Ask him, or look at the Console yourself.
 3. ~~**Unverified, and outside this task's remit:** Appwrite needs a registered
    Android platform.~~ **Checked and closed on 2026-09-17.** It was not
    "possibly missing" — `project_list_platforms` returned `total: 0`, so the
@@ -469,8 +475,17 @@ create button.
 
    Registered through MCP and read back to confirm: platform `android-surahcycle`,
    type `android`, `applicationId` **`dev.murajaah.murajaah`** — taken from
-   `android/app/src/main/build.gradle.kts`, not from memory. Appwrite's Android
-   platform needs only the application id; no signing SHA-1 is involved.
+   `android/app/build.gradle.kts` line 25, not from memory (an earlier revision of
+   this entry cited `android/app/src/main/build.gradle.kts`; there is no Gradle
+   file under `src/main`, and the wrong path is corrected rather than deleted so
+   nobody hunts for it). Appwrite's Android platform needs only the application
+   id; no signing SHA-1 is involved.
+
+   Independently re-verified on 2026-09-17 from a separate session:
+   `project_list_platforms` now returns `total: 1` — `$id android-surahcycle`,
+   name `SurahCycle Android`, type `android`, `applicationId
+   dev.murajaah.murajaah`, created `06:47:13Z`. The registration is real, not
+   just reported.
 
    Undo, if it is ever wrong: `project_delete_platform` with
    `platform_id: android-surahcycle`. It is additive and reversible, which is
