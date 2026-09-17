@@ -180,6 +180,41 @@ at all. Qada can now say its original day is unknown (schema v8).
    below for the exact recipe; do not re-run `/mcp` → Authenticate, which
    cannot work.
 
+## Stage J §6.2 — the provisioning declaration exists; nothing was applied
+
+`tool/appwrite_provisioning.dart` declares the cloud shape and diffs it against
+observed state. Dry run against an empty project: two operations — create the
+`surahcycle` database, then create the `sync_log` table with row-level security,
+10 columns and 3 indexes in **one** call, so a failure cannot leave a half-built
+table behind.
+
+The planner **cannot reach Appwrite**, deliberately: a script able to apply this
+would need an admin API key, and §6.2 forbids one ever entering the repository.
+It plans; the agent applies through the authenticated MCP connection, executing
+exactly the operations the planner emits.
+
+Owner isolation is in the declaration rather than in a promise: `row_security`
+is on, the table grants `create("users")` and nothing else, and the unique
+index is `(userId, idempotencyKey)` rather than `idempotencyKey` alone — a key
+generated on one device means nothing outside the account that produced it, so a
+global unique index would let two accounts collide.
+
+**Deliberately not applied on 2026-09-17.** The only grant available was
+account-wide (see below) and expiring within the hour. §H.5 requires the
+declarative dry run *before* applying, and creating entities under a deadline
+with account-wide write, into a project that has to stay reproducible, is the
+"видимый прогресс" the prompt forbids. The grant was left to expire on its own.
+
+**The decision still owed before applying:** the working grant had `all`,
+`project:all`, `organization:all` and every write scope, with
+`authorizationDetails: []` — account-wide, not SurahCycle-only. A narrow,
+project-bound grant was tried earlier and could not read. **Those two attempts
+changed two variables at once — scope breadth *and* binding — so the
+interesting combination was never tested: broad scopes *with*
+`authorization_details` binding to `6aa91956000d1d490a3e`.** That is the next
+experiment, and it may give full capability inside one project. Do not conclude
+"account-wide or nothing" until it has been run.
+
 ## Stage J §6.1 — SETTLED against the live project: it is TablesDB (2026-09-17)
 
 The grant works. `appwrite_get_context` with `project_id=6aa91956000d1d490a3e`
