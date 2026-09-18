@@ -18,6 +18,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 
 /// Appwrite column types this declaration uses, spelled exactly as the
 /// `tables_db` operator surface spells them.
@@ -229,6 +230,35 @@ final class AppwriteObservedState {
     this.indexKeys = const <String>{},
   });
 
+  /// Reads what an agent saw, so a dry run can tell the truth about a project
+  /// that is no longer empty.
+  ///
+  /// The shape is deliberately the *output* of the read calls an agent already
+  /// makes — a list of database ids, and the table's own ids and index keys —
+  /// rather than a bespoke format someone has to hand-assemble. Anything
+  /// missing is treated as absent, because planning to create something that
+  /// already exists fails loudly, while skipping something that does not exist
+  /// leaves a half-built project nobody notices.
+  factory AppwriteObservedState.fromJson(Map<String, Object?> json) {
+    Set<String> strings(String key) {
+      final value = json[key];
+      // Checked, not cast. A field that is the wrong shape must read as absent
+      // — a cast would throw and take down the dry run that exists to make
+      // applying safe.
+      if (value is! List) return const <String>{};
+      return <String>{
+        for (final item in value)
+          if (item is String) item,
+      };
+    }
+
+    return AppwriteObservedState(
+      databaseIds: strings('databaseIds'),
+      tableIds: strings('tableIds'),
+      indexKeys: strings('indexKeys'),
+    );
+  }
+
   final Set<String> databaseIds;
 
   /// Table ids **within** [AppwriteDesiredState.databaseId].
@@ -348,15 +378,43 @@ final class AppwriteProvisioner {
   }
 }
 
-/// Prints the plan. Reads nothing and writes nothing.
+/// Prints the plan. Reads nothing from Appwrite and writes nothing anywhere.
 ///
 /// `--json` prints each operation's exact tool name and arguments. The apply
 /// step is performed by an agent through the MCP connection, and without this
 /// it would be retyping the declaration from a one-line summary — which is how
 /// the thing that ships stops matching the thing that was reviewed.
+///
+/// `--observed <file>` supplies what the project already has. Without it the
+/// plan assumes an empty project, which was true exactly once: after the first
+/// apply, a dry run that still lists both operations is not a dry run, it is a
+/// stale one. Feed back what the read calls returned and the planner will say
+/// there is nothing to do — which is the only way the declaration can be
+/// *checked* against the project rather than merely applied to it.
 void main(List<String> arguments) {
   final asJson = arguments.contains('--json');
-  final observed = const AppwriteObservedState();
+  final observedIndex = arguments.indexOf('--observed');
+  if (observedIndex >= 0 && observedIndex == arguments.length - 1) {
+    stderr.writeln('--observed needs a path to a JSON file.');
+    exitCode = 64;
+    return;
+  }
+  var observed = const AppwriteObservedState();
+  if (observedIndex >= 0) {
+    final file = File(arguments[observedIndex + 1]);
+    if (!file.existsSync()) {
+      stderr.writeln('No such file: ${file.path}');
+      exitCode = 66;
+      return;
+    }
+    final decoded = jsonDecode(file.readAsStringSync());
+    if (decoded is! Map<String, Object?>) {
+      stderr.writeln('Observed state must be a JSON object.');
+      exitCode = 65;
+      return;
+    }
+    observed = AppwriteObservedState.fromJson(decoded);
+  }
   final operations = const AppwriteProvisioner().plan(observed);
   if (operations.isEmpty) {
     // ignore: avoid_print

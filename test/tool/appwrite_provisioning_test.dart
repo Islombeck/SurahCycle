@@ -39,6 +39,67 @@ void main() {
     });
   });
 
+  group('observed state read back from a live project', () {
+    test('a fully provisioned project plans nothing', () {
+      // The exact shape Appwrite returned on 2026-09-18, after the apply. This
+      // is what makes the declaration *checkable* against the project instead
+      // of merely applicable to it.
+      final observed = AppwriteObservedState.fromJson(<String, Object?>{
+        'databaseIds': <Object?>['surahcycle'],
+        'tableIds': <Object?>['sync_log'],
+        'indexKeys': <Object?>[
+          'by_owner_updated',
+          'by_owner_entity',
+          'by_owner_idempotency',
+        ],
+      });
+
+      expect(provisioner.plan(observed), isEmpty);
+    });
+
+    test('a missing key is absent, not an error', () {
+      final observed = AppwriteObservedState.fromJson(
+        const <String, Object?>{},
+      );
+
+      expect(
+        provisioner.plan(observed).map((operation) => operation.toolName),
+        <String>['tables_db_create', 'tables_db_create_table'],
+        reason:
+            'treating an unreadable field as "already there" would skip work '
+            'and leave a half-built project nobody notices',
+      );
+    });
+
+    test('values that are not strings are ignored rather than trusted', () {
+      final observed = AppwriteObservedState.fromJson(<String, Object?>{
+        'databaseIds': <Object?>[42, null, 'surahcycle'],
+        'tableIds': 'sync_log',
+      });
+
+      expect(observed.databaseIds, <String>{'surahcycle'});
+      expect(
+        observed.tableIds,
+        isEmpty,
+        reason:
+            'a bare string is not a list, and guessing at it would claim '
+            'the table exists on the strength of a typo',
+      );
+    });
+
+    test('a half-provisioned project plans only what is missing', () {
+      final observed = AppwriteObservedState.fromJson(<String, Object?>{
+        'databaseIds': <Object?>['surahcycle'],
+      });
+
+      expect(
+        provisioner.plan(observed).map((operation) => operation.toolName),
+        <String>['tables_db_create_table'],
+        reason: 'the database is there; creating it again would fail loudly',
+      );
+    });
+  });
+
   group('owner isolation is in the declaration, not in a promise', () {
     test('rows carry their own permissions', () {
       final table = provisioner

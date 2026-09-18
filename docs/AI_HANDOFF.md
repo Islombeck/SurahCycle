@@ -196,7 +196,46 @@ at all. Qada can now say its original day is unknown (schema v8).
    below for the exact recipe; do not re-run `/mcp` → Authenticate, which
    cannot work.
 
-## Stage J §6.2 — the provisioning declaration exists; nothing was applied
+## Stage J §6.2 — APPLIED, 2026-09-18. The cloud shape exists
+
+The dry run was re-run first (§H.5), then both operations were executed through
+the MCP connection exactly as `--json` emitted them:
+
+1. `tables_db_create` → database `surahcycle`, serverless, `status: ready`.
+2. `tables_db_create_table` → table `sync_log` with **all 10 columns and all 3
+   indexes in one call**, every one reporting `status: available`.
+
+`rowSecurity: true` and `$permissions: ["create(\"users\")"]` came back on the
+table, so owner isolation is what the declaration said rather than what a
+promise said. **Read back independently** with `tables_db_list_tables` rather
+than trusting the creation response: `total: 1`, and the unique index is
+`by_owner_idempotency` on `(userId, idempotencyKey)`.
+
+The earlier blocker is closed: the apply was refused in the 2026-09-17 session by
+Claude Code's own permission classifier, not by Appwrite and not by the owner.
+This session's classifier allowed it. Nothing was worked around.
+
+**The planner could not check its own work, and now can.** Its CLI hard-coded an
+empty observed state, so after the apply a dry run still printed both operations
+— a stale plan wearing a dry run's clothes, and it would have failed loudly if
+anyone had acted on it. `--observed <file.json>` now feeds back what the read
+calls returned, and against the live project it prints **"Nothing to do: the
+project already matches the declaration."** That is the difference between a
+declaration that can be *applied* and one that can be *checked*.
+
+`AppwriteObservedState.fromJson` treats a field of the wrong shape as absent
+rather than casting it — the first version threw on a bare string where a list
+belonged, and a test caught it. A dry run that crashes is worse than useless:
+its whole job is to make applying safe.
+
+19/19 planner tests (+4), full suite **988/988**, analyzer clean.
+
+**Still nothing to transport.** The table is empty and nothing in the app
+constructs the gateway, the coordinator, the backup or the inventory. Sign-in
+still moves no data. The next step is wiring, and it is now unblocked in both
+directions: the cloud shape exists and the local pieces exist.
+
+## Stage J §6.2 (historical) — the declaration exists; nothing was applied
 
 `tool/appwrite_provisioning.dart` declares the cloud shape and diffs it against
 observed state. Dry run against an empty project: two operations — create the
