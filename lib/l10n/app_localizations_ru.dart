@@ -808,6 +808,26 @@ class AppLocalizationsRu extends AppLocalizations {
       'Это только число ракаатов, которые заняло прочтение. Отдельные аяты не привязаны к конкретным ракаатам.';
 
   @override
+  String get historyShowDeleted => 'Показать удалённые';
+
+  @override
+  String get historyHideDeleted => 'Скрыть удалённые';
+
+  @override
+  String historyDeletedAt(String dateTime) {
+    return 'Удалено $dateTime';
+  }
+
+  @override
+  String get historyRestore => 'Восстановить';
+
+  @override
+  String get historyRestored => 'Запись восстановлена';
+
+  @override
+  String get historyNoDeleted => 'Удалённых прочтений нет.';
+
+  @override
   String get registrationWhenTitle => 'Когда и в каком намазе прочитано';
 
   @override

@@ -57,6 +57,20 @@ final class JournalDeletionResult {
   final RotationSnapshot snapshot;
 }
 
+/// Outcome of putting a deleted journal entry back.
+final class JournalRestorationResult {
+  const JournalRestorationResult({
+    required this.didRestore,
+    required this.snapshot,
+  });
+
+  /// False when there was nothing to restore — an unknown id, or an entry that
+  /// was never deleted. Not an error: a second tap on the same row must be a
+  /// no-op rather than a second restoration.
+  final bool didRestore;
+  final RotationSnapshot snapshot;
+}
+
 final class RecitationHistoryEntry {
   const RecitationHistoryEntry({
     required this.event,
@@ -64,6 +78,7 @@ final class RecitationHistoryEntry {
     required this.journalSequence,
     this.coveredParts = const <SurahRotationPart>[],
     this.isWholeSurah = false,
+    this.deletedAtUtc,
   });
 
   final SurahRecitationEvent event;
@@ -71,6 +86,15 @@ final class RecitationHistoryEntry {
   final int journalSequence;
   final List<SurahRotationPart> coveredParts;
   final bool isWholeSurah;
+
+  /// When this entry was withdrawn, or null while it still counts.
+  ///
+  /// A deletion is a tombstone rather than a removal, so the entry is still
+  /// here and can be put back. Only a history asked for it with
+  /// `includeDeleted` ever sees one.
+  final DateTime? deletedAtUtc;
+
+  bool get isDeleted => deletedAtUtc != null;
 }
 
 final class SurahRecitationStat {
@@ -385,6 +409,54 @@ final class RecitationRepository {
     return result;
   }
 
+  /// Puts a deleted recitation back.
+  ///
+  /// Deliberately the mirror image of [deleteRecitation], down to reusing the
+  /// same reconciliation and the same `rebuildFromJournal` call rather than
+  /// reversing their effects by hand. A restore that recomputed the balance its
+  /// own way would be a second implementation of the rotation rules, free to
+  /// drift out of agreement with the first.
+  ///
+  /// The entry keeps its original `journalSequence`, its local date and its
+  /// prayer context: this is the same recitation coming back, not a new one
+  /// recorded today. That is the whole reason a deletion is a tombstone.
+  Future<JournalRestorationResult> restoreRecitation(String eventId) async {
+    final result = await database.transaction(() async {
+      final existing =
+          await (database.select(database.recitationEvents)..where(
+                (RecitationEvents row) =>
+                    row.id.equals(eventId) & row.deletedAtUtc.isNotNull(),
+              ))
+              .getSingleOrNull();
+      final before = await _projection.loadSnapshot();
+      if (existing == null) {
+        // Unknown, or never deleted. Either way there is nothing to undo, and
+        // saying so beats resurrecting something on a guess.
+        return JournalRestorationResult(didRestore: false, snapshot: before);
+      }
+      await (database.update(
+        database.recitationEvents,
+      )..where((RecitationEvents row) => row.id.equals(eventId))).write(
+        const RecitationEventsCompanion(deletedAtUtc: Value<DateTime?>(null)),
+      );
+      if (existing.prayerSessionPartId case final prayerSessionPartId?) {
+        // The same reconciliation the deletion ran. It derives the slot's state
+        // from the events that are active *now*, so it re-completes the part
+        // without needing to know which direction it is moving.
+        await _reconcileRecitationCompletion(prayerSessionPartId);
+      }
+      final rebuilt = await _projection.rebuildFromJournal(
+        targetFloor: before.rotationTarget,
+      );
+      return JournalRestorationResult(didRestore: true, snapshot: rebuilt);
+    });
+    // A pending single-step undo refers to a journal that has just changed
+    // underneath it, so it is dropped rather than left to apply a stale
+    // snapshot — exactly as deletion does.
+    _activeUndoToken = null;
+    return result;
+  }
+
   Future<JournalDeletionResult> deleteAdjustment(
     String adjustmentId, {
     required DateTime deletedAtUtc,
@@ -424,11 +496,18 @@ final class RecitationRepository {
     bool? isQada,
     LocalDate? from,
     LocalDate? through,
+    bool includeDeleted = false,
   }) async {
     if (limit <= 0) throw ArgumentError.value(limit, 'limit');
     if (offset < 0) throw ArgumentError.value(offset, 'offset');
-    final query = database.select(database.recitationEvents)
-      ..where((RecitationEvents row) => row.deletedAtUtc.isNull());
+    final query = database.select(database.recitationEvents);
+    if (!includeDeleted) {
+      // Off by default, and every counting caller leaves it off: a deleted
+      // entry must never reach statistics, the rotation balance or the set of
+      // parts already marked for a prayer. Only a screen offering to undo the
+      // deletion has any business seeing one.
+      query.where((RecitationEvents row) => row.deletedAtUtc.isNull());
+    }
     if (prayerType != null) {
       query.where(
         (RecitationEvents row) => row.prayerType.equals(prayerType.name),
@@ -479,20 +558,25 @@ final class RecitationRepository {
     };
   }
 
-  Stream<List<RecitationHistoryEntry>> watchHistory({int limit = 100}) =>
-      database
-          .customSelect(
-            'SELECT 1 AS recitation_history_watch',
-            readsFrom: <ResultSetImplementation<Table, Object?>>{
-              database.recitationEvents,
-              database.recitationEventParts,
-              database.rotationParts,
-              database.surahMetadata,
-              database.masteredSurahs,
-            },
-          )
-          .watch()
-          .asyncMap((List<QueryRow> _) => getHistory(limit: limit));
+  Stream<List<RecitationHistoryEntry>> watchHistory({
+    int limit = 100,
+    bool includeDeleted = false,
+  }) => database
+      .customSelect(
+        'SELECT 1 AS recitation_history_watch',
+        readsFrom: <ResultSetImplementation<Table, Object?>>{
+          database.recitationEvents,
+          database.recitationEventParts,
+          database.rotationParts,
+          database.surahMetadata,
+          database.masteredSurahs,
+        },
+      )
+      .watch()
+      .asyncMap(
+        (List<QueryRow> _) =>
+            getHistory(limit: limit, includeDeleted: includeDeleted),
+      );
 
   Future<RecitationStats> getStats({
     LocalDate? from,
@@ -782,6 +866,7 @@ final class RecitationRepository {
               partRows
                   .where((part) => part.schemeId == row.rotationSchemeId)
                   .length,
+          deletedAtUtc: row.deletedAtUtc?.toUtc(),
         ),
     ];
   }

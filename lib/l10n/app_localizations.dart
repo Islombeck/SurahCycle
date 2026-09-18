@@ -1480,6 +1480,42 @@ abstract class AppLocalizations {
   /// **'Это только число ракаатов, которые заняло прочтение. Отдельные аяты не привязаны к конкретным ракаатам.'**
   String get historyRakaatSpanExplanation;
 
+  /// No description provided for @historyShowDeleted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать удалённые'**
+  String get historyShowDeleted;
+
+  /// No description provided for @historyHideDeleted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скрыть удалённые'**
+  String get historyHideDeleted;
+
+  /// No description provided for @historyDeletedAt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалено {dateTime}'**
+  String historyDeletedAt(String dateTime);
+
+  /// No description provided for @historyRestore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восстановить'**
+  String get historyRestore;
+
+  /// No description provided for @historyRestored.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запись восстановлена'**
+  String get historyRestored;
+
+  /// No description provided for @historyNoDeleted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалённых прочтений нет.'**
+  String get historyNoDeleted;
+
   /// No description provided for @registrationWhenTitle.
   ///
   /// In ru, this message translates to:

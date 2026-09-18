@@ -808,6 +808,26 @@ class AppLocalizationsEn extends AppLocalizations {
       'This is only the number of rakaats spanned by the recitation. Individual ayahs are not mapped to specific rakaats.';
 
   @override
+  String get historyShowDeleted => 'Show deleted';
+
+  @override
+  String get historyHideDeleted => 'Hide deleted';
+
+  @override
+  String historyDeletedAt(String dateTime) {
+    return 'Deleted $dateTime';
+  }
+
+  @override
+  String get historyRestore => 'Restore';
+
+  @override
+  String get historyRestored => 'Entry restored';
+
+  @override
+  String get historyNoDeleted => 'No deleted recitations.';
+
+  @override
   String get registrationWhenTitle => 'When and during which prayer';
 
   @override

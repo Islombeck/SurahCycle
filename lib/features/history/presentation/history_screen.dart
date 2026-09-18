@@ -15,13 +15,35 @@ final class HistoryScreen extends ConsumerStatefulWidget {
 }
 
 final class _HistoryScreenState extends ConsumerState<HistoryScreen> {
-  final Set<String> _deletingIds = <String>{};
+  final Set<String> _busyIds = <String>{};
+
+  /// Off by default. A deleted entry is not part of the history the user keeps;
+  /// it is only here so a mistaken deletion can be taken back.
+  bool _showDeleted = false;
+
+  ProviderListenable<AsyncValue<List<RecitationHistoryEntry>>> get _source =>
+      _showDeleted
+      ? recitationHistoryWithDeletedProvider
+      : recitationHistoryProvider;
 
   @override
   Widget build(BuildContext context) {
-    final history = ref.watch(recitationHistoryProvider);
+    final history = ref.watch(_source);
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.historyTitle)),
+      appBar: AppBar(
+        title: Text(context.l10n.historyTitle),
+        actions: <Widget>[
+          IconButton(
+            key: const ValueKey<String>('history-toggle-deleted'),
+            tooltip: _showDeleted
+                ? context.l10n.historyHideDeleted
+                : context.l10n.historyShowDeleted,
+            isSelected: _showDeleted,
+            onPressed: () => setState(() => _showDeleted = !_showDeleted),
+            icon: const Icon(Icons.restore_from_trash_outlined),
+          ),
+        ],
+      ),
       body: SafeArea(
         top: false,
         child: history.when(
@@ -38,8 +60,9 @@ final class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       final entry = entries[index];
                       return _HistoryTile(
                         entry: entry,
-                        isDeleting: _deletingIds.contains(entry.event.id),
+                        isBusy: _busyIds.contains(entry.event.id),
                         onDelete: () => _delete(entry),
+                        onRestore: () => _restore(entry),
                       );
                     },
                   ),
@@ -58,8 +81,41 @@ final class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   Future<void> _refresh() async {
+    // Both, not just the one on screen: the other is what the rest of the app
+    // reads, and leaving it stale after a restore would show the entry back in
+    // History while the prayer screen still believed it gone.
     ref.invalidate(recitationHistoryProvider);
-    await ref.read(recitationHistoryProvider.future);
+    ref.invalidate(recitationHistoryWithDeletedProvider);
+    await ref.read(
+      (_showDeleted
+              ? recitationHistoryWithDeletedProvider
+              : recitationHistoryProvider)
+          .future,
+    );
+  }
+
+  Future<void> _restore(RecitationHistoryEntry entry) async {
+    // No confirmation. Restoring destroys nothing, and a dialog in front of an
+    // undo would be one more thing between a mistake and its correction.
+    setState(() => _busyIds.add(entry.event.id));
+    try {
+      final result = await ref
+          .read(recitationRepositoryProvider)
+          .restoreRecitation(entry.event.id);
+      if (mounted && result.didRestore) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.historyRestored)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.errorGeneric)));
+      }
+    } finally {
+      if (mounted) setState(() => _busyIds.remove(entry.event.id));
+    }
   }
 
   Future<void> _delete(RecitationHistoryEntry entry) async {
@@ -81,7 +137,7 @@ final class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    setState(() => _deletingIds.add(entry.event.id));
+    setState(() => _busyIds.add(entry.event.id));
     try {
       await ref
           .read(recitationRepositoryProvider)
@@ -96,7 +152,7 @@ final class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         ).showSnackBar(SnackBar(content: Text(context.l10n.errorGeneric)));
       }
     } finally {
-      if (mounted) setState(() => _deletingIds.remove(entry.event.id));
+      if (mounted) setState(() => _busyIds.remove(entry.event.id));
     }
   }
 }
@@ -104,13 +160,15 @@ final class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 final class _HistoryTile extends StatelessWidget {
   const _HistoryTile({
     required this.entry,
-    required this.isDeleting,
+    required this.isBusy,
     required this.onDelete,
+    required this.onRestore,
   });
 
   final RecitationHistoryEntry entry;
-  final bool isDeleting;
+  final bool isBusy;
   final VoidCallback onDelete;
+  final VoidCallback onRestore;
 
   @override
   Widget build(BuildContext context) {
@@ -121,63 +179,104 @@ final class _HistoryTile extends StatelessWidget {
       entry: entry,
       sortedParts: parts,
     );
+    final theme = Theme.of(context);
     return Card(
-      child: ListTile(
-        key: ValueKey<String>('history-entry-${entry.event.id}'),
-        leading: CircleAvatar(child: Text('${entry.surah.surahNumber}')),
-        title: Text(entry.surah.displayName),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                presentation.occurrence,
-                key: ValueKey<String>('history-occurrence-${entry.event.id}'),
-              ),
-              Text(
-                presentation.compactCoverage,
-                key: ValueKey<String>('history-coverage-${entry.event.id}'),
-              ),
-              Text(
-                presentation.added,
-                key: ValueKey<String>('history-added-${entry.event.id}'),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+      // A withdrawn entry has to read as withdrawn at a glance, or the list
+      // becomes a mix of what counts and what does not with nothing to tell
+      // them apart.
+      color: entry.isDeleted ? theme.colorScheme.surfaceContainerHighest : null,
+      child: Opacity(
+        opacity: entry.isDeleted ? 0.72 : 1,
+        child: ListTile(
+          key: ValueKey<String>('history-entry-${entry.event.id}'),
+          leading: CircleAvatar(child: Text('${entry.surah.surahNumber}')),
+          title: Text(entry.surah.displayName),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  presentation.occurrence,
+                  key: ValueKey<String>('history-occurrence-${entry.event.id}'),
                 ),
-              ),
-            ],
-          ),
-        ),
-        isThreeLine: true,
-        onTap: () => _showDetails(context, presentation),
-        trailing: isDeleting
-            ? const SizedBox.square(
-                dimension: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  IconButton(
-                    key: ValueKey<String>(
-                      'history-open-details-${entry.event.id}',
+                Text(
+                  presentation.compactCoverage,
+                  key: ValueKey<String>('history-coverage-${entry.event.id}'),
+                ),
+                Text(
+                  presentation.added,
+                  key: ValueKey<String>('history-added-${entry.event.id}'),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                if (entry.deletedAtUtc case final deletedAtUtc?)
+                  Text(
+                    context.l10n.historyDeletedAt(
+                      _formatDateTime(context, deletedAtUtc),
                     ),
-                    tooltip: context.l10n.historyOpenDetails,
-                    onPressed: () => _showDetails(context, presentation),
-                    icon: const Icon(Icons.info_outline),
+                    key: ValueKey<String>('history-deleted-${entry.event.id}'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
                   ),
-                  IconButton(
-                    tooltip: context.l10n.delete,
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline),
-                  ),
-                ],
-              ),
+              ],
+            ),
+          ),
+          isThreeLine: true,
+          onTap: () => _showDetails(context, presentation),
+          trailing: isBusy
+              ? const SizedBox.square(
+                  dimension: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    IconButton(
+                      key: ValueKey<String>(
+                        'history-open-details-${entry.event.id}',
+                      ),
+                      tooltip: context.l10n.historyOpenDetails,
+                      onPressed: () => _showDetails(context, presentation),
+                      icon: const Icon(Icons.info_outline),
+                    ),
+                    // Never both: deleting something already deleted has no
+                    // meaning, and offering it would invite a second tombstone
+                    // over the first.
+                    if (entry.isDeleted)
+                      IconButton(
+                        key: ValueKey<String>(
+                          'history-restore-${entry.event.id}',
+                        ),
+                        tooltip: context.l10n.historyRestore,
+                        onPressed: onRestore,
+                        icon: const Icon(Icons.restore),
+                      )
+                    else
+                      IconButton(
+                        key: ValueKey<String>(
+                          'history-delete-${entry.event.id}',
+                        ),
+                        tooltip: context.l10n.delete,
+                        onPressed: onDelete,
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                  ],
+                ),
+        ),
       ),
     );
   }
+
+  /// The same shape the "added" line already uses, so the two dates on a
+  /// withdrawn entry can be compared at a glance.
+  static String _formatDateTime(BuildContext context, DateTime utc) =>
+      DateFormat.yMMMd(
+        Localizations.localeOf(context).toLanguageTag(),
+      ).add_Hm().format(utc.toLocal());
 
   Future<void> _showDetails(
     BuildContext context,

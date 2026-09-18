@@ -248,6 +248,13 @@
   ,"historyOccurrenceLabel": "Qachon va qaysi namozda o‘qilgan"
   ,"historyCoverageLabel": "O‘qilgan qism"
   ,"historyRakaatSpanExplanation": "Bu faqat qiroat qamrab olgan rakaatlar soni. Oyatlar alohida rakaatlarga bog‘lanmagan."
+  ,"historyShowDeleted": "O‘chirilganlarni ko‘rsatish"
+  ,"historyHideDeleted": "O‘chirilganlarni yashirish"
+  ,"historyDeletedAt": "O‘chirilgan {dateTime}"
+  ,"@historyDeletedAt": {"placeholders": {"dateTime": {"type": "String"}}}
+  ,"historyRestore": "Tiklash"
+  ,"historyRestored": "Yozuv tiklandi"
+  ,"historyNoDeleted": "O‘chirilgan qiroatlar yo‘q."
   ,"registrationWhenTitle": "Qachon va qaysi namozda o‘qilgan"
   ,"registrationNow": "Hozir"
   ,"registrationPreviousPrayer": "Oldingi namoz"

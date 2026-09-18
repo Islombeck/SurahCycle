@@ -254,6 +254,13 @@
   ,"historyOccurrenceLabel": "Когда и в каком намазе прочитано"
   ,"historyCoverageLabel": "Прочитанный отрывок"
   ,"historyRakaatSpanExplanation": "Это только число ракаатов, которые заняло прочтение. Отдельные аяты не привязаны к конкретным ракаатам."
+  ,"historyShowDeleted": "Показать удалённые"
+  ,"historyHideDeleted": "Скрыть удалённые"
+  ,"historyDeletedAt": "Удалено {dateTime}"
+  ,"@historyDeletedAt": {"placeholders": {"dateTime": {"type": "String"}}}
+  ,"historyRestore": "Восстановить"
+  ,"historyRestored": "Запись восстановлена"
+  ,"historyNoDeleted": "Удалённых прочтений нет."
   ,"registrationWhenTitle": "Когда и в каком намазе прочитано"
   ,"registrationNow": "Сейчас"
   ,"registrationPreviousPrayer": "Предыдущий намаз"

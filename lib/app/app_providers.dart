@@ -645,6 +645,21 @@ final recitationHistoryProvider = StreamProvider<List<RecitationHistoryEntry>>(
   (ref) => ref.watch(recitationRepositoryProvider).watchHistory(),
 );
 
+/// History including withdrawn entries, for the one screen that can put them
+/// back.
+///
+/// Deliberately separate from [recitationHistoryProvider] rather than a flag on
+/// it. That one feeds counting — what has already been recited in this prayer,
+/// what the rotation owes, what the recommendation may offer — and a tombstone
+/// reaching any of those would resurrect a deleted recitation in every answer
+/// at once.
+final recitationHistoryWithDeletedProvider =
+    StreamProvider<List<RecitationHistoryEntry>>(
+      (ref) => ref
+          .watch(recitationRepositoryProvider)
+          .watchHistory(includeDeleted: true),
+    );
+
 final recitationStatsProvider = StreamProvider<RecitationStats>(
   (ref) => ref.watch(recitationRepositoryProvider).watchStats(),
 );
@@ -856,6 +871,7 @@ final widgetResumeReconcilerProvider = Provider<WidgetResumeReconciler>((ref) {
     invalidateProviders: () {
       ref.invalidate(rotationSnapshotProvider);
       ref.invalidate(recitationHistoryProvider);
+      ref.invalidate(recitationHistoryWithDeletedProvider);
       ref.invalidate(recitationStatsProvider);
     },
   );

@@ -810,6 +810,26 @@ class AppLocalizationsUz extends AppLocalizations {
       'Bu faqat qiroat qamrab olgan rakaatlar soni. Oyatlar alohida rakaatlarga bog‘lanmagan.';
 
   @override
+  String get historyShowDeleted => 'O‘chirilganlarni ko‘rsatish';
+
+  @override
+  String get historyHideDeleted => 'O‘chirilganlarni yashirish';
+
+  @override
+  String historyDeletedAt(String dateTime) {
+    return 'O‘chirilgan $dateTime';
+  }
+
+  @override
+  String get historyRestore => 'Tiklash';
+
+  @override
+  String get historyRestored => 'Yozuv tiklandi';
+
+  @override
+  String get historyNoDeleted => 'O‘chirilgan qiroatlar yo‘q.';
+
+  @override
   String get registrationWhenTitle => 'Qachon va qaysi namozda o‘qilgan';
 
   @override
