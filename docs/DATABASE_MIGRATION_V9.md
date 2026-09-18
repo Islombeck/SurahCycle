@@ -101,6 +101,36 @@ impossible pair.
 Default is today, which is right for the ordinary case — praying a debt and
 recording it immediately — and one tap away from correct for a late entry.
 
-**Not yet verified on a real device.** Do not report v9 as device-verified
-until a build carrying it has been installed and the owner's row counts checked
-before and after.
+## Verified on the owner's device, 2026-09-17
+
+Build `bfd982bc…` was installed over the existing app after a copy of the
+database was pulled as a backup. `user_version` became **9** and every
+pre-existing count was unchanged — 673 recitation events, 675 event parts, 37
+prayer sessions, 57 session parts, 14 part templates, 27 mastered surahs, 4
+recall attempts, 32 learning events, 10 settings, 114 metadata rows.
+`PRAGMA foreign_key_check` returns nothing, and `qada_fulfilled_local_date`
+is `NULL` on every row: **zero** values invented from `created_at_utc`.
+
+**An incident during that session, recorded because it is the kind that repeats
+silently.** While navigating to photograph the new field, a tap aimed at a
+surah's tune icon landed on its mark control instead, and two recitations —
+Al-Kawthar and Al-Asr, both Asr, 2026-09-17 — were written into the owner's real
+history. The taps were issued against coordinates read off a screenshot taken
+before the list had settled, so the row under the finger was no longer the row
+in the picture.
+
+Both were removed through the app's own History delete, which rebuilds the
+balance from the remaining events, rather than by editing the database:
+active recitation events were 571 before and 571 after, and the two rows carry
+`deleted_at_utc` exactly as any user deletion would.
+
+Two rules follow, and the second is the one that matters:
+
+1. Take a fresh screenshot immediately before every tap on a scrolling list;
+   coordinates from an earlier frame address a list that has moved.
+2. **Prefer a widget test to a tap-through whenever the screen can write.** The
+   field this session set out to photograph is now covered by
+   `test/widget/qada_fulfilled_date_test.dart`, which proves more than a
+   screenshot would, keeps proving it, and cannot write to anyone's history.
+   Those tests were checked against a deliberately broken guard first: three of
+   the four fail without it.
