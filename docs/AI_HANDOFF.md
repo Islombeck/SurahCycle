@@ -528,18 +528,70 @@ Other rules, each pinned by a test (15 new):
 ### Verified
 
 `flutter analyze` → `No issues found!`; full `flutter test --timeout 90s` →
-**961/961** (was 931; +30 across the two commits). `dart format` touched the
-five files, then both were re-run green. Tracked tree clean apart from these
-files; the owner's photo, `Скринсейверы до v6/` and `.codex/` untouched.
+**973/973** (was 931; +42 across the three commits). `dart format` run on every
+touched file, then both re-run green. Tracked tree clean apart from these files;
+the owner's photo, `Скринсейверы до v6/` and `.codex/` untouched.
+
+### The survey, and a schema gap it exposed — `DriftSyncInventory`
+
+`lib/core/data/sync/drift_sync_inventory.dart` fills in the last missing piece
+of the preview: what this device holds and what the account holds, keyed by
+`SyncEnvelope.entityKey` so the two are comparable. It is a survey, not a sync —
+it writes nothing, and it walks the remote from `SyncCursor.beginning` and then
+**discards** that cursor, because advancing the durable one would make the first
+real pull start after everything the survey had just read.
+
+**Writing it exposed a real schema gap, and it is the most important thing in
+this section.** Six of the eleven `SyncEntityType`s have no last-changed column
+at all:
+
+| entity type | table | what dates it |
+|---|---|---|
+| `recitationEvent` | `recitation_events` | `COALESCE(deleted_at_utc, created_at_utc)` |
+| `rotationAdjustment` | `rotation_adjustments` | `COALESCE(deleted_at_utc, created_at_utc)` |
+| `learningEvent` | `learning_events` | `created_at_utc` |
+| `recallAttempt` | `recall_attempts` | `created_at_utc` |
+| `appSetting` | `app_settings` | `updated_at_utc` |
+| `masteredSurah` | `mastered_surahs` | **nothing** |
+| `rotationState` | `rotation_states` | **nothing** |
+| `rotationScheme` | `rotation_schemes` | **nothing** |
+| `prayerRoutineTemplate` | `prayer_routine_templates` | **nothing** |
+| `prayerSession` | `prayer_sessions` | **nothing** |
+| `learningState` | `learning_surahs` | **nothing** |
+
+The near-misses are all the wrong quantity and were deliberately **not** used:
+`prayer_sessions.started_at_utc` is when a prayer began, not when its parts were
+last edited; `mastered_surahs.cached_last_used_at_utc` is when a surah was last
+recited, not when the roster entry changed; `learning_surahs.
+last_learning_activity_at_utc` is activity, not edit, and is nullable.
+Substituting any of them would state agreement or disagreement the schema cannot
+support.
+
+**Two consequences, and the second is the one for a future session.**
+
+1. The preview needed a third answer. `SyncMergePreview` gained
+   `undeterminedCount` — entities both sides hold whose agreement cannot be
+   established — kept separate from `conflictCount` because a conflict is a
+   finding and this is an honest "unknown". `needsReview` covers both. The
+   factory now also refuses `conflict + undetermined > shared`, arithmetic that
+   cannot be true.
+2. **Last-writer-wins is not available for those six entity types**, so the
+   merge strategy cannot simply be "newest timestamp wins" — it would silently
+   pick one side at random for the roster, the routine and the prayer sessions.
+   Closing this needs a migration adding a real `updated_at_utc` to those six
+   tables, and that is the next schema change to plan.
+
+`DriftSyncInventory.coveredTypes` is exposed purely so that adding a
+`SyncEntityType` without adding a source fails a test rather than quietly
+dropping a whole category out of the preview.
 
 ### Not done
 
-`SyncInventory` has **no production implementation**, and nothing in `lib/app/`
-or `lib/features/` constructs the coordinator or the backup gateway — in
-particular no `path_provider` directory is wired up for backups yet. So the gate
-exists and is tested, and there is still no path by which a sign-in moves a
-recitation, which is the intended state rather than a gap. Provisioning stays
-parked until there is something to transport.
+Nothing in `lib/app/` or `lib/features/` constructs the coordinator, the backup
+gateway or the inventory — in particular no `path_provider` directory is wired
+up for backups yet. So the gate exists and is tested, and there is still no path
+by which a sign-in moves a recitation, which is the intended state rather than a
+gap. Provisioning stays parked until there is something to transport.
 
 **No APK is owed right now.** The device is at schema **v9** from the 2026-09-17
 install, and every commit since (`82f6ba3`, `ae720e9`, `3f2e2cc` and this one)

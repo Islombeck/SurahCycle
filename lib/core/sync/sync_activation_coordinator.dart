@@ -25,10 +25,15 @@ import 'sync_ports.dart';
 /// row id, or every entity would look local-only and the preview would offer to
 /// merge a user's history with itself. The timestamps are what separate "both
 /// sides have this" from "both sides have this and they disagree".
+///
+/// A **null** timestamp means the entity is present and its last change cannot
+/// be dated. Several local tables carry no such column, and inventing one — the
+/// creation time, the epoch, now — would turn "we do not know" into a claim
+/// that two sides agree or disagree. The preview reports these separately.
 abstract interface class SyncInventory {
-  Future<Map<String, DateTime>> localEntities();
+  Future<Map<String, DateTime?>> localEntities();
 
-  Future<Map<String, DateTime>> remoteEntities(String userId);
+  Future<Map<String, DateTime?>> remoteEntities(String userId);
 }
 
 /// The durable half of activation, narrowed to what this coordinator needs.
@@ -126,18 +131,30 @@ final class SyncActivationCoordinator implements SyncActivationGateway {
     var localOnly = 0;
     var shared = 0;
     var conflicts = 0;
+    var undetermined = 0;
     for (final entry in local.entries) {
-      final theirs = remote[entry.key];
-      if (theirs == null) {
+      // `containsKey`, not a null check on the value: a null timestamp means
+      // "present, undatable", and treating it as absent would report an entity
+      // the account already holds as local-only.
+      if (!remote.containsKey(entry.key)) {
         localOnly++;
         continue;
       }
       shared++;
-      // Present on both sides **and** disagreeing. Counting every shared
-      // entity as a conflict would frighten a user away from a merge that has
-      // none. Compared as instants, so the same moment stored in different
-      // zones is not reported as a disagreement.
-      if (!theirs.isAtSameMomentAs(entry.value)) conflicts++;
+      final theirs = remote[entry.key];
+      final ours = entry.value;
+      if (theirs == null || ours == null) {
+        // Neither agreement nor disagreement can be established. Recorded as
+        // its own answer rather than folded into either, because both of the
+        // alternatives would present a guess as a finding.
+        undetermined++;
+      } else if (!theirs.isAtSameMomentAs(ours)) {
+        // Present on both sides **and** disagreeing. Counting every shared
+        // entity as a conflict would frighten a user away from a merge that
+        // has none. Compared as instants, so the same moment stored in
+        // different zones is not reported as a disagreement.
+        conflicts++;
+      }
     }
 
     final preview = SyncMergePreview(
@@ -147,6 +164,7 @@ final class SyncActivationCoordinator implements SyncActivationGateway {
       remoteOnlyCount: remote.length - shared,
       sharedCount: shared,
       conflictCount: conflicts,
+      undeterminedCount: undetermined,
     );
     _pending = _PendingActivation(token: preview.token, backupId: backup.id);
     return preview;

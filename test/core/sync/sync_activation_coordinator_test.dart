@@ -121,6 +121,43 @@ void main() {
       expect(preview.hasConflicts, isFalse);
     });
 
+    test('an undatable entity is neither a match nor a conflict', () async {
+      final coordinator = _coordinatorFor(
+        _FakeActivationStore(_ownerA),
+        _FakeBackups(),
+        _FakeInventory(
+          local: <String, DateTime?>{
+            // Six local tables carry no last-changed column, so this is the
+            // ordinary case for a roster entry, not an edge case.
+            'masteredSurah:surah-a': null,
+            'recitationEvent:1': _at(1),
+          },
+          remote: <String, DateTime?>{
+            'masteredSurah:surah-a': _at(5),
+            'recitationEvent:1': _at(1),
+          },
+        ),
+      );
+
+      final preview = await coordinator.prepareFirstSync(_accountA);
+
+      expect(preview.sharedCount, 2);
+      expect(
+        preview.conflictCount,
+        0,
+        reason:
+            'the timestamps differ, but one of them is absent — calling that '
+            'a disagreement presents a guess as a finding',
+      );
+      expect(preview.undeterminedCount, 1);
+      expect(preview.hasConflicts, isFalse);
+      expect(
+        preview.needsReview,
+        isTrue,
+        reason: 'a merge that might overwrite something still wants a look',
+      );
+    });
+
     test('a first sync on an empty account is all local-only', () async {
       final coordinator = _coordinatorFor(
         _FakeActivationStore(_ownerA),
@@ -428,15 +465,15 @@ final class _FakeBackups implements LocalBackupGateway {
 
 final class _FakeInventory implements SyncInventory {
   _FakeInventory({
-    this.local = const <String, DateTime>{},
-    this.remote = const <String, DateTime>{},
+    this.local = const <String, DateTime?>{},
+    this.remote = const <String, DateTime?>{},
     int Function()? backupsSoFar,
   }) : _backupsSoFar = backupsSoFar ?? _none;
 
   static int _none() => 0;
 
-  final Map<String, DateTime> local;
-  final Map<String, DateTime> remote;
+  final Map<String, DateTime?> local;
+  final Map<String, DateTime?> remote;
   final int Function() _backupsSoFar;
 
   /// How many backups existed when counting began. Observed, not asserted by
@@ -444,11 +481,11 @@ final class _FakeInventory implements SyncInventory {
   int? backupsAtCountTime;
 
   @override
-  Future<Map<String, DateTime>> localEntities() async {
+  Future<Map<String, DateTime?>> localEntities() async {
     backupsAtCountTime = _backupsSoFar();
     return local;
   }
 
   @override
-  Future<Map<String, DateTime>> remoteEntities(String userId) async => remote;
+  Future<Map<String, DateTime?>> remoteEntities(String userId) async => remote;
 }

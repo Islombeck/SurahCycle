@@ -10,5 +10,7 @@ export 'repositories/recitation_repository.dart';
 export 'repositories/recommendation_batch_repository.dart';
 export 'repositories/settings_repository.dart';
 export 'repositories/surah_repository.dart';
+export 'backup/drift_local_backup_gateway.dart';
+export 'sync/drift_sync_inventory.dart';
 export 'sync/drift_sync_outbox.dart';
 export 'sync/drift_sync_store.dart';

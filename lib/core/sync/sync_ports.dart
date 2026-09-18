@@ -269,6 +269,13 @@ enum SyncActivationChoice { merge, keepDeviceLocalOnly }
 /// [backupId] proves the recovery copy was created before the preview. The
 /// opaque [token] binds confirmation to this exact snapshot so a stale dialog
 /// cannot authorize a different merge later.
+///
+/// [conflictCount] and [undeterminedCount] are both subsets of [sharedCount],
+/// and they are separate because they are different statements. A conflict is
+/// known disagreement. An undetermined entity is one where this build cannot
+/// tell agreement from disagreement at all — several tables carry no
+/// last-changed timestamp — and folding those into the conflict count would
+/// present a guess as a finding.
 final class SyncMergePreview {
   factory SyncMergePreview({
     required String token,
@@ -277,6 +284,7 @@ final class SyncMergePreview {
     required int remoteOnlyCount,
     required int sharedCount,
     required int conflictCount,
+    int undeterminedCount = 0,
   }) {
     if (token.isEmpty) {
       throw ArgumentError.value(token, 'token', 'Must not be empty.');
@@ -289,6 +297,7 @@ final class SyncMergePreview {
       'remoteOnlyCount': remoteOnlyCount,
       'sharedCount': sharedCount,
       'conflictCount': conflictCount,
+      'undeterminedCount': undeterminedCount,
     }.entries) {
       if (entry.value < 0) {
         throw ArgumentError.value(
@@ -298,6 +307,16 @@ final class SyncMergePreview {
         );
       }
     }
+    if (conflictCount + undeterminedCount > sharedCount) {
+      // Both describe entities the two sides have in common, so neither can
+      // exceed that total. A preview that failed this would be showing the
+      // user arithmetic that cannot be true.
+      throw ArgumentError.value(
+        sharedCount,
+        'sharedCount',
+        'Must cover both conflicting and undetermined entities.',
+      );
+    }
     return SyncMergePreview._(
       token: token,
       backupId: backupId,
@@ -305,6 +324,7 @@ final class SyncMergePreview {
       remoteOnlyCount: remoteOnlyCount,
       sharedCount: sharedCount,
       conflictCount: conflictCount,
+      undeterminedCount: undeterminedCount,
     );
   }
 
@@ -315,6 +335,7 @@ final class SyncMergePreview {
     required this.remoteOnlyCount,
     required this.sharedCount,
     required this.conflictCount,
+    required this.undeterminedCount,
   });
 
   final String token;
@@ -324,7 +345,15 @@ final class SyncMergePreview {
   final int sharedCount;
   final int conflictCount;
 
+  /// Entities both sides hold whose agreement cannot be established, because
+  /// the local table records no last-changed time. Not a conflict, and not a
+  /// clean match: an honest "unknown".
+  final int undeterminedCount;
+
   bool get hasConflicts => conflictCount > 0;
+
+  /// Whether a merge carries anything the user should look at before agreeing.
+  bool get needsReview => hasConflicts || undeterminedCount > 0;
 }
 
 /// Gate between authentication and the first data synchronization.
