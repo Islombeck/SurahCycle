@@ -568,6 +568,17 @@ class $MasteredSurahsTable extends MasteredSurahs
     requiredDuringInsert: false,
     defaultValue: const Constant<int>(0),
   );
+  static const VerificationMeta _updatedAtUtcMeta = const VerificationMeta(
+    'updatedAtUtc',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAtUtc = GeneratedColumn<DateTime>(
+    'updated_at_utc',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     surahId,
@@ -580,6 +591,7 @@ class $MasteredSurahsTable extends MasteredSurahs
     cachedLastUsedAtUtc,
     alias,
     displayOrder,
+    updatedAtUtc,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -676,6 +688,15 @@ class $MasteredSurahsTable extends MasteredSurahs
         ),
       );
     }
+    if (data.containsKey('updated_at_utc')) {
+      context.handle(
+        _updatedAtUtcMeta,
+        updatedAtUtc.isAcceptableOrUnknown(
+          data['updated_at_utc']!,
+          _updatedAtUtcMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -725,6 +746,10 @@ class $MasteredSurahsTable extends MasteredSurahs
         DriftSqlType.int,
         data['${effectivePrefix}display_order'],
       )!,
+      updatedAtUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at_utc'],
+      ),
     );
   }
 
@@ -746,6 +771,12 @@ class MasteredSurahRow extends DataClass
   final DateTime? cachedLastUsedAtUtc;
   final String? alias;
   final int displayOrder;
+
+  /// When this row last changed. See [kUpdatedAtUtcDoc].
+  ///
+  /// `cached_last_used_at_utc` above is *not* this: it says when the surah was
+  /// last recited, which moves without the roster entry changing at all.
+  final DateTime? updatedAtUtc;
   const MasteredSurahRow({
     required this.surahId,
     required this.isCurrentlyMastered,
@@ -757,6 +788,7 @@ class MasteredSurahRow extends DataClass
     this.cachedLastUsedAtUtc,
     this.alias,
     required this.displayOrder,
+    this.updatedAtUtc,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -777,6 +809,9 @@ class MasteredSurahRow extends DataClass
       map['alias'] = Variable<String>(alias);
     }
     map['display_order'] = Variable<int>(displayOrder);
+    if (!nullToAbsent || updatedAtUtc != null) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc);
+    }
     return map;
   }
 
@@ -798,6 +833,9 @@ class MasteredSurahRow extends DataClass
           ? const Value.absent()
           : Value(alias),
       displayOrder: Value(displayOrder),
+      updatedAtUtc: updatedAtUtc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAtUtc),
     );
   }
 
@@ -827,6 +865,7 @@ class MasteredSurahRow extends DataClass
       ),
       alias: serializer.fromJson<String?>(json['alias']),
       displayOrder: serializer.fromJson<int>(json['displayOrder']),
+      updatedAtUtc: serializer.fromJson<DateTime?>(json['updatedAtUtc']),
     );
   }
   @override
@@ -845,6 +884,7 @@ class MasteredSurahRow extends DataClass
       'cachedLastUsedAtUtc': serializer.toJson<DateTime?>(cachedLastUsedAtUtc),
       'alias': serializer.toJson<String?>(alias),
       'displayOrder': serializer.toJson<int>(displayOrder),
+      'updatedAtUtc': serializer.toJson<DateTime?>(updatedAtUtc),
     };
   }
 
@@ -859,6 +899,7 @@ class MasteredSurahRow extends DataClass
     Value<DateTime?> cachedLastUsedAtUtc = const Value.absent(),
     Value<String?> alias = const Value.absent(),
     int? displayOrder,
+    Value<DateTime?> updatedAtUtc = const Value.absent(),
   }) => MasteredSurahRow(
     surahId: surahId ?? this.surahId,
     isCurrentlyMastered: isCurrentlyMastered ?? this.isCurrentlyMastered,
@@ -875,6 +916,7 @@ class MasteredSurahRow extends DataClass
         : this.cachedLastUsedAtUtc,
     alias: alias.present ? alias.value : this.alias,
     displayOrder: displayOrder ?? this.displayOrder,
+    updatedAtUtc: updatedAtUtc.present ? updatedAtUtc.value : this.updatedAtUtc,
   );
   MasteredSurahRow copyWithCompanion(MasteredSurahsCompanion data) {
     return MasteredSurahRow(
@@ -902,6 +944,9 @@ class MasteredSurahRow extends DataClass
       displayOrder: data.displayOrder.present
           ? data.displayOrder.value
           : this.displayOrder,
+      updatedAtUtc: data.updatedAtUtc.present
+          ? data.updatedAtUtc.value
+          : this.updatedAtUtc,
     );
   }
 
@@ -917,7 +962,8 @@ class MasteredSurahRow extends DataClass
           ..write('cachedTotalRecitations: $cachedTotalRecitations, ')
           ..write('cachedLastUsedAtUtc: $cachedLastUsedAtUtc, ')
           ..write('alias: $alias, ')
-          ..write('displayOrder: $displayOrder')
+          ..write('displayOrder: $displayOrder, ')
+          ..write('updatedAtUtc: $updatedAtUtc')
           ..write(')'))
         .toString();
   }
@@ -934,6 +980,7 @@ class MasteredSurahRow extends DataClass
     cachedLastUsedAtUtc,
     alias,
     displayOrder,
+    updatedAtUtc,
   );
   @override
   bool operator ==(Object other) =>
@@ -948,7 +995,8 @@ class MasteredSurahRow extends DataClass
           other.cachedTotalRecitations == this.cachedTotalRecitations &&
           other.cachedLastUsedAtUtc == this.cachedLastUsedAtUtc &&
           other.alias == this.alias &&
-          other.displayOrder == this.displayOrder);
+          other.displayOrder == this.displayOrder &&
+          other.updatedAtUtc == this.updatedAtUtc);
 }
 
 class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
@@ -962,6 +1010,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
   final Value<DateTime?> cachedLastUsedAtUtc;
   final Value<String?> alias;
   final Value<int> displayOrder;
+  final Value<DateTime?> updatedAtUtc;
   final Value<int> rowid;
   const MasteredSurahsCompanion({
     this.surahId = const Value.absent(),
@@ -974,6 +1023,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
     this.cachedLastUsedAtUtc = const Value.absent(),
     this.alias = const Value.absent(),
     this.displayOrder = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   MasteredSurahsCompanion.insert({
@@ -987,6 +1037,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
     this.cachedLastUsedAtUtc = const Value.absent(),
     this.alias = const Value.absent(),
     this.displayOrder = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : surahId = Value(surahId);
   static Insertable<MasteredSurahRow> custom({
@@ -1000,6 +1051,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
     Expression<DateTime>? cachedLastUsedAtUtc,
     Expression<String>? alias,
     Expression<int>? displayOrder,
+    Expression<DateTime>? updatedAtUtc,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1019,6 +1071,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
         'cached_last_used_at_utc': cachedLastUsedAtUtc,
       if (alias != null) 'alias': alias,
       if (displayOrder != null) 'display_order': displayOrder,
+      if (updatedAtUtc != null) 'updated_at_utc': updatedAtUtc,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1034,6 +1087,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
     Value<DateTime?>? cachedLastUsedAtUtc,
     Value<String?>? alias,
     Value<int>? displayOrder,
+    Value<DateTime?>? updatedAtUtc,
     Value<int>? rowid,
   }) {
     return MasteredSurahsCompanion(
@@ -1049,6 +1103,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
       cachedLastUsedAtUtc: cachedLastUsedAtUtc ?? this.cachedLastUsedAtUtc,
       alias: alias ?? this.alias,
       displayOrder: displayOrder ?? this.displayOrder,
+      updatedAtUtc: updatedAtUtc ?? this.updatedAtUtc,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1092,6 +1147,9 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
     if (displayOrder.present) {
       map['display_order'] = Variable<int>(displayOrder.value);
     }
+    if (updatedAtUtc.present) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1111,6 +1169,7 @@ class MasteredSurahsCompanion extends UpdateCompanion<MasteredSurahRow> {
           ..write('cachedLastUsedAtUtc: $cachedLastUsedAtUtc, ')
           ..write('alias: $alias, ')
           ..write('displayOrder: $displayOrder, ')
+          ..write('updatedAtUtc: $updatedAtUtc, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1170,12 +1229,24 @@ class $RotationStatesTable extends RotationStates
     requiredDuringInsert: false,
     defaultValue: const Constant<int>(1),
   );
+  static const VerificationMeta _updatedAtUtcMeta = const VerificationMeta(
+    'updatedAtUtc',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAtUtc = GeneratedColumn<DateTime>(
+    'updated_at_utc',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     singletonId,
     rotationTarget,
     lastJournalSequence,
     projectionVersion,
+    updatedAtUtc,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1225,6 +1296,15 @@ class $RotationStatesTable extends RotationStates
         ),
       );
     }
+    if (data.containsKey('updated_at_utc')) {
+      context.handle(
+        _updatedAtUtcMeta,
+        updatedAtUtc.isAcceptableOrUnknown(
+          data['updated_at_utc']!,
+          _updatedAtUtcMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1250,6 +1330,10 @@ class $RotationStatesTable extends RotationStates
         DriftSqlType.int,
         data['${effectivePrefix}projection_version'],
       )!,
+      updatedAtUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at_utc'],
+      ),
     );
   }
 
@@ -1265,11 +1349,15 @@ class RotationStateRow extends DataClass
   final int rotationTarget;
   final int lastJournalSequence;
   final int projectionVersion;
+
+  /// When this row last changed. See [kUpdatedAtUtcDoc].
+  final DateTime? updatedAtUtc;
   const RotationStateRow({
     required this.singletonId,
     required this.rotationTarget,
     required this.lastJournalSequence,
     required this.projectionVersion,
+    this.updatedAtUtc,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1278,6 +1366,9 @@ class RotationStateRow extends DataClass
     map['rotation_target'] = Variable<int>(rotationTarget);
     map['last_journal_sequence'] = Variable<int>(lastJournalSequence);
     map['projection_version'] = Variable<int>(projectionVersion);
+    if (!nullToAbsent || updatedAtUtc != null) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc);
+    }
     return map;
   }
 
@@ -1287,6 +1378,9 @@ class RotationStateRow extends DataClass
       rotationTarget: Value(rotationTarget),
       lastJournalSequence: Value(lastJournalSequence),
       projectionVersion: Value(projectionVersion),
+      updatedAtUtc: updatedAtUtc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAtUtc),
     );
   }
 
@@ -1302,6 +1396,7 @@ class RotationStateRow extends DataClass
         json['lastJournalSequence'],
       ),
       projectionVersion: serializer.fromJson<int>(json['projectionVersion']),
+      updatedAtUtc: serializer.fromJson<DateTime?>(json['updatedAtUtc']),
     );
   }
   @override
@@ -1312,6 +1407,7 @@ class RotationStateRow extends DataClass
       'rotationTarget': serializer.toJson<int>(rotationTarget),
       'lastJournalSequence': serializer.toJson<int>(lastJournalSequence),
       'projectionVersion': serializer.toJson<int>(projectionVersion),
+      'updatedAtUtc': serializer.toJson<DateTime?>(updatedAtUtc),
     };
   }
 
@@ -1320,11 +1416,13 @@ class RotationStateRow extends DataClass
     int? rotationTarget,
     int? lastJournalSequence,
     int? projectionVersion,
+    Value<DateTime?> updatedAtUtc = const Value.absent(),
   }) => RotationStateRow(
     singletonId: singletonId ?? this.singletonId,
     rotationTarget: rotationTarget ?? this.rotationTarget,
     lastJournalSequence: lastJournalSequence ?? this.lastJournalSequence,
     projectionVersion: projectionVersion ?? this.projectionVersion,
+    updatedAtUtc: updatedAtUtc.present ? updatedAtUtc.value : this.updatedAtUtc,
   );
   RotationStateRow copyWithCompanion(RotationStatesCompanion data) {
     return RotationStateRow(
@@ -1340,6 +1438,9 @@ class RotationStateRow extends DataClass
       projectionVersion: data.projectionVersion.present
           ? data.projectionVersion.value
           : this.projectionVersion,
+      updatedAtUtc: data.updatedAtUtc.present
+          ? data.updatedAtUtc.value
+          : this.updatedAtUtc,
     );
   }
 
@@ -1349,7 +1450,8 @@ class RotationStateRow extends DataClass
           ..write('singletonId: $singletonId, ')
           ..write('rotationTarget: $rotationTarget, ')
           ..write('lastJournalSequence: $lastJournalSequence, ')
-          ..write('projectionVersion: $projectionVersion')
+          ..write('projectionVersion: $projectionVersion, ')
+          ..write('updatedAtUtc: $updatedAtUtc')
           ..write(')'))
         .toString();
   }
@@ -1360,6 +1462,7 @@ class RotationStateRow extends DataClass
     rotationTarget,
     lastJournalSequence,
     projectionVersion,
+    updatedAtUtc,
   );
   @override
   bool operator ==(Object other) =>
@@ -1368,7 +1471,8 @@ class RotationStateRow extends DataClass
           other.singletonId == this.singletonId &&
           other.rotationTarget == this.rotationTarget &&
           other.lastJournalSequence == this.lastJournalSequence &&
-          other.projectionVersion == this.projectionVersion);
+          other.projectionVersion == this.projectionVersion &&
+          other.updatedAtUtc == this.updatedAtUtc);
 }
 
 class RotationStatesCompanion extends UpdateCompanion<RotationStateRow> {
@@ -1376,23 +1480,27 @@ class RotationStatesCompanion extends UpdateCompanion<RotationStateRow> {
   final Value<int> rotationTarget;
   final Value<int> lastJournalSequence;
   final Value<int> projectionVersion;
+  final Value<DateTime?> updatedAtUtc;
   const RotationStatesCompanion({
     this.singletonId = const Value.absent(),
     this.rotationTarget = const Value.absent(),
     this.lastJournalSequence = const Value.absent(),
     this.projectionVersion = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
   });
   RotationStatesCompanion.insert({
     this.singletonId = const Value.absent(),
     this.rotationTarget = const Value.absent(),
     this.lastJournalSequence = const Value.absent(),
     this.projectionVersion = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
   });
   static Insertable<RotationStateRow> custom({
     Expression<int>? singletonId,
     Expression<int>? rotationTarget,
     Expression<int>? lastJournalSequence,
     Expression<int>? projectionVersion,
+    Expression<DateTime>? updatedAtUtc,
   }) {
     return RawValuesInsertable({
       if (singletonId != null) 'singleton_id': singletonId,
@@ -1400,6 +1508,7 @@ class RotationStatesCompanion extends UpdateCompanion<RotationStateRow> {
       if (lastJournalSequence != null)
         'last_journal_sequence': lastJournalSequence,
       if (projectionVersion != null) 'projection_version': projectionVersion,
+      if (updatedAtUtc != null) 'updated_at_utc': updatedAtUtc,
     });
   }
 
@@ -1408,12 +1517,14 @@ class RotationStatesCompanion extends UpdateCompanion<RotationStateRow> {
     Value<int>? rotationTarget,
     Value<int>? lastJournalSequence,
     Value<int>? projectionVersion,
+    Value<DateTime?>? updatedAtUtc,
   }) {
     return RotationStatesCompanion(
       singletonId: singletonId ?? this.singletonId,
       rotationTarget: rotationTarget ?? this.rotationTarget,
       lastJournalSequence: lastJournalSequence ?? this.lastJournalSequence,
       projectionVersion: projectionVersion ?? this.projectionVersion,
+      updatedAtUtc: updatedAtUtc ?? this.updatedAtUtc,
     );
   }
 
@@ -1432,6 +1543,9 @@ class RotationStatesCompanion extends UpdateCompanion<RotationStateRow> {
     if (projectionVersion.present) {
       map['projection_version'] = Variable<int>(projectionVersion.value);
     }
+    if (updatedAtUtc.present) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc.value);
+    }
     return map;
   }
 
@@ -1441,7 +1555,8 @@ class RotationStatesCompanion extends UpdateCompanion<RotationStateRow> {
           ..write('singletonId: $singletonId, ')
           ..write('rotationTarget: $rotationTarget, ')
           ..write('lastJournalSequence: $lastJournalSequence, ')
-          ..write('projectionVersion: $projectionVersion')
+          ..write('projectionVersion: $projectionVersion, ')
+          ..write('updatedAtUtc: $updatedAtUtc')
           ..write(')'))
         .toString();
   }
@@ -1568,6 +1683,17 @@ class $RotationSchemesTable extends RotationSchemes
         type: DriftSqlType.int,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _updatedAtUtcMeta = const VerificationMeta(
+    'updatedAtUtc',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAtUtc = GeneratedColumn<DateTime>(
+    'updated_at_utc',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1580,6 +1706,7 @@ class $RotationSchemesTable extends RotationSchemes
     resetsRotationBaseline,
     activatedJournalSequence,
     supersededJournalSequence,
+    updatedAtUtc,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1685,6 +1812,15 @@ class $RotationSchemesTable extends RotationSchemes
         ),
       );
     }
+    if (data.containsKey('updated_at_utc')) {
+      context.handle(
+        _updatedAtUtcMeta,
+        updatedAtUtc.isAcceptableOrUnknown(
+          data['updated_at_utc']!,
+          _updatedAtUtcMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1739,6 +1875,10 @@ class $RotationSchemesTable extends RotationSchemes
         DriftSqlType.int,
         data['${effectivePrefix}superseded_journal_sequence'],
       ),
+      updatedAtUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at_utc'],
+      ),
     );
   }
 
@@ -1760,6 +1900,9 @@ class RotationSchemeRow extends DataClass
   final bool resetsRotationBaseline;
   final int activatedJournalSequence;
   final int? supersededJournalSequence;
+
+  /// When this row last changed. See [kUpdatedAtUtcDoc].
+  final DateTime? updatedAtUtc;
   const RotationSchemeRow({
     required this.id,
     required this.surahId,
@@ -1771,6 +1914,7 @@ class RotationSchemeRow extends DataClass
     required this.resetsRotationBaseline,
     required this.activatedJournalSequence,
     this.supersededJournalSequence,
+    this.updatedAtUtc,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1793,6 +1937,9 @@ class RotationSchemeRow extends DataClass
         supersededJournalSequence,
       );
     }
+    if (!nullToAbsent || updatedAtUtc != null) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc);
+    }
     return map;
   }
 
@@ -1813,6 +1960,9 @@ class RotationSchemeRow extends DataClass
           supersededJournalSequence == null && nullToAbsent
           ? const Value.absent()
           : Value(supersededJournalSequence),
+      updatedAtUtc: updatedAtUtc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAtUtc),
     );
   }
 
@@ -1842,6 +1992,7 @@ class RotationSchemeRow extends DataClass
       supersededJournalSequence: serializer.fromJson<int?>(
         json['supersededJournalSequence'],
       ),
+      updatedAtUtc: serializer.fromJson<DateTime?>(json['updatedAtUtc']),
     );
   }
   @override
@@ -1866,6 +2017,7 @@ class RotationSchemeRow extends DataClass
       'supersededJournalSequence': serializer.toJson<int?>(
         supersededJournalSequence,
       ),
+      'updatedAtUtc': serializer.toJson<DateTime?>(updatedAtUtc),
     };
   }
 
@@ -1880,6 +2032,7 @@ class RotationSchemeRow extends DataClass
     bool? resetsRotationBaseline,
     int? activatedJournalSequence,
     Value<int?> supersededJournalSequence = const Value.absent(),
+    Value<DateTime?> updatedAtUtc = const Value.absent(),
   }) => RotationSchemeRow(
     id: id ?? this.id,
     surahId: surahId ?? this.surahId,
@@ -1898,6 +2051,7 @@ class RotationSchemeRow extends DataClass
     supersededJournalSequence: supersededJournalSequence.present
         ? supersededJournalSequence.value
         : this.supersededJournalSequence,
+    updatedAtUtc: updatedAtUtc.present ? updatedAtUtc.value : this.updatedAtUtc,
   );
   RotationSchemeRow copyWithCompanion(RotationSchemesCompanion data) {
     return RotationSchemeRow(
@@ -1925,6 +2079,9 @@ class RotationSchemeRow extends DataClass
       supersededJournalSequence: data.supersededJournalSequence.present
           ? data.supersededJournalSequence.value
           : this.supersededJournalSequence,
+      updatedAtUtc: data.updatedAtUtc.present
+          ? data.updatedAtUtc.value
+          : this.updatedAtUtc,
     );
   }
 
@@ -1940,7 +2097,8 @@ class RotationSchemeRow extends DataClass
           ..write('baselineLastUsedAtUtc: $baselineLastUsedAtUtc, ')
           ..write('resetsRotationBaseline: $resetsRotationBaseline, ')
           ..write('activatedJournalSequence: $activatedJournalSequence, ')
-          ..write('supersededJournalSequence: $supersededJournalSequence')
+          ..write('supersededJournalSequence: $supersededJournalSequence, ')
+          ..write('updatedAtUtc: $updatedAtUtc')
           ..write(')'))
         .toString();
   }
@@ -1957,6 +2115,7 @@ class RotationSchemeRow extends DataClass
     resetsRotationBaseline,
     activatedJournalSequence,
     supersededJournalSequence,
+    updatedAtUtc,
   );
   @override
   bool operator ==(Object other) =>
@@ -1971,7 +2130,8 @@ class RotationSchemeRow extends DataClass
           other.baselineLastUsedAtUtc == this.baselineLastUsedAtUtc &&
           other.resetsRotationBaseline == this.resetsRotationBaseline &&
           other.activatedJournalSequence == this.activatedJournalSequence &&
-          other.supersededJournalSequence == this.supersededJournalSequence);
+          other.supersededJournalSequence == this.supersededJournalSequence &&
+          other.updatedAtUtc == this.updatedAtUtc);
 }
 
 class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
@@ -1985,6 +2145,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
   final Value<bool> resetsRotationBaseline;
   final Value<int> activatedJournalSequence;
   final Value<int?> supersededJournalSequence;
+  final Value<DateTime?> updatedAtUtc;
   final Value<int> rowid;
   const RotationSchemesCompanion({
     this.id = const Value.absent(),
@@ -1997,6 +2158,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
     this.resetsRotationBaseline = const Value.absent(),
     this.activatedJournalSequence = const Value.absent(),
     this.supersededJournalSequence = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RotationSchemesCompanion.insert({
@@ -2010,6 +2172,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
     this.resetsRotationBaseline = const Value.absent(),
     required int activatedJournalSequence,
     this.supersededJournalSequence = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        surahId = Value(surahId),
@@ -2029,6 +2192,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
     Expression<bool>? resetsRotationBaseline,
     Expression<int>? activatedJournalSequence,
     Expression<int>? supersededJournalSequence,
+    Expression<DateTime>? updatedAtUtc,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2047,6 +2211,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
         'activated_journal_sequence': activatedJournalSequence,
       if (supersededJournalSequence != null)
         'superseded_journal_sequence': supersededJournalSequence,
+      if (updatedAtUtc != null) 'updated_at_utc': updatedAtUtc,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2062,6 +2227,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
     Value<bool>? resetsRotationBaseline,
     Value<int>? activatedJournalSequence,
     Value<int?>? supersededJournalSequence,
+    Value<DateTime?>? updatedAtUtc,
     Value<int>? rowid,
   }) {
     return RotationSchemesCompanion(
@@ -2080,6 +2246,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
           activatedJournalSequence ?? this.activatedJournalSequence,
       supersededJournalSequence:
           supersededJournalSequence ?? this.supersededJournalSequence,
+      updatedAtUtc: updatedAtUtc ?? this.updatedAtUtc,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2127,6 +2294,9 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
         supersededJournalSequence.value,
       );
     }
+    if (updatedAtUtc.present) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2146,6 +2316,7 @@ class RotationSchemesCompanion extends UpdateCompanion<RotationSchemeRow> {
           ..write('resetsRotationBaseline: $resetsRotationBaseline, ')
           ..write('activatedJournalSequence: $activatedJournalSequence, ')
           ..write('supersededJournalSequence: $supersededJournalSequence, ')
+          ..write('updatedAtUtc: $updatedAtUtc, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2761,6 +2932,17 @@ class $PrayerSessionsTable extends PrayerSessions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _updatedAtUtcMeta = const VerificationMeta(
+    'updatedAtUtc',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAtUtc = GeneratedColumn<DateTime>(
+    'updated_at_utc',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2768,6 +2950,7 @@ class $PrayerSessionsTable extends PrayerSessions
     isQada,
     startedAtUtc,
     localDate,
+    updatedAtUtc,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2817,6 +3000,15 @@ class $PrayerSessionsTable extends PrayerSessions
         localDate.isAcceptableOrUnknown(data['local_date']!, _localDateMeta),
       );
     }
+    if (data.containsKey('updated_at_utc')) {
+      context.handle(
+        _updatedAtUtcMeta,
+        updatedAtUtc.isAcceptableOrUnknown(
+          data['updated_at_utc']!,
+          _updatedAtUtcMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2846,6 +3038,10 @@ class $PrayerSessionsTable extends PrayerSessions
         DriftSqlType.string,
         data['${effectivePrefix}local_date'],
       ),
+      updatedAtUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at_utc'],
+      ),
     );
   }
 
@@ -2862,12 +3058,19 @@ class PrayerSessionRow extends DataClass
   final bool isQada;
   final DateTime startedAtUtc;
   final String? localDate;
+
+  /// When this row last changed. See [kUpdatedAtUtcDoc].
+  ///
+  /// `started_at_utc` above is *not* this: it says when the prayer began, and
+  /// a session's parts go on being edited long after that.
+  final DateTime? updatedAtUtc;
   const PrayerSessionRow({
     required this.id,
     required this.prayerType,
     required this.isQada,
     required this.startedAtUtc,
     this.localDate,
+    this.updatedAtUtc,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2878,6 +3081,9 @@ class PrayerSessionRow extends DataClass
     map['started_at_utc'] = Variable<DateTime>(startedAtUtc);
     if (!nullToAbsent || localDate != null) {
       map['local_date'] = Variable<String>(localDate);
+    }
+    if (!nullToAbsent || updatedAtUtc != null) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc);
     }
     return map;
   }
@@ -2891,6 +3097,9 @@ class PrayerSessionRow extends DataClass
       localDate: localDate == null && nullToAbsent
           ? const Value.absent()
           : Value(localDate),
+      updatedAtUtc: updatedAtUtc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAtUtc),
     );
   }
 
@@ -2905,6 +3114,7 @@ class PrayerSessionRow extends DataClass
       isQada: serializer.fromJson<bool>(json['isQada']),
       startedAtUtc: serializer.fromJson<DateTime>(json['startedAtUtc']),
       localDate: serializer.fromJson<String?>(json['localDate']),
+      updatedAtUtc: serializer.fromJson<DateTime?>(json['updatedAtUtc']),
     );
   }
   @override
@@ -2916,6 +3126,7 @@ class PrayerSessionRow extends DataClass
       'isQada': serializer.toJson<bool>(isQada),
       'startedAtUtc': serializer.toJson<DateTime>(startedAtUtc),
       'localDate': serializer.toJson<String?>(localDate),
+      'updatedAtUtc': serializer.toJson<DateTime?>(updatedAtUtc),
     };
   }
 
@@ -2925,12 +3136,14 @@ class PrayerSessionRow extends DataClass
     bool? isQada,
     DateTime? startedAtUtc,
     Value<String?> localDate = const Value.absent(),
+    Value<DateTime?> updatedAtUtc = const Value.absent(),
   }) => PrayerSessionRow(
     id: id ?? this.id,
     prayerType: prayerType ?? this.prayerType,
     isQada: isQada ?? this.isQada,
     startedAtUtc: startedAtUtc ?? this.startedAtUtc,
     localDate: localDate.present ? localDate.value : this.localDate,
+    updatedAtUtc: updatedAtUtc.present ? updatedAtUtc.value : this.updatedAtUtc,
   );
   PrayerSessionRow copyWithCompanion(PrayerSessionsCompanion data) {
     return PrayerSessionRow(
@@ -2943,6 +3156,9 @@ class PrayerSessionRow extends DataClass
           ? data.startedAtUtc.value
           : this.startedAtUtc,
       localDate: data.localDate.present ? data.localDate.value : this.localDate,
+      updatedAtUtc: data.updatedAtUtc.present
+          ? data.updatedAtUtc.value
+          : this.updatedAtUtc,
     );
   }
 
@@ -2953,14 +3169,21 @@ class PrayerSessionRow extends DataClass
           ..write('prayerType: $prayerType, ')
           ..write('isQada: $isQada, ')
           ..write('startedAtUtc: $startedAtUtc, ')
-          ..write('localDate: $localDate')
+          ..write('localDate: $localDate, ')
+          ..write('updatedAtUtc: $updatedAtUtc')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, prayerType, isQada, startedAtUtc, localDate);
+  int get hashCode => Object.hash(
+    id,
+    prayerType,
+    isQada,
+    startedAtUtc,
+    localDate,
+    updatedAtUtc,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2969,7 +3192,8 @@ class PrayerSessionRow extends DataClass
           other.prayerType == this.prayerType &&
           other.isQada == this.isQada &&
           other.startedAtUtc == this.startedAtUtc &&
-          other.localDate == this.localDate);
+          other.localDate == this.localDate &&
+          other.updatedAtUtc == this.updatedAtUtc);
 }
 
 class PrayerSessionsCompanion extends UpdateCompanion<PrayerSessionRow> {
@@ -2978,6 +3202,7 @@ class PrayerSessionsCompanion extends UpdateCompanion<PrayerSessionRow> {
   final Value<bool> isQada;
   final Value<DateTime> startedAtUtc;
   final Value<String?> localDate;
+  final Value<DateTime?> updatedAtUtc;
   final Value<int> rowid;
   const PrayerSessionsCompanion({
     this.id = const Value.absent(),
@@ -2985,6 +3210,7 @@ class PrayerSessionsCompanion extends UpdateCompanion<PrayerSessionRow> {
     this.isQada = const Value.absent(),
     this.startedAtUtc = const Value.absent(),
     this.localDate = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PrayerSessionsCompanion.insert({
@@ -2993,6 +3219,7 @@ class PrayerSessionsCompanion extends UpdateCompanion<PrayerSessionRow> {
     this.isQada = const Value.absent(),
     required DateTime startedAtUtc,
     this.localDate = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        prayerType = Value(prayerType),
@@ -3003,6 +3230,7 @@ class PrayerSessionsCompanion extends UpdateCompanion<PrayerSessionRow> {
     Expression<bool>? isQada,
     Expression<DateTime>? startedAtUtc,
     Expression<String>? localDate,
+    Expression<DateTime>? updatedAtUtc,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3011,6 +3239,7 @@ class PrayerSessionsCompanion extends UpdateCompanion<PrayerSessionRow> {
       if (isQada != null) 'is_qada': isQada,
       if (startedAtUtc != null) 'started_at_utc': startedAtUtc,
       if (localDate != null) 'local_date': localDate,
+      if (updatedAtUtc != null) 'updated_at_utc': updatedAtUtc,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3021,6 +3250,7 @@ class PrayerSessionsCompanion extends UpdateCompanion<PrayerSessionRow> {
     Value<bool>? isQada,
     Value<DateTime>? startedAtUtc,
     Value<String?>? localDate,
+    Value<DateTime?>? updatedAtUtc,
     Value<int>? rowid,
   }) {
     return PrayerSessionsCompanion(
@@ -3029,6 +3259,7 @@ class PrayerSessionsCompanion extends UpdateCompanion<PrayerSessionRow> {
       isQada: isQada ?? this.isQada,
       startedAtUtc: startedAtUtc ?? this.startedAtUtc,
       localDate: localDate ?? this.localDate,
+      updatedAtUtc: updatedAtUtc ?? this.updatedAtUtc,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3051,6 +3282,9 @@ class PrayerSessionsCompanion extends UpdateCompanion<PrayerSessionRow> {
     if (localDate.present) {
       map['local_date'] = Variable<String>(localDate.value);
     }
+    if (updatedAtUtc.present) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3065,6 +3299,7 @@ class PrayerSessionsCompanion extends UpdateCompanion<PrayerSessionRow> {
           ..write('isQada: $isQada, ')
           ..write('startedAtUtc: $startedAtUtc, ')
           ..write('localDate: $localDate, ')
+          ..write('updatedAtUtc: $updatedAtUtc, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3135,6 +3370,17 @@ class $PrayerRoutineTemplatesTable extends PrayerRoutineTemplates
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
+  static const VerificationMeta _updatedAtUtcMeta = const VerificationMeta(
+    'updatedAtUtc',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAtUtc = GeneratedColumn<DateTime>(
+    'updated_at_utc',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3142,6 +3388,7 @@ class $PrayerRoutineTemplatesTable extends PrayerRoutineTemplates
     displayName,
     enabled,
     revision,
+    updatedAtUtc,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3191,6 +3438,15 @@ class $PrayerRoutineTemplatesTable extends PrayerRoutineTemplates
         revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
       );
     }
+    if (data.containsKey('updated_at_utc')) {
+      context.handle(
+        _updatedAtUtcMeta,
+        updatedAtUtc.isAcceptableOrUnknown(
+          data['updated_at_utc']!,
+          _updatedAtUtcMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3223,6 +3479,10 @@ class $PrayerRoutineTemplatesTable extends PrayerRoutineTemplates
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
       )!,
+      updatedAtUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at_utc'],
+      ),
     );
   }
 
@@ -3239,12 +3499,19 @@ class PrayerRoutineTemplateRow extends DataClass
   final String displayName;
   final bool enabled;
   final int revision;
+
+  /// When this row last changed. See [kUpdatedAtUtcDoc].
+  ///
+  /// `revision` above counts edits but cannot be compared across devices: two
+  /// phones both at revision 4 say nothing about which edit came last.
+  final DateTime? updatedAtUtc;
   const PrayerRoutineTemplateRow({
     required this.id,
     required this.prayerType,
     required this.displayName,
     required this.enabled,
     required this.revision,
+    this.updatedAtUtc,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3254,6 +3521,9 @@ class PrayerRoutineTemplateRow extends DataClass
     map['display_name'] = Variable<String>(displayName);
     map['enabled'] = Variable<bool>(enabled);
     map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || updatedAtUtc != null) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc);
+    }
     return map;
   }
 
@@ -3264,6 +3534,9 @@ class PrayerRoutineTemplateRow extends DataClass
       displayName: Value(displayName),
       enabled: Value(enabled),
       revision: Value(revision),
+      updatedAtUtc: updatedAtUtc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAtUtc),
     );
   }
 
@@ -3278,6 +3551,7 @@ class PrayerRoutineTemplateRow extends DataClass
       displayName: serializer.fromJson<String>(json['displayName']),
       enabled: serializer.fromJson<bool>(json['enabled']),
       revision: serializer.fromJson<int>(json['revision']),
+      updatedAtUtc: serializer.fromJson<DateTime?>(json['updatedAtUtc']),
     );
   }
   @override
@@ -3289,6 +3563,7 @@ class PrayerRoutineTemplateRow extends DataClass
       'displayName': serializer.toJson<String>(displayName),
       'enabled': serializer.toJson<bool>(enabled),
       'revision': serializer.toJson<int>(revision),
+      'updatedAtUtc': serializer.toJson<DateTime?>(updatedAtUtc),
     };
   }
 
@@ -3298,12 +3573,14 @@ class PrayerRoutineTemplateRow extends DataClass
     String? displayName,
     bool? enabled,
     int? revision,
+    Value<DateTime?> updatedAtUtc = const Value.absent(),
   }) => PrayerRoutineTemplateRow(
     id: id ?? this.id,
     prayerType: prayerType ?? this.prayerType,
     displayName: displayName ?? this.displayName,
     enabled: enabled ?? this.enabled,
     revision: revision ?? this.revision,
+    updatedAtUtc: updatedAtUtc.present ? updatedAtUtc.value : this.updatedAtUtc,
   );
   PrayerRoutineTemplateRow copyWithCompanion(
     PrayerRoutineTemplatesCompanion data,
@@ -3318,6 +3595,9 @@ class PrayerRoutineTemplateRow extends DataClass
           : this.displayName,
       enabled: data.enabled.present ? data.enabled.value : this.enabled,
       revision: data.revision.present ? data.revision.value : this.revision,
+      updatedAtUtc: data.updatedAtUtc.present
+          ? data.updatedAtUtc.value
+          : this.updatedAtUtc,
     );
   }
 
@@ -3328,14 +3608,15 @@ class PrayerRoutineTemplateRow extends DataClass
           ..write('prayerType: $prayerType, ')
           ..write('displayName: $displayName, ')
           ..write('enabled: $enabled, ')
-          ..write('revision: $revision')
+          ..write('revision: $revision, ')
+          ..write('updatedAtUtc: $updatedAtUtc')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, prayerType, displayName, enabled, revision);
+      Object.hash(id, prayerType, displayName, enabled, revision, updatedAtUtc);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3344,7 +3625,8 @@ class PrayerRoutineTemplateRow extends DataClass
           other.prayerType == this.prayerType &&
           other.displayName == this.displayName &&
           other.enabled == this.enabled &&
-          other.revision == this.revision);
+          other.revision == this.revision &&
+          other.updatedAtUtc == this.updatedAtUtc);
 }
 
 class PrayerRoutineTemplatesCompanion
@@ -3354,6 +3636,7 @@ class PrayerRoutineTemplatesCompanion
   final Value<String> displayName;
   final Value<bool> enabled;
   final Value<int> revision;
+  final Value<DateTime?> updatedAtUtc;
   final Value<int> rowid;
   const PrayerRoutineTemplatesCompanion({
     this.id = const Value.absent(),
@@ -3361,6 +3644,7 @@ class PrayerRoutineTemplatesCompanion
     this.displayName = const Value.absent(),
     this.enabled = const Value.absent(),
     this.revision = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PrayerRoutineTemplatesCompanion.insert({
@@ -3369,6 +3653,7 @@ class PrayerRoutineTemplatesCompanion
     required String displayName,
     this.enabled = const Value.absent(),
     this.revision = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        prayerType = Value(prayerType),
@@ -3379,6 +3664,7 @@ class PrayerRoutineTemplatesCompanion
     Expression<String>? displayName,
     Expression<bool>? enabled,
     Expression<int>? revision,
+    Expression<DateTime>? updatedAtUtc,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3387,6 +3673,7 @@ class PrayerRoutineTemplatesCompanion
       if (displayName != null) 'display_name': displayName,
       if (enabled != null) 'enabled': enabled,
       if (revision != null) 'revision': revision,
+      if (updatedAtUtc != null) 'updated_at_utc': updatedAtUtc,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3397,6 +3684,7 @@ class PrayerRoutineTemplatesCompanion
     Value<String>? displayName,
     Value<bool>? enabled,
     Value<int>? revision,
+    Value<DateTime?>? updatedAtUtc,
     Value<int>? rowid,
   }) {
     return PrayerRoutineTemplatesCompanion(
@@ -3405,6 +3693,7 @@ class PrayerRoutineTemplatesCompanion
       displayName: displayName ?? this.displayName,
       enabled: enabled ?? this.enabled,
       revision: revision ?? this.revision,
+      updatedAtUtc: updatedAtUtc ?? this.updatedAtUtc,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3427,6 +3716,9 @@ class PrayerRoutineTemplatesCompanion
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
+    if (updatedAtUtc.present) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3441,6 +3733,7 @@ class PrayerRoutineTemplatesCompanion
           ..write('displayName: $displayName, ')
           ..write('enabled: $enabled, ')
           ..write('revision: $revision, ')
+          ..write('updatedAtUtc: $updatedAtUtc, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6844,6 +7137,17 @@ class $LearningSurahsTable extends LearningSurahs
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _updatedAtUtcMeta = const VerificationMeta(
+    'updatedAtUtc',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAtUtc = GeneratedColumn<DateTime>(
+    'updated_at_utc',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6860,6 +7164,7 @@ class $LearningSurahsTable extends LearningSurahs
     status,
     lastLearningActivityAtUtc,
     inactivityRollbackForActivityAtUtc,
+    updatedAtUtc,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6993,6 +7298,15 @@ class $LearningSurahsTable extends LearningSurahs
         ),
       );
     }
+    if (data.containsKey('updated_at_utc')) {
+      context.handle(
+        _updatedAtUtcMeta,
+        updatedAtUtc.isAcceptableOrUnknown(
+          data['updated_at_utc']!,
+          _updatedAtUtcMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7058,6 +7372,10 @@ class $LearningSurahsTable extends LearningSurahs
         DriftSqlType.dateTime,
         data['${effectivePrefix}inactivity_rollback_for_activity_at_utc'],
       ),
+      updatedAtUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at_utc'],
+      ),
     );
   }
 
@@ -7083,6 +7401,12 @@ class LearningSurahRow extends DataClass
   final String status;
   final DateTime? lastLearningActivityAtUtc;
   final DateTime? inactivityRollbackForActivityAtUtc;
+
+  /// When this row last changed. See [kUpdatedAtUtcDoc].
+  ///
+  /// `last_learning_activity_at_utc` above is *not* this: it is activity, not
+  /// an edit, and it is nullable for a plan nobody has worked on yet.
+  final DateTime? updatedAtUtc;
   const LearningSurahRow({
     required this.id,
     required this.surahId,
@@ -7098,6 +7422,7 @@ class LearningSurahRow extends DataClass
     required this.status,
     this.lastLearningActivityAtUtc,
     this.inactivityRollbackForActivityAtUtc,
+    this.updatedAtUtc,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7126,6 +7451,9 @@ class LearningSurahRow extends DataClass
         inactivityRollbackForActivityAtUtc,
       );
     }
+    if (!nullToAbsent || updatedAtUtc != null) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc);
+    }
     return map;
   }
 
@@ -7153,6 +7481,9 @@ class LearningSurahRow extends DataClass
           inactivityRollbackForActivityAtUtc == null && nullToAbsent
           ? const Value.absent()
           : Value(inactivityRollbackForActivityAtUtc),
+      updatedAtUtc: updatedAtUtc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAtUtc),
     );
   }
 
@@ -7180,6 +7511,7 @@ class LearningSurahRow extends DataClass
       inactivityRollbackForActivityAtUtc: serializer.fromJson<DateTime?>(
         json['inactivityRollbackForActivityAtUtc'],
       ),
+      updatedAtUtc: serializer.fromJson<DateTime?>(json['updatedAtUtc']),
     );
   }
   @override
@@ -7204,6 +7536,7 @@ class LearningSurahRow extends DataClass
       'inactivityRollbackForActivityAtUtc': serializer.toJson<DateTime?>(
         inactivityRollbackForActivityAtUtc,
       ),
+      'updatedAtUtc': serializer.toJson<DateTime?>(updatedAtUtc),
     };
   }
 
@@ -7222,6 +7555,7 @@ class LearningSurahRow extends DataClass
     String? status,
     Value<DateTime?> lastLearningActivityAtUtc = const Value.absent(),
     Value<DateTime?> inactivityRollbackForActivityAtUtc = const Value.absent(),
+    Value<DateTime?> updatedAtUtc = const Value.absent(),
   }) => LearningSurahRow(
     id: id ?? this.id,
     surahId: surahId ?? this.surahId,
@@ -7242,6 +7576,7 @@ class LearningSurahRow extends DataClass
         inactivityRollbackForActivityAtUtc.present
         ? inactivityRollbackForActivityAtUtc.value
         : this.inactivityRollbackForActivityAtUtc,
+    updatedAtUtc: updatedAtUtc.present ? updatedAtUtc.value : this.updatedAtUtc,
   );
   LearningSurahRow copyWithCompanion(LearningSurahsCompanion data) {
     return LearningSurahRow(
@@ -7274,6 +7609,9 @@ class LearningSurahRow extends DataClass
           data.inactivityRollbackForActivityAtUtc.present
           ? data.inactivityRollbackForActivityAtUtc.value
           : this.inactivityRollbackForActivityAtUtc,
+      updatedAtUtc: data.updatedAtUtc.present
+          ? data.updatedAtUtc.value
+          : this.updatedAtUtc,
     );
   }
 
@@ -7294,8 +7632,9 @@ class LearningSurahRow extends DataClass
           ..write('status: $status, ')
           ..write('lastLearningActivityAtUtc: $lastLearningActivityAtUtc, ')
           ..write(
-            'inactivityRollbackForActivityAtUtc: $inactivityRollbackForActivityAtUtc',
+            'inactivityRollbackForActivityAtUtc: $inactivityRollbackForActivityAtUtc, ',
           )
+          ..write('updatedAtUtc: $updatedAtUtc')
           ..write(')'))
         .toString();
   }
@@ -7316,6 +7655,7 @@ class LearningSurahRow extends DataClass
     status,
     lastLearningActivityAtUtc,
     inactivityRollbackForActivityAtUtc,
+    updatedAtUtc,
   );
   @override
   bool operator ==(Object other) =>
@@ -7335,7 +7675,8 @@ class LearningSurahRow extends DataClass
           other.status == this.status &&
           other.lastLearningActivityAtUtc == this.lastLearningActivityAtUtc &&
           other.inactivityRollbackForActivityAtUtc ==
-              this.inactivityRollbackForActivityAtUtc);
+              this.inactivityRollbackForActivityAtUtc &&
+          other.updatedAtUtc == this.updatedAtUtc);
 }
 
 class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
@@ -7353,6 +7694,7 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
   final Value<String> status;
   final Value<DateTime?> lastLearningActivityAtUtc;
   final Value<DateTime?> inactivityRollbackForActivityAtUtc;
+  final Value<DateTime?> updatedAtUtc;
   final Value<int> rowid;
   const LearningSurahsCompanion({
     this.id = const Value.absent(),
@@ -7369,6 +7711,7 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
     this.status = const Value.absent(),
     this.lastLearningActivityAtUtc = const Value.absent(),
     this.inactivityRollbackForActivityAtUtc = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LearningSurahsCompanion.insert({
@@ -7386,6 +7729,7 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
     required String status,
     this.lastLearningActivityAtUtc = const Value.absent(),
     this.inactivityRollbackForActivityAtUtc = const Value.absent(),
+    this.updatedAtUtc = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        surahId = Value(surahId),
@@ -7411,6 +7755,7 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
     Expression<String>? status,
     Expression<DateTime>? lastLearningActivityAtUtc,
     Expression<DateTime>? inactivityRollbackForActivityAtUtc,
+    Expression<DateTime>? updatedAtUtc,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -7431,6 +7776,7 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
       if (inactivityRollbackForActivityAtUtc != null)
         'inactivity_rollback_for_activity_at_utc':
             inactivityRollbackForActivityAtUtc,
+      if (updatedAtUtc != null) 'updated_at_utc': updatedAtUtc,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -7450,6 +7796,7 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
     Value<String>? status,
     Value<DateTime?>? lastLearningActivityAtUtc,
     Value<DateTime?>? inactivityRollbackForActivityAtUtc,
+    Value<DateTime?>? updatedAtUtc,
     Value<int>? rowid,
   }) {
     return LearningSurahsCompanion(
@@ -7470,6 +7817,7 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
       inactivityRollbackForActivityAtUtc:
           inactivityRollbackForActivityAtUtc ??
           this.inactivityRollbackForActivityAtUtc,
+      updatedAtUtc: updatedAtUtc ?? this.updatedAtUtc,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -7523,6 +7871,9 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
         inactivityRollbackForActivityAtUtc.value,
       );
     }
+    if (updatedAtUtc.present) {
+      map['updated_at_utc'] = Variable<DateTime>(updatedAtUtc.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -7548,6 +7899,7 @@ class LearningSurahsCompanion extends UpdateCompanion<LearningSurahRow> {
           ..write(
             'inactivityRollbackForActivityAtUtc: $inactivityRollbackForActivityAtUtc, ',
           )
+          ..write('updatedAtUtc: $updatedAtUtc, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -11725,6 +12077,7 @@ typedef $$MasteredSurahsTableCreateCompanionBuilder =
       Value<DateTime?> cachedLastUsedAtUtc,
       Value<String?> alias,
       Value<int> displayOrder,
+      Value<DateTime?> updatedAtUtc,
       Value<int> rowid,
     });
 typedef $$MasteredSurahsTableUpdateCompanionBuilder =
@@ -11739,6 +12092,7 @@ typedef $$MasteredSurahsTableUpdateCompanionBuilder =
       Value<DateTime?> cachedLastUsedAtUtc,
       Value<String?> alias,
       Value<int> displayOrder,
+      Value<DateTime?> updatedAtUtc,
       Value<int> rowid,
     });
 
@@ -11823,6 +12177,11 @@ class $$MasteredSurahsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$SurahMetadataTableFilterComposer get surahId {
     final $$SurahMetadataTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -11901,6 +12260,11 @@ class $$MasteredSurahsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$SurahMetadataTableOrderingComposer get surahId {
     final $$SurahMetadataTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -11975,6 +12339,11 @@ class $$MasteredSurahsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => column,
+  );
+
   $$SurahMetadataTableAnnotationComposer get surahId {
     final $$SurahMetadataTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -12039,6 +12408,7 @@ class $$MasteredSurahsTableTableManager
                 Value<DateTime?> cachedLastUsedAtUtc = const Value.absent(),
                 Value<String?> alias = const Value.absent(),
                 Value<int> displayOrder = const Value.absent(),
+                Value<DateTime?> updatedAtUtc = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MasteredSurahsCompanion(
                 surahId: surahId,
@@ -12051,6 +12421,7 @@ class $$MasteredSurahsTableTableManager
                 cachedLastUsedAtUtc: cachedLastUsedAtUtc,
                 alias: alias,
                 displayOrder: displayOrder,
+                updatedAtUtc: updatedAtUtc,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -12065,6 +12436,7 @@ class $$MasteredSurahsTableTableManager
                 Value<DateTime?> cachedLastUsedAtUtc = const Value.absent(),
                 Value<String?> alias = const Value.absent(),
                 Value<int> displayOrder = const Value.absent(),
+                Value<DateTime?> updatedAtUtc = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MasteredSurahsCompanion.insert(
                 surahId: surahId,
@@ -12077,6 +12449,7 @@ class $$MasteredSurahsTableTableManager
                 cachedLastUsedAtUtc: cachedLastUsedAtUtc,
                 alias: alias,
                 displayOrder: displayOrder,
+                updatedAtUtc: updatedAtUtc,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -12153,6 +12526,7 @@ typedef $$RotationStatesTableCreateCompanionBuilder =
       Value<int> rotationTarget,
       Value<int> lastJournalSequence,
       Value<int> projectionVersion,
+      Value<DateTime?> updatedAtUtc,
     });
 typedef $$RotationStatesTableUpdateCompanionBuilder =
     RotationStatesCompanion Function({
@@ -12160,6 +12534,7 @@ typedef $$RotationStatesTableUpdateCompanionBuilder =
       Value<int> rotationTarget,
       Value<int> lastJournalSequence,
       Value<int> projectionVersion,
+      Value<DateTime?> updatedAtUtc,
     });
 
 class $$RotationStatesTableFilterComposer
@@ -12188,6 +12563,11 @@ class $$RotationStatesTableFilterComposer
 
   ColumnFilters<int> get projectionVersion => $composableBuilder(
     column: $table.projectionVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -12220,6 +12600,11 @@ class $$RotationStatesTableOrderingComposer
     column: $table.projectionVersion,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RotationStatesTableAnnotationComposer
@@ -12248,6 +12633,11 @@ class $$RotationStatesTableAnnotationComposer
 
   GeneratedColumn<int> get projectionVersion => $composableBuilder(
     column: $table.projectionVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
     builder: (column) => column,
   );
 }
@@ -12293,11 +12683,13 @@ class $$RotationStatesTableTableManager
                 Value<int> rotationTarget = const Value.absent(),
                 Value<int> lastJournalSequence = const Value.absent(),
                 Value<int> projectionVersion = const Value.absent(),
+                Value<DateTime?> updatedAtUtc = const Value.absent(),
               }) => RotationStatesCompanion(
                 singletonId: singletonId,
                 rotationTarget: rotationTarget,
                 lastJournalSequence: lastJournalSequence,
                 projectionVersion: projectionVersion,
+                updatedAtUtc: updatedAtUtc,
               ),
           createCompanionCallback:
               ({
@@ -12305,11 +12697,13 @@ class $$RotationStatesTableTableManager
                 Value<int> rotationTarget = const Value.absent(),
                 Value<int> lastJournalSequence = const Value.absent(),
                 Value<int> projectionVersion = const Value.absent(),
+                Value<DateTime?> updatedAtUtc = const Value.absent(),
               }) => RotationStatesCompanion.insert(
                 singletonId: singletonId,
                 rotationTarget: rotationTarget,
                 lastJournalSequence: lastJournalSequence,
                 projectionVersion: projectionVersion,
+                updatedAtUtc: updatedAtUtc,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -12348,6 +12742,7 @@ typedef $$RotationSchemesTableCreateCompanionBuilder =
       Value<bool> resetsRotationBaseline,
       required int activatedJournalSequence,
       Value<int?> supersededJournalSequence,
+      Value<DateTime?> updatedAtUtc,
       Value<int> rowid,
     });
 typedef $$RotationSchemesTableUpdateCompanionBuilder =
@@ -12362,6 +12757,7 @@ typedef $$RotationSchemesTableUpdateCompanionBuilder =
       Value<bool> resetsRotationBaseline,
       Value<int> activatedJournalSequence,
       Value<int?> supersededJournalSequence,
+      Value<DateTime?> updatedAtUtc,
       Value<int> rowid,
     });
 
@@ -12451,6 +12847,11 @@ class $$RotationSchemesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> rotationPartsRefs(
     Expression<bool> Function($$RotationPartsTableFilterComposer f) f,
   ) {
@@ -12530,6 +12931,11 @@ class $$RotationSchemesTableOrderingComposer
     column: $table.supersededJournalSequence,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RotationSchemesTableAnnotationComposer
@@ -12579,6 +12985,11 @@ class $$RotationSchemesTableAnnotationComposer
 
   GeneratedColumn<int> get supersededJournalSequence => $composableBuilder(
     column: $table.supersededJournalSequence,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
     builder: (column) => column,
   );
 
@@ -12648,6 +13059,7 @@ class $$RotationSchemesTableTableManager
                 Value<bool> resetsRotationBaseline = const Value.absent(),
                 Value<int> activatedJournalSequence = const Value.absent(),
                 Value<int?> supersededJournalSequence = const Value.absent(),
+                Value<DateTime?> updatedAtUtc = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RotationSchemesCompanion(
                 id: id,
@@ -12660,6 +13072,7 @@ class $$RotationSchemesTableTableManager
                 resetsRotationBaseline: resetsRotationBaseline,
                 activatedJournalSequence: activatedJournalSequence,
                 supersededJournalSequence: supersededJournalSequence,
+                updatedAtUtc: updatedAtUtc,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -12674,6 +13087,7 @@ class $$RotationSchemesTableTableManager
                 Value<bool> resetsRotationBaseline = const Value.absent(),
                 required int activatedJournalSequence,
                 Value<int?> supersededJournalSequence = const Value.absent(),
+                Value<DateTime?> updatedAtUtc = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RotationSchemesCompanion.insert(
                 id: id,
@@ -12686,6 +13100,7 @@ class $$RotationSchemesTableTableManager
                 resetsRotationBaseline: resetsRotationBaseline,
                 activatedJournalSequence: activatedJournalSequence,
                 supersededJournalSequence: supersededJournalSequence,
+                updatedAtUtc: updatedAtUtc,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -13139,6 +13554,7 @@ typedef $$PrayerSessionsTableCreateCompanionBuilder =
       Value<bool> isQada,
       required DateTime startedAtUtc,
       Value<String?> localDate,
+      Value<DateTime?> updatedAtUtc,
       Value<int> rowid,
     });
 typedef $$PrayerSessionsTableUpdateCompanionBuilder =
@@ -13148,6 +13564,7 @@ typedef $$PrayerSessionsTableUpdateCompanionBuilder =
       Value<bool> isQada,
       Value<DateTime> startedAtUtc,
       Value<String?> localDate,
+      Value<DateTime?> updatedAtUtc,
       Value<int> rowid,
     });
 
@@ -13243,6 +13660,11 @@ class $$PrayerSessionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> prayerSessionPartsRefs(
     Expression<bool> Function($$PrayerSessionPartsTableFilterComposer f) f,
   ) {
@@ -13327,6 +13749,11 @@ class $$PrayerSessionsTableOrderingComposer
     column: $table.localDate,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PrayerSessionsTableAnnotationComposer
@@ -13356,6 +13783,11 @@ class $$PrayerSessionsTableAnnotationComposer
 
   GeneratedColumn<String> get localDate =>
       $composableBuilder(column: $table.localDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => column,
+  );
 
   Expression<T> prayerSessionPartsRefs<T extends Object>(
     Expression<T> Function($$PrayerSessionPartsTableAnnotationComposer a) f,
@@ -13447,6 +13879,7 @@ class $$PrayerSessionsTableTableManager
                 Value<bool> isQada = const Value.absent(),
                 Value<DateTime> startedAtUtc = const Value.absent(),
                 Value<String?> localDate = const Value.absent(),
+                Value<DateTime?> updatedAtUtc = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PrayerSessionsCompanion(
                 id: id,
@@ -13454,6 +13887,7 @@ class $$PrayerSessionsTableTableManager
                 isQada: isQada,
                 startedAtUtc: startedAtUtc,
                 localDate: localDate,
+                updatedAtUtc: updatedAtUtc,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -13463,6 +13897,7 @@ class $$PrayerSessionsTableTableManager
                 Value<bool> isQada = const Value.absent(),
                 required DateTime startedAtUtc,
                 Value<String?> localDate = const Value.absent(),
+                Value<DateTime?> updatedAtUtc = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PrayerSessionsCompanion.insert(
                 id: id,
@@ -13470,6 +13905,7 @@ class $$PrayerSessionsTableTableManager
                 isQada: isQada,
                 startedAtUtc: startedAtUtc,
                 localDate: localDate,
+                updatedAtUtc: updatedAtUtc,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -13565,6 +14001,7 @@ typedef $$PrayerRoutineTemplatesTableCreateCompanionBuilder =
       required String displayName,
       Value<bool> enabled,
       Value<int> revision,
+      Value<DateTime?> updatedAtUtc,
       Value<int> rowid,
     });
 typedef $$PrayerRoutineTemplatesTableUpdateCompanionBuilder =
@@ -13574,6 +14011,7 @@ typedef $$PrayerRoutineTemplatesTableUpdateCompanionBuilder =
       Value<String> displayName,
       Value<bool> enabled,
       Value<int> revision,
+      Value<DateTime?> updatedAtUtc,
       Value<int> rowid,
     });
 
@@ -13655,6 +14093,11 @@ class $$PrayerRoutineTemplatesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> prayerRoutinePartTemplatesRefs(
     Expression<bool> Function($$PrayerRoutinePartTemplatesTableFilterComposer f)
     f,
@@ -13716,6 +14159,11 @@ class $$PrayerRoutineTemplatesTableOrderingComposer
     column: $table.revision,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PrayerRoutineTemplatesTableAnnotationComposer
@@ -13745,6 +14193,11 @@ class $$PrayerRoutineTemplatesTableAnnotationComposer
 
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => column,
+  );
 
   Expression<T> prayerRoutinePartTemplatesRefs<T extends Object>(
     Expression<T> Function(
@@ -13820,6 +14273,7 @@ class $$PrayerRoutineTemplatesTableTableManager
                 Value<String> displayName = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
                 Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAtUtc = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PrayerRoutineTemplatesCompanion(
                 id: id,
@@ -13827,6 +14281,7 @@ class $$PrayerRoutineTemplatesTableTableManager
                 displayName: displayName,
                 enabled: enabled,
                 revision: revision,
+                updatedAtUtc: updatedAtUtc,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -13836,6 +14291,7 @@ class $$PrayerRoutineTemplatesTableTableManager
                 required String displayName,
                 Value<bool> enabled = const Value.absent(),
                 Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAtUtc = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PrayerRoutineTemplatesCompanion.insert(
                 id: id,
@@ -13843,6 +14299,7 @@ class $$PrayerRoutineTemplatesTableTableManager
                 displayName: displayName,
                 enabled: enabled,
                 revision: revision,
+                updatedAtUtc: updatedAtUtc,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -16048,6 +16505,7 @@ typedef $$LearningSurahsTableCreateCompanionBuilder =
       required String status,
       Value<DateTime?> lastLearningActivityAtUtc,
       Value<DateTime?> inactivityRollbackForActivityAtUtc,
+      Value<DateTime?> updatedAtUtc,
       Value<int> rowid,
     });
 typedef $$LearningSurahsTableUpdateCompanionBuilder =
@@ -16066,6 +16524,7 @@ typedef $$LearningSurahsTableUpdateCompanionBuilder =
       Value<String> status,
       Value<DateTime?> lastLearningActivityAtUtc,
       Value<DateTime?> inactivityRollbackForActivityAtUtc,
+      Value<DateTime?> updatedAtUtc,
       Value<int> rowid,
     });
 
@@ -16188,6 +16647,11 @@ class $$LearningSurahsTableFilterComposer
         column: $table.inactivityRollbackForActivityAtUtc,
         builder: (column) => ColumnFilters(column),
       );
+
+  ColumnFilters<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnFilters(column),
+  );
 
   $$SurahMetadataTableFilterComposer get surahId {
     final $$SurahMetadataTableFilterComposer composer = $composerBuilder(
@@ -16313,6 +16777,11 @@ class $$LearningSurahsTableOrderingComposer
         builder: (column) => ColumnOrderings(column),
       );
 
+  ColumnOrderings<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$SurahMetadataTableOrderingComposer get surahId {
     final $$SurahMetadataTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -16399,6 +16868,11 @@ class $$LearningSurahsTableAnnotationComposer
         column: $table.inactivityRollbackForActivityAtUtc,
         builder: (column) => column,
       );
+
+  GeneratedColumn<DateTime> get updatedAtUtc => $composableBuilder(
+    column: $table.updatedAtUtc,
+    builder: (column) => column,
+  );
 
   $$SurahMetadataTableAnnotationComposer get surahId {
     final $$SurahMetadataTableAnnotationComposer composer = $composerBuilder(
@@ -16495,6 +16969,7 @@ class $$LearningSurahsTableTableManager
                     const Value.absent(),
                 Value<DateTime?> inactivityRollbackForActivityAtUtc =
                     const Value.absent(),
+                Value<DateTime?> updatedAtUtc = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LearningSurahsCompanion(
                 id: id,
@@ -16512,6 +16987,7 @@ class $$LearningSurahsTableTableManager
                 lastLearningActivityAtUtc: lastLearningActivityAtUtc,
                 inactivityRollbackForActivityAtUtc:
                     inactivityRollbackForActivityAtUtc,
+                updatedAtUtc: updatedAtUtc,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -16532,6 +17008,7 @@ class $$LearningSurahsTableTableManager
                     const Value.absent(),
                 Value<DateTime?> inactivityRollbackForActivityAtUtc =
                     const Value.absent(),
+                Value<DateTime?> updatedAtUtc = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LearningSurahsCompanion.insert(
                 id: id,
@@ -16549,6 +17026,7 @@ class $$LearningSurahsTableTableManager
                 lastLearningActivityAtUtc: lastLearningActivityAtUtc,
                 inactivityRollbackForActivityAtUtc:
                     inactivityRollbackForActivityAtUtc,
+                updatedAtUtc: updatedAtUtc,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

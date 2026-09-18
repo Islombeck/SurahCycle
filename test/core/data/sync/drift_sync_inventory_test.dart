@@ -113,7 +113,27 @@ void main() {
       expect(local['appSetting:theme'], DateTime.utc(2026, 9, 11, 7));
     });
 
-    test('an undatable row is present with no date, not a guess', () async {
+    test('a row written since v10 carries the trigger stamp', () async {
+      // `addMastered` in setUp wrote these, so the v10 touch trigger has
+      // already dated them without any repository knowing the column exists.
+      final local = await inventoryWith(_FakeGateway()).localEntities();
+
+      expect(local.containsKey('masteredSurah:surah-a'), isTrue);
+      expect(
+        local['masteredSurah:surah-a'],
+        isNotNull,
+        reason: 'this is what v10 bought: these rows used to be undatable',
+      );
+      expect(local['rotationScheme:surah-a:scheme:1'], isNotNull);
+    });
+
+    test('a row untouched since v10 is present with no date', () async {
+      // The state of every row that existed before the upgrade: v10 backfills
+      // nothing, so it is honestly undatable until something writes to it.
+      await database.customStatement(
+        'UPDATE mastered_surahs SET updated_at_utc = NULL',
+      );
+
       final local = await inventoryWith(_FakeGateway()).localEntities();
 
       expect(
@@ -125,12 +145,10 @@ void main() {
         local['masteredSurah:surah-a'],
         isNull,
         reason:
-            'cached_last_used_at_utc is when it was last recited, not when the '
-            'roster entry changed — substituting it would state agreement the '
+            'substituting cached_last_used_at_utc — when it was last recited, '
+            'not when the roster entry changed — would state agreement the '
             'schema cannot support',
       );
-      expect(local.containsKey('rotationScheme:surah-a:scheme:1'), isTrue);
-      expect(local['rotationScheme:surah-a:scheme:1'], isNull);
     });
   });
 

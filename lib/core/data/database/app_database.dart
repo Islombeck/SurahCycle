@@ -3,6 +3,30 @@ import 'package:drift_flutter/drift_flutter.dart';
 
 part 'app_database.g.dart';
 
+/// Why six tables gained `updated_at_utc` in schema v10.
+///
+/// Comparing this device against an account needs one thing per record: when
+/// it last changed. Five tables could already answer — the append-only
+/// journals by `created_at_utc`, `app_settings` by its own `updated_at_utc` —
+/// and six could not, so a first-sync preview had to report every roster
+/// entry, scheme, routine, prayer session and learning plan as *undetermined*:
+/// present on both sides, agreement unknowable. That also rules out
+/// last-writer-wins for them, because "newest wins" cannot pick between two
+/// records with no dates.
+///
+/// **Nothing is backfilled, on purpose.** A row written before v10 stays null
+/// until it is next touched. Stamping the migration time onto every existing
+/// row would look like an answer while being arbitrary — two devices migrating
+/// on different days would hand the merge a winner decided by install order.
+/// Null is not knowing, and the preview says so out loud.
+///
+/// **A trigger keeps it, not the repositories.** `trg_<table>_touch_insert`
+/// and `trg_<table>_touch_update` set the column from SQLite's own clock. The
+/// twenty-odd write sites across five repositories would each have had to
+/// remember, and the next one added would not have — this cannot be forgotten,
+/// and it covers writes that do not go through a repository at all.
+const String kUpdatedAtUtcDoc = 'See the library note in app_database.dart.';
+
 @DataClassName('SurahMetadataRow')
 class SurahMetadata extends Table {
   @override
@@ -48,6 +72,12 @@ class MasteredSurahs extends Table {
   TextColumn get alias => text().nullable()();
   IntColumn get displayOrder => integer().withDefault(const Constant<int>(0))();
 
+  /// When this row last changed. See [kUpdatedAtUtcDoc].
+  ///
+  /// `cached_last_used_at_utc` above is *not* this: it says when the surah was
+  /// last recited, which moves without the roster entry changing at all.
+  DateTimeColumn get updatedAtUtc => dateTime().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{surahId};
 
@@ -74,6 +104,9 @@ class RotationStates extends Table {
       integer().withDefault(const Constant<int>(0))();
   IntColumn get projectionVersion =>
       integer().withDefault(const Constant<int>(1))();
+
+  /// When this row last changed. See [kUpdatedAtUtcDoc].
+  DateTimeColumn get updatedAtUtc => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{singletonId};
@@ -107,6 +140,9 @@ class RotationSchemes extends Table {
       boolean().withDefault(const Constant<bool>(false))();
   IntColumn get activatedJournalSequence => integer()();
   IntColumn get supersededJournalSequence => integer().nullable()();
+
+  /// When this row last changed. See [kUpdatedAtUtcDoc].
+  DateTimeColumn get updatedAtUtc => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
@@ -176,6 +212,12 @@ class PrayerSessions extends Table {
   DateTimeColumn get startedAtUtc => dateTime()();
   TextColumn get localDate => text().nullable()();
 
+  /// When this row last changed. See [kUpdatedAtUtcDoc].
+  ///
+  /// `started_at_utc` above is *not* this: it says when the prayer began, and
+  /// a session's parts go on being edited long after that.
+  DateTimeColumn get updatedAtUtc => dateTime().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
 
@@ -194,6 +236,12 @@ class PrayerRoutineTemplates extends Table {
   TextColumn get displayName => text()();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
   IntColumn get revision => integer().withDefault(const Constant(1))();
+
+  /// When this row last changed. See [kUpdatedAtUtcDoc].
+  ///
+  /// `revision` above counts edits but cannot be compared across devices: two
+  /// phones both at revision 4 say nothing about which edit came last.
+  DateTimeColumn get updatedAtUtc => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
@@ -436,6 +484,12 @@ class LearningSurahs extends Table {
   DateTimeColumn get lastLearningActivityAtUtc => dateTime().nullable()();
   DateTimeColumn get inactivityRollbackForActivityAtUtc =>
       dateTime().nullable()();
+
+  /// When this row last changed. See [kUpdatedAtUtcDoc].
+  ///
+  /// `last_learning_activity_at_utc` above is *not* this: it is activity, not
+  /// an edit, and it is nullable for a plan nobody has worked on yet.
+  DateTimeColumn get updatedAtUtc => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
@@ -703,7 +757,18 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'murajaah_user'));
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
+
+  /// The six tables that gained `updated_at_utc` in v10, and whose primary key
+  /// the touch triggers address a row by. See [kUpdatedAtUtcDoc].
+  static const Map<String, String> _touchedTables = <String, String>{
+    'mastered_surahs': 'surah_id',
+    'rotation_states': 'singleton_id',
+    'rotation_schemes': 'id',
+    'prayer_routine_templates': 'id',
+    'prayer_sessions': 'id',
+    'learning_surahs': 'id',
+  };
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -714,12 +779,13 @@ class AppDatabase extends _$AppDatabase {
       await _createVersionFiveIndexes();
       await _createVersionSixIndexes();
       await _createVersionSevenIndexes();
+      await _createVersionTenTouchTriggers();
       await _ensureEmptyRoutineTemplates();
       await _ensureRotationSingleton();
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
       if (from == to) return;
-      if (from < 1 || from > 8 || to != 9) {
+      if (from < 1 || from > 9 || to != 10) {
         throw StateError('Unsupported database migration from $from to $to.');
       }
       if (from < 2) {
@@ -746,6 +812,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 9) {
         await _migrateVersionEightToNine(migrator);
       }
+      if (from < 10) {
+        await _migrateVersionNineToTen(migrator);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -753,10 +822,88 @@ class AppDatabase extends _$AppDatabase {
       await _createVersionFiveIndexes();
       await _createVersionSixIndexes();
       await _createVersionSevenIndexes();
+      await _createVersionTenTouchTriggers();
       await _ensureRotationSingleton();
       await _ensureEmptyRoutineTemplates();
     },
   );
+
+  /// Records when each of the six previously undatable rows last changed.
+  ///
+  /// `addColumn`, not a rebuild: the column is plain and nullable with no CHECK
+  /// attached, so none of the table-rebuild hazards apply — and every rebuild
+  /// in this file has had to be taught about every column added after it, three
+  /// times now. Not rebuilding is the safer of the two.
+  ///
+  /// See [kUpdatedAtUtcDoc] for why nothing is backfilled.
+  Future<void> _migrateVersionNineToTen(Migrator migrator) async {
+    final columns = <String, GeneratedColumn<DateTime>>{
+      'mastered_surahs': masteredSurahs.updatedAtUtc,
+      'rotation_states': rotationStates.updatedAtUtc,
+      'rotation_schemes': rotationSchemes.updatedAtUtc,
+      'prayer_routine_templates': prayerRoutineTemplates.updatedAtUtc,
+      'prayer_sessions': prayerSessions.updatedAtUtc,
+      'learning_surahs': learningSurahs.updatedAtUtc,
+    };
+    for (final entry in columns.entries) {
+      final existing = await customSelect(
+        'PRAGMA table_info(${entry.key})',
+      ).get();
+      final alreadyPresent = existing.any(
+        (row) => row.read<String>('name') == 'updated_at_utc',
+      );
+      if (!alreadyPresent) {
+        await migrator.addColumn(
+          allTables.firstWhere((table) => table.actualTableName == entry.key),
+          entry.value,
+        );
+      }
+    }
+    await _createVersionTenTouchTriggers();
+    final violations = await customSelect('PRAGMA foreign_key_check').get();
+    if (violations.isNotEmpty) {
+      throw StateError(
+        'Foreign-key violations after v9 to v10 migration: '
+        '${violations.length}.',
+      );
+    }
+  }
+
+  /// Keeps `updated_at_utc` current without any repository having to remember.
+  ///
+  /// The update trigger guards on `NEW.updated_at_utc IS OLD.updated_at_utc`.
+  /// With `recursive_triggers` off — SQLite's default — the inner UPDATE cannot
+  /// re-fire it anyway; the guard is what makes that independent of a pragma
+  /// this code does not set, so the behaviour cannot change underneath it.
+  ///
+  /// `strftime` returns text, so the cast is load-bearing: Drift reads this
+  /// column as whole seconds since the epoch, and a string would come back as
+  /// no date at all.
+  Future<void> _createVersionTenTouchTriggers() async {
+    for (final entry in _touchedTables.entries) {
+      final table = entry.key;
+      final key = entry.value;
+      await customStatement('''
+        CREATE TRIGGER IF NOT EXISTS trg_${table}_touch_insert
+        AFTER INSERT ON $table
+        BEGIN
+          UPDATE $table
+          SET updated_at_utc = CAST(strftime('%s', 'now') AS INTEGER)
+          WHERE $key = NEW.$key;
+        END
+      ''');
+      await customStatement('''
+        CREATE TRIGGER IF NOT EXISTS trg_${table}_touch_update
+        AFTER UPDATE ON $table
+        WHEN NEW.updated_at_utc IS OLD.updated_at_utc
+        BEGIN
+          UPDATE $table
+          SET updated_at_utc = CAST(strftime('%s', 'now') AS INTEGER)
+          WHERE $key = NEW.$key;
+        END
+      ''');
+    }
+  }
 
   Future<void> _ensureRotationSingleton() => customStatement(
     'INSERT OR IGNORE INTO rotation_states '
@@ -1052,7 +1199,16 @@ class AppDatabase extends _$AppDatabase {
       await migrator.createTable(prayerRoutinePartTemplates);
     }
     if (sourceVersion >= 2) {
-      await migrator.alterTable(TableMigration(prayerSessions));
+      // `updated_at_utc` is declared here for the same reason as the
+      // recitation columns below: a rebuild produces the *current* table
+      // definition, so this step already creates the v10 column and Drift
+      // would otherwise try to copy it out of a table that has no such column.
+      await migrator.alterTable(
+        TableMigration(
+          prayerSessions,
+          newColumns: <GeneratedColumn<Object>>[prayerSessions.updatedAtUtc],
+        ),
+      );
     }
     if (!await _tableExists('prayer_session_parts')) {
       await migrator.createTable(prayerSessionParts);
@@ -1290,6 +1446,9 @@ class AppDatabase extends _$AppDatabase {
         masteredSurahs,
         newColumns: <GeneratedColumn<Object>>[
           masteredSurahs.isCurrentlyMastered,
+          // Added in v10; declared here because this rebuild creates it. See
+          // the rule restated in the v7 to v8 step.
+          masteredSurahs.updatedAtUtc,
         ],
         columnTransformer: <GeneratedColumn<Object>, Expression<Object>>{
           masteredSurahs.isCurrentlyMastered: const Constant<bool>(true),

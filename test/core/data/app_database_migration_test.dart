@@ -10,7 +10,7 @@ import '../../generated_migrations/schema.dart';
 
 void main() {
   test(
-    'v1 to v9 preserves every legacy table and backfills v5 semantics',
+    'v1 to v10 preserves every legacy table and backfills v5 semantics',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(1);
@@ -21,19 +21,19 @@ void main() {
       final migrationDatabase = AppDatabase(schema.newConnection());
       await verifier.migrateAndValidate(
         migrationDatabase,
-        9,
+        10,
         // Runtime-only performance indexes are intentionally absent from the
         // generated Drift schema. Old tables are checked explicitly below.
         options: const ValidationOptions(),
       );
 
-      expect(migrationDatabase.schemaVersion, 9);
+      expect(migrationDatabase.schemaVersion, 10);
       expect(
         await migrationDatabase
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        9,
+        10,
       );
       expect(
         await migrationDatabase.customSelect('PRAGMA foreign_key_check').get(),
@@ -520,419 +520,441 @@ void main() {
     },
   );
 
-  test('v2 to v9 preserves four-part state and accepts a fifth part', () async {
-    final verifier = SchemaVerifier(GeneratedHelper());
-    final schema = await verifier.schemaAt(2);
-    final raw = schema.rawDatabase;
-    raw.execute('PRAGMA foreign_keys = ON');
-    _seedVersionTwo(raw);
+  test(
+    'v2 to v10 preserves four-part state and accepts a fifth part',
+    () async {
+      final verifier = SchemaVerifier(GeneratedHelper());
+      final schema = await verifier.schemaAt(2);
+      final raw = schema.rawDatabase;
+      raw.execute('PRAGMA foreign_keys = ON');
+      _seedVersionTwo(raw);
 
-    final database = AppDatabase(schema.newConnection());
-    addTearDown(() async {
-      await database.close();
-      schema.close();
-    });
-    await verifier.migrateAndValidate(
-      database,
-      9,
-      options: const ValidationOptions(),
-    );
+      final database = AppDatabase(schema.newConnection());
+      addTearDown(() async {
+        await database.close();
+        schema.close();
+      });
+      await verifier.migrateAndValidate(
+        database,
+        10,
+        options: const ValidationOptions(),
+      );
 
-    expect(database.schemaVersion, 9);
-    expect(
-      await database
-          .customSelect('PRAGMA user_version')
-          .map((row) => row.read<int>('user_version'))
-          .getSingle(),
-      9,
-    );
-    expect(
-      await database.customSelect('PRAGMA foreign_key_check').get(),
-      isEmpty,
-    );
-    await _expectEmptySyncTransport(database);
-    await _expectVersionSixScaffold(database, <String>{
-      'v2-live',
-      'v2-deleted',
-    });
+      expect(database.schemaVersion, 10);
+      expect(
+        await database
+            .customSelect('PRAGMA user_version')
+            .map((row) => row.read<int>('user_version'))
+            .getSingle(),
+        10,
+      );
+      expect(
+        await database.customSelect('PRAGMA foreign_key_check').get(),
+        isEmpty,
+      );
+      await _expectEmptySyncTransport(database);
+      await _expectVersionSixScaffold(database, <String>{
+        'v2-live',
+        'v2-deleted',
+      });
 
-    final metadata = await database.select(database.surahMetadata).getSingle();
-    expect(
-      <Object?>[
-        metadata.id,
-        metadata.surahNumber,
-        metadata.officialName,
-        metadata.ayahCount,
-        metadata.sourceId,
-        metadata.sourceVersion,
-      ],
-      <Object?>['v2-surah', 2, 'V2 Surah', 12, 'v2-source', 'v2'],
-    );
-    final mastered = await database.select(database.masteredSurahs).getSingle();
-    expect(
-      <Object?>[
-        mastered.surahId,
-        mastered.isCurrentlyMastered,
-        mastered.isActive,
-        mastered.hasEnteredRotation,
-        mastered.activationBaselineScore,
-        mastered.cachedRotationScore,
-        mastered.cachedTotalRecitations,
-        mastered.cachedLastUsedAtUtc?.toUtc(),
-        mastered.alias,
-        mastered.displayOrder,
-      ],
-      <Object?>['v2-surah', true, true, true, 5, 7, 3, _utc(4), 'V2 alias', 6],
-    );
-    final rotationState = await database
-        .select(database.rotationStates)
-        .getSingle();
-    expect(
-      <int>[
-        rotationState.rotationTarget,
-        rotationState.lastJournalSequence,
-        rotationState.projectionVersion,
-      ],
-      <int>[10, 3, 2],
-    );
-
-    final tableSql = await database
-        .customSelect(
-          "SELECT sql FROM sqlite_schema "
-          "WHERE type = 'table' AND name = 'rotation_parts'",
-        )
-        .map((row) => row.read<String>('sql'))
-        .getSingle();
-    expect(tableSql, contains('CHECK (ordinal >= 1)'));
-    expect(tableSql, isNot(contains('BETWEEN 1 AND 4')));
-
-    final schemes = await database.select(database.rotationSchemes).get();
-    expect(
-      schemes
-          .map(
-            (row) => <Object?>[
-              row.id,
-              row.surahId,
-              row.version,
-              row.ayahCountSnapshot,
-              row.baselineScore,
-              row.baselineTotalRecitations,
-              row.baselineLastUsedAtUtc?.toUtc(),
-              row.resetsRotationBaseline,
-              row.activatedJournalSequence,
-              row.supersededJournalSequence,
-            ],
-          )
-          .toList(),
-      <List<Object?>>[
+      final metadata = await database
+          .select(database.surahMetadata)
+          .getSingle();
+      expect(
         <Object?>[
-          'v2-surah:scheme:1',
+          metadata.id,
+          metadata.surahNumber,
+          metadata.officialName,
+          metadata.ayahCount,
+          metadata.sourceId,
+          metadata.sourceVersion,
+        ],
+        <Object?>['v2-surah', 2, 'V2 Surah', 12, 'v2-source', 'v2'],
+      );
+      final mastered = await database
+          .select(database.masteredSurahs)
+          .getSingle();
+      expect(
+        <Object?>[
+          mastered.surahId,
+          mastered.isCurrentlyMastered,
+          mastered.isActive,
+          mastered.hasEnteredRotation,
+          mastered.activationBaselineScore,
+          mastered.cachedRotationScore,
+          mastered.cachedTotalRecitations,
+          mastered.cachedLastUsedAtUtc?.toUtc(),
+          mastered.alias,
+          mastered.displayOrder,
+        ],
+        <Object?>[
           'v2-surah',
+          true,
+          true,
+          true,
+          5,
+          7,
+          3,
+          _utc(4),
+          'V2 alias',
+          6,
+        ],
+      );
+      final rotationState = await database
+          .select(database.rotationStates)
+          .getSingle();
+      expect(
+        <int>[
+          rotationState.rotationTarget,
+          rotationState.lastJournalSequence,
+          rotationState.projectionVersion,
+        ],
+        <int>[10, 3, 2],
+      );
+
+      final tableSql = await database
+          .customSelect(
+            "SELECT sql FROM sqlite_schema "
+            "WHERE type = 'table' AND name = 'rotation_parts'",
+          )
+          .map((row) => row.read<String>('sql'))
+          .getSingle();
+      expect(tableSql, contains('CHECK (ordinal >= 1)'));
+      expect(tableSql, isNot(contains('BETWEEN 1 AND 4')));
+
+      final schemes = await database.select(database.rotationSchemes).get();
+      expect(
+        schemes
+            .map(
+              (row) => <Object?>[
+                row.id,
+                row.surahId,
+                row.version,
+                row.ayahCountSnapshot,
+                row.baselineScore,
+                row.baselineTotalRecitations,
+                row.baselineLastUsedAtUtc?.toUtc(),
+                row.resetsRotationBaseline,
+                row.activatedJournalSequence,
+                row.supersededJournalSequence,
+              ],
+            )
+            .toList(),
+        <List<Object?>>[
+          <Object?>[
+            'v2-surah:scheme:1',
+            'v2-surah',
+            1,
+            12,
+            5,
+            2,
+            _utc(0),
+            false,
+            0,
+            null,
+          ],
+        ],
+      );
+
+      final parts = await database.select(database.rotationParts).get()
+        ..sort((left, right) => left.ordinal.compareTo(right.ordinal));
+      expect(
+        parts
+            .map(
+              (row) => <Object?>[
+                row.id,
+                row.schemeId,
+                row.ordinal,
+                row.startAyah,
+                row.endAyah,
+                row.cachedScore,
+                row.cachedRecitationCount,
+                row.cachedLastUsedAtUtc?.toUtc(),
+              ],
+            )
+            .toList(),
+        <List<Object?>>[
+          <Object?>['v2-p1', 'v2-surah:scheme:1', 1, 1, 3, 8, 4, _utc(1)],
+          <Object?>['v2-p2', 'v2-surah:scheme:1', 2, 4, 6, 7, 3, _utc(2)],
+          <Object?>['v2-p3', 'v2-surah:scheme:1', 3, 7, 9, 9, 5, _utc(3)],
+          <Object?>['v2-p4', 'v2-surah:scheme:1', 4, 10, 12, 7, 3, _utc(4)],
+        ],
+      );
+
+      final eventRows = await database.select(database.recitationEvents).get()
+        ..sort(
+          (left, right) =>
+              left.journalSequence.compareTo(right.journalSequence),
+        );
+      expect(
+        eventRows
+            .map(
+              (row) => <Object?>[
+                row.id,
+                row.journalSequence,
+                row.rotationSchemeId,
+                row.rakaatSpanCount,
+                row.prayerSessionId,
+                row.createdAtUtc.toUtc(),
+                row.localDate,
+                row.prayerType,
+                row.isQada,
+                row.deletedAtUtc?.toUtc(),
+              ],
+            )
+            .toList(),
+        <List<Object?>>[
+          <Object?>[
+            'v2-live',
+            1,
+            'v2-surah:scheme:1',
+            2,
+            'v2-session',
+            _utc(5),
+            '2026-08-24',
+            'asr',
+            false,
+            null,
+          ],
+          <Object?>[
+            'v2-deleted',
+            2,
+            'v2-surah:scheme:1',
+            1,
+            null,
+            _utc(6),
+            '2026-08-24',
+            'maghrib',
+            false,
+            _utc(9),
+          ],
+        ],
+      );
+      final coverage =
+          await database.select(database.recitationEventParts).get()
+            ..sort((left, right) {
+              final event = left.eventId.compareTo(right.eventId);
+              return event != 0 ? event : left.partId.compareTo(right.partId);
+            });
+      expect(
+        coverage.map((row) => <String>[row.eventId, row.schemeId, row.partId]),
+        <List<String>>[
+          <String>['v2-deleted', 'v2-surah:scheme:1', 'v2-p1'],
+          <String>['v2-deleted', 'v2-surah:scheme:1', 'v2-p2'],
+          <String>['v2-deleted', 'v2-surah:scheme:1', 'v2-p3'],
+          <String>['v2-deleted', 'v2-surah:scheme:1', 'v2-p4'],
+          <String>['v2-live', 'v2-surah:scheme:1', 'v2-p2'],
+          <String>['v2-live', 'v2-surah:scheme:1', 'v2-p4'],
+        ],
+      );
+
+      final prayerSession = await database
+          .select(database.prayerSessions)
+          .getSingle();
+      expect(
+        <Object?>[
+          prayerSession.id,
+          prayerSession.prayerType,
+          prayerSession.isQada,
+          prayerSession.startedAtUtc.toUtc(),
+          prayerSession.localDate,
+        ],
+        <Object?>['v2-session', 'dhuhr', true, _utc(5), '2026-08-24'],
+      );
+      final adjustment = await database
+          .select(database.rotationAdjustments)
+          .getSingle();
+      expect(
+        <Object?>[
+          adjustment.id,
+          adjustment.journalSequence,
+          adjustment.surahId,
+          adjustment.rotationSchemeId,
+          adjustment.delta,
+          adjustment.reason,
+          adjustment.createdAtUtc.toUtc(),
+          adjustment.deletedAtUtc?.toUtc(),
+        ],
+        <Object?>[
+          'v2-adjustment',
+          3,
+          'v2-surah',
+          'v2-surah:scheme:1',
+          -1,
+          'Preserved v2 adjustment',
+          _utc(7),
+          null,
+        ],
+      );
+      final learning = await database
+          .select(database.learningSurahs)
+          .getSingle();
+      expect(
+        <Object?>[
+          learning.id,
+          learning.surahId,
+          learning.ayahCount,
+          learning.planKind,
+          learning.stageKind,
+          learning.stageStartAyah,
+          learning.stageEndAyah,
+          learning.targetStartAyah,
+          learning.targetEndAyah,
+          learning.blockSize,
+          learning.learningCycle,
+          learning.status,
+          learning.lastLearningActivityAtUtc?.toUtc(),
+          learning.inactivityRollbackForActivityAtUtc?.toUtc(),
+        ],
+        <Object?>[
+          'v2-learning',
+          'v2-surah',
+          12,
+          'classicCumulative',
+          'newAyah',
+          5,
+          5,
           1,
           12,
-          5,
-          2,
-          _utc(0),
-          false,
-          0,
+          null,
+          1,
+          'active',
+          _utc(8),
           null,
         ],
-      ],
-    );
-
-    final parts = await database.select(database.rotationParts).get()
-      ..sort((left, right) => left.ordinal.compareTo(right.ordinal));
-    expect(
-      parts
-          .map(
-            (row) => <Object?>[
-              row.id,
-              row.schemeId,
-              row.ordinal,
-              row.startAyah,
-              row.endAyah,
-              row.cachedScore,
-              row.cachedRecitationCount,
-              row.cachedLastUsedAtUtc?.toUtc(),
-            ],
-          )
-          .toList(),
-      <List<Object?>>[
-        <Object?>['v2-p1', 'v2-surah:scheme:1', 1, 1, 3, 8, 4, _utc(1)],
-        <Object?>['v2-p2', 'v2-surah:scheme:1', 2, 4, 6, 7, 3, _utc(2)],
-        <Object?>['v2-p3', 'v2-surah:scheme:1', 3, 7, 9, 9, 5, _utc(3)],
-        <Object?>['v2-p4', 'v2-surah:scheme:1', 4, 10, 12, 7, 3, _utc(4)],
-      ],
-    );
-
-    final eventRows = await database.select(database.recitationEvents).get()
-      ..sort(
-        (left, right) => left.journalSequence.compareTo(right.journalSequence),
       );
-    expect(
-      eventRows
-          .map(
-            (row) => <Object?>[
-              row.id,
-              row.journalSequence,
-              row.rotationSchemeId,
-              row.rakaatSpanCount,
-              row.prayerSessionId,
-              row.createdAtUtc.toUtc(),
-              row.localDate,
-              row.prayerType,
-              row.isQada,
-              row.deletedAtUtc?.toUtc(),
-            ],
-          )
-          .toList(),
-      <List<Object?>>[
+      final learningEvent = await database
+          .select(database.learningEvents)
+          .getSingle();
+      expect(
         <Object?>[
-          'v2-live',
-          1,
-          'v2-surah:scheme:1',
-          2,
-          'v2-session',
-          _utc(5),
-          '2026-08-24',
-          'asr',
-          false,
-          null,
+          learningEvent.id,
+          learningEvent.sequence,
+          learningEvent.learningSurahId,
+          learningEvent.type,
+          learningEvent.createdAtUtc.toUtc(),
+          learningEvent.learningCycle,
+          learningEvent.fromPlanKind,
+          learningEvent.fromStageKind,
+          learningEvent.fromStageStartAyah,
+          learningEvent.fromStageEndAyah,
+          learningEvent.toPlanKind,
+          learningEvent.toStageKind,
+          learningEvent.toStageStartAyah,
+          learningEvent.toStageEndAyah,
+          learningEvent.reason,
         ],
         <Object?>[
-          'v2-deleted',
-          2,
-          'v2-surah:scheme:1',
+          'v2-learning-event',
+          12,
+          'v2-learning',
+          'repeated',
+          _utc(8),
           1,
+          'classicCumulative',
+          'newAyah',
+          5,
+          5,
+          'classicCumulative',
+          'newAyah',
+          5,
+          5,
           null,
-          _utc(6),
-          '2026-08-24',
-          'maghrib',
-          false,
-          _utc(9),
         ],
-      ],
-    );
-    final coverage = await database.select(database.recitationEventParts).get()
-      ..sort((left, right) {
-        final event = left.eventId.compareTo(right.eventId);
-        return event != 0 ? event : left.partId.compareTo(right.partId);
-      });
-    expect(
-      coverage.map((row) => <String>[row.eventId, row.schemeId, row.partId]),
-      <List<String>>[
-        <String>['v2-deleted', 'v2-surah:scheme:1', 'v2-p1'],
-        <String>['v2-deleted', 'v2-surah:scheme:1', 'v2-p2'],
-        <String>['v2-deleted', 'v2-surah:scheme:1', 'v2-p3'],
-        <String>['v2-deleted', 'v2-surah:scheme:1', 'v2-p4'],
-        <String>['v2-live', 'v2-surah:scheme:1', 'v2-p2'],
-        <String>['v2-live', 'v2-surah:scheme:1', 'v2-p4'],
-      ],
-    );
+      );
+      final setting = await database.select(database.appSettings).getSingle();
+      expect(
+        <Object?>[
+          setting.key,
+          setting.value,
+          setting.valueType,
+          setting.updatedAtUtc.toUtc(),
+        ],
+        <Object?>['v2-setting', '42', 'int', _utc(9)],
+      );
 
-    final prayerSession = await database
-        .select(database.prayerSessions)
-        .getSingle();
-    expect(
-      <Object?>[
-        prayerSession.id,
-        prayerSession.prayerType,
-        prayerSession.isQada,
-        prayerSession.startedAtUtc.toUtc(),
-        prayerSession.localDate,
-      ],
-      <Object?>['v2-session', 'dhuhr', true, _utc(5), '2026-08-24'],
-    );
-    final adjustment = await database
-        .select(database.rotationAdjustments)
-        .getSingle();
-    expect(
-      <Object?>[
-        adjustment.id,
-        adjustment.journalSequence,
-        adjustment.surahId,
-        adjustment.rotationSchemeId,
-        adjustment.delta,
-        adjustment.reason,
-        adjustment.createdAtUtc.toUtc(),
-        adjustment.deletedAtUtc?.toUtc(),
-      ],
-      <Object?>[
-        'v2-adjustment',
-        3,
-        'v2-surah',
-        'v2-surah:scheme:1',
-        -1,
-        'Preserved v2 adjustment',
-        _utc(7),
-        null,
-      ],
-    );
-    final learning = await database.select(database.learningSurahs).getSingle();
-    expect(
-      <Object?>[
-        learning.id,
-        learning.surahId,
-        learning.ayahCount,
-        learning.planKind,
-        learning.stageKind,
-        learning.stageStartAyah,
-        learning.stageEndAyah,
-        learning.targetStartAyah,
-        learning.targetEndAyah,
-        learning.blockSize,
-        learning.learningCycle,
-        learning.status,
-        learning.lastLearningActivityAtUtc?.toUtc(),
-        learning.inactivityRollbackForActivityAtUtc?.toUtc(),
-      ],
-      <Object?>[
-        'v2-learning',
-        'v2-surah',
-        12,
-        'classicCumulative',
-        'newAyah',
-        5,
-        5,
-        1,
-        12,
-        null,
-        1,
-        'active',
-        _utc(8),
-        null,
-      ],
-    );
-    final learningEvent = await database
-        .select(database.learningEvents)
-        .getSingle();
-    expect(
-      <Object?>[
-        learningEvent.id,
-        learningEvent.sequence,
-        learningEvent.learningSurahId,
-        learningEvent.type,
-        learningEvent.createdAtUtc.toUtc(),
-        learningEvent.learningCycle,
-        learningEvent.fromPlanKind,
-        learningEvent.fromStageKind,
-        learningEvent.fromStageStartAyah,
-        learningEvent.fromStageEndAyah,
-        learningEvent.toPlanKind,
-        learningEvent.toStageKind,
-        learningEvent.toStageStartAyah,
-        learningEvent.toStageEndAyah,
-        learningEvent.reason,
-      ],
-      <Object?>[
-        'v2-learning-event',
-        12,
-        'v2-learning',
-        'repeated',
-        _utc(8),
-        1,
-        'classicCumulative',
-        'newAyah',
-        5,
-        5,
-        'classicCumulative',
-        'newAyah',
-        5,
-        5,
-        null,
-      ],
-    );
-    final setting = await database.select(database.appSettings).getSingle();
-    expect(
-      <Object?>[
-        setting.key,
-        setting.value,
-        setting.valueType,
-        setting.updatedAtUtc.toUtc(),
-      ],
-      <Object?>['v2-setting', '42', 'int', _utc(9)],
-    );
-
-    await _expectConstraint(database, '''
+      await _expectConstraint(database, '''
       INSERT INTO rotation_parts
         (id, scheme_id, ordinal, start_ayah, end_ayah, cached_score,
          cached_recitation_count)
       VALUES ('invalid-zero', 'v2-surah:scheme:1', 0, 1, 1, 0, 0)
     ''');
 
-    final surahs = SurahRepository(database);
-    final recitations = RecitationRepository(database);
-    final beforeChange = await surahs.getRotationSnapshot();
-    expect(beforeChange.surahById('v2-surah').rotationScore, 7);
-    expect(beforeChange.surahById('v2-surah').totalRecitations, 3);
+      final surahs = SurahRepository(database);
+      final recitations = RecitationRepository(database);
+      final beforeChange = await surahs.getRotationSnapshot();
+      expect(beforeChange.surahById('v2-surah').rotationScore, 7);
+      expect(beforeChange.surahById('v2-surah').totalRecitations, 3);
 
-    final proposed = SurahRotationScheme.evenlySplit(
-      id: 'v2-surah:scheme:2',
-      surahId: 'v2-surah',
-      version: 2,
-      ayahCount: 12,
-      partCount: 5,
-    );
-    final afterChange = await surahs.changeRotationScheme(
-      surahId: 'v2-surah',
-      proposedScheme: proposed,
-      createdAtUtc: _utc(11),
-    );
-    final fivePartScheme = afterChange.surahById('v2-surah').rotationScheme;
-    expect(fivePartScheme.parts, hasLength(5));
-    expect(fivePartScheme.parts.map((part) => part.rotationScore), <int>[
-      7,
-      7,
-      7,
-      7,
-      7,
-    ]);
-    expect(fivePartScheme.parts.map((part) => part.recitationCount), <int>[
-      3,
-      3,
-      3,
-      3,
-      3,
-    ]);
-
-    await recitations.register(
-      SurahRecitationEvent(
-        id: 'v3-fifth-part',
+      final proposed = SurahRotationScheme.evenlySplit(
+        id: 'v2-surah:scheme:2',
         surahId: 'v2-surah',
-        prayerContext: PrayerContext(prayerType: PrayerType.asr),
-        createdAtUtc: _utc(12),
-        localDate: LocalDate(2026, 8, 24),
-        rotationSchemeId: fivePartScheme.id,
-        coveredPartIds: <String>[fivePartScheme.parts[4].id],
-        // Part count and rakaat count are intentionally independent.
-        rakaatSpanCount: 1,
-      ),
-    );
-    final storedFifthCoverage = await (database.select(
-      database.recitationEventParts,
-    )..where((row) => row.eventId.equals('v3-fifth-part'))).getSingle();
-    expect(storedFifthCoverage.partId, fivePartScheme.parts[4].id);
+        version: 2,
+        ayahCount: 12,
+        partCount: 5,
+      );
+      final afterChange = await surahs.changeRotationScheme(
+        surahId: 'v2-surah',
+        proposedScheme: proposed,
+        createdAtUtc: _utc(11),
+      );
+      final fivePartScheme = afterChange.surahById('v2-surah').rotationScheme;
+      expect(fivePartScheme.parts, hasLength(5));
+      expect(fivePartScheme.parts.map((part) => part.rotationScore), <int>[
+        7,
+        7,
+        7,
+        7,
+        7,
+      ]);
+      expect(fivePartScheme.parts.map((part) => part.recitationCount), <int>[
+        3,
+        3,
+        3,
+        3,
+        3,
+      ]);
 
-    final oldParts = await (database.select(
-      database.rotationParts,
-    )..where((row) => row.schemeId.equals('v2-surah:scheme:1'))).get();
-    expect(oldParts, hasLength(4));
-    final history = await recitations.getHistory();
-    final legacyHistory = history.singleWhere(
-      (entry) => entry.event.id == 'v2-live',
-    );
-    expect(legacyHistory.event.rakaatSpanCount, 2);
-    expect(legacyHistory.coveredParts.map((part) => part.id).toSet(), <String>{
-      'v2-p2',
-      'v2-p4',
-    });
-    expect(
-      await database.customSelect('PRAGMA foreign_key_check').get(),
-      isEmpty,
-    );
-  });
+      await recitations.register(
+        SurahRecitationEvent(
+          id: 'v3-fifth-part',
+          surahId: 'v2-surah',
+          prayerContext: PrayerContext(prayerType: PrayerType.asr),
+          createdAtUtc: _utc(12),
+          localDate: LocalDate(2026, 8, 24),
+          rotationSchemeId: fivePartScheme.id,
+          coveredPartIds: <String>[fivePartScheme.parts[4].id],
+          // Part count and rakaat count are intentionally independent.
+          rakaatSpanCount: 1,
+        ),
+      );
+      final storedFifthCoverage = await (database.select(
+        database.recitationEventParts,
+      )..where((row) => row.eventId.equals('v3-fifth-part'))).getSingle();
+      expect(storedFifthCoverage.partId, fivePartScheme.parts[4].id);
 
-  test('v3 to v9 preserves all data and backfills generic learning', () async {
+      final oldParts = await (database.select(
+        database.rotationParts,
+      )..where((row) => row.schemeId.equals('v2-surah:scheme:1'))).get();
+      expect(oldParts, hasLength(4));
+      final history = await recitations.getHistory();
+      final legacyHistory = history.singleWhere(
+        (entry) => entry.event.id == 'v2-live',
+      );
+      expect(legacyHistory.event.rakaatSpanCount, 2);
+      expect(
+        legacyHistory.coveredParts.map((part) => part.id).toSet(),
+        <String>{'v2-p2', 'v2-p4'},
+      );
+      expect(
+        await database.customSelect('PRAGMA foreign_key_check').get(),
+        isEmpty,
+      );
+    },
+  );
+
+  test('v3 to v10 preserves all data and backfills generic learning', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(3);
     final raw = schema.rawDatabase;
@@ -946,18 +968,18 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      9,
+      10,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 9);
+    expect(database.schemaVersion, 10);
     await _expectEmptySyncTransport(database);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      9,
+      10,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1251,7 +1273,7 @@ void main() {
     expect(await database.select(database.rotationSchemes).get(), hasLength(1));
   });
 
-  test('v4 to v9 preserves all legacy rows and relationships', () async {
+  test('v4 to v10 preserves all legacy rows and relationships', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(4);
     final raw = schema.rawDatabase;
@@ -1265,18 +1287,18 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      9,
+      10,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 9);
+    expect(database.schemaVersion, 10);
     await _expectEmptySyncTransport(database);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      9,
+      10,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1533,7 +1555,7 @@ void main() {
   });
 
   test(
-    'v5 to v9 keeps the routine scaffold and adds the recall journal',
+    'v5 to v10 keeps the routine scaffold and adds the recall journal',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(5);
@@ -1548,18 +1570,18 @@ void main() {
       });
       await verifier.migrateAndValidate(
         database,
-        9,
+        10,
         options: const ValidationOptions(),
       );
 
-      expect(database.schemaVersion, 9);
+      expect(database.schemaVersion, 10);
       await _expectEmptySyncTransport(database);
       expect(
         await database
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        9,
+        10,
       );
       expect(
         await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1743,7 +1765,7 @@ void main() {
   );
 
   test(
-    'v6 to v9 adds the sync transport and touches nothing the user owns',
+    'v6 to v10 adds the sync transport and touches nothing the user owns',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(6);
@@ -1758,17 +1780,17 @@ void main() {
       });
       await verifier.migrateAndValidate(
         database,
-        9,
+        10,
         options: const ValidationOptions(),
       );
 
-      expect(database.schemaVersion, 9);
+      expect(database.schemaVersion, 10);
       expect(
         await database
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        9,
+        10,
       );
       expect(
         await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1866,7 +1888,7 @@ void main() {
     },
   );
 
-  test('v7 to v9 keeps the sync transport and the journal intact', () async {
+  test('v7 to v10 keeps the sync transport and the journal intact', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(7);
     final raw = schema.rawDatabase;
@@ -1880,11 +1902,11 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      9,
+      10,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 9);
+    expect(database.schemaVersion, 10);
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
       isEmpty,
@@ -1955,7 +1977,7 @@ void main() {
     );
   });
 
-  test('v8 to v9 adds the make-up day and invents none', () async {
+  test('v8 to v10 adds the make-up day and invents none', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(8);
     final raw = schema.rawDatabase;
@@ -1969,11 +1991,11 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      9,
+      10,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 9);
+    expect(database.schemaVersion, 10);
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
       isEmpty,
@@ -2031,19 +2053,105 @@ void main() {
     );
   });
 
+  test('v9 to v10 dates six tables and backfills none of them', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(9);
+    final raw = schema.rawDatabase;
+    raw.execute('PRAGMA foreign_keys = ON');
+    _seedVersionSeven(raw);
+
+    final database = AppDatabase(schema.newConnection());
+    addTearDown(() async {
+      await database.close();
+      schema.close();
+    });
+    await verifier.migrateAndValidate(
+      database,
+      10,
+      options: const ValidationOptions(),
+    );
+
+    expect(database.schemaVersion, 10);
+    expect(
+      await database.customSelect('PRAGMA foreign_key_check').get(),
+      isEmpty,
+    );
+
+    // The whole point of the column, and the whole point of not backfilling
+    // it: a row nobody has touched since the upgrade honestly does not know
+    // when it last changed, and the preview reports that as undetermined
+    // rather than as a date the user never produced.
+    final beforeAnyTouch = await database
+        .select(database.masteredSurahs)
+        .getSingle();
+    expect(
+      beforeAnyTouch.updatedAtUtc,
+      isNull,
+      reason:
+          'stamping the migration time would hand a later merge a winner '
+          'decided by install order, which looks like an answer and is not',
+    );
+
+    // Inserting stamps it, without any repository knowing the column exists.
+    await database.customStatement(
+      "INSERT INTO prayer_sessions (id, prayer_type, is_qada, started_at_utc) "
+      "VALUES ('v10-session', 'fajr', 0, 1)",
+    );
+    final inserted = await (database.select(
+      database.prayerSessions,
+    )..where((row) => row.id.equals('v10-session'))).getSingle();
+    expect(inserted.updatedAtUtc, isNotNull);
+
+    // And updating closes the gap for a row that arrived before v10 existed.
+    await database.customStatement(
+      "UPDATE mastered_surahs SET display_order = 7 WHERE surah_id = ?",
+      <Object?>[beforeAnyTouch.surahId],
+    );
+    final afterTouch = await database
+        .select(database.masteredSurahs)
+        .getSingle();
+    expect(
+      afterTouch.updatedAtUtc,
+      isNotNull,
+      reason: 'the gap closes as rows are written, which is why null is safe',
+    );
+    expect(afterTouch.displayOrder, 7, reason: 'the real edit still landed');
+
+    // A caller that supplies its own timestamp keeps it. This is what will let
+    // an applied remote change carry the other device's time instead of being
+    // restamped "now" on arrival — which would make every synced row look
+    // newer than the one it came from.
+    final authoritative = DateTime.utc(2020, 1, 2, 3, 4, 5);
+    await database.customStatement(
+      'UPDATE mastered_surahs SET updated_at_utc = ? WHERE surah_id = ?',
+      <Object?>[
+        authoritative.millisecondsSinceEpoch ~/ 1000,
+        beforeAnyTouch.surahId,
+      ],
+    );
+    expect(
+      (await database.select(database.masteredSurahs).getSingle()).updatedAtUtc!
+          .isAtSameMomentAs(authoritative),
+      isTrue,
+      reason:
+          'compared as an instant: Drift hands this column back in local time, '
+          'so equality on the DateTime itself would fail anywhere but UTC',
+    );
+  });
+
   test(
     'a database from a newer app version is refused, not downgraded',
     () async {
-      final directory = await Directory.systemTemp.createTemp('murajaah-v9-');
+      final directory = await Directory.systemTemp.createTemp('murajaah-v10-');
       addTearDown(() => directory.delete(recursive: true));
       final file = File('${directory.path}/murajaah.sqlite');
 
       final created = AppDatabase(NativeDatabase(file));
-      await created.customStatement('PRAGMA user_version = 10');
+      await created.customStatement('PRAGMA user_version = 11');
       await created.close();
 
       // Opening someone else's future schema must fail loudly. Silently running
-      // v9 code against a v10 file would corrupt data we cannot recover.
+      // v10 code against a v11 file would corrupt data we cannot recover.
       final reopened = AppDatabase(NativeDatabase(file));
       addTearDown(reopened.close);
       await expectLater(
@@ -2771,7 +2879,7 @@ void _seedVersionFive(dynamic raw) {
 /// A v6 database: everything v5 held, plus one real recall attempt.
 ///
 /// The recall row is the point of the seed. v6 was the version that introduced
-/// the append-only journal, so a v6 → v7 upgrade is the first one that can lose
+/// the append-only journal, so a v6 в†’ v7 upgrade is the first one that can lose
 /// it, and the test has to have something to lose.
 void _seedVersionSix(dynamic raw) {
   _seedVersionFive(raw);

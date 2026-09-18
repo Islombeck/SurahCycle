@@ -528,9 +528,14 @@ Other rules, each pinned by a test (15 new):
 ### Verified
 
 `flutter analyze` → `No issues found!`; full `flutter test --timeout 90s` →
-**973/973** (was 931; +42 across the three commits). `dart format` run on every
+**975/975** (was 931; +44 across the four commits). `dart format` run on every
 touched file, then both re-run green. Tracked tree clean apart from these files;
 the owner's photo, `Скринсейверы до v6/` and `.codex/` untouched.
+
+**`build_runner` deleted two committed `.g.dart` files again** — the
+`uzbekistan_prayer_locations` and `known_official_quran_enc_translations` ones,
+the same pair as last time. Restored with `git checkout --` before committing.
+Check `git status` after every generation run.
 
 ### The survey, and a schema gap it exposed — `DriftSyncInventory`
 
@@ -575,15 +580,48 @@ support.
    finding and this is an honest "unknown". `needsReview` covers both. The
    factory now also refuses `conflict + undetermined > shared`, arithmetic that
    cannot be true.
-2. **Last-writer-wins is not available for those six entity types**, so the
-   merge strategy cannot simply be "newest timestamp wins" — it would silently
-   pick one side at random for the roster, the routine and the prayer sessions.
-   Closing this needs a migration adding a real `updated_at_utc` to those six
-   tables, and that is the next schema change to plan.
+2. **Last-writer-wins was not available for those six entity types**, so the
+   merge strategy could not simply be "newest timestamp wins" — it would have
+   picked one side at random for the roster, the routine and the prayer
+   sessions. **Closed by schema v10, below.**
 
 `DriftSyncInventory.coveredTypes` is exposed purely so that adding a
 `SyncEntityType` without adding a source fails a test rather than quietly
 dropping a whole category out of the preview.
+
+### Schema v10 — the six undatable tables, closed
+
+Full detail in `docs/DATABASE_MIGRATION_V10.md`. In short: each of the six gains
+`updated_at_utc`, kept current by **twelve triggers** rather than by twenty-odd
+write sites across five repositories that would each have had to remember. The
+trigger cannot be forgotten by a future write path, covers writes that never go
+through a repository, and changed no line of the code the owner uses daily.
+
+**Nothing is backfilled**, on the same principle as `qada_fulfilled_local_date`:
+stamping the migration time onto every existing row looks like an answer while
+being arbitrary — two devices upgrading on different days would hand a merge a
+winner decided by install order. Rows written before v10 stay null and are
+reported honestly as undetermined; the gap closes on its own as the app is used.
+
+**The rebuild trap bit for the fourth time, and a test caught it.** The v3→v4
+rebuild of `mastered_surahs` and the v4→v5 rebuild of `prayer_sessions` both
+produce the *current* table definition, so both had to declare
+`updatedAtUtc` — four chained migration tests failed with `no such column:
+updated_at_utc` until they did. The rule holds: **every rebuild lists every
+column added after it.**
+
+Three details are load-bearing and each is pinned by a test: the
+`CAST(strftime('%s','now') AS INTEGER)` (a string would read back as no date at
+all); the `WHEN NEW.updated_at_utc IS OLD.updated_at_utc` guard, which makes the
+no-recursion behaviour independent of a pragma this code does not set; and the
+consequence of that guard — **a caller supplying its own timestamp keeps it**,
+which is what will let an applied remote change carry the originating device's
+time instead of being restamped "now" on arrival.
+
+Migration coverage is now `v1→v10` through `v8→v10` plus a dedicated `v9→v10`,
+and the newer-`user_version`-is-refused guard moved to 11. **Not yet run on a
+real device** — the owner's phone is at v9; pull a copy of `murajaah_user.sqlite`
+first, as was done for v7, v8 and v9.
 
 ### Not done
 
@@ -1150,6 +1188,8 @@ After Stage D the remaining prompt order is: physical Prayer widget/DreamService
 - `flutter gen-l10n` must be re-run (from the ASCII junction, like everything else here) after editing any `lib/l10n/*.arb` file — it respects `l10n.yaml` and regenerates `app_localizations*.dart` automatically; there is no separate flag needed.
 - **`build_runner build` deletes two committed generated files it does not own**: `lib/features/quran/data/providers/known_official_quran_enc_translations.g.dart` and `lib/features/prayer_times/data/uzbekistan_prayer_locations.g.dart`. They are produced by the project's own `tool/` scripts, not by `build_runner`, but it treats them as stale outputs and removes them; the build then *succeeds* and only a later `flutter test` fails with "Error when reading '…​.g.dart'". This happened in the 2026-09-15 session. After every `build_runner` run, check `git status` and restore them with `git checkout -- <both paths>` if they show as deleted. (The `--delete-conflicting-outputs` flag is irrelevant — this build_runner version ignores it and deletes them anyway.)
 - Run `build_runner`, `drift_dev schema dump` and `drift_dev schema generate` from the ASCII junction (`Push-Location D:\MurajaahWorkspace`). From the real Cyrillic path the AOT build script fails with `Unable to write file: …\.dart_tool\build\entrypoint\build.dart.aot`. Invoke them as `flutter.bat pub run …`, not via `dart.bat`, which shells out to `git` and then trips over the repo's `dubious ownership`.
+- **`flutter analyze` with no path argument now crashes** with `FormatException: Unexpected character (at character 246)` inside `SessionLoggerSink._normalize`. The LSP init message contains `"name":"{{workspaceFolder-0}}\"` — an unescaped trailing backslash, because `M:\` is a **drive root**. Nothing to do with Cyrillic, and not a code defect. Run it with explicit paths instead: `flutter analyze --no-pub lib test tool`.
+- **Never rewrite a source file with `Get-Content` + `Set-Content`.** PowerShell 5.1's `Get-Content` decodes with the system ANSI codepage unless told otherwise, so a round-trip silently mangles every non-ASCII character: an em dash came back as `вЂ”` in two test files, and `Set-Content -Encoding utf8` then added a UTF-8 BOM on top. Both were caught by a failing string comparison, not by review. Use the Edit tool for source edits; if a scripted rewrite is unavoidable, pass `-Encoding utf8` to **both** ends and strip the BOM byte-wise afterwards.
 
 ## Scope and non-goals
 

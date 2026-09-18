@@ -5,16 +5,12 @@
 /// writes nothing, and is safe to run before the user has agreed to anything —
 /// which is the whole point, since its output is what they are agreeing to.
 ///
-/// **Six of the eleven entity types cannot be dated.** `mastered_surahs`,
-/// `rotation_states`, `rotation_schemes`, `prayer_routine_templates`,
-/// `prayer_sessions` and `learning_surahs` carry no last-changed column, so
-/// this reports them present with a null timestamp rather than substituting
-/// one. The nearest candidates are all the wrong quantity — `started_at_utc` is
-/// when a prayer began, not when its parts were last edited;
-/// `cached_last_used_at_utc` is when a surah was last recited, not when the
-/// roster entry changed — and using them would state agreement or disagreement
-/// the schema cannot support. Closing that gap needs a migration, and until it
-/// happens last-writer-wins is not available for those six either.
+/// A null timestamp is a real answer here: present, last change not datable.
+/// Six tables had no such column until schema v10 added one, and v10 backfills
+/// nothing, so every row untouched since the upgrade still reports null. The
+/// alternative — substituting `started_at_utc`, `cached_last_used_at_utc` or
+/// the migration time — would state agreement or disagreement on evidence that
+/// does not exist. The preview counts these separately for exactly that reason.
 library;
 
 import '../../sync/sync.dart';
@@ -91,37 +87,44 @@ final class DriftSyncInventory implements SyncInventory {
       idColumn: 'key',
       changedAtColumn: 'updated_at_utc',
     ),
-    // Undatable — see the library comment. Each is listed so the entity is
-    // still counted as present; only its timestamp is missing.
+    // Dated since schema v10, by a trigger rather than by their repositories.
+    // Null until a row is next written: v10 backfills nothing, so anything
+    // untouched since the upgrade is still honestly undetermined.
     _EntitySource(
       SyncEntityType.masteredSurah,
       table: 'mastered_surahs',
       idColumn: 'surah_id',
+      changedAtColumn: 'updated_at_utc',
     ),
     _EntitySource(
       SyncEntityType.rotationState,
       table: 'rotation_states',
       idColumn: 'singleton_id',
+      changedAtColumn: 'updated_at_utc',
     ),
     _EntitySource(
       SyncEntityType.rotationScheme,
       table: 'rotation_schemes',
       idColumn: 'id',
+      changedAtColumn: 'updated_at_utc',
     ),
     _EntitySource(
       SyncEntityType.prayerRoutineTemplate,
       table: 'prayer_routine_templates',
       idColumn: 'id',
+      changedAtColumn: 'updated_at_utc',
     ),
     _EntitySource(
       SyncEntityType.prayerSession,
       table: 'prayer_sessions',
       idColumn: 'id',
+      changedAtColumn: 'updated_at_utc',
     ),
     _EntitySource(
       SyncEntityType.learningState,
       table: 'learning_surahs',
       idColumn: 'id',
+      changedAtColumn: 'updated_at_utc',
     ),
   ];
 
