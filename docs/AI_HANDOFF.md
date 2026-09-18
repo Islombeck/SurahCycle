@@ -248,13 +248,61 @@ choice informed, and it leaves a recovery copy behind either way.
 
 **What is still missing for a real sync, in order:**
 
-1. every repository write goes through `commitLocalChangeAndEnqueue` so the
-   outbox fills — this is the large one;
-2. a `SyncPageApplier` that turns pulled envelopes back into domain rows;
-3. the merge/keep-local buttons, wired to `finishFirstSync`;
-4. `syncStatusProvider` must start reading the **real** outbox counts — the
+1. ~~the domain↔envelope seam for recitations~~ **done**, see below;
+2. every repository write goes through `commitLocalChangeAndEnqueue` so the
+   outbox fills — this is the large one, and it needs a decision first: whether
+   writes enqueue always or only once an owner is active. The merge design
+   implies a **backfill** on activation (all 863 entities, not just what
+   changes afterwards), and if that exists then enqueueing only while active is
+   the clean answer;
+3. a `SyncPageApplier` that turns pulled envelopes back into domain rows;
+4. the merge/keep-local buttons, wired to `finishFirstSync`;
+5. `syncStatusProvider` must start reading the **real** outbox counts — the
    `isActivated: false` and zero counts there are honest only while nothing
    enqueues, and the file says so in capitals.
+
+### The seam: `RecitationSyncPayload` (2026-09-18)
+
+`lib/core/sync/recitation_sync_payload.dart`. Both directions in one file, on
+purpose: a push serialises a recitation and a pull turns that payload back into
+the same recitation on another device, and written apart they drift apart.
+
+**Nothing is defaulted on the way in.** Every field that makes a recitation what
+it is must be present and well-formed or the payload is refused. The temptation
+is concrete — a missing `isQada` looks like it could obviously be false — and
+that default would quietly turn a make-up prayer into an ordinary one on the
+receiving device, while a missing `qadaOriginIsUnknown` defaulted to false would
+claim the owner named a day he had already said he could not name. A refused
+payload stalls one entity loudly; a defaulted one rewrites a religious record
+silently. Optional fields are the opposite case and absent means null, because
+the domain already says so.
+
+Three refusals worth naming:
+
+- **a `localDate` carrying a time** is refused rather than truncated.
+  `DateTime.tryParse` accepts a full timestamp and drops the time, which is
+  precisely how a recitation lands on the wrong local day;
+- **an unknown `prayerType`** — written by a newer build — is refused rather
+  than guessed, because guessing files the prayer under the wrong one;
+- **half a coverage** (a scheme with no parts, or parts with no scheme) is
+  refused: one covers nothing and the other cannot be placed.
+
+Combinations the domain forbids are refused here too, without restating the
+rules: the constructor's `ArgumentError` becomes
+`SyncPayloadException('domain-rejected-recitation')`. Reasons carry a category
+and a field name, never a value — they can reach a log, and the values are one
+person's prayer history.
+
+The envelope factory holds one decision each way. `createdAtUtc` is **the
+prayer's** moment, not the push's: stamping "now" would make every re-push look
+like a fresh prayer. A tombstone keeps that same moment — it is a statement
+about that prayer, and dating it "now" detaches it from what it withdraws — and
+carries no payload at all. Identity and clock (envelope id, device, idempotency
+key, schema version) are the caller's to supply, because a key regenerated per
+attempt would make every retry look like a new change to the server's unique
+index.
+
+16 tests, full suite **1008/1008**, analyzer clean.
 
 Backups go to a `backups` folder under the application *support* directory, not
 documents: they are the app's own recovery copies, and on iOS documents is
