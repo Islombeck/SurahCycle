@@ -429,13 +429,59 @@ Three decisions:
 
 8 tests, full suite **1048/1048**, analyzer clean.
 
-**`rotationScheme` is the one still missing, and it is not mechanical.** Its row
-carries `activatedJournalSequence` and `supersededJournalSequence`, which are
-*this device's* journal numbering — and the recitation applier already
-established that journal sequences are not portable. So a scheme cannot simply
-be copied across; the receiving device has to slot the owner's split into its
-own journal. That needs thought rather than another mapper, and it is the next
-real question.
+### `rotationScheme` syncs — and the journal problem dissolved on inspection
+
+The worry recorded above was that a scheme carries `activatedJournalSequence`
+and `supersededJournalSequence`, which are *this device's* numbering. Checking
+rather than assuming settled it:
+
+- **`activated_journal_sequence` is written and never read.** Anywhere. It is
+  provenance, not logic.
+- **`superseded_journal_sequence` is only ever asked whether it is null** — that
+  is, purely "is this the scheme in force".
+
+So no number travels; the boolean they stand for does, as `isActive`. Had they
+been copied, a scheme would have claimed a position among journal entries that
+do not exist on the receiving device.
+
+**Part ids travel and must**: a recitation's coverage names the parts it
+covered, so ids differing between devices would leave every arriving recitation
+pointing at nothing.
+
+**A second finding, again from a failing assertion rather than from reading.**
+The `baseline*` fields are stored input only for the *first* scheme of a surah.
+For every later scheme in the chain `rebuildFromJournal` overwrites them,
+carrying the previous scheme's final state forward — so they are derived on the
+receiving device. They are sent anyway, because the sender cannot know which
+position a scheme will occupy in the receiver's chain and a value the rebuild
+corrects costs nothing. Pinned by a test that asserts the *recomputed* value,
+not the sent one.
+
+The applier holds two invariants the app breaks rather than degrades without:
+
+- **Exactly one scheme per surah is in force.** A partial unique index enforces
+  it and the projection reads it with `getSingle()`. So activating supersedes
+  the others *first*, and — the subtle half — a scheme arriving as superseded
+  when it is the only active one **stays active**. The pair "stand the old down,
+  raise the new" arrives as two envelopes, and obeying the first alone would
+  leave a window with no scheme in force. Staying put until the successor
+  arrives is self-healing.
+- **A part some recitation covered is never removed.** `ON DELETE RESTRICT` says
+  so; dropping it would orphan the coverage the rotation balance is built from.
+  It should not arise, because re-splitting creates a new scheme version rather
+  than editing parts in place, and if it does the page is refused.
+
+A scheme is never deleted, only superseded — recitations reference it — so a
+tombstone is refused outright.
+
+9 tests plus 11 for the payload, full suite **1068/1068**, analyzer clean.
+
+**With this, the prerequisites the recitation applier demanded are met.** Roster,
+schemes and recitations all cross the boundary in both directions. The remaining
+eight entity types (`prayerSession`, `prayerRoutineTemplate`, `learningState`,
+`learningEvent`, `recallAttempt`, `rotationAdjustment`, `appSetting`,
+`rotationState`) still have no mappers, so a merge would carry the recitation
+history and the roster but not the prayer routine or the learning plans.
 
 Backups go to a `backups` folder under the application *support* directory, not
 documents: they are the app's own recovery copies, and on iOS documents is
