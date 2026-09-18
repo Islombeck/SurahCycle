@@ -402,6 +402,29 @@ agent's**, and the Console-by-hand provisioning route stays open either way.
   were `appwrite_get_context` (refused) and `appwrite_search_docs` (public
   documentation). No repository source file changed.
 
+## Stage J §6.3 — both providers are ON, verified 2026-09-18
+
+`project_list_o_auth2_providers` reports `google: enabled true` and
+`yandex: enabled true`; the other 46 are off. Each carries a client id, and
+`clientSecret` comes back empty because the field is write-only — which is why
+this read is safe and the project object is not: that one returns secrets
+alongside configuration and must not be fetched.
+
+Google is configured for **browser** sign-in (`nativeEnabled: false`), which is
+the half the redirect URI belongs to and the right one for this app.
+
+So §6.3's owner steps are done. What remains is his judgement, not a task:
+the Google app is still in **Testing**, so only accounts on its test-user list
+can sign in. Publishing is public-facing and stays his call.
+
+**Division of work while a second agent operates the browser consoles:** the
+repository has exactly one writer — the Claude Code session — and the console
+agent touches no file, no commit and not this journal. Every finding it
+produces is relayed in chat and written here by the repository session. Two
+agents editing `docs/AI_HANDOFF.md` will eventually meet on one line, and a
+merge conflict in the shared journal is the worst place to discover the
+convention was never agreed.
+
 ## Stage J §6.3 — Google and Yandex sign-in for app users (2026-09-17)
 
 **This is not §6.0.** §6.0 is the owner's *console* grant that lets an MCP client
