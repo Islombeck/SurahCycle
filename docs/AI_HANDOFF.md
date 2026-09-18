@@ -476,20 +476,75 @@ the decision **second**. A crash between the two leaves a device that is
 inactive and simply has not answered — the question asked again, rather than a
 wrong answer kept.
 
+### The backup the gate depends on — `DriftLocalBackupGateway`
+
+`lib/core/data/backup/drift_local_backup_gateway.dart`. The coordinator refuses
+to offer a merge without a recovery copy, so this is what makes the question
+answerable at all — and it is useful on its own, which is why it lives under
+`data/backup` rather than under sync.
+
+Two choices carry the file, and both were arrived at against the real database
+rather than chosen for tidiness:
+
+- **`VACUUM INTO`, never a file copy.** The live database runs in WAL mode, so
+  the main file on its own can be missing committed transactions. A backup that
+  silently omits the last few recitations is worse than none. It also means the
+  gateway never has to guess where `driftDatabase(name: 'murajaah_user')` put
+  the file.
+- **A restore replaces rows through `ATTACH` inside one transaction**, not by
+  swapping files under an open connection. All-or-nothing, and no restart.
+  `PRAGMA defer_foreign_keys = ON` moves FK checking to commit, so tables can be
+  emptied and refilled in any order — otherwise a restore would depend on a
+  hand-maintained topological ordering that every new table could silently
+  invalidate.
+
+**A SQLite rule learned the hard way here:** `ATTACH`/`DETACH` cannot run inside
+a transaction — the attached database stays locked and `DETACH` fails with
+`database restore_source is locked`. The first implementation nested them and
+two tests caught it. They now sit outside, and a leaked alias from an
+interrupted restore is cleared best-effort before the next attach, because one
+leak would otherwise make every later restore fail permanently.
+
+Other rules, each pinned by a test (15 new):
+
+- An older snapshot is brought forward by **Drift's own migration run against a
+  copy**, never a second implementation of it here, and never in place — a
+  failed restore must leave the only copy of the data exactly as it was. The
+  scratch copy is deleted afterwards.
+- A **newer** snapshot is refused outright: its tables can hold columns this
+  build has never heard of, and there is no downgrade path.
+- Two backups in the same second both survive. `VACUUM INTO` refuses an existing
+  target, so a free name is found rather than one overwritten — making room by
+  deleting a recovery copy is never right.
+- Pruning keeps the newest `keepAtMost`, never deletes the one just made, and
+  never touches a file whose name it cannot parse (it may be the owner's own).
+  `keepAtMost: 0` is refused rather than obeyed.
+- A backup id is a bare file name; anything with a separator or `..` is refused.
+- `exportLocalData` omits `surah_metadata` — the corpus is re-fetched by
+  manifest and is not the user's data — while a *backup* still contains it,
+  because a restore that dropped the corpus would leave an app that cannot
+  render a surah.
+
 ### Verified
 
 `flutter analyze` → `No issues found!`; full `flutter test --timeout 90s` →
-**946/946** (was 931; +15). `dart format` touched the three files, then both
-were re-run green. Tracked tree clean apart from these files; the owner's photo,
-`Скринсейверы до v6/` and `.codex/` untouched.
+**961/961** (was 931; +30 across the two commits). `dart format` touched the
+five files, then both were re-run green. Tracked tree clean apart from these
+files; the owner's photo, `Скринсейверы до v6/` and `.codex/` untouched.
 
 ### Not done
 
-`SyncInventory` and `LocalBackupGateway` have **no production implementation**,
-and nothing in `lib/app/` or `lib/features/` constructs the coordinator. So the
-gate exists and is tested, and there is still no path by which a sign-in moves a
-recitation — which is the intended state, not a gap. Provisioning stays parked
-until there is something to transport.
+`SyncInventory` has **no production implementation**, and nothing in `lib/app/`
+or `lib/features/` constructs the coordinator or the backup gateway — in
+particular no `path_provider` directory is wired up for backups yet. So the gate
+exists and is tested, and there is still no path by which a sign-in moves a
+recitation, which is the intended state rather than a gap. Provisioning stays
+parked until there is something to transport.
+
+**No APK is owed right now.** The device is at schema **v9** from the 2026-09-17
+install, and every commit since (`82f6ba3`, `ae720e9`, `3f2e2cc` and this one)
+is sync plumbing that nothing constructs plus documentation. A rebuild would
+deliver the owner nothing new.
 
 **Analyzer note (new, 2026-09-18):** `flutter analyze` from `M:\` now crashes
 with `FormatException: Unexpected character (at character 246)` in
