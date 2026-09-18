@@ -668,6 +668,48 @@ worth doing deliberately rather than as a footnote.
 
 **Every entity type that should sync now has a mapper and an applier.**
 
+### The router, and why order inside a page had to be decided
+
+`lib/core/data/sync/sync_envelope_router.dart` sends each pulled envelope to
+the applier that understands it. The dispatch is the boring half.
+
+**The order is not.** Every applier refuses retryably when a prerequisite is
+missing, and a page is applied in one transaction — so a page that happened to
+carry a recitation ahead of its own roster entry would fail, roll back, and be
+fetched again **in the same order**. A permanent stall over a page that contains
+everything it needs. The router therefore sorts a page first, and the ranking is
+the foreign keys written down rather than a preference:
+
+    roster → schemes → sessions, routines, plans → everything pointing at them
+           → settings last, where they cannot be in the way
+
+The sort is **stable**: `List.sort` is not, so ties are broken by the original
+position. That matters because the server sends `updatedAtUtc` ascending, and a
+later version of an entity must still land after the earlier one it replaces.
+
+It does not remove the refusals. A prerequisite genuinely on another page still
+stalls the pull, which is correct — the sort only stops a page stalling on
+itself. A test asserts the unsorted page **does** fail, so the sort cannot be
+removed without something noticing.
+
+`rotationState` is refused by name, and a test requires every `SyncEntityType`
+to be either routed or on the `deliberatelyUnrouted` list — a new type cannot
+fall through silently.
+
+5 tests, full suite **1133/1133**, analyzer clean.
+
+### What is left before a merge can be offered
+
+1. **A backfill at activation.** Nothing yet enqueues the *existing* history, and
+   the whole design rests on it: the recorder only fills the queue for changes
+   made after activation.
+2. **The recorder covers recitations only.** The other nine entity types have
+   mappers but nothing calls them on a local write.
+3. **The merge / keep-local buttons**, wired to `finishFirstSync`.
+4. **`syncStatusProvider` must read the real outbox.** Its zeros are honest only
+   while nothing enqueues.
+5. **Drive `SyncEngine.drain` and `pull`** from somewhere.
+
 Backups go to a `backups` folder under the application *support* directory, not
 documents: they are the app's own recovery copies, and on iOS documents is
 user-visible.
