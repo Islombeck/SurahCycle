@@ -402,6 +402,102 @@ agent's**, and the Console-by-hand provisioning route stays open either way.
   were `appwrite_get_context` (refused) and `appwrite_search_docs` (public
   documentation). No repository source file changed.
 
+## Stage J §6.4/§6.3 — the transport, and the gate in front of it (2026-09-18)
+
+Two commits, and the order matters: the thing that *moves* data was written
+first, then the thing that decides whether it is ever allowed to.
+
+### `ae720e9` — the real `SyncGateway`, against Appwrite TablesDB
+
+Shaped like Codex's account adapter: one narrow file
+(`lib/core/sync/appwrite_sync_api.dart`) touches `package:appwrite`, and every
+rule lives where a test can reach it without a network, a project or a session.
+
+- **One row per entity, addressed by `entityId`.** That is what makes a retried
+  push a replacement rather than a duplicate. `idempotencyKey` still travels
+  with the row, because the server's unique index on `(userId, idempotencyKey)`
+  is what catches a replay this client has forgotten it sent — so a **409 is
+  accepted, not failed**. Treating a successful replay as a failure is how a
+  queue wedges on work the server already has.
+- **The two refusals are deliberately asymmetric.** 400 is permanent (a row this
+  server will never accept; retrying blocks everything behind it). **404 is
+  retryable** although it looks worse: a missing table means "not provisioned
+  yet", and every queued change succeeds the moment it is. Quarantining there
+  would empty the queue into a corner over a temporary gap. Each code is pinned
+  by a test.
+- **A row this build cannot describe stalls the pull instead of being skipped.**
+  Skipping advances the cursor past data that is then never fetched again. An
+  empty page leaves the cursor exactly where it was, for the same reason.
+- An envelope carrying another account's id is refused before any write.
+- `classifyWriteFailure`, `classifyReadFailure` and `pageOf` are **pure statics**
+  because constructing Appwrite's `Client` drags in a platform channel and a
+  Flutter binding, and a decision this consequential must be examinable without
+  either.
+
+### The activation coordinator — signing in is not consent
+
+`lib/core/sync/sync_activation_coordinator.dart` implements
+`SyncActivationGateway`. `DriftSyncStore` already held the durable half
+(`recordActivationChoice`, `isSyncActive`, `forgetOwner`); what was missing was
+the part that refuses. It now `implements SyncActivationStore`, a narrow
+interface declared in the sync layer so these rules test without a database —
+and named in prose there rather than imported, because `lib/core/data/` depends
+on `lib/core/sync/` and not the reverse.
+
+What it refuses, each pinned by a test (15 new, all in
+`test/core/sync/sync_activation_coordinator_test.dart`):
+
+- **The backup is created before the data is even counted.** If it throws, no
+  preview is ever offered — the offer is only honest while it is reversible. The
+  test observes the backup counter *from inside* the inventory rather than
+  setting a flag on itself, which would have read true in either order.
+- **A superseded token is refused.** A second `prepareFirstSync` invalidates the
+  first: agreeing to counts that have since moved authorises a merge the user
+  was never shown.
+- **A replay is refused, and distinguishably.** A double-tapped dialog gets
+  `preview-already-answered`; a call that prepared nothing gets
+  `no-preview-was-prepared`. The UI can swallow the first and must surface the
+  second. One remembered token, not a growing set.
+- **A store belonging to another account is refused, loudly, in both
+  `prepareFirstSync` and `isSyncActiveFor`.** Returning `false` was the tempting
+  default and is worse: the caller would then set B up against A's store.
+- **Conflicts are only entities both sides hold *and disagree about*,** compared
+  with `isAtSameMomentAs` so the same instant in two zones is not a
+  disagreement. Counting every shared entity as a conflict would frighten a user
+  away from a merge that has none.
+
+**One ordering trap, found by reading `forgetOwner` rather than by a test.** It
+deletes this owner's **activation row** along with the queue and the cursor. The
+obvious sequence — record the choice, then drop the transport state — therefore
+erases the very "no" it just stored, and `recordActivationChoice`'s own doc
+comment says that "no" must survive so the account screen can tell *declined*
+from *never asked*. The coordinator calls `forgetOwner()` **first** and records
+the decision **second**. A crash between the two leaves a device that is
+inactive and simply has not answered — the question asked again, rather than a
+wrong answer kept.
+
+### Verified
+
+`flutter analyze` → `No issues found!`; full `flutter test --timeout 90s` →
+**946/946** (was 931; +15). `dart format` touched the three files, then both
+were re-run green. Tracked tree clean apart from these files; the owner's photo,
+`Скринсейверы до v6/` and `.codex/` untouched.
+
+### Not done
+
+`SyncInventory` and `LocalBackupGateway` have **no production implementation**,
+and nothing in `lib/app/` or `lib/features/` constructs the coordinator. So the
+gate exists and is tested, and there is still no path by which a sign-in moves a
+recitation — which is the intended state, not a gap. Provisioning stays parked
+until there is something to transport.
+
+**Analyzer note (new, 2026-09-18):** `flutter analyze` from `M:\` now crashes
+with `FormatException: Unexpected character (at character 246)` in
+`SessionLoggerSink._normalize` — the LSP init message contains
+`"name":"{{workspaceFolder-0}}\"`, an unescaped trailing backslash, because
+`M:\` is a **drive root**. Not Cyrillic-related, and not a code defect. Run it
+with explicit paths instead: `flutter analyze --no-pub lib test tool`.
+
 ## Stage J §6.3 — both providers are ON, verified 2026-09-18
 
 `project_list_o_auth2_providers` reports `google: enabled true` and

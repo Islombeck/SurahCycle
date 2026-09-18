@@ -18,6 +18,7 @@ export 'appwrite_sync_api.dart';
 export 'appwrite_sync_gateway.dart';
 export 'fake_sync_backend.dart';
 export 'in_memory_sync_outbox.dart';
+export 'sync_activation_coordinator.dart';
 export 'sync_engine.dart';
 export 'sync_envelope.dart';
 export 'sync_app_setting_policy.dart';

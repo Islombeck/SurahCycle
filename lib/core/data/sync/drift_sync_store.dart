@@ -37,11 +37,13 @@ final class SyncActivationRecord {
 /// Everything is keyed by [owner]. That is what makes "sign out of A, sign in
 /// as B" safe: B's engine reads B's queue and B's cursor, and A's rows are
 /// simply not visible to it.
-final class DriftSyncStore implements SyncAwareLocalStore {
+final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
   DriftSyncStore(this._database, {this.owner = SyncOwnerKey.local})
     : outbox = DriftSyncOutbox(_database, owner: owner);
 
   final AppDatabase _database;
+
+  @override
   final SyncOwnerKey owner;
   final DriftSyncOutbox outbox;
 
@@ -106,6 +108,7 @@ final class DriftSyncStore implements SyncAwareLocalStore {
     );
   }
 
+  @override
   Future<bool> isSyncActive() async =>
       (await _activationRow())?.isActive ?? false;
 
@@ -114,6 +117,7 @@ final class DriftSyncStore implements SyncAwareLocalStore {
   /// [SyncActivationChoice.keepDeviceLocalOnly] is stored, not forgotten: the
   /// account screen has to be able to say that this device was deliberately
   /// left local, and a forgotten "no" would look like a question never asked.
+  @override
   Future<void> recordActivationChoice({
     required SyncActivationChoice choice,
     required String backupId,
@@ -154,6 +158,7 @@ final class DriftSyncStore implements SyncAwareLocalStore {
   /// Never called by ordinary sign-out: queued changes have to resume when the
   /// same account comes back. This is for confirmed account erasure, or for a
   /// user who chose to keep the device local after seeing the preview.
+  @override
   Future<void> forgetOwner() => _database.transaction(() async {
     await outbox.clear();
     await (_database.delete(
