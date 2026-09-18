@@ -14,6 +14,8 @@ library;
 
 export 'appwrite_account_gateway.dart';
 export 'appwrite_config.dart';
+export 'appwrite_sync_api.dart';
+export 'appwrite_sync_gateway.dart';
 export 'fake_sync_backend.dart';
 export 'in_memory_sync_outbox.dart';
 export 'sync_engine.dart';
