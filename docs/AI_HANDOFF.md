@@ -230,10 +230,84 @@ its whole job is to make applying safe.
 
 19/19 planner tests (+4), full suite **988/988**, analyzer clean.
 
-**Still nothing to transport.** The table is empty and nothing in the app
-constructs the gateway, the coordinator, the backup or the inventory. Sign-in
-still moves no data. The next step is wiring, and it is now unblocked in both
-directions: the cloud shape exists and the local pieces exist.
+## Stage J §6.5 — the dry run is wired; no choice is offered (2026-09-18)
+
+`7d56e31`. The account screen now constructs the backup gateway, the transport,
+the inventory and the activation coordinator, and offers **one** action: «Проверить,
+что будет объединено». It takes a real local backup, reads both sides and
+reports local-only, remote-only, shared, disagreeing and cannot-be-compared —
+the last two on separate lines, because one is a finding and the other is an
+honest "unknown".
+
+**No merge / keep-local choice is offered, and the screen says why.** Nothing in
+the app moves data: no repository enqueues an envelope, so `SyncEngine` would
+have nothing to drain, and `pull` has no applier to turn envelopes back into
+rows. A button whose effect the user cannot observe is not consent but the
+appearance of it. The report stands on its own — it is what makes the eventual
+choice informed, and it leaves a recovery copy behind either way.
+
+**What is still missing for a real sync, in order:**
+
+1. every repository write goes through `commitLocalChangeAndEnqueue` so the
+   outbox fills — this is the large one;
+2. a `SyncPageApplier` that turns pulled envelopes back into domain rows;
+3. the merge/keep-local buttons, wired to `finishFirstSync`;
+4. `syncStatusProvider` must start reading the **real** outbox counts — the
+   `isActivated: false` and zero counts there are honest only while nothing
+   enqueues, and the file says so in capitals.
+
+Backups go to a `backups` folder under the application *support* directory, not
+documents: they are the app's own recovery copies, and on iOS documents is
+user-visible.
+
+The transport and inventory providers are families on the user id rather than
+looking the session up inside, so a gateway cannot straddle two accounts
+mid-batch. Each returns null when there is nowhere to talk to or nobody signed
+in, and the screen then offers nothing.
+
+**A regression this session introduced and then fixed:** `sync.dart` was
+exporting `appwrite_sync_api.dart`, so `package:appwrite` had reached
+`core/data/data.dart` and therefore every widget test. Nothing failed — a
+platform channel only breaks when it is *called* — which is exactly why the rule
+needs keeping rather than rediscovering. The barrel now excludes both
+SDK-importing files.
+
+### Verified on the owner's device, 2026-09-18 — the first real data-plane call
+
+APK sha256 `eba04de967fa452d724110ffc559085507b83c3be932f4ff207a902c659dd9c6`,
+installed after another byte-exact database copy. Navigation and the tap were
+driven from `uiautomator dump` bounds, not from screenshot pixels.
+
+The report the screen produced:
+
+> Только на устройстве: **863** · Только в аккаунте: **0** · Есть в обоих: **0**
+> Расходятся: 0 · Сравнить нечем: 0
+> Резервная копия создана до проверки: `murajaah-backup-v10-20260918T094154Z.sqlite`
+
+**863 was checked against the database rather than believed**: 705 recitation
+events + 1 rotation state + 28 schemes + 27 mastered surahs + 8 routine
+templates + 46 prayer sessions + 1 adjustment + 4 recall attempts + 1 learning
+plan + 32 learning events + 10 settings = 863 exactly.
+
+- The backup is really there:
+  `/data/data/dev.murajaah.murajaah/files/backups/…`, 790 528 bytes.
+- **"Только в аккаунте: 0" came off the network.** A failed pull throws and the
+  screen shows the failure card instead of counts, so a report with numbers in
+  it *is* the proof that an authenticated read of `sync_log` succeeded. This is
+  the project's first client-to-Appwrite data-plane call. `tables_db_list_rows`
+  independently confirms `total: 0`.
+- The preview wrote nothing: `sync_outbox_entries`, `sync_cursors` and
+  `sync_activations` are all still 0, and `sync_log` still has no rows. Logcat
+  carries no `E/flutter` and no `AppwriteException`.
+
+**Incidental confirmation that v10 works as designed.** `mastered_surahs` now
+reports **27 of 27** rows carrying `updated_at_utc`, and `rotation_states` 1 of
+1 — none of which were backfilled. The owner has simply been using the app, and
+the touch triggers dated those rows as he did. The undatable gap is closing by
+itself, one row at a time, exactly as the migration argued it would.
+
+**Still nothing to transport.** The `sync_log` table is empty and sign-in moves
+no data.
 
 ## Stage J §6.2 (historical) — the declaration exists; nothing was applied
 
