@@ -660,6 +660,30 @@ with `FormatException: Unexpected character (at character 246)` in
 `M:\` is a **drive root**. Not Cyrillic-related, and not a code defect. Run it
 with explicit paths instead: `flutter analyze --no-pub lib test tool`.
 
+## Stage J §6.3 — a real Google sign-in, on the owner's phone (2026-09-18)
+
+**The owner is signed in.** The account screen at `/settings/account` reads
+«Вход выполнен · Привязано: Google», so OAuth works end to end against the live
+Appwrite project on a real device with a real account. Every earlier note saying
+sign-in cannot complete until client values are pasted into the Console is
+**superseded**.
+
+**And it moved nothing — checked against the database, not the screen.** A copy
+of `murajaah_user.sqlite` pulled while signed in reports
+`sync_outbox_entries=0`, `sync_cursors=0`, `sync_activations=0`, and every one of
+the sixteen user-owned row counts identical to the copy taken before the v10
+install. An account screen saying "sync is off" is a label; a queue with rows in
+it would have made it a false one. That check is now part of
+`tool/inspect_user_database.dart` rather than something to remember to do.
+
+The screen's own words are the right ones and worth keeping: «Синхронизация
+выключена. Ничего не отправляется и не загружается. Синхронизации пока нет
+вовсе, а когда появится — останется отдельным явным решением.»
+
+Not done, and unchanged by this: nothing constructs the activation coordinator,
+the backup gateway or the inventory, so the preview the owner would have to
+answer does not exist on the device yet.
+
 ## Stage J §6.3 — both providers are ON, verified 2026-09-18
 
 `project_list_o_auth2_providers` reports `google: enabled true` and

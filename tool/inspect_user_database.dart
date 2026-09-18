@@ -109,10 +109,37 @@ _Snapshot _read(String path) {
           .map((row) => row['name'] as String)
           .toList(),
       datedRows: _datedRows(database),
+      transport: _transport(database),
     );
   } finally {
     database.close();
   }
+}
+
+/// The three durable sync tables.
+///
+/// Signing in establishes identity and must move nothing. These counts are how
+/// that claim is checked against the database rather than against the screen:
+/// an account screen saying "sync is off" is a label, and a queue with rows in
+/// it would make it a false one.
+Map<String, int?> _transport(Database database) {
+  const tables = <String>[
+    'sync_outbox_entries',
+    'sync_cursors',
+    'sync_activations',
+  ];
+  final counts = <String, int?>{};
+  for (final table in tables) {
+    final exists = database.select(
+      "SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = ?",
+      <Object?>[table],
+    ).isNotEmpty;
+    counts[table] = exists
+        ? database.select('SELECT COUNT(*) AS n FROM "$table"').first['n']
+              as int
+        : null;
+  }
+  return counts;
 }
 
 /// How many rows in each v10 table already carry `updated_at_utc`.
@@ -159,6 +186,10 @@ void _print(String path, _Snapshot snapshot) {
   for (final entry in snapshot.datedRows.entries) {
     stdout.writeln('    ${entry.key}: ${entry.value ?? '(no such column)'}');
   }
+  stdout.writeln('  sync transport:');
+  for (final entry in snapshot.transport.entries) {
+    stdout.writeln('    ${entry.key}: ${entry.value ?? '(no such table)'}');
+  }
 }
 
 final class _Snapshot {
@@ -169,6 +200,7 @@ final class _Snapshot {
     required this.foreignKeyViolations,
     required this.triggers,
     required this.datedRows,
+    required this.transport,
   });
 
   final int userVersion;
@@ -177,4 +209,5 @@ final class _Snapshot {
   final int foreignKeyViolations;
   final List<String> triggers;
   final Map<String, int?> datedRows;
+  final Map<String, int?> transport;
 }
