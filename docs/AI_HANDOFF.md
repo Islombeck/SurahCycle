@@ -512,11 +512,41 @@ Decisions:
 
 10 tests, full suite **1078/1078**, analyzer clean.
 
-**Seven entity types still have no mappers**: `prayerRoutineTemplate`,
-`learningState`, `learningEvent`, `recallAttempt`, `rotationAdjustment`,
-`appSetting`, `rotationState`. A merge today would carry the recitation history,
-the roster, the schemes and the prayer sessions, but not the routine templates
-or the learning plans.
+### `prayerRoutineTemplate` syncs — the one entity that exists before sync does
+
+Eight templates are seeded at startup as `routine:<prayerType>`, so an arriving
+one always updates a row that is already there. **That deterministic id is what
+makes `UNIQUE (prayer_type)` safe across devices** — two phones cannot have
+invented different ids for the same prayer. A prayer type held by some other id
+is refused by name anyway, because only a device that stopped seeding
+deterministically could produce it and a constraint failure would say nothing.
+
+The routine is pure intent: nothing in it is derived, and losing it means the
+owner rebuilding his prayer structure by hand on the second device.
+
+- **A template is never deleted.** The eight are always present; "removing" one
+  means emptying it or turning it off, and both are ordinary upserts. Deleting
+  would cascade into its parts and leave a prayer with no template at all.
+- **A removed *template* part is simply removed** — unlike a session part. A
+  session copies a template part rather than referencing it, so no history is
+  lost. That asymmetry is the reason the two appliers differ here.
+- **Disabling a routine keeps its parts.** Turning a prayer off is not
+  forgetting how it was set up, and turning it back on must not start from
+  nothing.
+- **Parked ids and orders before rewriting**, for both `UNIQUE (template,
+  order_index)` and `UNIQUE (template, stable_key)` — two parts trading either
+  would collide mid-write. Parked high, not negated: `CHECK (order_index >= 0)`.
+- `revision` travels but decides nothing across devices. It is carried because
+  the routine repository uses it for optimistic concurrency *within* a device,
+  and an imported row with a stale number would make the next local edit look
+  like a conflict.
+
+10 tests, full suite **1088/1088**, analyzer clean.
+
+**Six entity types still have no mappers**: `learningState`, `learningEvent`,
+`recallAttempt`, `rotationAdjustment`, `appSetting`, `rotationState`. A merge
+today would carry the recitation history, the roster, the schemes, the prayer
+sessions and the routine, but not the learning plans or the recall journal.
 
 Backups go to a `backups` folder under the application *support* directory, not
 documents: they are the app's own recovery copies, and on iOS documents is
