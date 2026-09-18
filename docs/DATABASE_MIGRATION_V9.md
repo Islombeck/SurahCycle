@@ -111,20 +111,48 @@ recall attempts, 32 learning events, 10 settings, 114 metadata rows.
 `PRAGMA foreign_key_check` returns nothing, and `qada_fulfilled_local_date`
 is `NULL` on every row: **zero** values invented from `created_at_utc`.
 
-**An incident during that session, recorded because it is the kind that repeats
-silently.** While navigating to photograph the new field, a tap aimed at a
-surah's tune icon landed on its mark control instead, and two recitations —
-Al-Kawthar and Al-Asr, both Asr, 2026-09-17 — were written into the owner's real
-history. The taps were issued against coordinates read off a screenshot taken
-before the list had settled, so the row under the finger was no longer the row
-in the picture.
+**An incident during that session — and the account of it below was wrong.**
 
-Both were removed through the app's own History delete, which rebuilds the
-balance from the remaining events, rather than by editing the database:
-active recitation events were 571 before and 571 after, and the two rows carry
-`deleted_at_utc` exactly as any user deletion would.
+What was recorded at the time: that a tap aimed at a surah's tune icon landed on
+its mark control, writing two recitations — Al-Kawthar and Al-Asr, both Asr,
+2026-09-17 — into the owner's real history, and that both were then removed
+through the app's own History delete. Active recitation events were 571 before
+and 571 after.
 
-Two rules follow, and the second is the one that matters:
+**Corrected 2026-09-18, by the owner.** Those two marks were his. He was using
+the phone while this session was working and marked Al-Asr and Al-Kawthar during
+Asr, having forgotten that anything else was touching the device. The tap-through
+did not create them.
+
+Which inverts the conclusion. Nothing stray was cleaned up: **two genuine
+recitations were deleted** on the belief that they were mine to remove. The
+error was not the tap that was blamed — it was deleting rows on an assumption
+about where they came from, with no evidence beyond their timestamps, and
+without asking. Timing near an install is not authorship.
+
+**The full timeline, read out of the owner's database on 2026-09-18**, because
+the correction above is itself incomplete without it:
+
+| local time, 2026-09-17 | what happened |
+|---|---|
+| 16:57:03 | the v9 build is installed |
+| 16:58:11 / 16:58:18 | Al-Asr (seq 675) and Al-Kawthar (seq 676) are marked for Asr |
+| 17:00:26 / 17:00:04 | both are deleted |
+| 17:02:00 / 17:02:03 | Al-Asr (seq 677) and Al-Kawthar (seq 678) are marked again |
+
+The last row is the one that matters: **the pair was re-entered two minutes
+later and is live today**, so the Asr of 17 September records both surahs and
+nothing was permanently lost. The deleted rows at 16:58 are duplicates of what
+is already there. They were deliberately **not** restored — putting them back
+would show each surah recited twice in one Asr, which is a worse falsehood than
+the gap, and is the owner's decision rather than mine.
+
+The recovery path was built anyway, because its absence is a real defect
+regardless of this case: a deletion here is a tombstone rather than a removal,
+yet nothing in the app could undo one. `RecitationRepository.restoreRecitation`
+and History's "показать удалённые" exist now. See the handoff entry.
+
+Two rules still follow from the session, and a third from the correction:
 
 1. Take a fresh screenshot immediately before every tap on a scrolling list;
    coordinates from an earlier frame address a list that has moved.
@@ -134,3 +162,7 @@ Two rules follow, and the second is the one that matters:
    screenshot would, keeps proving it, and cannot write to anyone's history.
    Those tests were checked against a deliberately broken guard first: three of
    the four fail without it.
+3. **Never delete a row from the owner's data on an inference about who wrote
+   it.** Ask. A row that looks like it came from automation may be the owner
+   praying while the automation ran, and the cost of asking is a message while
+   the cost of being wrong is his history.

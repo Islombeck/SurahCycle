@@ -660,6 +660,82 @@ with `FormatException: Unexpected character (at character 246)` in
 `M:\` is a **drive root**. Not Cyrillic-related, and not a code defect. Run it
 with explicit paths instead: `flutter analyze --no-pub lib test tool`.
 
+## Two of the owner's recitations were deleted, and History gained an undo
+
+**The record in `docs/DATABASE_MIGRATION_V9.md` was wrong and is corrected
+there.** It said a stray tap-through had created two recitations (Al-Kawthar and
+Al-Asr, Asr, 2026-09-17) which were then cleaned up. The owner reported on
+2026-09-18 that **he** made those marks — he was praying Asr while this session
+was working and had forgotten anything else was touching the phone.
+
+So nothing stray was cleaned up. Two genuine recitations were deleted on an
+assumption about where they came from, supported by nothing but their timestamps
+falling a minute after an install, and without asking. **Timing near an install
+is not authorship.** That is the rule worth carrying forward; it is written into
+the v9 document as its third.
+
+**Nothing was permanently lost, and that only became clear on the device.** The
+full timeline, read out of the owner's own database: Al-Asr (seq 675) and
+Al-Kawthar (seq 676) marked at 16:58, deleted at 17:00 — and **marked again at
+17:02** as seq 677 and 678, which are live today. The Asr of 17 September
+records both surahs. The deleted rows are duplicates of what is already there,
+so they were deliberately **not** restored: putting them back would show each
+surah recited twice in one Asr, a worse falsehood than the gap, and it is the
+owner's call rather than mine. This is also a correction to what this session
+first reported — the alarm that his history was missing two recitations was
+raised before the rest of that evening had been read.
+
+The recovery path was built anyway, because its absence is a real defect
+independent of this case. A deletion here is a tombstone — the rows were still
+present carrying `deleted_at_utc` — yet **nothing in the app could undo one**.
+Building the undo was the alternative to editing the database behind the app,
+which this session had already refused for a leftover test row; refusing it here
+too is the consistent answer.
+
+What that produced (`82ab6a7`):
+
+- `RecitationRepository.restoreRecitation`, the mirror image of
+  `deleteRecitation`, reusing the same completion reconciliation and the same
+  `rebuildFromJournal` rather than reversing their effects by hand. A test pins
+  that the snapshot after a restore is **identical** to the snapshot before the
+  deletion, not merely close — a restore that recomputed the balance its own way
+  would be a second implementation of the rotation rules.
+- The entry keeps its journal sequence, local date and prayer context: the same
+  recitation returning, not a new one dated today.
+- `getHistory({includeDeleted})`, off by default, with the undo screen as its
+  only caller. Statistics, the rotation balance and "already recited in this
+  prayer" all run through the same method, so a tombstone reaching it would
+  resurrect a deleted recitation in every answer at once. The screen therefore
+  reads a **separate provider** rather than a flag on the shared one.
+- A withdrawn entry is dimmed and tinted, says when it was withdrawn, and offers
+  restore instead of delete. Restoring asks no confirmation: it destroys
+  nothing, and a dialog in front of an undo is one more thing between a mistake
+  and its correction.
+
+**Two test-harness facts, each found by a hung process rather than a failure**,
+now written into `test/widget/history_restore_test.dart`:
+
+- `pumpAndSettle` never settles against a history stream that re-queries on
+  every read — it loops in real time, with no failure and no timeout. Use the
+  `_pumpUntil` shape `test/app/account_route_test.dart` already proved.
+- A widget tree left for the framework to dispose fails with "a Timer is still
+  pending", because cancelling a Drift stream schedules one and no frame remains
+  to run it. Unmount inside the test.
+
+**Verified on the device, 2026-09-18.** `app-debug.apk` sha256 `050b90fa…`,
+installed over the v10 build after another byte-exact database copy. The toggle,
+the withdrawn styling, the "Удалено …" line and the restore button all render on
+the owner's real history — read out of `uiautomator dump`, **not** off a
+screenshot. That matters: the incident this feature exists because of came from
+tapping coordinates measured on a stale picture, and a dump gives exact node
+bounds and text instead of pixels to guess at. It is the right tool for every
+future tap on this project's lists.
+
+Nothing was restored, so `recitation_events` is unchanged. Two counts did move —
+`prayer_sessions` 44 → 45 and `prayer_session_parts` 67 → 70 — because launching
+the app during Зухр creates that prayer's session scaffold exactly as the owner
+opening it would. No recitation was created or removed.
+
 ## Stage J §6.3 — a real Google sign-in, on the owner's phone (2026-09-18)
 
 **The owner is signed in.** The account screen at `/settings/account` reads
