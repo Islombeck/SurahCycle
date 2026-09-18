@@ -566,10 +566,45 @@ itself.
 
 14 tests, full suite **1102/1102**, analyzer clean.
 
-**Four entity types still have no mappers**: `learningState`, `learningEvent`,
-`appSetting`, `rotationState`. A merge today would carry the recitation history,
-the roster, the schemes, the prayer sessions, the routine, the manual
-adjustments and the recall journal — but not the learning plans or the settings.
+### `learningState` and `learningEvent` — where he has got to, and how
+
+A plan is where the owner has reached in memorising a surah; an event is one
+step of it, carrying the position it moved **from** and **to** so a rollback
+knows what to return to. Getting this wrong on a second device does not merely
+lose data — it tells him he is at a place in the surah he has never been.
+
+`learning_surahs` holds nine interlocking CHECKs, so the payload restates them
+rather than letting the database answer: a chunked plan must have a block size
+and a classic one must not, the stage must sit inside the target and the target
+inside the surah.
+
+**A test caught a gap in exactly that reasoning.** `learning_events.type` has its
+own CHECK vocabulary (`repeated`, `learned`, `inactivityRollback`, `completed`,
+`restarted`, `planChanged`) which the payload did not validate, so an unknown
+type arrived as `CHECK constraint failed: type IN (...)` — the unreadable
+failure this whole layer exists to replace. Now refused by name.
+
+Two fields travel that look derived and are not:
+
+- **`lastLearningActivityAtUtc`** — nothing else records when he last worked on a
+  plan, and the inactivity rollback reads it;
+- **`inactivityRollbackForActivityAtUtc`** — the guard that stops one idle
+  stretch being rolled back twice. Losing it would roll the plan back *again* on
+  the second device.
+
+**One plan per surah, and a second is a real conflict.** `surah_id` is unique;
+two devices that each started learning the same surah before ever syncing
+produce exactly this, and it is refused rather than merged — merging two
+positions would invent a place in the surah the owner was never at.
+
+A plan can be deleted (stopping a surah is a real choice) and that cascades into
+its journal, which is right: the journal describes that plan's movement and means
+nothing without it. An individual event is **never** deleted — removing one would
+leave a plan whose history no longer explains its position.
+
+15 tests, full suite **1117/1117**, analyzer clean.
+
+**Two entity types still have no mappers**: `appSetting` and `rotationState`.
 
 Backups go to a `backups` folder under the application *support* directory, not
 documents: they are the app's own recovery copies, and on iOS documents is
