@@ -395,6 +395,48 @@ better reason to hold them back than "the engine has nothing to drain".
 
 12 tests, full suite **1031/1031**, analyzer clean.
 
+### The roster syncs — the prerequisite the applier demanded
+
+`mastered_surah_sync_payload.dart` and `mastered_surah_sync_applier.dart`. With
+these, roster-then-recitation applies end to end, which the previous section had
+just established was impossible. There is a test for exactly that sequence.
+
+**The cached statistics are absent from the payload, deliberately.**
+`cached_rotation_score`, `cached_total_recitations` and
+`cached_last_used_at_utc` are a projection rebuilt from the journal, not facts.
+Sending them would give the receiving device two answers for one number, and
+they would disagree the moment one device had applied a recitation the other had
+not. What travels is the owner's intent: which surahs are in the roster, which
+are active, what he calls them, in what order they show.
+
+Three decisions:
+
+- **A tombstone unmasters rather than deletes.** Removing the row would cascade
+  into every recitation referencing it — the schema forbids it outright with
+  `onDelete: restrict` — and the app already models "no longer in the roster" as
+  a flag precisely so the history survives. So a withdrawal arrives as
+  `isCurrentlyMastered: false`, which is what the owner actually did.
+- **The applier creates the default scheme if the surah has none.** Every
+  mastered surah has always had one, because `addMastered` makes it, and a great
+  deal of code reads that as given; a pull commits one page per transaction, so
+  a roster entry could otherwise sit here schemeless until some later page. The
+  default is deterministic — id `<surahId>:scheme:1`, one part over the whole
+  surah, ayah count from the corpus — and every device derives the same id, so a
+  real split arriving later updates that row rather than competing with it.
+- **A surah the local catalog does not have is refused, retryably.** The corpus
+  is fetched by manifest rather than synced, so that is a device still setting
+  itself up, not a broken payload.
+
+8 tests, full suite **1048/1048**, analyzer clean.
+
+**`rotationScheme` is the one still missing, and it is not mechanical.** Its row
+carries `activatedJournalSequence` and `supersededJournalSequence`, which are
+*this device's* journal numbering — and the recitation applier already
+established that journal sequences are not portable. So a scheme cannot simply
+be copied across; the receiving device has to slot the owner's split into its
+own journal. That needs thought rather than another mapper, and it is the next
+real question.
+
 Backups go to a `backups` folder under the application *support* directory, not
 documents: they are the app's own recovery copies, and on iOS documents is
 user-visible.
