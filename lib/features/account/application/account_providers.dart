@@ -6,9 +6,16 @@
 /// the SDK into every widget test that only wanted a database.
 library;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:io';
+import 'dart:math';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+
+import '../../../app/app_providers.dart';
+import '../../../core/data/data.dart';
 import '../../../core/sync/appwrite_account_api.dart';
+import '../../../core/sync/appwrite_sync_api.dart';
 import '../../../core/sync/sync.dart';
 
 final appwriteConfigProvider = Provider<AppwriteConfig>(
@@ -43,6 +50,86 @@ final currentAccountProvider = FutureProvider<SyncAccount?>((ref) async {
     return null;
   }
   return gateway.currentAccount();
+});
+
+/// Where recovery copies live: a `backups` folder beside the database.
+///
+/// The application *support* directory, not documents: these are the app's own
+/// recovery copies, not files the owner filed there himself, and on iOS the
+/// documents directory is user-visible.
+final backupDirectoryProvider = Provider<Future<Directory> Function()>(
+  (ref) => () async {
+    final support = await getApplicationSupportDirectory();
+    return Directory('${support.path}${Platform.pathSeparator}backups');
+  },
+);
+
+/// On-demand local backup and recovery. Needs no account and no network.
+final localBackupGatewayProvider = Provider<LocalBackupGateway>(
+  (ref) => DriftLocalBackupGateway(
+    database: ref.watch(appDatabaseProvider),
+    backupDirectory: ref.watch(backupDirectoryProvider),
+    nowUtc: ref.watch(timeProviderProvider).nowUtc,
+  ),
+);
+
+/// The transport, bound to one account, or null when there is nowhere to talk
+/// to or nobody signed in.
+///
+/// A family on the user id rather than a lookup inside: a gateway that
+/// re-read the session per call could straddle two accounts mid-batch, which
+/// is the one thing owner scoping exists to prevent.
+final syncGatewayProvider = Provider.family<SyncGateway?, String>((
+  ref,
+  userId,
+) {
+  final config = ref.watch(appwriteConfigProvider);
+  if (!config.isReady || userId.isEmpty) return null;
+  return AppwriteSyncGateway(
+    api: LiveAppwriteSyncApi(createAppwriteClient(config)),
+    userId: userId,
+  );
+});
+
+/// What this device holds and what the account holds, in comparable form.
+final syncInventoryProvider = Provider.family<SyncInventory?, String>((
+  ref,
+  userId,
+) {
+  final gateway = ref.watch(syncGatewayProvider(userId));
+  if (gateway == null) return null;
+  return DriftSyncInventory(
+    database: ref.watch(appDatabaseProvider),
+    gateway: gateway,
+    userId: userId,
+  );
+});
+
+/// The gate between signing in and letting an account touch local data.
+///
+/// Null when there is no usable configuration or nobody signed in — the screen
+/// then has nothing to offer, which is the correct empty state rather than a
+/// button that would fail on being pressed.
+final syncActivationProvider = Provider.family<SyncActivationGateway?, String>((
+  ref,
+  userId,
+) {
+  final inventory = ref.watch(syncInventoryProvider(userId));
+  if (inventory == null) return null;
+  return SyncActivationCoordinator(
+    store: DriftSyncStore(
+      ref.watch(appDatabaseProvider),
+      owner: SyncOwnerKey.user(userId),
+    ),
+    backups: ref.watch(localBackupGatewayProvider),
+    inventory: inventory,
+    nowUtc: ref.watch(timeProviderProvider).nowUtc,
+    // Random rather than sequential: the token's job is to bind one
+    // confirmation to one snapshot, and a guessable one would let a stale
+    // dialog match a preview it was never shown.
+    createToken: () =>
+        'preview-${Random.secure().nextInt(1 << 32).toRadixString(16)}',
+  );
 });
 
 /// The single summary the account screen is allowed to render.

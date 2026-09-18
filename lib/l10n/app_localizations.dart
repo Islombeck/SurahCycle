@@ -2152,6 +2152,60 @@ abstract class AppLocalizations {
   /// **'Ничего не отправляется и не загружается. Синхронизации пока нет вовсе, а когда появится — останется отдельным явным решением.'**
   String get accountSyncOffBody;
 
+  /// No description provided for @accountPreviewButton.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить, что будет объединено'**
+  String get accountPreviewButton;
+
+  /// No description provided for @accountPreviewTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что было бы объединено'**
+  String get accountPreviewTitle;
+
+  /// No description provided for @accountPreviewCounts.
+  ///
+  /// In ru, this message translates to:
+  /// **'Только на устройстве: {local} · Только в аккаунте: {remote} · Есть в обоих: {shared}'**
+  String accountPreviewCounts(int local, int remote, int shared);
+
+  /// No description provided for @accountPreviewConflicts.
+  ///
+  /// In ru, this message translates to:
+  /// **'Расходятся: {count}'**
+  String accountPreviewConflicts(int count);
+
+  /// No description provided for @accountPreviewUndetermined.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сравнить нечем: {count}'**
+  String accountPreviewUndetermined(int count);
+
+  /// No description provided for @accountPreviewBackup.
+  ///
+  /// In ru, this message translates to:
+  /// **'Резервная копия создана до проверки: {id}'**
+  String accountPreviewBackup(String id);
+
+  /// No description provided for @accountPreviewNoChoiceYet.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это только отчёт. Ничего не отправлено и не изменено, и выбор пока не предлагается: переносить данные приложение ещё не умеет.'**
+  String get accountPreviewNoChoiceYet;
+
+  /// No description provided for @accountPreviewFailedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отчёт не составлен'**
+  String get accountPreviewFailedTitle;
+
+  /// No description provided for @accountPreviewFailedBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось прочитать одну из сторон. Ничего не изменено — попробуйте позже.'**
+  String get accountPreviewFailedBody;
+
   /// No description provided for @accountUnavailableTitle.
   ///
   /// In ru, this message translates to:

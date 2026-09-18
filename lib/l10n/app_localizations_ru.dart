@@ -1199,6 +1199,43 @@ class AppLocalizationsRu extends AppLocalizations {
       'Ничего не отправляется и не загружается. Синхронизации пока нет вовсе, а когда появится — останется отдельным явным решением.';
 
   @override
+  String get accountPreviewButton => 'Проверить, что будет объединено';
+
+  @override
+  String get accountPreviewTitle => 'Что было бы объединено';
+
+  @override
+  String accountPreviewCounts(int local, int remote, int shared) {
+    return 'Только на устройстве: $local · Только в аккаунте: $remote · Есть в обоих: $shared';
+  }
+
+  @override
+  String accountPreviewConflicts(int count) {
+    return 'Расходятся: $count';
+  }
+
+  @override
+  String accountPreviewUndetermined(int count) {
+    return 'Сравнить нечем: $count';
+  }
+
+  @override
+  String accountPreviewBackup(String id) {
+    return 'Резервная копия создана до проверки: $id';
+  }
+
+  @override
+  String get accountPreviewNoChoiceYet =>
+      'Это только отчёт. Ничего не отправлено и не изменено, и выбор пока не предлагается: переносить данные приложение ещё не умеет.';
+
+  @override
+  String get accountPreviewFailedTitle => 'Отчёт не составлен';
+
+  @override
+  String get accountPreviewFailedBody =>
+      'Не удалось прочитать одну из сторон. Ничего не изменено — попробуйте позже.';
+
+  @override
   String get accountUnavailableTitle => 'В этой сборке нет облака';
 
   @override

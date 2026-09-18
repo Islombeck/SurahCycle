@@ -377,6 +377,19 @@
   ,"accountSignOut": "Sign out"
   ,"accountSyncOffTitle": "Sync is off"
   ,"accountSyncOffBody": "Nothing is being uploaded or downloaded. Sync is not available yet, and when it arrives it will stay a separate, explicit choice."
+  ,"accountPreviewButton": "Check what would be merged"
+  ,"accountPreviewTitle": "What a merge would involve"
+  ,"accountPreviewCounts": "On this device only: {local} · In the account only: {remote} · On both sides: {shared}"
+  ,"@accountPreviewCounts": {"placeholders": {"local": {"type": "int"}, "remote": {"type": "int"}, "shared": {"type": "int"}}}
+  ,"accountPreviewConflicts": "Disagree: {count}"
+  ,"@accountPreviewConflicts": {"placeholders": {"count": {"type": "int"}}}
+  ,"accountPreviewUndetermined": "Cannot be compared: {count}"
+  ,"@accountPreviewUndetermined": {"placeholders": {"count": {"type": "int"}}}
+  ,"accountPreviewBackup": "A backup was made before checking: {id}"
+  ,"@accountPreviewBackup": {"placeholders": {"id": {"type": "String"}}}
+  ,"accountPreviewNoChoiceYet": "This is a report only. Nothing was sent or changed, and no choice is offered yet: the app cannot move data at all."
+  ,"accountPreviewFailedTitle": "No report"
+  ,"accountPreviewFailedBody": "One of the two sides could not be read. Nothing was changed — try again later."
   ,"accountUnavailableTitle": "No cloud in this build"
   ,"accountUnavailableBody": "The app works fully without an account."
   ,"accountMisconfiguredTitle": "Cloud settings are wrong"

@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
 import 'package:flutter_test/flutter_test.dart';
+// Imported directly, not through `sync.dart`: the barrel deliberately keeps
+// `package:appwrite` out of everything that only wanted an envelope.
+import 'package:murajaah/core/sync/appwrite_sync_api.dart';
 import 'package:murajaah/core/sync/sync.dart';
 
 /// The adapter holds one decision, and it is the whole file: which server

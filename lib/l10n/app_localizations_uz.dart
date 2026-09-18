@@ -1199,6 +1199,43 @@ class AppLocalizationsUz extends AppLocalizations {
       'Hech narsa yuborilmayapti va yuklanmayapti. Sinxronizatsiya hali yoʻq, u paydo boʻlganda ham alohida, aniq tanlov boʻlib qoladi.';
 
   @override
+  String get accountPreviewButton => 'Nima birlashtirilishini tekshirish';
+
+  @override
+  String get accountPreviewTitle => 'Birlashtirishda nima boʻlardi';
+
+  @override
+  String accountPreviewCounts(int local, int remote, int shared) {
+    return 'Faqat shu qurilmada: $local · Faqat hisobda: $remote · Ikkalasida ham: $shared';
+  }
+
+  @override
+  String accountPreviewConflicts(int count) {
+    return 'Mos kelmaydi: $count';
+  }
+
+  @override
+  String accountPreviewUndetermined(int count) {
+    return 'Solishtirib boʻlmaydi: $count';
+  }
+
+  @override
+  String accountPreviewBackup(String id) {
+    return 'Tekshirishdan oldin zaxira nusxa olindi: $id';
+  }
+
+  @override
+  String get accountPreviewNoChoiceYet =>
+      'Bu faqat hisobot. Hech narsa yuborilmadi va oʻzgartirilmadi, tanlov ham taklif qilinmaydi: ilova hali maʼlumot koʻchira olmaydi.';
+
+  @override
+  String get accountPreviewFailedTitle => 'Hisobot tuzilmadi';
+
+  @override
+  String get accountPreviewFailedBody =>
+      'Ikki tomondan biri oʻqilmadi. Hech narsa oʻzgarmadi — keyinroq urinib koʻring.';
+
+  @override
   String get accountUnavailableTitle => 'Bu yigʻmada bulut yoʻq';
 
   @override

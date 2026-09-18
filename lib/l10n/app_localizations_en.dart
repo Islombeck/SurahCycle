@@ -1195,6 +1195,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'Nothing is being uploaded or downloaded. Sync is not available yet, and when it arrives it will stay a separate, explicit choice.';
 
   @override
+  String get accountPreviewButton => 'Check what would be merged';
+
+  @override
+  String get accountPreviewTitle => 'What a merge would involve';
+
+  @override
+  String accountPreviewCounts(int local, int remote, int shared) {
+    return 'On this device only: $local · In the account only: $remote · On both sides: $shared';
+  }
+
+  @override
+  String accountPreviewConflicts(int count) {
+    return 'Disagree: $count';
+  }
+
+  @override
+  String accountPreviewUndetermined(int count) {
+    return 'Cannot be compared: $count';
+  }
+
+  @override
+  String accountPreviewBackup(String id) {
+    return 'A backup was made before checking: $id';
+  }
+
+  @override
+  String get accountPreviewNoChoiceYet =>
+      'This is a report only. Nothing was sent or changed, and no choice is offered yet: the app cannot move data at all.';
+
+  @override
+  String get accountPreviewFailedTitle => 'No report';
+
+  @override
+  String get accountPreviewFailedBody =>
+      'One of the two sides could not be read. Nothing was changed — try again later.';
+
+  @override
   String get accountUnavailableTitle => 'No cloud in this build';
 
   @override

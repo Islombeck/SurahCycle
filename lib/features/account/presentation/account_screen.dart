@@ -26,6 +26,14 @@ final class AccountScreen extends ConsumerStatefulWidget {
 final class _AccountScreenState extends ConsumerState<AccountScreen> {
   bool _busy = false;
 
+  /// The last preview, held only for display.
+  ///
+  /// Not persisted and not acted on: no choice is offered yet, because nothing
+  /// in the app moves data and a button whose effect the user cannot observe is
+  /// exactly the consent this architecture refuses to collect.
+  SyncMergePreview? _preview;
+  bool _previewFailed = false;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -115,6 +123,7 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
           title: l10n.accountSyncOffTitle,
           body: l10n.accountSyncOffBody,
           icon: Icons.sync_disabled_outlined,
+          extra: _previewSection(l10n),
         ),
         // Every remaining case needs `isActivated`, and no activation gateway
         // exists yet, so none of them can occur today. They are rendered from
@@ -137,6 +146,7 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
     required String title,
     required String body,
     required IconData icon,
+    List<Widget> extra = const <Widget>[],
   }) {
     final account = ref.watch(currentAccountProvider).valueOrNull;
     final providers = account?.linkedProviders ?? const <SyncAuthProvider>{};
@@ -153,6 +163,7 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
         ),
         const SizedBox(height: 12),
         _StatusCard(title: title, body: body, icon: icon),
+        ...extra,
         const SizedBox(height: 12),
         OutlinedButton(
           key: const ValueKey<String>('account-sign-out'),
@@ -161,6 +172,86 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
         ),
       ],
     );
+  }
+
+  /// The dry run of a merge: a real backup, and real counts from both sides.
+  ///
+  /// Offered without a decision attached. The counts are the honest part and
+  /// are worth having on their own — they are also what makes the eventual
+  /// choice an informed one instead of a leap.
+  List<Widget> _previewSection(AppLocalizations l10n) {
+    final account = ref.watch(currentAccountProvider).valueOrNull;
+    if (account == null) return const <Widget>[];
+    if (ref.watch(syncActivationProvider(account.userId)) == null) {
+      return const <Widget>[];
+    }
+    final preview = _preview;
+    return <Widget>[
+      const SizedBox(height: 12),
+      OutlinedButton.icon(
+        key: const ValueKey<String>('account-preview-merge'),
+        onPressed: _busy ? null : _preparePreview,
+        icon: const Icon(Icons.fact_check_outlined),
+        label: Text(l10n.accountPreviewButton),
+      ),
+      if (_previewFailed) ...<Widget>[
+        const SizedBox(height: 12),
+        _StatusCard(
+          title: l10n.accountPreviewFailedTitle,
+          body: l10n.accountPreviewFailedBody,
+          icon: Icons.error_outline,
+        ),
+      ],
+      if (preview != null) ...<Widget>[
+        const SizedBox(height: 12),
+        _StatusCard(
+          key: const ValueKey<String>('account-preview-result'),
+          title: l10n.accountPreviewTitle,
+          body: l10n.accountPreviewCounts(
+            preview.localOnlyCount,
+            preview.remoteOnlyCount,
+            preview.sharedCount,
+          ),
+          icon: Icons.fact_check_outlined,
+          // Conflicts and undetermined entities are separate lines because
+          // they are separate statements: one is known disagreement, the other
+          // is an honest "cannot tell". Folding them together would present a
+          // guess as a finding.
+          detail: <String>[
+            l10n.accountPreviewConflicts(preview.conflictCount),
+            l10n.accountPreviewUndetermined(preview.undeterminedCount),
+            l10n.accountPreviewBackup(preview.backupId),
+            l10n.accountPreviewNoChoiceYet,
+          ].join('\n'),
+        ),
+      ],
+    ];
+  }
+
+  Future<void> _preparePreview() async {
+    final account = ref.read(currentAccountProvider).valueOrNull;
+    if (account == null) return;
+    final coordinator = ref.read(syncActivationProvider(account.userId));
+    if (coordinator == null) return;
+    setState(() {
+      _busy = true;
+      _previewFailed = false;
+    });
+    try {
+      final preview = await coordinator.prepareFirstSync(account);
+      if (mounted) setState(() => _preview = preview);
+    } on Object {
+      // Reason deliberately unshown: it can carry a transport detail, and the
+      // user's answer to any of them is the same — try again later.
+      if (mounted) {
+        setState(() {
+          _preview = null;
+          _previewFailed = true;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   static String _providerLabel(AppLocalizations l10n, SyncAuthProvider p) =>
@@ -234,6 +325,7 @@ final class _StatusCard extends StatelessWidget {
     required this.body,
     required this.icon,
     this.detail,
+    super.key,
   });
 
   final String title;

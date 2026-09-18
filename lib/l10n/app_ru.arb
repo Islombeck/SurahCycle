@@ -383,6 +383,19 @@
   ,"accountSignOut": "Выйти"
   ,"accountSyncOffTitle": "Синхронизация выключена"
   ,"accountSyncOffBody": "Ничего не отправляется и не загружается. Синхронизации пока нет вовсе, а когда появится — останется отдельным явным решением."
+  ,"accountPreviewButton": "Проверить, что будет объединено"
+  ,"accountPreviewTitle": "Что было бы объединено"
+  ,"accountPreviewCounts": "Только на устройстве: {local} · Только в аккаунте: {remote} · Есть в обоих: {shared}"
+  ,"@accountPreviewCounts": {"placeholders": {"local": {"type": "int"}, "remote": {"type": "int"}, "shared": {"type": "int"}}}
+  ,"accountPreviewConflicts": "Расходятся: {count}"
+  ,"@accountPreviewConflicts": {"placeholders": {"count": {"type": "int"}}}
+  ,"accountPreviewUndetermined": "Сравнить нечем: {count}"
+  ,"@accountPreviewUndetermined": {"placeholders": {"count": {"type": "int"}}}
+  ,"accountPreviewBackup": "Резервная копия создана до проверки: {id}"
+  ,"@accountPreviewBackup": {"placeholders": {"id": {"type": "String"}}}
+  ,"accountPreviewNoChoiceYet": "Это только отчёт. Ничего не отправлено и не изменено, и выбор пока не предлагается: переносить данные приложение ещё не умеет."
+  ,"accountPreviewFailedTitle": "Отчёт не составлен"
+  ,"accountPreviewFailedBody": "Не удалось прочитать одну из сторон. Ничего не изменено — попробуйте позже."
   ,"accountUnavailableTitle": "В этой сборке нет облака"
   ,"accountUnavailableBody": "Приложение полностью работает без аккаунта."
   ,"accountMisconfiguredTitle": "Настройки облака неверны"
