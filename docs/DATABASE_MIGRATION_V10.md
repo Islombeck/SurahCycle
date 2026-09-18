@@ -91,9 +91,40 @@ Three details are load-bearing:
   pre-existing row is still null, an insert stamps it, an update on a legacy row
   closes the gap, and an explicitly supplied timestamp survives.
 
-**Not yet run on a real device.** The owner's phone is at v9 from the 2026-09-17
-install. Before it is, pull a copy of `murajaah_user.sqlite` as a backup, as was
-done for v7, v8 and v9.
+## Verified on the owner's device, 2026-09-18
+
+`app-debug.apk`, sha256
+`7b359af2a340f234a82f8784d77383cb0fdbaa71cfb43cdd651d86bb74e29b58`,
+230 035 402 bytes, installed with `adb install -r` over the existing v9 build on
+the Unihertz Jelly Max. A byte-exact copy of `murajaah_user.sqlite` (978 944
+bytes, sha256 `66a450de…`) was pulled **first**, and both copies were read with
+`tool/inspect_user_database.dart`, which opens read-only so the "before" copy is
+never migrated by the act of inspecting it.
+
+`user_version` went **9 → 10**, `integrity_check` is `ok`,
+`PRAGMA foreign_key_check` returns nothing, and **every one of the sixteen
+user-owned row counts is identical**: `recitation_events=697`,
+`recitation_event_parts=699`, `prayer_sessions=44`, `prayer_session_parts=67`,
+`prayer_routine_templates=8`, `prayer_routine_part_templates=14`,
+`mastered_surahs=27`, `rotation_states=1`, `rotation_schemes=28`,
+`rotation_parts=31`, `rotation_adjustments=1`, `recall_attempts=4`,
+`learning_surahs=1`, `learning_events=32`, `app_settings=10`,
+`surah_metadata=114`.
+
+All **twelve** touch triggers exist on the phone, and **zero** rows carry
+`updated_at_utc` — nothing was invented, which is the whole design. Logcat shows
+no `E/flutter`, no `SqliteException` and no `StateError` around the launch.
+
+The triggers were then proved to actually fire, on a **throwaway copy** of the
+pulled file rather than on the owner's data or on the device: an ordinary
+`UPDATE` stamped a plausible epoch second, and an explicitly supplied timestamp
+survived untouched — the property that will let an applied remote change keep
+the originating device's time.
+
+**No interactive smoke test.** The phone stayed locked throughout
+(`deviceLocked=1`); installing, launching and reading the database need no
+unlock, and tapping was neither required nor done. The temporary file this
+verification wrote to `/sdcard/Download/` was removed.
 
 ## One test-only surprise, worth knowing
 

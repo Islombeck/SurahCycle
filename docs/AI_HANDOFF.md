@@ -619,9 +619,26 @@ which is what will let an applied remote change carry the originating device's
 time instead of being restamped "now" on arrival.
 
 Migration coverage is now `v1→v10` through `v8→v10` plus a dedicated `v9→v10`,
-and the newer-`user_version`-is-refused guard moved to 11. **Not yet run on a
-real device** — the owner's phone is at v9; pull a copy of `murajaah_user.sqlite`
-first, as was done for v7, v8 and v9.
+and the newer-`user_version`-is-refused guard moved to 11.
+
+**Verified on the owner's device, 2026-09-18.** APK sha256 `7b359af2…`,
+230 035 402 bytes, `adb install -r` over the v9 build. A byte-exact copy of the
+database was pulled first. `user_version` 9 → 10, `integrity_check` `ok`, no
+foreign-key violations, **all sixteen user-owned row counts identical**
+(`recitation_events=697`, `mastered_surahs=27`, `prayer_sessions=44`,
+`prayer_routine_part_templates=14`, …), twelve touch triggers present and **zero
+rows carrying `updated_at_utc`** — nothing invented. Logcat clean. The triggers
+were then proved to fire on a throwaway copy, never on the owner's data. Full
+numbers in `docs/DATABASE_MIGRATION_V10.md`.
+
+**No interactive smoke test**: the phone stayed locked (`deviceLocked=1`)
+throughout, which install, launch and database reads do not require. Nothing was
+tapped.
+
+`tool/inspect_user_database.dart` is new and exists for exactly this job: it
+opens a pulled copy **read-only**, so the "before" snapshot is not migrated by
+the act of inspecting it — the mistake that would quietly destroy the comparison.
+Given two paths it diffs them and exits non-zero if any user-owned count moved.
 
 ### Not done
 
