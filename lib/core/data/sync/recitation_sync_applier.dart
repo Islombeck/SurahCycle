@@ -75,6 +75,7 @@ final class RecitationSyncApplier {
       throw const SyncTransportException('remote-recitation-has-no-coverage');
     }
     await _requirePrerequisites(event.surahId, schemeId);
+    await _requirePrayerSession(event);
 
     final existing = await _rowOf(event.id);
     if (existing == null) {
@@ -102,9 +103,8 @@ final class RecitationSyncApplier {
   /// lose a prayer silently and permanently, with the cursor moved past it.
   Future<void> _requirePrerequisites(String surahId, String schemeId) async {
     final surah =
-        await (_database.select(_database.masteredSurahs)..where(
-              (MasteredSurahs row) => row.surahId.equals(surahId),
-            ))
+        await (_database.select(_database.masteredSurahs)
+              ..where((MasteredSurahs row) => row.surahId.equals(surahId)))
             .getSingleOrNull();
     if (surah == null) {
       throw const SyncTransportException('remote-recitation-surah-missing');
@@ -117,6 +117,39 @@ final class RecitationSyncApplier {
             .getSingleOrNull();
     if (scheme == null) {
       throw const SyncTransportException('remote-recitation-scheme-missing');
+    }
+  }
+
+  /// Refuses a recitation whose prayer session or session part is not here yet.
+  ///
+  /// Both are foreign keys, so the insert would fail regardless — with an
+  /// opaque database error rather than a reason anyone can act on. Nulling them
+  /// instead was the tempting alternative and is worse: it would silently drop
+  /// the link between a prayer and which part of it the surah filled, which is
+  /// the whole basis of the routine's "slots for surahs" and of the calendar.
+  ///
+  /// Retryable, like the roster: a prayer session is itself an entity that
+  /// syncs.
+  Future<void> _requirePrayerSession(SurahRecitationEvent event) async {
+    if (event.prayerSessionId case final sessionId?) {
+      final session =
+          await (_database.select(_database.prayerSessions)
+                ..where((PrayerSessions row) => row.id.equals(sessionId)))
+              .getSingleOrNull();
+      if (session == null) {
+        throw const SyncTransportException('remote-recitation-session-missing');
+      }
+    }
+    if (event.prayerSessionPartId case final partId?) {
+      final part =
+          await (_database.select(_database.prayerSessionParts)
+                ..where((PrayerSessionParts row) => row.id.equals(partId)))
+              .getSingleOrNull();
+      if (part == null) {
+        throw const SyncTransportException(
+          'remote-recitation-session-part-missing',
+        );
+      }
     }
   }
 
@@ -189,10 +222,9 @@ final class RecitationSyncApplier {
     SurahRecitationEvent event,
     String schemeId,
   ) async {
-    await (_database.delete(_database.recitationEventParts)..where(
-          (RecitationEventParts row) => row.eventId.equals(event.id),
-        ))
-        .go();
+    await (_database.delete(
+      _database.recitationEventParts,
+    )..where((RecitationEventParts row) => row.eventId.equals(event.id))).go();
     for (final partId in event.coveredPartIds) {
       await _database
           .into(_database.recitationEventParts)

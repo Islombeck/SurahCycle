@@ -476,12 +476,47 @@ tombstone is refused outright.
 
 9 tests plus 11 for the payload, full suite **1068/1068**, analyzer clean.
 
-**With this, the prerequisites the recitation applier demanded are met.** Roster,
-schemes and recitations all cross the boundary in both directions. The remaining
-eight entity types (`prayerSession`, `prayerRoutineTemplate`, `learningState`,
-`learningEvent`, `recallAttempt`, `rotationAdjustment`, `appSetting`,
-`rotationState`) still have no mappers, so a merge would carry the recitation
-history and the roster but not the prayer routine or the learning plans.
+### `prayerSession` syncs — and it closed a gap the recitation applier had
+
+Writing it found a **latent bug in what had already shipped**. A recitation's
+`prayerSessionId` and `prayerSessionPartId` are foreign keys, and the recitation
+applier checked neither: a prayer arriving before its session would have failed
+with an opaque database error instead of a legible refusal. It now refuses by
+name (`remote-recitation-session-missing`,
+`remote-recitation-session-part-missing`), retryably, because a session is
+itself an entity that syncs.
+
+Nulling the references instead was the tempting alternative and is worse: it
+would silently drop which slot of which prayer a surah filled, which is the
+whole basis of the routine screen and of the calendar.
+
+Decisions:
+
+- **Parts travel with the session, not as their own entity.** They have no
+  meaning apart from it, they are created and replaced together, and
+  `ON DELETE CASCADE` already ties their lifetime to it. A separate entity would
+  invent an ordering problem that does not exist.
+- **`completionMode` travels.** "Followed the imam" creates no recitation — that
+  is the religious invariant — so the fact that the part is finished *cannot* be
+  inferred from the slots, and has to be carried.
+- **The envelope is dated by the prayer**, `createdAtUtc = startedAtUtc`: the
+  prayer began when it began and a later edit to its parts does not move it.
+- **Reordered parts are parked high before being rewritten.** `UNIQUE
+  (prayer_session_id, order_index)` would otherwise collide while one part had
+  moved and the other had not. Parked at `1000000 + order` rather than negated,
+  because the table also holds `CHECK (order_index >= 0)` — the obvious trick
+  would have traded one constraint failure for another.
+- **A session with recitations in it is not deleted, and a part a recitation
+  filled is not dropped.** The database would null those references rather than
+  refuse, quietly detaching prayers from the prayer they were recited in.
+
+10 tests, full suite **1078/1078**, analyzer clean.
+
+**Seven entity types still have no mappers**: `prayerRoutineTemplate`,
+`learningState`, `learningEvent`, `recallAttempt`, `rotationAdjustment`,
+`appSetting`, `rotationState`. A merge today would carry the recitation history,
+the roster, the schemes and the prayer sessions, but not the routine templates
+or the learning plans.
 
 Backups go to a `backups` folder under the application *support* directory, not
 documents: they are the app's own recovery copies, and on iOS documents is
