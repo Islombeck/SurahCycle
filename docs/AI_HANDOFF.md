@@ -249,12 +249,8 @@ choice informed, and it leaves a recovery copy behind either way.
 **What is still missing for a real sync, in order:**
 
 1. ~~the domain↔envelope seam for recitations~~ **done**, see below;
-2. every repository write goes through `commitLocalChangeAndEnqueue` so the
-   outbox fills — this is the large one, and it needs a decision first: whether
-   writes enqueue always or only once an owner is active. The merge design
-   implies a **backfill** on activation (all 863 entities, not just what
-   changes afterwards), and if that exists then enqueueing only while active is
-   the clean answer;
+2. ~~recitation writes enqueue~~ **done for recitations**, see below; the other
+   ten entity types still do not;
 3. a `SyncPageApplier` that turns pulled envelopes back into domain rows;
 4. the merge/keep-local buttons, wired to `finishFirstSync`;
 5. `syncStatusProvider` must start reading the **real** outbox counts — the
@@ -303,6 +299,60 @@ attempt would make every retry look like a new change to the server's unique
 index.
 
 16 tests, full suite **1008/1008**, analyzer clean.
+
+### Recitation writes now enqueue — and doing it exposed a defect in three places
+
+**The owner chose the design:** the queue fills **only once an account has been
+activated**, and the whole existing history reaches that account through a
+**backfill** at activation. The alternative — queue always, just in case —
+would duplicate the backfill's work and charge every device that never signs in
+for the privilege. In code the decision is simply that `RecitationRepository`
+holds a `SyncRecorder?` that is null until activation, so a device that never
+signs in does no extra work and stores no extra rows.
+
+`OutboxSyncRecorder` is called **inside** the transaction that made the change,
+never after it, so a crash cannot leave a written row with no envelope behind
+it. `SyncDeviceId` is random and stored in `app_settings`, never derived from
+hardware: the only question it answers is "which of my devices wrote this", and
+a hardware id would follow the owner across uninstalls and across apps while
+answering nothing more.
+
+`restoreRecitation` now takes `restoredAtUtc` rather than reaching for a clock
+inside the repository, matching `deleteRecitation`.
+
+**The defect, and it was the same reasoning error in three layers.** Adding a
+restore earlier today broke an assumption that had been correct until then. All
+three said, in their own words, *"a pending delete is only superseded by a later
+delete"*:
+
+- `DriftSyncOutbox._supersedes`
+- `InMemorySyncOutbox._supersedes`
+- `FakeSyncBackend._wins`
+
+That was right while a deletion was final. A restore **is** an upsert whose
+whole purpose is to bring the record back everywhere, so under the old rule a
+delete-then-restore between two drains reached the account as the deletion
+alone — leaving the device showing a recitation the account believed gone,
+permanently, with nothing able to correct either side. A test caught it in the
+outbox; reading outward found the same rule twice more.
+
+The two layers now differ on purpose rather than by accident:
+
+- **In an outbox**, a deletion supersedes a queued edit outright, no clock
+  involved. Every envelope there came from this device, so "deleted after
+  editing" is a sequence, not a question about time.
+- **On the backend**, time comes first, because the envelopes come from
+  different devices and time is the only ordering there is. A tombstone breaks
+  an exact tie, and `deviceId` breaks what is left.
+
+The tie-break favours the tombstone because the two sides must converge and
+"withdrawn" is the recoverable answer: History can undo it, while a
+resurrection cannot be told apart from the owner adding the record again. The
+trade-off accepted is that a deletion from a device with a badly-behind clock
+can now lose to a newer edit — recoverable by deleting again, where the old
+behaviour made restore impossible and offered the owner nothing.
+
+Full suite **1019/1019**, analyzer clean.
 
 Backups go to a `backups` folder under the application *support* directory, not
 documents: they are the app's own recovery copies, and on iOS documents is

@@ -101,7 +101,10 @@ final class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     try {
       final result = await ref
           .read(recitationRepositoryProvider)
-          .restoreRecitation(entry.event.id);
+          .restoreRecitation(
+            entry.event.id,
+            restoredAtUtc: ref.read(timeProviderProvider).nowUtc(),
+          );
       if (mounted && result.didRestore) {
         ScaffoldMessenger.of(
           context,

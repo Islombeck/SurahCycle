@@ -51,13 +51,15 @@ final class InMemorySyncOutbox implements SyncOutbox {
   }
 
   /// Whether [incoming] replaces [pending] for the same entity.
+  ///
+  /// Must agree with `DriftSyncOutbox` exactly — the shared contract test is
+  /// what holds them together. A deletion supersedes a queued edit whatever the
+  /// clock says; everything else, **including an upsert after a tombstone**, is
+  /// decided by time. That last case is History's undo: a restore is an upsert
+  /// whose purpose is to bring the record back everywhere, and the timestamp is
+  /// what still stops a stale edit from resurrecting anything.
   static bool _supersedes(SyncEnvelope pending, SyncEnvelope incoming) {
-    if (pending.isTombstone) {
-      // Nothing supersedes a pending delete except a later delete.
-      return incoming.isTombstone &&
-          !incoming.updatedAtUtc.isBefore(pending.updatedAtUtc);
-    }
-    if (incoming.isTombstone) return true;
+    if (incoming.isTombstone && !pending.isTombstone) return true;
     return !incoming.updatedAtUtc.isBefore(pending.updatedAtUtc);
   }
 

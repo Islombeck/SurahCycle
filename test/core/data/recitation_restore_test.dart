@@ -71,7 +71,10 @@ void main() {
       0,
     );
 
-    final restored = await recitations.restoreRecitation(first.id);
+    final restored = await recitations.restoreRecitation(
+      first.id,
+      restoredAtUtc: DateTime.utc(2026, 9, 18, 10),
+    );
 
     expect(restored.didRestore, isTrue);
     expect(
@@ -97,7 +100,10 @@ void main() {
       deletedAtUtc: DateTime.utc(2026, 9, 18, 9),
     );
 
-    await recitations.restoreRecitation(original.id);
+    await recitations.restoreRecitation(
+      original.id,
+      restoredAtUtc: DateTime.utc(2026, 9, 18, 10),
+    );
 
     final entry = (await recitations.getHistory()).single;
     expect(entry.event.id, original.id);
@@ -149,9 +155,15 @@ void main() {
       only.id,
       deletedAtUtc: DateTime.utc(2026, 9, 18, 9),
     );
-    await recitations.restoreRecitation(only.id);
+    await recitations.restoreRecitation(
+      only.id,
+      restoredAtUtc: DateTime.utc(2026, 9, 18, 10),
+    );
 
-    final second = await recitations.restoreRecitation(only.id);
+    final second = await recitations.restoreRecitation(
+      only.id,
+      restoredAtUtc: DateTime.utc(2026, 9, 18, 10),
+    );
 
     expect(second.didRestore, isFalse);
     expect(
@@ -164,6 +176,7 @@ void main() {
   test('an unknown id restores nothing rather than guessing', () async {
     final result = await recitations.restoreRecitation(
       '00000000-0000-4000-8000-00000000ffff',
+      restoredAtUtc: DateTime.utc(2026, 9, 18, 10),
     );
 
     expect(result.didRestore, isFalse);
@@ -184,7 +197,10 @@ void main() {
       deletedAtUtc: DateTime.utc(2026, 9, 18, 9),
     );
 
-    await recitations.restoreRecitation(only.id);
+    await recitations.restoreRecitation(
+      only.id,
+      restoredAtUtc: DateTime.utc(2026, 9, 18, 10),
+    );
 
     final entry = (await recitations.getHistory()).single;
     expect(entry.coveredParts, isNotEmpty);

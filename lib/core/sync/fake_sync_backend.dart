@@ -113,14 +113,32 @@ final class FakeSyncBackend {
     );
   }
 
-  /// The deterministic rule both devices must reach the same answer with: a
-  /// tombstone beats the record it refers to, then newer `updatedAtUtc` wins,
-  /// then `deviceId` breaks the tie.
+  /// The deterministic rule every device must reach the same answer with:
+  /// newer `updatedAtUtc` wins, a tombstone breaks an exact tie, and
+  /// `deviceId` breaks what is left.
+  ///
+  /// **Time comes first here, unlike in the outbox**, and the difference is
+  /// principled rather than an oversight. The outbox holds envelopes from one
+  /// device, where "deleted after editing" is a sequence and needs no clock, so
+  /// a deletion there supersedes a queued edit outright. Here the envelopes
+  /// come from different devices and time is the only ordering that exists.
+  ///
+  /// This rule used to put a tombstone ahead of *any* upsert. That made a
+  /// restore unsendable: History's undo would push an upsert the server then
+  /// discarded, leaving every other device believing the recitation gone while
+  /// the one that restored it showed it back, with nothing able to correct
+  /// either. The local queue had the same flaw and was fixed with it; the two
+  /// must agree, or a device and its account disagree permanently.
+  ///
+  /// A tombstone still wins an exact tie, because the two sides must converge
+  /// and "withdrawn" is the recoverable answer — History can undo it, while a
+  /// resurrection cannot be told apart from the user adding the record again.
   static bool _wins(SyncEnvelope current, SyncEnvelope incoming) {
-    if (incoming.isTombstone && !current.isTombstone) return true;
-    if (current.isTombstone && !incoming.isTombstone) return false;
     final byTime = incoming.updatedAtUtc.compareTo(current.updatedAtUtc);
     if (byTime != 0) return byTime > 0;
+    if (incoming.isTombstone != current.isTombstone) {
+      return incoming.isTombstone;
+    }
     return incoming.deviceId.compareTo(current.deviceId) > 0;
   }
 

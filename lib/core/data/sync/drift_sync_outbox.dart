@@ -71,19 +71,27 @@ final class DriftSyncOutbox implements SyncOutbox {
 
   /// Whether [incoming] replaces the [pending] entry for the same entity.
   ///
-  /// A pending delete is only superseded by a later delete: once a record is
-  /// gone there is nothing left for a queued edit to describe, and letting one
-  /// through would resurrect it on every other device.
+  /// A deletion always supersedes a queued edit, whatever the clock says: once
+  /// the user has withdrawn a record there is nothing left for an earlier edit
+  /// to describe, and two devices with skewed clocks must not be able to keep
+  /// it alive.
+  ///
+  /// Everything else is decided by time, **including an upsert that follows a
+  /// tombstone**. This rule used to read "a pending delete is only superseded
+  /// by a later delete", on the reasoning that letting an edit through would
+  /// resurrect the record on every other device. That was right while a
+  /// deletion was final — and it stopped being right the day History gained an
+  /// undo, because a restore *is* an upsert whose whole purpose is to resurrect
+  /// the record everywhere. Under the old rule a delete-then-restore between
+  /// two drains reached the account as the deletion alone, leaving this device
+  /// showing a recitation the account believed gone, permanently. The timestamp
+  /// is what still keeps a genuinely *stale* edit from resurrecting anything.
   static bool _supersedes(SyncOutboxEntryRow pending, SyncEnvelope incoming) {
+    if (incoming.isTombstone && !pending.isTombstone) return true;
     final pendingUpdatedAt = DateTime.fromMicrosecondsSinceEpoch(
       pending.envelopeUpdatedAtUs,
       isUtc: true,
     );
-    if (pending.isTombstone) {
-      return incoming.isTombstone &&
-          !incoming.updatedAtUtc.isBefore(pendingUpdatedAt);
-    }
-    if (incoming.isTombstone) return true;
     return !incoming.updatedAtUtc.isBefore(pendingUpdatedAt);
   }
 

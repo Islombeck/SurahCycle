@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../domain/domain.dart';
 import '../database/app_database.dart';
+import '../sync/sync_recorder.dart';
 import 'rotation_projection_store.dart';
 
 final class RecitationUndoToken {
@@ -170,11 +171,31 @@ final class PrayerSessionSlotUnavailableException extends StateError {
 
 /// Atomic journal writes, projection rebuild, history, statistics, and Undo.
 final class RecitationRepository {
-  RecitationRepository(this.database, {this._engine = const RotationEngine()})
-    : _projection = RotationProjectionStore(database);
+  RecitationRepository(
+    this.database, {
+    RotationEngine engine = const RotationEngine(),
+    SyncRecorder? syncRecorder,
+    // Named parameters cannot be private, so an initializing formal is not
+    // available for these fields.
+    // ignore: prefer_initializing_formals
+  }) : _engine = engine,
+       // ignore: prefer_initializing_formals
+       _syncRecorder = syncRecorder,
+       _projection = RotationProjectionStore(database);
 
   final AppDatabase database;
   final RotationEngine _engine;
+
+  /// Queues each change for an account, or null until one has been activated.
+  ///
+  /// Null is the ordinary state and costs nothing: a device that never signs in
+  /// does no extra work and stores no extra rows. History written before
+  /// activation reaches the account through a backfill instead — the only
+  /// mechanism that can carry records made before sync existed.
+  ///
+  /// Every call to it sits **inside** the transaction that made the change, so
+  /// a crash cannot leave a written row with no queue entry behind it.
+  final SyncRecorder? _syncRecorder;
   final RotationProjectionStore _projection;
   final Object _undoOwner = Object();
   RecitationUndoToken? _activeUndoToken;
@@ -268,6 +289,13 @@ final class RecitationRepository {
       await _projection.writeSnapshot(
         committedAfter,
         lastJournalSequence: sequence,
+      );
+      // `persistedEvent`, not the argument: the engine resolves which scheme
+      // and which parts this recitation actually covered, and the account must
+      // receive what was stored rather than what was asked for.
+      await _syncRecorder?.recordRecitationUpsert(
+        persistedEvent,
+        atUtc: persistedEvent.createdAtUtc,
       );
 
       final token = RecitationUndoToken._(
@@ -400,6 +428,14 @@ final class RecitationRepository {
       if (existing.prayerSessionPartId case final prayerSessionPartId?) {
         await _reconcileRecitationCompletion(prayerSessionPartId);
       }
+      // A tombstone, so the account learns the recitation was withdrawn rather
+      // than simply stopping to hear about it — a device that was offline would
+      // otherwise keep it forever and push it back.
+      await _syncRecorder?.recordRecitationDelete(
+        entityId: eventId,
+        originalCreatedAtUtc: existing.createdAtUtc,
+        deletedAtUtc: deletedAtUtc,
+      );
       final rebuilt = await _projection.rebuildFromJournal(
         targetFloor: before.rotationTarget,
       );
@@ -420,7 +456,11 @@ final class RecitationRepository {
   /// The entry keeps its original `journalSequence`, its local date and its
   /// prayer context: this is the same recitation coming back, not a new one
   /// recorded today. That is the whole reason a deletion is a tombstone.
-  Future<JournalRestorationResult> restoreRecitation(String eventId) async {
+  Future<JournalRestorationResult> restoreRecitation(
+    String eventId, {
+    required DateTime restoredAtUtc,
+  }) async {
+    _requireUtc(restoredAtUtc, 'restoredAtUtc');
     final result = await database.transaction(() async {
       final existing =
           await (database.select(database.recitationEvents)..where(
@@ -444,6 +484,22 @@ final class RecitationRepository {
         // from the events that are active *now*, so it re-completes the part
         // without needing to know which direction it is moving.
         await _reconcileRecitationCompletion(prayerSessionPartId);
+      }
+      // An upsert, which is what undoes a tombstone: the account is told the
+      // recitation is back, carrying the same identity and the same prayer it
+      // always had.
+      if (_syncRecorder case final recorder?) {
+        final coverage =
+            await (database.select(database.recitationEventParts)..where(
+                  (RecitationEventParts row) => row.eventId.equals(eventId),
+                ))
+                .get();
+        await recorder.recordRecitationUpsert(
+          _eventFromRow(existing, <String>[
+            for (final row in coverage) row.partId,
+          ]),
+          atUtc: restoredAtUtc,
+        );
       }
       final rebuilt = await _projection.rebuildFromJournal(
         targetFloor: before.rotationTarget,

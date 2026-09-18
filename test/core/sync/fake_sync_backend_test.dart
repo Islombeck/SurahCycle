@@ -132,23 +132,49 @@ void main() {
       expect(backend.recordsOf('user-1').single.deviceId, 'device-b');
     });
 
-    test('a tombstone beats the record it refers to', () {
+    test('a tombstone beats an older version of the record', () {
       backend.push('user-1', <SyncEnvelope>[
-        envelopeOf(entityId: 'a', id: 'live', updatedMinute: 9),
+        envelopeOf(entityId: 'a', id: 'live', updatedMinute: 1),
       ]);
       backend.push('user-1', <SyncEnvelope>[
-        tombstoneOf(entityId: 'a', id: 'gone', updatedMinute: 1),
+        tombstoneOf(entityId: 'a', id: 'gone', updatedMinute: 9),
       ]);
 
-      final stored = backend.recordsOf('user-1').single;
+      expect(backend.recordsOf('user-1').single.isTombstone, isTrue);
+    });
+
+    test('a tombstone wins an exact tie', () {
+      backend.push('user-1', <SyncEnvelope>[
+        envelopeOf(entityId: 'a', id: 'live', updatedMinute: 5),
+      ]);
+      backend.push('user-1', <SyncEnvelope>[
+        tombstoneOf(entityId: 'a', id: 'gone', updatedMinute: 5),
+      ]);
+
       expect(
-        stored.isTombstone,
+        backend.recordsOf('user-1').single.isTombstone,
         isTrue,
-        reason: 'a delete must win even when its clock is behind',
+        reason:
+            'the two sides must converge on something, and "withdrawn" is the '
+            'recoverable answer: History can undo it, while a resurrection '
+            'cannot be told apart from the user adding the record again',
       );
     });
 
-    test('an edit does not resurrect a tombstoned record', () {
+    test('a later edit resurrects a tombstoned record, and must', () {
+      // This inverts what the backend used to do, and it is a deliberate
+      // trade-off rather than a relaxation.
+      //
+      // The old rule put a tombstone ahead of *any* upsert, to protect against
+      // a delete whose device clock was behind. But that shape is
+      // indistinguishable from History's undo: "restore at 09:00 after a delete
+      // at 01:00" and "delete at 01:00 after an edit at 09:00" are the same two
+      // envelopes. Choosing the tombstone made a restore unsendable — every
+      // other device kept believing the recitation gone, permanently, with
+      // nothing the owner could do about it. Choosing time leaves the record
+      // alive, which the owner can simply delete again.
+      //
+      // One failure is recoverable and the other is not.
       backend.push('user-1', <SyncEnvelope>[
         tombstoneOf(entityId: 'a', id: 'gone', updatedMinute: 1),
       ]);
@@ -156,7 +182,9 @@ void main() {
         envelopeOf(entityId: 'a', id: 'back', updatedMinute: 9),
       ]);
 
-      expect(backend.recordsOf('user-1').single.isTombstone, isTrue);
+      final stored = backend.recordsOf('user-1').single;
+      expect(stored.isTombstone, isFalse);
+      expect(stored.id, 'back');
     });
 
     test('a tombstone stays in the sync log', () {

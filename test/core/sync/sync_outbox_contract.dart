@@ -152,7 +152,35 @@ void runSyncOutboxContract(String name, SyncOutbox Function() createOutbox) {
       expect(entries.single.envelope.isTombstone, isTrue);
     });
 
-    test('an edit does not resurrect a pending delete', () async {
+    test('a stale edit does not resurrect a pending delete', () async {
+      await outbox.enqueue(
+        tombstoneOf(entityId: 'a', id: 'e1', updatedMinute: 5),
+        nowUtc: at(1),
+      );
+      await outbox.enqueue(
+        envelopeOf(entityId: 'a', id: 'e2', updatedMinute: 2),
+        nowUtc: at(2),
+      );
+
+      final entries = await outbox.peek();
+      expect(entries, hasLength(1));
+      expect(
+        entries.single.envelope.isTombstone,
+        isTrue,
+        reason:
+            'the edit describes the record as it was before it was withdrawn, '
+            'so letting it through would undo a deletion nobody asked to undo',
+      );
+    });
+
+    test('a later edit does undo a pending delete', () async {
+      // This inverts what the contract used to require, and deliberately.
+      // "A pending delete is only superseded by a later delete" was right while
+      // a deletion was final; History now has an undo, and a restore *is* an
+      // upsert whose whole purpose is to bring the record back everywhere.
+      // Under the old rule a delete-then-restore between two drains reached the
+      // account as the deletion alone, leaving the device showing a recitation
+      // the account believed gone — permanently, with nothing to correct it.
       await outbox.enqueue(
         tombstoneOf(entityId: 'a', id: 'e1', updatedMinute: 2),
         nowUtc: at(1),
@@ -164,11 +192,8 @@ void runSyncOutboxContract(String name, SyncOutbox Function() createOutbox) {
 
       final entries = await outbox.peek();
       expect(entries, hasLength(1));
-      expect(
-        entries.single.envelope.isTombstone,
-        isTrue,
-        reason: 'a deleted record must not come back through a queued edit',
-      );
+      expect(entries.single.envelope.isTombstone, isFalse);
+      expect(entries.single.envelope.id, 'e2');
     });
 
     test(
