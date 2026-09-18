@@ -604,7 +604,69 @@ leave a plan whose history no longer explains its position.
 
 15 tests, full suite **1117/1117**, analyzer clean.
 
-**Two entity types still have no mappers**: `appSetting` and `rotationState`.
+### `appSetting` — where *which rows travel* is the whole question
+
+**The allow-list already existed.** `SyncAppSettingPolicy` was written and
+reviewed earlier in the project, and this defers to it rather than restating it.
+That matters more than it sounds: two lists free to drift apart is exactly how
+`sync.deviceId` eventually slips through one of them, leaving both devices
+claiming the same identity and breaking the server's tie-break with it.
+
+**A correction worth recording.** This session's first draft wrote its own list
+and *excluded* `prayer_time_settings_v1`, reasoning that one device's
+coordinates applied elsewhere would give wrong prayer times. The existing policy
+includes it, and the existing policy is right: the setting carries a
+`locationSelectionMode`, so a device in automatic mode re-derives its own
+position, while a manually chosen city is a deliberate choice that *should*
+travel. The draft list was deleted rather than argued for — a decision already
+made and reviewed is not one to quietly re-take.
+
+Both directions check the list, not only the sending one: a device on an older
+build must not be able to put its identity or its position into this one. What
+stays behind, and why each is a different kind of "belongs to this device":
+
+- `learningNotificationEnabled` — whether *this* device interrupts him;
+- `selected_prayer_type`, `selected_prayer_is_qada`,
+  `selected_learning_surah_id` — where this device is right now. One phone being
+  on Asr says nothing about a tablet in a drawer, and sharing it is how the
+  context starts jumping under the owner's finger;
+- `recommendationBatch` — a projection this device rebuilds. A second source of
+  truth for it is what produced `cycleNumber = 5392`;
+- `sync.deviceId` — never.
+
+The value travels as text whatever its type, exactly as the table stores it.
+Parsing it would mean this layer understanding every setting's shape, and it has
+no business knowing what a translation profile looks like. An empty string is a
+value, not a missing one — the one place in this layer where a required string
+is allowed to be empty.
+
+11 tests, full suite **1128/1128**, analyzer clean.
+
+### `rotationState` deliberately gets no mapper
+
+It is in the `SyncEntityType` enum, and that appears to be the enum's mistake
+rather than a requirement. The row holds `rotationTarget`, `lastJournalSequence`
+and `projectionVersion`:
+
+- the last two are **this device's** journal bookkeeping, and every applier here
+  has already established that journal positions are not portable;
+- `rotationTarget` is recomputed by `rebuildFromJournal(targetFloor:)` from the
+  roster and the journal, both of which now sync — so a device that has received
+  those arrives at the same target on its own.
+
+`sync_envelope.dart` says as much in its own words: *"Derived snapshots are
+deliberately absent: the widget snapshot, the rotation projection and the
+recommendation batch are all rebuildable from these facts, so syncing them would
+create a second source of truth that can disagree with the journal."* The
+rotation projection **is** `rotation_states`. Building a mapper for it would
+contradict the architecture the rest of this work follows.
+
+**Recommended: remove `rotationState` from `SyncEntityType`.** Not done here,
+because the enum is the `entityType` column's CHECK vocabulary in the live
+Appwrite table — changing it is a cloud migration, not a code edit, and it is
+worth doing deliberately rather than as a footnote.
+
+**Every entity type that should sync now has a mapper and an applier.**
 
 Backups go to a `backups` folder under the application *support* directory, not
 documents: they are the app's own recovery copies, and on iOS documents is
