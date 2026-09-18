@@ -543,10 +543,33 @@ owner rebuilding his prayer structure by hand on the second device.
 
 10 tests, full suite **1088/1088**, analyzer clean.
 
-**Six entity types still have no mappers**: `learningState`, `learningEvent`,
-`recallAttempt`, `rotationAdjustment`, `appSetting`, `rotationState`. A merge
-today would carry the recitation history, the roster, the schemes, the prayer
-sessions and the routine, but not the learning plans or the recall journal.
+### `rotationAdjustment` and `recallAttempt` — two append-only journals
+
+One file each side, because they share a shape: both are facts about a moment,
+both are written once and never edited, and both carry a local sequence number
+that stays behind. An adjustment feeds the rotation balance, so applying or
+withdrawing one rebuilds the projection; a recall attempt feeds nothing but
+itself.
+
+- **An adjustment's `reason` travels verbatim.** It is the owner's own note, not
+  a category this app gets to normalise.
+- **A withdrawn adjustment is a tombstone**, like a recitation's, and an upsert
+  after it brings the adjustment back — with its effect returning to the
+  balance. Tested both ways.
+- **A recall attempt is never deleted.** Nothing in the app deletes one and the
+  table has no `deleted_at_utc`, so there is no local operation a tombstone
+  could mean; refusing is louder than inventing a delete.
+- **A missing `result` is refused.** It would have to become one of three
+  statements about whether the owner remembered a passage, and this app does not
+  get to decide that on his behalf. A `localDate` carrying a time is refused
+  rather than truncated, the same rule recitations follow.
+
+14 tests, full suite **1102/1102**, analyzer clean.
+
+**Four entity types still have no mappers**: `learningState`, `learningEvent`,
+`appSetting`, `rotationState`. A merge today would carry the recitation history,
+the roster, the schemes, the prayer sessions, the routine, the manual
+adjustments and the recall journal — but not the learning plans or the settings.
 
 Backups go to a `backups` folder under the application *support* directory, not
 documents: they are the app's own recovery copies, and on iOS documents is
