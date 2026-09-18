@@ -251,7 +251,8 @@ choice informed, and it leaves a recovery copy behind either way.
 1. ~~the domain↔envelope seam for recitations~~ **done**, see below;
 2. ~~recitation writes enqueue~~ **done for recitations**, see below; the other
    ten entity types still do not;
-3. a `SyncPageApplier` that turns pulled envelopes back into domain rows;
+3. ~~an applier for recitations~~ **done**, see below; the other ten types have
+   neither a payload mapper nor an applier;
 4. the merge/keep-local buttons, wired to `finishFirstSync`;
 5. `syncStatusProvider` must start reading the **real** outbox counts — the
    `isActivated: false` and zero counts there are honest only while nothing
@@ -353,6 +354,46 @@ can now lose to a newer edit — recoverable by deleting again, where the old
 behaviour made restore impossible and offered the owner nothing.
 
 Full suite **1019/1019**, analyzer clean.
+
+### The receiving end — `RecitationSyncApplier`, and what it settled
+
+`lib/core/data/sync/recitation_sync_applier.dart` is the `apply` callback
+`DriftSyncStore.applyPulledPage` expects, so it runs inside the transaction that
+also advances the pull cursor: a page that fails to apply leaves the cursor
+where it was and is fetched again rather than skipped.
+
+**It never re-decides a conflict.** The server already chose the winner and this
+writes what arrived. A client that compared timestamps again would be a second
+resolver, free to disagree with the first, and two devices doing that converge
+on nothing. So an upsert arriving for a row deleted here **revives** it — that
+is what a restore on the other device looks like from this side, and the server
+already decided it beat the tombstone.
+
+Three decisions worth keeping:
+
+- **The journal sequence is not carried across.** Two devices number their
+  journals independently, so importing a number would collide with one already
+  used here. The arriving recitation takes the next local sequence.
+- **A tombstone for something never seen here creates nothing.** Inventing a row
+  so it can be marked deleted would put a prayer in the journal that never
+  happened on this device.
+- **The balance is rebuilt from the journal**, not adjusted by hand, for the
+  same reason a restore rebuilds it.
+
+**What this settled, and it is the important part.** A recitation whose surah or
+scheme is not present locally is **refused**, retryably. The local schema
+enforces both as foreign keys, so the write would fail anyway; refusing only
+makes the reason legible. The asymmetry decides it: a stalled pull is loud and
+reports itself, while dropping the recitation would lose a prayer silently and
+permanently with the cursor moved past it.
+
+Which means: **activation must not be offered until `masteredSurah` and
+`rotationScheme` sync as well.** Merging today would send 705 recitations that
+no second device could apply — every one of them refused for a missing roster
+entry. That is now the concrete blocker for the choice buttons, and it is a
+better reason to hold them back than "the engine has nothing to drain".
+
+12 tests, full suite **1031/1031**, analyzer clean.
 
 Backups go to a `backups` folder under the application *support* directory, not
 documents: they are the app's own recovery copies, and on iOS documents is

@@ -1,0 +1,212 @@
+/// Writes a pulled recitation into this device's database.
+///
+/// The other half of `RecitationSyncPayload`: that turns a recitation into an
+/// envelope and back, this puts the result where it belongs. It is the `apply`
+/// callback `DriftSyncStore.applyPulledPage` expects, so everything here runs
+/// inside the transaction that also advances the pull cursor — a page that
+/// fails to apply leaves the cursor where it was and is fetched again, rather
+/// than being skipped and lost.
+///
+/// **It never re-decides a conflict.** The server already chose the winner and
+/// this writes what arrived. A client that re-compared timestamps would be a
+/// second resolver, free to disagree with the first, and two devices doing that
+/// converge on nothing.
+library;
+
+import 'package:drift/drift.dart';
+
+import '../../domain/domain.dart';
+import '../../sync/recitation_sync_payload.dart';
+import '../../sync/sync.dart';
+import '../database/app_database.dart';
+import '../repositories/rotation_projection_store.dart';
+
+final class RecitationSyncApplier {
+  RecitationSyncApplier(this._database)
+    : _projection = RotationProjectionStore(_database);
+
+  final AppDatabase _database;
+  final RotationProjectionStore _projection;
+
+  /// Whether this applier handles [envelope].
+  bool handles(SyncEnvelope envelope) =>
+      envelope.entityType == RecitationSyncPayload.entityType;
+
+  /// Applies one envelope. Call inside a transaction.
+  Future<void> apply(SyncEnvelope envelope) async {
+    if (!handles(envelope)) {
+      throw StateError('Not a recitation envelope: ${envelope.entityKey}');
+    }
+    if (envelope.isTombstone) {
+      await _applyTombstone(envelope);
+      return;
+    }
+    await _applyUpsert(envelope);
+  }
+
+  Future<void> _applyTombstone(SyncEnvelope envelope) async {
+    final existing = await _rowOf(envelope.entityId);
+    if (existing == null) {
+      // A deletion for something this device never had. Nothing to withdraw,
+      // and inventing a row so it can be marked deleted would put a prayer in
+      // the journal that never happened here.
+      return;
+    }
+    if (existing.deletedAtUtc != null) return;
+    await (_database.update(
+      _database.recitationEvents,
+    )..where((RecitationEvents row) => row.id.equals(envelope.entityId))).write(
+      RecitationEventsCompanion(
+        deletedAtUtc: Value<DateTime?>(envelope.updatedAtUtc),
+      ),
+    );
+  }
+
+  Future<void> _applyUpsert(SyncEnvelope envelope) async {
+    final event = RecitationSyncPayload.decode(
+      envelope.payload,
+      entityId: envelope.entityId,
+    );
+    final schemeId = event.coverage?.rotationSchemeId;
+    if (schemeId == null) {
+      // The local table requires one, so a recitation without coverage cannot
+      // be stored at all. Refusing keeps it on the server to be fetched again
+      // rather than dropping a prayer.
+      throw const SyncTransportException('remote-recitation-has-no-coverage');
+    }
+    await _requirePrerequisites(event.surahId, schemeId);
+
+    final existing = await _rowOf(event.id);
+    if (existing == null) {
+      await _insert(event, schemeId);
+    } else {
+      await _update(event, existing);
+    }
+    await _replaceCoverage(event, schemeId);
+    // Rebuilt from the journal rather than adjusted by hand, for the same
+    // reason a restore rebuilds: a second implementation of the rotation rules
+    // is free to disagree with the first.
+    final state = await _projection.loadSnapshot();
+    await _projection.rebuildFromJournal(targetFloor: state.rotationTarget);
+  }
+
+  /// Refuses a recitation whose surah or scheme this device does not have.
+  ///
+  /// The local schema enforces both as foreign keys, so the write would fail
+  /// anyway — this only makes the reason legible. It is **retryable**, and
+  /// deliberately: the missing roster entry or scheme is itself an entity that
+  /// syncs, so the ordinary case is that it arrives and the page then applies.
+  ///
+  /// The cost of being wrong is asymmetric, which is what decides it. A stalled
+  /// pull is loud and reports itself; dropping the recitation instead would
+  /// lose a prayer silently and permanently, with the cursor moved past it.
+  Future<void> _requirePrerequisites(String surahId, String schemeId) async {
+    final surah =
+        await (_database.select(_database.masteredSurahs)..where(
+              (MasteredSurahs row) => row.surahId.equals(surahId),
+            ))
+            .getSingleOrNull();
+    if (surah == null) {
+      throw const SyncTransportException('remote-recitation-surah-missing');
+    }
+    final scheme =
+        await (_database.select(_database.rotationSchemes)..where(
+              (RotationSchemes row) =>
+                  row.id.equals(schemeId) & row.surahId.equals(surahId),
+            ))
+            .getSingleOrNull();
+    if (scheme == null) {
+      throw const SyncTransportException('remote-recitation-scheme-missing');
+    }
+  }
+
+  Future<void> _insert(SurahRecitationEvent event, String schemeId) async {
+    // A journal sequence is this device's own ordering and is never carried
+    // across: two devices number their journals independently, and importing a
+    // number would collide with one already used here.
+    final highest =
+        await (_database.selectOnly(_database.recitationEvents)
+              ..addColumns(<Expression<Object>>[
+                _database.recitationEvents.journalSequence.max(),
+              ]))
+            .getSingle();
+    final next =
+        (highest.read(_database.recitationEvents.journalSequence.max()) ?? 0) +
+        1;
+    await _database
+        .into(_database.recitationEvents)
+        .insert(
+          RecitationEventsCompanion.insert(
+            id: event.id,
+            journalSequence: next,
+            surahId: event.surahId,
+            rotationSchemeId: schemeId,
+            rakaatSpanCount: event.rakaatSpanCount,
+            prayerSessionId: Value<String?>(event.prayerSessionId),
+            prayerSessionPartId: Value<String?>(event.prayerSessionPartId),
+            slotIndex: Value<int?>(event.slotIndex),
+            createdAtUtc: event.createdAtUtc,
+            localDate: event.localDate.toString(),
+            prayerType: event.prayerType.name,
+            isQada: Value<bool>(event.isQada),
+            qadaOriginIsUnknown: Value<bool>(event.qadaOriginIsUnknown),
+            qadaFulfilledLocalDate: Value<String?>(
+              event.qadaFulfilledLocalDate?.toString(),
+            ),
+          ),
+        );
+  }
+
+  Future<void> _update(
+    SurahRecitationEvent event,
+    RecitationEventRow existing,
+  ) async {
+    await (_database.update(
+      _database.recitationEvents,
+    )..where((RecitationEvents row) => row.id.equals(event.id))).write(
+      RecitationEventsCompanion(
+        rakaatSpanCount: Value<int>(event.rakaatSpanCount),
+        prayerSessionId: Value<String?>(event.prayerSessionId),
+        prayerSessionPartId: Value<String?>(event.prayerSessionPartId),
+        slotIndex: Value<int?>(event.slotIndex),
+        createdAtUtc: Value<DateTime>(event.createdAtUtc),
+        localDate: Value<String>(event.localDate.toString()),
+        prayerType: Value<String>(event.prayerType.name),
+        isQada: Value<bool>(event.isQada),
+        qadaOriginIsUnknown: Value<bool>(event.qadaOriginIsUnknown),
+        qadaFulfilledLocalDate: Value<String?>(
+          event.qadaFulfilledLocalDate?.toString(),
+        ),
+        // An upsert that arrives for a row deleted here revives it. That is
+        // what a restore on another device *is*, and the server already
+        // decided this envelope beat the tombstone.
+        deletedAtUtc: const Value<DateTime?>(null),
+      ),
+    );
+  }
+
+  Future<void> _replaceCoverage(
+    SurahRecitationEvent event,
+    String schemeId,
+  ) async {
+    await (_database.delete(_database.recitationEventParts)..where(
+          (RecitationEventParts row) => row.eventId.equals(event.id),
+        ))
+        .go();
+    for (final partId in event.coveredPartIds) {
+      await _database
+          .into(_database.recitationEventParts)
+          .insert(
+            RecitationEventPartsCompanion.insert(
+              eventId: event.id,
+              schemeId: schemeId,
+              partId: partId,
+            ),
+          );
+    }
+  }
+
+  Future<RecitationEventRow?> _rowOf(String id) => (_database.select(
+    _database.recitationEvents,
+  )..where((RecitationEvents row) => row.id.equals(id))).getSingleOrNull();
+}
