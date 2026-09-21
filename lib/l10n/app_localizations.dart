@@ -2374,6 +2374,18 @@ abstract class AppLocalizations {
   /// **'Яндекс'**
   String get accountProviderYandex;
 
+  /// No description provided for @coverageAlreadyMarked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Уже отмечено за этот намаз: {count}. Эти части не выбраны — отметьте их, если читали второй раз.'**
+  String coverageAlreadyMarked(int count);
+
+  /// No description provided for @coveragePartAlreadyMarked.
+  ///
+  /// In ru, this message translates to:
+  /// **'уже отмечено'**
+  String get coveragePartAlreadyMarked;
+
   /// No description provided for @accountSyncNow.
   ///
   /// In ru, this message translates to:

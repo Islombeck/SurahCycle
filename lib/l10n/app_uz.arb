@@ -420,6 +420,9 @@
   ,"accountSignOutFailed": "Chiqib boʻlmadi"
   ,"accountProviderGoogle": "Google"
   ,"accountProviderYandex": "Yandex"
+  ,"coverageAlreadyMarked": "Bu namoz uchun allaqachon belgilangan: {count}. Bu qismlar tanlanmagan — ikkinchi marta oʻqigan boʻlsangiz belgilang."
+  ,"@coverageAlreadyMarked": {"placeholders": {"count": {"type": "int"}}}
+  ,"coveragePartAlreadyMarked": "allaqachon belgilangan"
   ,"accountSyncNow": "Hozir sinxronlash"
   ,"accountSyncNowResult": "Yuborildi: {pushed} · Navbatda qoldi: {remaining}"
   ,"@accountSyncNowResult": {"placeholders": {"pushed": {"type": "int"}, "remaining": {"type": "int"}}}

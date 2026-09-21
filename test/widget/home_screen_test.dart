@@ -991,6 +991,72 @@ void main() {
           useWholeControl: false,
         ),
       ];
+  testWidgets('the sheet does not offer to record a part twice', (
+    tester,
+  ) async {
+    // The home-screen widget has excluded already-recorded parts for a long
+    // time; this sheet preselected everything, so entering a day whose first
+    // half was already recorded offered to record it again. Reading a surah
+    // twice in one prayer is real, so they are unticked rather than hidden —
+    // but that should be an answer to a question, not the default.
+    final fixture = await _WidgetFixture.create();
+    addTearDown(fixture.close);
+    final scheme = await fixture.addActiveSplitSurah(
+      _descriptor(
+        id: 'split-surah',
+        number: 101,
+        name: 'Split Surah',
+        ayahCount: 12,
+      ),
+      partCount: 3,
+    );
+    await fixture.pumpApp(tester);
+
+    // Record the first part, then come back for more.
+    await _openCoverageSheet(tester, 'split-surah');
+    for (final part in scheme.parts.where((part) => part.partNumber != 1)) {
+      await tester.tap(
+        find.byKey(ValueKey<String>('coverage-part-${part.partNumber}')),
+      );
+      await tester.pump();
+    }
+    await tester.tap(
+      find.byKey(const ValueKey<String>('confirm-recitation-coverage')),
+    );
+    await _pumpUntil(tester, () async => await fixture.eventCount() == 1);
+    await _pumpFor(tester, const Duration(milliseconds: 300));
+
+    await _openCoverageSheet(tester, 'split-surah');
+
+    expect(
+      tester
+          .widget<CheckboxListTile>(
+            find.byKey(const ValueKey<String>('coverage-part-1')),
+          )
+          .value,
+      isFalse,
+      reason: 'it is already recorded for this prayer today',
+    );
+    expect(
+      tester
+          .widget<CheckboxListTile>(
+            find.byKey(const ValueKey<String>('coverage-part-2')),
+          )
+          .value,
+      isTrue,
+      reason: 'and the ones that are not remain the offer',
+    );
+    expect(
+      find.byKey(const ValueKey<String>('coverage-already-marked')),
+      findsOneWidget,
+      reason:
+          'a tick that silently moved would look like the app losing track; '
+          'the sheet says why',
+    );
+
+    await _disposeWidgetTree(tester);
+  });
+
   for (final coverageCase in coverageCases) {
     testWidgets(
       'split confirmation persists ${coverageCase.label} exactly once',

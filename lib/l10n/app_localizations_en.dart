@@ -1327,6 +1327,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountProviderYandex => 'Yandex';
 
   @override
+  String coverageAlreadyMarked(int count) {
+    return 'Already recorded for this prayer: $count. Those parts are unticked — tick them if you read them again.';
+  }
+
+  @override
+  String get coveragePartAlreadyMarked => 'already recorded';
+
+  @override
   String get accountSyncNow => 'Sync now';
 
   @override

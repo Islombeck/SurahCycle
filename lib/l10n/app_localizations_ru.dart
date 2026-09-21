@@ -1331,6 +1331,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get accountProviderYandex => 'Яндекс';
 
   @override
+  String coverageAlreadyMarked(int count) {
+    return 'Уже отмечено за этот намаз: $count. Эти части не выбраны — отметьте их, если читали второй раз.';
+  }
+
+  @override
+  String get coveragePartAlreadyMarked => 'уже отмечено';
+
+  @override
   String get accountSyncNow => 'Синхронизировать сейчас';
 
   @override

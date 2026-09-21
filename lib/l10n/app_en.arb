@@ -420,6 +420,9 @@
   ,"accountSignOutFailed": "Could not sign out"
   ,"accountProviderGoogle": "Google"
   ,"accountProviderYandex": "Yandex"
+  ,"coverageAlreadyMarked": "Already recorded for this prayer: {count}. Those parts are unticked — tick them if you read them again."
+  ,"@coverageAlreadyMarked": {"placeholders": {"count": {"type": "int"}}}
+  ,"coveragePartAlreadyMarked": "already recorded"
   ,"accountSyncNow": "Sync now"
   ,"accountSyncNowResult": "Sent: {pushed} · Still queued: {remaining}"
   ,"@accountSyncNowResult": {"placeholders": {"pushed": {"type": "int"}, "remaining": {"type": "int"}}}

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -509,6 +511,9 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                   prayerSettings,
                 )
               : null,
+          markedPartIds: (prayer, date) => ref
+              .read(recitationRepositoryProvider)
+              .getMarkedPartIds(context: prayer, localDate: date),
         ),
       );
       if (selection == null || !mounted) return;
@@ -1095,6 +1100,7 @@ final class _RecitationCoverageSheet extends StatefulWidget {
     required this.localDates,
     required this.utcOffsetMinutes,
     required this.todaySchedule,
+    required this.markedPartIds,
   });
 
   final MasteredSurah surah;
@@ -1105,6 +1111,13 @@ final class _RecitationCoverageSheet extends StatefulWidget {
   final LocalDateProvider localDates;
   final int? utcOffsetMinutes;
   final PrayerTodaySchedule? todaySchedule;
+
+  /// Which of this surah's parts are already recorded for a prayer and day.
+  ///
+  /// Passed in rather than read here so the sheet stays a widget: it asks a
+  /// question and is handed the answer, and a test can answer it without a
+  /// database.
+  final Future<Set<String>> Function(PrayerContext, LocalDate) markedPartIds;
 
   @override
   State<_RecitationCoverageSheet> createState() =>
@@ -1122,6 +1135,15 @@ final class _RecitationCoverageSheetState
   bool _qadaOriginIsUnknown = false;
   LocalDate? _qadaFulfilledLocalDate;
 
+  /// Parts already recited for the prayer and day now chosen.
+  ///
+  /// The home-screen widget has excluded these for a long time; the app's own
+  /// sheet preselected everything, so entering a past day whose first half was
+  /// already recorded offered to record it a second time. Reading a surah twice
+  /// in one prayer is a real thing, which is why they are merely unticked and
+  /// not hidden — but it should be the answer to a question, not the default.
+  Set<String> _alreadyMarkedPartIds = const <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -1130,6 +1152,31 @@ final class _RecitationCoverageSheetState
         .toSet();
     _prayerContext = widget.initialPrayerContext;
     _occurrenceLocalDate = widget.initialOccurrenceLocalDate;
+    unawaited(_refreshAlreadyMarked());
+  }
+
+  /// Reloads what is already recorded, and unticks it.
+  ///
+  /// Run again whenever the prayer or the day changes, because "already
+  /// marked" is a statement about one prayer on one date and both are editable
+  /// from inside this sheet.
+  Future<void> _refreshAlreadyMarked() async {
+    final marked = await widget.markedPartIds(
+      _prayerContext,
+      _occurrenceLocalDate,
+    );
+    if (!mounted) return;
+    final all = <String>{
+      for (final part in widget.surah.rotationScheme.parts) part.id,
+    };
+    final remaining = all.difference(marked);
+    setState(() {
+      _alreadyMarkedPartIds = marked.intersection(all);
+      // Everything already recorded means this is a second reading, and the
+      // whole surah is the honest default for one. Leaving nothing ticked
+      // would present an empty form as an opinion.
+      _selectedPartIds = remaining.isEmpty ? all : remaining;
+    });
   }
 
   bool get _isWhole =>
@@ -1160,6 +1207,8 @@ final class _RecitationCoverageSheetState
       _qadaOriginIsUnknown = selected.qadaOriginIsUnknown;
       _qadaFulfilledLocalDate = selected.qadaFulfilledLocalDate;
     });
+    // A different prayer or day has a different set of already-recorded parts.
+    await _refreshAlreadyMarked();
   }
 
   @override
@@ -1209,6 +1258,16 @@ final class _RecitationCoverageSheetState
                       .toSet();
                 }),
               ),
+              if (_alreadyMarkedPartIds.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 8),
+                Text(
+                  key: const ValueKey<String>('coverage-already-marked'),
+                  context.l10n.coverageAlreadyMarked(
+                    _alreadyMarkedPartIds.length,
+                  ),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
               const SizedBox(height: 8),
               for (final part in widget.surah.rotationScheme.parts)
                 CheckboxListTile(
@@ -1216,10 +1275,14 @@ final class _RecitationCoverageSheetState
                   contentPadding: EdgeInsets.zero,
                   title: Text(context.l10n.partLabel(part.partNumber)),
                   subtitle: Text(
-                    context.l10n.ayahRange(
-                      part.ayahRange.startAyah,
-                      part.ayahRange.endAyah,
-                    ),
+                    <String>[
+                      context.l10n.ayahRange(
+                        part.ayahRange.startAyah,
+                        part.ayahRange.endAyah,
+                      ),
+                      if (_alreadyMarkedPartIds.contains(part.id))
+                        context.l10n.coveragePartAlreadyMarked,
+                    ].join(' · '),
                   ),
                   value: _selectedPartIds.contains(part.id),
                   onChanged: (selected) => setState(() {

@@ -426,6 +426,9 @@
   ,"accountSignOutFailed": "Не удалось выйти"
   ,"accountProviderGoogle": "Google"
   ,"accountProviderYandex": "Яндекс"
+  ,"coverageAlreadyMarked": "Уже отмечено за этот намаз: {count}. Эти части не выбраны — отметьте их, если читали второй раз."
+  ,"@coverageAlreadyMarked": {"placeholders": {"count": {"type": "int"}}}
+  ,"coveragePartAlreadyMarked": "уже отмечено"
   ,"accountSyncNow": "Синхронизировать сейчас"
   ,"accountSyncNowResult": "Отправлено: {pushed} · Осталось в очереди: {remaining}"
   ,"@accountSyncNowResult": {"placeholders": {"pushed": {"type": "int"}, "remaining": {"type": "int"}}}

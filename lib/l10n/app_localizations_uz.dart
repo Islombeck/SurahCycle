@@ -1329,6 +1329,14 @@ class AppLocalizationsUz extends AppLocalizations {
   String get accountProviderYandex => 'Yandex';
 
   @override
+  String coverageAlreadyMarked(int count) {
+    return 'Bu namoz uchun allaqachon belgilangan: $count. Bu qismlar tanlanmagan — ikkinchi marta oʻqigan boʻlsangiz belgilang.';
+  }
+
+  @override
+  String get coveragePartAlreadyMarked => 'allaqachon belgilangan';
+
+  @override
   String get accountSyncNow => 'Hozir sinxronlash';
 
   @override
