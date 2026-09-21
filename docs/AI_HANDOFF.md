@@ -976,6 +976,33 @@ convergence over every *interleaving that preserves each device's own sequence*,
 not over every permutation — a device has one queue, and demanding more asks the
 rules to settle a case the system cannot produce.
 
+**The whole chain is now exercised together** by
+`test/app/two_device_sync_test.dart`: two real Drift databases, one
+`FakeSyncBackend`, one account. Until it existed every part had its own tests
+and nothing established that they fit — the backfill filled a queue nobody read,
+the appliers applied envelopes nobody sent, the cycle runner drained a queue a
+fake had filled. It covers history reaching a second device, a later change
+arriving with no recorder call anywhere, a withdrawal travelling and staying
+withdrawn, two devices converging on the same edit, a device kept local neither
+sending nor receiving, and a second sync adding nothing.
+
+One thing it surfaced, worth stating rather than working around: **a second
+device cannot receive anything about a surah it has never heard of.** The
+appliers refuse, retryably, and they are right to — the Quran arrives by
+manifest, not by sync. A real phone has the corpus before it signs in; the test
+gives Bob the same.
+
+**Built for Android and deliberately not installed, 2026-09-21.**
+`app-debug.apk`, sha256
+`610DC06F75261A46DBEA703DB0DE0E5D6F758D5D0FB76A32BAB4A3EB5F88D30F`,
+230 218 925 bytes. The build is the check that mattered: `main.dart` now names
+the account feature at the composition root, so `package:appwrite` is in the
+app's graph for the first time and its platform channels have to link. It does.
+It was not installed because the phone is carrying the build the owner is about
+to test the Витр fix on tonight, and swapping it out an hour before would add a
+variable to his check for no reason. Nothing here activates without his explicit
+merge, so there is no hurry.
+
 **Still owed, and none of it blocking:** a real two-device check against
 Appwrite (nothing here has talked to the live project since the preview call on
 2026-09-18); clock skew is unhandled and a server-assigned receive time is the
