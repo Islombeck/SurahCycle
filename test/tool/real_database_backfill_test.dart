@@ -119,8 +119,36 @@ void main() {
       (batch) => batch.insertAll(fresh.surahMetadata, catalogue),
     );
 
+    // Through the real cloud mapping on the way, because that is the only form
+    // these ever reach another device in. `AppwriteSyncGateway` turns an
+    // envelope into a row and back, and that layer had never seen a payload a
+    // year of real use produced — only ones a test wrote for it.
+    const owner = 'user-dry-run';
+    final api = _RowStore();
+    final gateway = AppwriteSyncGateway(api: api, userId: owner);
+    final pushed = await gateway.push(envelopes);
+    expect(
+      pushed.rejectedEnvelopeIds,
+      isEmpty,
+      reason: 'the account refuses nothing it will later be asked to return',
+    );
+
+    final overTheWire = <SyncEnvelope>[];
+    var cursor = SyncCursor.beginning;
+    while (true) {
+      final page = await gateway.pull(after: cursor, limit: 200);
+      overTheWire.addAll(page.envelopes);
+      if (!page.hasMore) break;
+      cursor = page.cursor;
+    }
+    expect(
+      overTheWire.map((one) => one.entityKey).toSet(),
+      envelopes.map((one) => one.entityKey).toSet(),
+      reason: 'nothing may be lost or renamed in the crossing',
+    );
+
     final router = SyncEnvelopeRouter(fresh);
-    final ordered = router.inDependencyOrder(envelopes);
+    final ordered = router.inDependencyOrder(overTheWire);
     final refusals = <String>[];
     for (final envelope in ordered) {
       try {
@@ -177,4 +205,41 @@ void main() {
           'row whose only purpose is to be deleted is not history',
     );
   }, skip: skipReason);
+}
+
+/// The account's table, as far as the gateway can tell.
+///
+/// One row per entity, replaced on write and handed back oldest change first,
+/// which is what the real one does. It exists so the *gateway's* own mapping —
+/// dates to strings, payload to JSON, enums to names — is exercised by real
+/// payloads rather than by rows a test wrote to match it.
+final class _RowStore implements AppwriteSyncApi {
+  final Map<String, Map<String, Object?>> _rowsById =
+      <String, Map<String, Object?>>{};
+  final List<String> _order = <String>[];
+
+  @override
+  Future<AppwriteSyncWriteOutcome> upsertRow({
+    required String rowId,
+    required Map<String, Object?> data,
+    required List<String> permissions,
+  }) async {
+    if (!_rowsById.containsKey(rowId)) _order.add(rowId);
+    _rowsById[rowId] = <String, Object?>{...data, r'$id': rowId};
+    return AppwriteSyncWriteOutcome.written;
+  }
+
+  @override
+  Future<AppwriteSyncPage> listRowsAfter({
+    required String cursor,
+    required int limit,
+  }) async {
+    final start = cursor.isEmpty ? 0 : _order.indexOf(cursor) + 1;
+    final ids = _order.skip(start).take(limit).toList();
+    return AppwriteSyncPage(
+      rows: <Map<String, Object?>>[for (final id in ids) _rowsById[id]!],
+      lastRowId: ids.isEmpty ? null : ids.last,
+      hasMore: start + ids.length < _order.length,
+    );
+  }
 }
