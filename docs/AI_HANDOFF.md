@@ -246,6 +246,27 @@ is null exactly when the stored label is the `kind.name` placeholder that
 renderers ask it and fall back to the localized kind. Pinned in
 `test/core/data/witr_qada_part_test.dart`.
 
+**Verified on his phone after the rebuild:** the card reads «Витр · Важиб»
+again, where before this fix it read «Витр · Витр». Installed build:
+`app-debug.apk`, sha256
+`E7522B07603469B1806E64001C1CB17E01D48F91EC2069FA7B148BFF33DDED13`,
+230 061 127 bytes, built at `159b1fa`. The app was left in automatic mode,
+which is what tonight's Иша check needs.
+
+**One row of his data changed as a side effect of my navigation, and it is his
+call what to do with it.** Opening the Qada Витр context made the app do what it
+always does — `watchCurrentSession` calls `ensureCurrentSession` — and so today
+now holds an **empty Qada Витр session** (`2026-09-21`, `witr`, `is_qada=1`, one
+part, **zero recitations**). Before the kind change there had never been one:
+`SELECT COUNT(*) … WHERE prayer_type='witr' AND is_qada=1` was 0. It is visible:
+`PrayerCalendarRepository` skips only sessions with *no* parts, so the calendar
+will show 21 September as a Витр · Каза with 0 of 1 parts done. Nothing was
+recited — active `recitation_events` is **666 before and after**, unchanged —
+and `ensureCurrentSession` is idempotent, so a real Qada Витр tonight would
+reuse this row rather than add another. **Not deleted:** removing a row from his
+data on my own reading of who created it is exactly what this session's rule
+forbids. Ask him.
+
 **Worth noticing as a pattern:** all three defects this session were one idea —
 something answered a question with what it could compute instead of what the
 owner had said, and a second place disagreed with the first. Naming vs kind in
