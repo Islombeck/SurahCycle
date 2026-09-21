@@ -310,6 +310,84 @@ void main() {
     );
   });
 
+  group('the history an account is agreeing to receive', () {
+    test('a merge sends what this device already had', () async {
+      final store = _FakeActivationStore(_ownerA);
+      final backfill = _FakeBackfill();
+      final coordinator = _coordinatorFor(
+        store,
+        _FakeBackups(),
+        _FakeInventory(),
+        backfill: backfill,
+      );
+
+      final preview = await coordinator.prepareFirstSync(_accountA);
+      await coordinator.finishFirstSync(
+        previewToken: preview.token,
+        choice: SyncActivationChoice.merge,
+      );
+
+      expect(
+        backfill.runs,
+        hasLength(1),
+        reason:
+            'nothing else can send history written before the account existed; '
+            'a recorder only ever sees changes made after it',
+      );
+    });
+
+    test('a device kept local sends nothing at all', () async {
+      final store = _FakeActivationStore(_ownerA);
+      final backfill = _FakeBackfill();
+      final coordinator = _coordinatorFor(
+        store,
+        _FakeBackups(),
+        _FakeInventory(),
+        backfill: backfill,
+      );
+
+      final preview = await coordinator.prepareFirstSync(_accountA);
+      await coordinator.finishFirstSync(
+        previewToken: preview.token,
+        choice: SyncActivationChoice.keepDeviceLocalOnly,
+      );
+
+      expect(
+        backfill.runs,
+        isEmpty,
+        reason: '"keep this device local" is an answer, not a slower merge',
+      );
+    });
+
+    test('a backfill that fails leaves sync switched off', () async {
+      final store = _FakeActivationStore(_ownerA);
+      final coordinator = _coordinatorFor(
+        store,
+        _FakeBackups(),
+        _FakeInventory(),
+        backfill: _FakeBackfill(failure: StateError('queue unavailable')),
+      );
+
+      final preview = await coordinator.prepareFirstSync(_accountA);
+      await expectLater(
+        () => coordinator.finishFirstSync(
+          previewToken: preview.token,
+          choice: SyncActivationChoice.merge,
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(
+        await store.isSyncActive(),
+        isFalse,
+        reason:
+            'active with an empty account is the worst outcome available: it '
+            'looks like it worked and the history is nowhere',
+      );
+      expect(store.recorded, isEmpty);
+    });
+  });
+
   group('asking whether sync is active', () {
     test('an untouched device is not active', () async {
       final coordinator = _coordinatorFor(
@@ -380,16 +458,42 @@ DateTime _at(int day) => DateTime.utc(2026, 9, day);
 SyncActivationCoordinator _coordinatorFor(
   _FakeActivationStore store,
   _FakeBackups backups,
-  _FakeInventory inventory,
-) {
+  _FakeInventory inventory, {
+  _FakeBackfill? backfill,
+}) {
   var token = 0;
   return SyncActivationCoordinator(
     store: store,
     backups: backups,
     inventory: inventory,
+    backfill: backfill ?? _FakeBackfill(),
     nowUtc: () => DateTime.utc(2026, 9, 18, 12),
     createToken: () => 'token-${++token}',
   );
+}
+
+/// Records whether the history was offered to the account, and can refuse to.
+final class _FakeBackfill implements SyncBackfill {
+  _FakeBackfill({this.failure});
+
+  /// Set to make a run fail, which is how the "activation stays off if the
+  /// history could not be sent" rule is checked.
+  final Object? failure;
+
+  final List<DateTime> runs = <DateTime>[];
+
+  @override
+  Future<SyncBackfillReport> enqueueEverything({
+    required DateTime nowUtc,
+  }) async {
+    runs.add(nowUtc);
+    if (failure != null) throw failure!;
+    return SyncBackfillReport(
+      enqueuedByType: const <SyncEntityType, int>{
+        SyncEntityType.recitationEvent: 3,
+      },
+    );
+  }
 }
 
 final class _RecordedChoice {

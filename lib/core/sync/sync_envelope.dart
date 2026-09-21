@@ -24,6 +24,24 @@ enum SyncEntityType {
 /// offline learns about the deletion instead of resurrecting the row.
 enum SyncOperation { upsert, delete }
 
+/// The version of the payload shapes this build writes.
+///
+/// It describes the `Map<String, Object?>` each `*SyncPayload.encode` produces,
+/// and it is **not** the Drift schema version. The two move for different
+/// reasons: a local table can gain a column that never travels, and a payload
+/// can gain a field without any migration. Reading the database version here
+/// would tie an older device's ability to understand an envelope to a number
+/// that says nothing about the envelope.
+///
+/// Bump it when a payload gains a field a reader must have, so that a device
+/// still on the old build can refuse an envelope it cannot honestly apply
+/// rather than silently dropping half of it.
+///
+/// One constant rather than a number chosen per call site: every writer has to
+/// agree, and two places answering the same question differently is how a
+/// device starts rejecting its own envelopes.
+const int kSyncPayloadSchemaVersion = 1;
+
 /// One user-owned change, in the shape it crosses the boundary in.
 ///
 /// The envelope is transport-neutral on purpose: no backend type appears here,

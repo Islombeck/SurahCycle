@@ -16,6 +16,7 @@
 ///   for an account the user declined.
 library;
 
+import 'sync_backfill.dart';
 import 'sync_owner.dart';
 import 'sync_ports.dart';
 
@@ -75,6 +76,7 @@ final class SyncActivationCoordinator implements SyncActivationGateway {
     required SyncActivationStore store,
     required LocalBackupGateway backups,
     required SyncInventory inventory,
+    required SyncBackfill backfill,
     required DateTime Function() nowUtc,
     required String Function() createToken,
     // Named parameters cannot be private, so an initializing formal is not
@@ -86,6 +88,8 @@ final class SyncActivationCoordinator implements SyncActivationGateway {
        // ignore: prefer_initializing_formals
        _inventory = inventory,
        // ignore: prefer_initializing_formals
+       _backfill = backfill,
+       // ignore: prefer_initializing_formals
        _nowUtc = nowUtc,
        // ignore: prefer_initializing_formals
        _createToken = createToken;
@@ -93,6 +97,13 @@ final class SyncActivationCoordinator implements SyncActivationGateway {
   final SyncActivationStore _store;
   final LocalBackupGateway _backups;
   final SyncInventory _inventory;
+
+  /// What turns an agreement to merge into an account that actually holds the
+  /// history. Required rather than optional: a coordinator without one would
+  /// activate sync and send nothing, which looks like success and is the exact
+  /// silent-nothing-happened outcome this gate exists to avoid.
+  final SyncBackfill _backfill;
+
   final DateTime Function() _nowUtc;
   final String Function() _createToken;
 
@@ -194,6 +205,19 @@ final class SyncActivationCoordinator implements SyncActivationGateway {
     // preview re-answerable with a different choice.
     _pending = null;
     _answeredToken = previewToken;
+
+    if (choice == SyncActivationChoice.merge) {
+      // Before the choice is recorded, so a failure here leaves sync inactive
+      // rather than active with an empty account. The user re-prepares and
+      // answers again; the backfill reads current rows and the outbox coalesces
+      // per entity, so the second run finishes what the first started instead
+      // of duplicating it.
+      //
+      // This is also the only moment the whole existing history can be sent. A
+      // recorder queues a change as it is written and therefore has nothing to
+      // say about anything written before the account existed.
+      await _backfill.enqueueEverything(nowUtc: _nowUtc().toUtc());
+    }
 
     if (choice == SyncActivationChoice.keepDeviceLocalOnly) {
       // Dropped **before** the decision is written, not after: `forgetOwner`

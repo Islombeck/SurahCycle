@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../core/data/data.dart';
+import '../../../core/data/sync/sync_recorder.dart';
 import '../../../core/sync/appwrite_account_api.dart';
 import '../../../core/sync/appwrite_sync_api.dart';
 import '../../../core/sync/sync.dart';
@@ -105,6 +106,45 @@ final syncInventoryProvider = Provider.family<SyncInventory?, String>((
   );
 });
 
+/// This device's durable sync state for one account: the queue, the cursor and
+/// the activation row, all scoped by owner.
+///
+/// A family on the user id for the same reason the gateway is: two accounts on
+/// one phone share a database and must share nothing else.
+final syncStoreProvider = Provider.family<DriftSyncStore, String>(
+  (ref, userId) => DriftSyncStore(
+    ref.watch(appDatabaseProvider),
+    owner: SyncOwnerKey.user(userId),
+  ),
+);
+
+/// The id this device is known by inside an account.
+///
+/// Created on first read and stored; random, never derived from the hardware.
+/// Returned as a function rather than a value because it is read from settings,
+/// which a synchronous provider cannot await.
+final syncDeviceIdProvider = Provider<Future<String> Function()>((ref) {
+  final settings = ref.watch(settingsRepositoryProvider);
+  final timeProvider = ref.watch(timeProviderProvider);
+  return () => SyncDeviceId.ensure(
+    settings,
+    newId: _randomToken,
+    nowUtc: timeProvider.nowUtc(),
+  );
+});
+
+/// Turns the history already on this device into queued envelopes.
+///
+/// Only activation uses it, and only after the owner has agreed to a merge.
+final syncBackfillProvider = Provider.family<SyncBackfill, String>(
+  (ref, userId) => DriftSyncBackfill(
+    database: ref.watch(appDatabaseProvider),
+    outbox: ref.watch(syncStoreProvider(userId)).outbox,
+    deviceId: ref.watch(syncDeviceIdProvider),
+    newId: _randomToken,
+  ),
+);
+
 /// The gate between signing in and letting an account touch local data.
 ///
 /// Null when there is no usable configuration or nobody signed in — the screen
@@ -117,20 +157,26 @@ final syncActivationProvider = Provider.family<SyncActivationGateway?, String>((
   final inventory = ref.watch(syncInventoryProvider(userId));
   if (inventory == null) return null;
   return SyncActivationCoordinator(
-    store: DriftSyncStore(
-      ref.watch(appDatabaseProvider),
-      owner: SyncOwnerKey.user(userId),
-    ),
+    store: ref.watch(syncStoreProvider(userId)),
     backups: ref.watch(localBackupGatewayProvider),
     inventory: inventory,
+    backfill: ref.watch(syncBackfillProvider(userId)),
     nowUtc: ref.watch(timeProviderProvider).nowUtc,
     // Random rather than sequential: the token's job is to bind one
     // confirmation to one snapshot, and a guessable one would let a stale
     // dialog match a preview it was never shown.
-    createToken: () =>
-        'preview-${Random.secure().nextInt(1 << 32).toRadixString(16)}',
+    createToken: () => 'preview-${_randomToken()}',
   );
 });
+
+/// A random identifier, from the secure generator.
+///
+/// The same source for envelope ids, idempotency keys, device ids and preview
+/// tokens: all four are only ever required to be unique and unguessable, and a
+/// sequential counter would make a preview token predictable.
+String _randomToken() =>
+    '${Random.secure().nextInt(1 << 32).toRadixString(16)}'
+    '${Random.secure().nextInt(1 << 32).toRadixString(16)}';
 
 /// The single summary the account screen is allowed to render.
 final syncStatusProvider = Provider<AsyncValue<SyncStatus>>((ref) {
