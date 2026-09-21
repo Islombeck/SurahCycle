@@ -287,16 +287,25 @@ at all. Qada can now say its original day is unknown (schema v8).
 «Отмечаю за пн, 14 сент.», and «Вернуться к сегодня» cleared it. Row counts and
 `PRAGMA foreign_key_check` unchanged; the app was left out of historical mode.
 
-**Not done, and next:**
+**Not done, and next** — *corrected 2026-09-21: the first two were already done
+and this list had gone stale. A stale "next action" is how a session is sent to
+redo finished work, which this document says about itself elsewhere.*
 
-1. **§E's remaining half — the day a Qada was actually made up**, editable for a
-   late entry. Only `qada_origin_is_unknown` went into v8; the fulfilment date is
-   a second column and was deliberately left out rather than added with nothing
-   writing it. For a Qada entered on the day it was made up, `created_at_utc`
-   already carries that moment.
-2. **Pre-selecting only the still-unmarked parts** for a chosen day. The
-   occurrence sheet shows a session's parts, but the calendar path does not yet
-   preselect the unfilled ones.
+1. ~~§E's remaining half — the day a Qada was actually made up.~~ **Done.**
+   `recitation_events.qada_fulfilled_local_date` exists on the owner's live
+   database (verified by reading its schema), guarded by
+   `CHECK (qada_fulfilled_local_date IS NULL OR is_qada = 1)`, editable through
+   the occurrence sheet and pinned by `test/widget/qada_fulfilled_date_test.dart`.
+2. ~~Pre-selecting only the still-unmarked parts.~~ **Done 2026-09-21**
+   (`92c4643`). The coverage sheet excluded nothing while the home-screen widget
+   had excluded already-recorded parts for a long time, so entering a day whose
+   first half was recorded offered to record it again with every part ticked.
+   They are unticked rather than hidden — a second reading in one prayer is
+   real — and the sheet says how many were excluded, because a tick that moved
+   on its own reads as the app losing track. Everything already recorded ticks
+   the whole surah again: that *is* a second reading, and an empty form
+   presented as an opinion would be worse. Recomputed when the prayer or the day
+   changes, both editable from inside the sheet.
 3. **Stage J** continues: real Appwrite gateway, provisioning, owner
    permissions, opt-in sync. §6.0 is **no longer blocked on the owner** — the
    OAuth grant succeeded on 2026-09-17. It is blocked on **one more authorize
