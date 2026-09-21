@@ -204,17 +204,17 @@ prayer it names now comes from Home. (`PrayerRegistrationShortcutResolver.resolv
 itself is untouched — it must keep refusing Витр under a non-manual resolution,
 because Витр has no schedule boundary of its own.)
 
-**Installed on his phone, 2026-09-21**, carrying both Витр fixes:
-`app-debug.apk`, sha256
-`498BAE2BA9B3AF33A30405954383CB7D67F18EEAE56AA67D24AAB890617047EA`,
-230 056 169 bytes, `adb install -r`, `lastUpdateTime=2026-09-21 10:01:46`. His
-data survived: the database pulled before and after the install reports
-identical row counts at `user_version = 10` (`recitation_events=771`,
+**Installed on his phone, 2026-09-21**, carrying both Витр fixes and the
+«сейчас» follow-up: `app-debug.apk`, sha256
+`79DCB2939A635701A244900775105014318D34D192BC2D23EF445F0819F63327`,
+230 056 287 bytes, `adb install -r`, `lastUpdateTime=2026-09-21 10:12:53`, built
+at commit `397920e`. His data survived: the database pulled before and after
+reports identical row counts at `user_version = 10` (`recitation_events=771`,
 `recitation_event_parts=773`, `prayer_sessions=64`, `prayer_session_parts=104`,
-`mastered_surahs=27`, `prayer_routine_part_templates=14`). Copies of both are in
-this session's scratchpad as `murajaah_user_before_witr_fix.sqlite` and
-`..._after_witr_fix.sqlite`. Note the APK predates the «сейчас» follow-up above
-by one commit.
+`mastered_surahs=27`, `prayer_routine_part_templates=14`). Copies are in this
+session's scratchpad as `murajaah_user_before_witr_fix.sqlite` and
+`..._after_witr_fix2.sqlite`. (An earlier install at 10:01:46, sha256
+`498BAE2B…`, carried only the first fix and was superseded eleven minutes later.)
 
 **Not yet confirmed by the owner on his phone.** 1145/1145 tests pass and the
 analyzer is clean; an installed APK is not acceptance. What needs his eyes: after
@@ -1995,7 +1995,7 @@ After Stage D the remaining prompt order is: physical Prayer widget/DreamService
 - **PowerShell 5.1 cannot pass a native argument containing a double quote.** `git commit -m @'…"переставить не сохраняется"…'@` reached git as several arguments (`error: pathspec 'не' did not match any file(s)`), because 5.1 wraps native arguments in `"` without escaping inner ones. Write the message to a file and use `git commit -F <file>` whenever it contains quotes; the Write tool round-trips UTF-8 correctly.
 - **Putting MinGit on `PATH` can break `flutter` itself.** `flutter.bat` runs `bin/internal/update_engine_version.ps1`, which shells out to `git` **only if git is findable**. With MinGit on `PATH` that script hits a *second* dubious-ownership refusal — on the nested repo `.tools/flutter`, not the main one the global gitconfig already excepts — and every flutter command then dies with `Error: Unable to determine engine version`. Two ways out, both used here: leave git off `PATH` for plain `flutter test`/`analyze` (the script falls back to the checked-in `engine.version`), or, when a command needs git anyway, pass the exception per process instead of writing to the user's global config: `$env:GIT_CONFIG_COUNT='1'; $env:GIT_CONFIG_KEY_0='safe.directory'; $env:GIT_CONFIG_VALUE_0='*'`.
 - **`dart run <file>` does not work in this project at all.** It triggers the native-assets build hooks, and `package:objective_c`'s hook re-invokes dart with the unquoted project path, which splits at the space: `"D:\Приложении\Repeat" не является внутренней или внешней командой`. Use `flutter.bat pub run <tool>` for every script under `tool/`.
-- **`flutter build apk` deletes four committed generated files**, exactly like `build_runner` does with its two (see that entry): `lib/l10n/app_localizations.dart` and the `_en`/`_ru`/`_uz` siblings come back as `D` in `git status` after a build, and the next `flutter test` then fails to compile the whole app with `Target of URI doesn't exist: '../l10n/app_localizations.dart'`. Restore with `git checkout -- lib/l10n/app_localizations*.dart`. **Check `git status` after every APK build**, not only after `build_runner`.
+- **`flutter build apk` rewrites four committed generated files**, like `build_runner` does with its two (see that entry): `lib/l10n/app_localizations.dart` and the `_en`/`_ru`/`_uz` siblings. Both outcomes were seen on 2026-09-21 — one build left them `D` (deleted), and the *next* build left them ` M` with no content diff at all, only LF where the repo has CRLF. The deletion is the dangerous one: the next `flutter test` fails to compile the whole app with `Target of URI doesn't exist: '../l10n/app_localizations.dart'`, which reads like a broken import rather than a missing artefact. Either way: `git checkout -- lib/l10n/`. **Check `git status` after every APK build**, not only after `build_runner`.
 - **`flutter build apk` must run from `M:\`, and only from there.** 2026-09-21: run from `D:\MurajaahWorkspace` (the ASCII junction that is correct for `flutter test`) it fails at `:app:configureCMakeDebug[arm64-v8a]` with `argument had embedded tick-mark (`)`. The junction resolves back to the real path `D:\Приложении\Repeat Qur`an`, whose backtick CMake refuses to accept in an argument. The subst'd `M:` drive does not resolve back, so the backtick never appears. Note the split: `M:\` for `build apk` and Gradle, `D:\MurajaahWorkspace` for `analyze` and `test` (see the two entries above — `M:\` breaks the analyzer for an unrelated trailing-separator reason). Neither works from the real path.
 - Gradle: there is also a `M:` subst'd drive already mapped to `D:\MurajaahWorkspace` (`subst M: D:\MurajaahWorkspace`; recreate with that command if a fresh session doesn't have it). **Always invoke `gradlew.bat` from `M:\android`, not from `D:\MurajaahWorkspace\android` or the Cyrillic path.** Flutter's generated Gradle wiring bakes in `M:\...` pub-cache paths; invoking from a different root for the same files throws `this and base files have different roots` and fails configuration. Set `$env:GRADLE_USER_HOME = 'D:\MurajaahWorkspace\.tools\gradle-home'` to reuse the warm cache.
 - `gradlew.bat testDebugUnitTest` (no module scope) also runs the bundled `geolocator_android` plugin's own unit test, which failed once in this session with `Could not find or load main class worker.org.gradle.process.internal.worker.GradleWorkerMain` (a Gradle worker JVM spawn crash) — unrelated to any app code. Re-running scoped to `:app:testDebugUnitTest :app:compileDebugKotlin` succeeded immediately after. If the unscoped command fails only on a third-party plugin's test task, re-run scoped to `:app:...` rather than treating it as a regression.
