@@ -70,12 +70,63 @@ final class RotationSchemeSyncApplier {
     }
   }
 
+  /// Clears a row holding this scheme's `(surahId, version)` under another id.
+  ///
+  /// A device that has just taken a roster entry has a locally derived default
+  /// scheme, named `<surahId>:scheme:1` the way this build names one. The
+  /// owner's real scheme may carry an id an **older** build wrote — his are
+  /// `v1:<surahId>:scheme:1` — and the unique index on `(surah_id, version)`
+  /// refuses the second of the two. Found against his real database, where all
+  /// twenty-eight of his schemes collided and none of them arrived.
+  ///
+  /// The incoming record wins: the account is the shared truth and the local
+  /// row is a placeholder this device invented a moment ago. His recitations
+  /// carry the real id too, so the placeholder cannot simply be kept under its
+  /// own name — nothing would find it.
+  ///
+  /// Removing it is refused when something actually references it, and that
+  /// refusal is correct rather than inconvenient: a referenced row is no longer
+  /// a placeholder but a second *real* scheme for the same version, and quietly
+  /// dropping one of two real ones is exactly the loss this feature exists to
+  /// prevent.
+  Future<void> _clearColliding(RotationSchemeSyncRecord record) async {
+    final clash =
+        await (_database.select(_database.rotationSchemes)..where(
+              (RotationSchemes row) =>
+                  row.surahId.equals(record.surahId) &
+                  row.version.equals(record.version) &
+                  row.id.equals(record.id).not(),
+            ))
+            .getSingleOrNull();
+    if (clash == null) return;
+
+    final recitations =
+        await (_database.select(_database.recitationEvents)..where(
+              (RecitationEvents row) => row.rotationSchemeId.equals(clash.id),
+            ))
+            .get();
+    final adjustments =
+        await (_database.select(_database.rotationAdjustments)..where(
+              (RotationAdjustments row) =>
+                  row.rotationSchemeId.equals(clash.id),
+            ))
+            .get();
+    if (recitations.isNotEmpty || adjustments.isNotEmpty) {
+      throw const SyncTransportException('remote-scheme-version-already-used');
+    }
+
+    await (_database.delete(
+      _database.rotationSchemes,
+    )..where((RotationSchemes row) => row.id.equals(clash.id))).go();
+  }
+
   Future<void> _writeScheme(RotationSchemeSyncRecord record) async {
     final existing =
         await (_database.select(_database.rotationSchemes)
               ..where((RotationSchemes row) => row.id.equals(record.id)))
             .getSingleOrNull();
     if (existing == null) {
+      await _clearColliding(record);
       await _database
           .into(_database.rotationSchemes)
           .insert(

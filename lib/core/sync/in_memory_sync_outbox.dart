@@ -43,12 +43,24 @@ final class InMemorySyncOutbox implements SyncOutbox {
         return;
       }
     }
+    // Re-inserted rather than updated in place, so a coalesced entry moves to
+    // the back of the queue exactly as it does in the durable one.
+    _entriesById.remove(envelope.id);
     _entriesById[envelope.id] = SyncOutboxEntry(
       envelope: envelope,
       enqueuedAtUtc: nowUtc,
     );
+    _sequenceById[envelope.id] = _nextSequence++;
     _envelopeIdByEntityKey[envelope.entityKey] = envelope.id;
   }
+
+  /// The order entries were added in, which is the order they must leave in.
+  ///
+  /// Held explicitly rather than taken from the map, because entries are
+  /// removed and re-added and a `LinkedHashMap`'s order is easy to rely on by
+  /// accident. `DriftSyncOutbox` gets the same answer from SQLite's `rowid`.
+  final Map<String, int> _sequenceById = <String, int>{};
+  int _nextSequence = 0;
 
   /// Whether [incoming] replaces [pending] for the same entity.
   ///
@@ -71,11 +83,14 @@ final class InMemorySyncOutbox implements SyncOutbox {
     final entries = _entriesById.values.toList()
       ..sort((left, right) {
         final byTime = left.enqueuedAtUtc.compareTo(right.enqueuedAtUtc);
-        // A stable tiebreak keeps two entries enqueued in the same millisecond
-        // from swapping between reads.
-        return byTime != 0
-            ? byTime
-            : left.envelope.id.compareTo(right.envelope.id);
+        if (byTime != 0) return byTime;
+        // Insertion order, not envelope id. Ids are random, so ordering ties by
+        // them is stable across reads and says nothing about sequence — which
+        // was invisible until a backfill enqueued a whole history in one
+        // instant and the queue drained it in an arbitrary order.
+        return (_sequenceById[left.envelope.id] ?? 0).compareTo(
+          _sequenceById[right.envelope.id] ?? 0,
+        );
       });
     return List<SyncOutboxEntry>.unmodifiable(entries.take(limit));
   }

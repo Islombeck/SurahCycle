@@ -114,11 +114,24 @@ final class DriftSyncOutbox implements SyncOutbox {
       ..where(
         (row) => row.ownerKey.equals(owner.value) & row.status.equals(status),
       )
-      // A stable second key keeps two entries enqueued in the same
-      // microsecond from swapping places between reads.
+      // Time first, then the order they were actually added.
+      //
+      // The second key used to be the envelope id, which is stable across
+      // reads and says nothing about sequence: ids are random. That was
+      // invisible while entries arrived one at a time, and wrong the moment a
+      // backfill enqueued a whole history in one instant — nine hundred
+      // entries sharing a microsecond drained in id order, so a rotation
+      // adjustment could reach the account, and then another device, ahead of
+      // the recitations it adjusts. The applier there rebuilds the projection
+      // from the journal and refuses a score the missing recitations would
+      // have made positive.
+      //
+      // `rowid` is SQLite's own insertion counter, always present on these
+      // tables, and it costs no column and no migration. A coalesced entry is
+      // deleted and re-inserted, so it correctly moves to the back.
       ..orderBy(<OrderClauseGenerator<$SyncOutboxEntriesTable>>[
         (row) => OrderingTerm.asc(row.enqueuedAtUs),
-        (row) => OrderingTerm.asc(row.envelopeId),
+        (row) => OrderingTerm.asc(const CustomExpression<int>('rowid')),
       ])
       ..limit(limit);
     final rows = await query.get();

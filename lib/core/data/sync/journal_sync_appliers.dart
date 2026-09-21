@@ -42,16 +42,12 @@ final class RotationAdjustmentSyncApplier {
 
     final existing = await _rowOf(record.id);
     if (existing == null) {
-      final highest =
-          await (_database.selectOnly(_database.rotationAdjustments)
-                ..addColumns(<Expression<Object>>[
-                  _database.rotationAdjustments.journalSequence.max(),
-                ]))
-              .getSingle();
-      final next =
-          (highest.read(_database.rotationAdjustments.journalSequence.max()) ??
-              0) +
-          1;
+      // From the shared journal counter, never from this table's own maximum.
+      // Recitations and adjustments are sorted together when the projection is
+      // rebuilt, so an adjustment numbered one on a device holding a thousand
+      // recitations would sort ahead of every one of them and subtract from a
+      // score nothing had raised.
+      final next = await _projection.takeJournalSequence();
       await _database
           .into(_database.rotationAdjustments)
           .insert(

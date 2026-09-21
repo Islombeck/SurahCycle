@@ -113,6 +113,50 @@ final class RotationProjectionStore {
   Future<int> nextJournalSequence() async =>
       (await loadRotationState()).lastJournalSequence + 1;
 
+  /// Claims the next number in the journal, and advances the counter.
+  ///
+  /// **Recitations and adjustments share one counter**, because
+  /// [rebuildFromJournal] sorts them together into a single history: a
+  /// correction is applied *after* the recitations it corrects, and its
+  /// position is the only thing that says so.
+  ///
+  /// A synced record therefore cannot be numbered from its own table. An
+  /// adjustment arriving on a device with a thousand recitations and no
+  /// adjustments would take number one and sort ahead of all of them, and a
+  /// correction that subtracts would be applied to a score nothing had raised
+  /// yet — which the rebuild refuses, as it should. Found against a real
+  /// database, where the owner's single adjustment stopped his whole history
+  /// from reaching a second device.
+  ///
+  /// The maximum of all three is taken rather than the counter alone, so a
+  /// state row that has fallen behind its own tables cannot hand out a number
+  /// already in use.
+  Future<int> takeJournalSequence() async {
+    final state = await loadRotationState();
+    final recitations =
+        await (database.selectOnly(database.recitationEvents)
+              ..addColumns(<Expression<Object>>[
+                database.recitationEvents.journalSequence.max(),
+              ]))
+            .getSingle();
+    final adjustments =
+        await (database.selectOnly(database.rotationAdjustments)
+              ..addColumns(<Expression<Object>>[
+                database.rotationAdjustments.journalSequence.max(),
+              ]))
+            .getSingle();
+    final highest = <int>[
+      state.lastJournalSequence,
+      recitations.read(database.recitationEvents.journalSequence.max()) ?? 0,
+      adjustments.read(database.rotationAdjustments.journalSequence.max()) ?? 0,
+    ].reduce((a, b) => a > b ? a : b);
+    final next = highest + 1;
+    await (database.update(database.rotationStates)
+          ..where((RotationStates row) => row.singletonId.equals(1)))
+        .write(RotationStatesCompanion(lastJournalSequence: Value<int>(next)));
+    return next;
+  }
+
   Future<void> writeSnapshot(
     RotationSnapshot snapshot, {
     int? lastJournalSequence,

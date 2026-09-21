@@ -19,6 +19,54 @@ void runSyncOutboxContract(String name, SyncOutbox Function() createOutbox) {
       expect(await outbox.peek(), isEmpty);
     });
 
+    test('a queue drains in the order it was filled', () async {
+      // Every entry of a backfill is enqueued in the same instant, so ordering
+      // by time alone leaves several hundred of them in no order at all. This
+      // was ordered by envelope id, which is stable across reads and random
+      // across entries — and a rotation adjustment reaching an account ahead
+      // of the recitations it adjusts is refused on the far side, because the
+      // projection rebuilt from a journal missing them goes negative.
+      const moment = 5;
+      for (var index = 0; index < 20; index += 1) {
+        await outbox.enqueue(
+          envelopeOf(entityId: 'entity-$index', id: 'envelope-$index'),
+          nowUtc: at(moment),
+        );
+      }
+
+      expect(
+        (await outbox.peek(
+          limit: 50,
+        )).map((entry) => entry.envelope.id).toList(),
+        <String>[for (var index = 0; index < 20; index += 1) 'envelope-$index'],
+        reason: 'a queue that reorders its own contents is not a queue',
+      );
+    });
+
+    test('a coalesced entry goes to the back, not to its old place', () async {
+      await outbox.enqueue(
+        envelopeOf(entityId: 'first', id: 'e1'),
+        nowUtc: at(1),
+      );
+      await outbox.enqueue(
+        envelopeOf(entityId: 'second', id: 'e2'),
+        nowUtc: at(1),
+      );
+      // A newer version of the first entity, at the same queue moment.
+      await outbox.enqueue(
+        envelopeOf(entityId: 'first', id: 'e3', updatedMinute: 9),
+        nowUtc: at(1),
+      );
+
+      expect(
+        (await outbox.peek()).map((entry) => entry.envelope.id).toList(),
+        <String>['e2', 'e3'],
+        reason:
+            'the replacement is the newest thing in the queue, and pretending '
+            'it is as old as what it replaced puts it before later work',
+      );
+    });
+
     test('an enqueued change is pending and readable', () async {
       await outbox.enqueue(envelopeOf(entityId: 'a'), nowUtc: at(1));
 

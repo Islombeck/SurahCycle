@@ -157,15 +157,12 @@ final class RecitationSyncApplier {
     // A journal sequence is this device's own ordering and is never carried
     // across: two devices number their journals independently, and importing a
     // number would collide with one already used here.
-    final highest =
-        await (_database.selectOnly(_database.recitationEvents)
-              ..addColumns(<Expression<Object>>[
-                _database.recitationEvents.journalSequence.max(),
-              ]))
-            .getSingle();
-    final next =
-        (highest.read(_database.recitationEvents.journalSequence.max()) ?? 0) +
-        1;
+    //
+    // Taken from the **shared** counter, which recitations and adjustments both
+    // draw from, because the projection rebuild sorts the two together into one
+    // history. Two independent per-table counters put a correction before the
+    // recitations it corrects.
+    final next = await _projection.takeJournalSequence();
     await _database
         .into(_database.recitationEvents)
         .insert(
