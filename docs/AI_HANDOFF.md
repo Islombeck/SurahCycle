@@ -875,15 +875,48 @@ fall through silently.
 
 ### What is left before a merge can be offered
 
-1. **A backfill at activation.** Nothing yet enqueues the *existing* history, and
-   the whole design rests on it: the recorder only fills the queue for changes
-   made after activation.
-2. **The recorder covers recitations only.** The other nine entity types have
-   mappers but nothing calls them on a local write.
-3. **The merge / keep-local buttons**, wired to `finishFirstSync`.
-4. **`syncStatusProvider` must read the real outbox.** Its zeros are honest only
-   while nothing enqueues.
-5. **Drive `SyncEngine.drain` and `pull`** from somewhere.
+**Three of the five are done, 2026-09-21** (`b8a4a69`, `a9bd042`, `0f68edf`):
+
+1. ~~A backfill at activation.~~ **Done, for the four append-only journals.**
+   `SyncBackfill` / `DriftSyncBackfill` read recitations, rotation adjustments,
+   learning events and recall attempts and queue them; the coordinator runs it
+   on `merge` **before** recording the choice, so a queue that could not be
+   filled leaves sync switched off rather than active and empty. It records no
+   progress and needs none: it reads rows as they are now and the outbox
+   coalesces per entity, so re-running finishes an interrupted run. A cursor or
+   a "done" flag would be a second source of truth about what has been sent.
+   Each envelope is dated when the thing *happened*, not when it was queued.
+   A row today's invariants refuse is counted in `skippedByType`, not thrown:
+   one legacy learning event must not cost a user their whole history.
+   **Still to do here: the seven versioned types** (mastered surahs, rotation
+   state and schemes, routine templates, prayer sessions, learning states, app
+   settings). They were left out deliberately — see the open question below.
+2. **The recorder still covers recitations only.** Unchanged. The other nine
+   types have mappers and appliers but nothing calls them on a local write, so
+   after activation only new recitations reach the queue.
+3. ~~The merge / keep-local buttons.~~ **Done.** Both are buttons of the same
+   weight; the confirmation dialog names the backup rather than promising one;
+   answering clears the preview; a refusal is shown as its own outcome, because
+   the token is spent either way and "nothing happened" needs different words
+   from "your answer did not apply".
+4. ~~`syncStatusProvider` must read the real outbox.~~ **Done.**
+   `DriftSyncStore.transportSnapshot()` reads the activation row and the queue
+   in one transaction — separately they are each accurate and jointly false.
+   Quarantine is counted with a query, not from `outbox.quarantined()`, which
+   returns a page.
+5. **Drive `SyncEngine.drain` and `pull`** from somewhere. Still nothing calls
+   either, so the queue fills and stays filled.
+
+**The open question the backfill stops short of.** The seven versioned types
+resolve conflicts by `updatedAtUtc`, and rows untouched since schema v10 carry
+none — v10 added the column and backfilled nothing. An envelope must carry a
+timestamp, so a backfill has to answer "when did this change" for a row whose
+answer is honestly unknown. Using the activation moment makes this device win
+every conflict against an account that may hold something newer; using the
+epoch makes it lose every one. The preview already counts these separately as
+`undeterminedCount` and the user agrees to a merge knowing the number, which
+argues for the activation moment — but that is a decision to take explicitly
+and write down, not to slip in with a mapper. Do not guess it silently.
 
 Backups go to a `backups` folder under the application *support* directory, not
 documents: they are the app's own recovery copies, and on iOS documents is
