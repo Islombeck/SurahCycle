@@ -133,13 +133,30 @@ final class FakeSyncBackend {
   /// A tombstone still wins an exact tie, because the two sides must converge
   /// and "withdrawn" is the recoverable answer — History can undo it, while a
   /// resurrection cannot be told apart from the user adding the record again.
+  ///
+  /// **A complete tie goes to the incoming one**, and that last step was wrong
+  /// until a property test generated the case. Same instant, same kind, same
+  /// device is not something two devices can produce — it is one device sending
+  /// two edits inside the same second, since `updated_at_utc` has one-second
+  /// resolution. Arrival order there is the device's own order, so the incoming
+  /// envelope is the later edit. Keeping the existing one silently discarded it.
+  ///
+  /// It was also the one point where this disagreed with `DriftSyncOutbox`,
+  /// whose `_supersedes` has always taken the incoming on a tie. The ADR's
+  /// warning is exactly this: the two must agree, or a device and its account
+  /// disagree permanently.
+  ///
+  /// An identical replay never reaches here — the idempotency key catches it
+  /// first — so a tie with different content really is a sequence.
   static bool _wins(SyncEnvelope current, SyncEnvelope incoming) {
     final byTime = incoming.updatedAtUtc.compareTo(current.updatedAtUtc);
     if (byTime != 0) return byTime > 0;
     if (incoming.isTombstone != current.isTombstone) {
       return incoming.isTombstone;
     }
-    return incoming.deviceId.compareTo(current.deviceId) > 0;
+    final byDevice = incoming.deviceId.compareTo(current.deviceId);
+    if (byDevice != 0) return byDevice > 0;
+    return true;
   }
 
   SyncPullPage pull(

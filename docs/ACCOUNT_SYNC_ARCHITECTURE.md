@@ -215,9 +215,20 @@ Deterministic merge rules, inherited from `SERVER_PLAN.md`:
   `rotationScore` are recomputed from the merged journal;
 - the global rotation target never decreases as a result of a merge.
 
-These rules need their own ADR and property-based tests before multi-device sync
-ships. They are written down here so the tests have something to check against,
-not because they are final.
+**Both now exist**: `docs/adr/ADR-0002-merge-conflict-resolution.md` records the
+decisions and what was rejected, and
+`test/core/sync/merge_rules_property_test.dart` checks them over generated cases
+rather than chosen ones — convergence across every interleaving, the tie-break
+being arbitrary *consistently*, a stale edit never resurrecting a withdrawal and
+a later one always doing so.
+
+Writing them found a real disagreement on the first run. A complete tie — same
+instant, same kind, same device — was settled by keeping the existing record,
+while `DriftSyncOutbox` had always taken the incoming one. That case is one
+device sending two edits inside the same second, where arrival order is the
+device's own order, so the incoming envelope is the later edit and keeping the
+existing one discarded it. The two halves now agree, which is the thing ADR-0002
+says they must.
 
 ## Accounts and identity linking
 
