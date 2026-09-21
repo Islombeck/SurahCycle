@@ -486,6 +486,158 @@ void main() {
     });
   });
 
+  group('what changed since last time', () {
+    // This is the whole recorder. A change made after activation reaches the
+    // queue because the database noticed it — schema v10 put touch triggers on
+    // every versioned table — rather than because a repository remembered to
+    // say so. A call site that forgets is a silent hole nothing fails on.
+    // Two clocks meet in these tests and it is worth naming. The append-only
+    // journals carry the timestamp the app supplies, which here is the fixed
+    // `now`. The versioned tables are stamped by the v10 triggers, which call
+    // `strftime('%s','now')` — the real wall clock, in whole seconds. A
+    // watermark therefore has to be chosen against whichever of the two the
+    // test is actually asking about.
+    test('an unchanged device offers nothing', () async {
+      await addSurah('surah-a', 112);
+      await recite('event-0', 'surah-a');
+      // Past both clocks, so neither kind of row can fall inside the window.
+      final after = now.add(const Duration(days: 1));
+
+      final report = await backfill.enqueueChangedSince(
+        nowUtc: after,
+        since: after,
+      );
+
+      expect(report.isEmpty, isTrue);
+      expect(await outbox.pendingCount(), 0);
+    });
+
+    test('a surah added afterwards is offered, and only it', () async {
+      await addSurah('surah-a', 112);
+      // Long enough to cross a second boundary: the trigger's resolution is
+      // one second, and a watermark inside the same second as the first row
+      // would take it too, which is the inclusive boundary working as designed
+      // rather than a fault.
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      // Truncated the way the cycle runner truncates it: the trigger writes
+      // whole seconds, and a watermark carrying milliseconds would sit after a
+      // row stamped in the same second and step over it.
+      final wall = DateTime.now().toUtc();
+      final watermark = DateTime.fromMillisecondsSinceEpoch(
+        (wall.millisecondsSinceEpoch ~/ 1000) * 1000,
+        isUtc: true,
+      );
+      await addSurah('surah-b', 108);
+
+      final report = await backfill.enqueueChangedSince(
+        nowUtc: watermark,
+        since: watermark,
+      );
+
+      expect(
+        report.enqueuedByType[SyncEntityType.masteredSurah],
+        1,
+        reason:
+            'the trigger stamped the new row and left the old one alone, which '
+            'is the difference the scan is reading',
+      );
+      expect(
+        (await queuedOfType(SyncEntityType.masteredSurah)).single.entityId,
+        'surah-b',
+      );
+    });
+
+    test('a recitation written afterwards is offered', () async {
+      await addSurah('surah-a', 112);
+      await recite('before', 'surah-a');
+      final watermark = now.add(const Duration(hours: 1));
+      await recitations.register(
+        SurahRecitationEvent(
+          id: 'after',
+          surahId: 'surah-a',
+          prayerContext: PrayerContext(prayerType: PrayerType.fajr),
+          createdAtUtc: watermark.add(const Duration(minutes: 5)),
+          localDate: localDate,
+          rakaatSpanCount: 1,
+        ),
+      );
+
+      await backfill.enqueueChangedSince(nowUtc: watermark, since: watermark);
+
+      expect(
+        (await queuedOfType(
+          SyncEntityType.recitationEvent,
+        )).map((envelope) => envelope.entityId).toList(),
+        <String>['after'],
+      );
+    });
+
+    test('a withdrawal afterwards is offered as the withdrawal', () async {
+      await addSurah('surah-a', 112);
+      await recite('event-0', 'surah-a');
+      final watermark = now.add(const Duration(hours: 1));
+      await recitations.deleteRecitation(
+        'event-0',
+        deletedAtUtc: watermark.add(const Duration(minutes: 5)),
+      );
+
+      await backfill.enqueueChangedSince(nowUtc: watermark, since: watermark);
+
+      final queued = await queuedOfType(SyncEntityType.recitationEvent);
+      expect(
+        queued.single.isTombstone,
+        isTrue,
+        reason:
+            'an append-only journal withdraws by writing a date rather than by '
+            'removing the row, which is what makes a deletion visible to a scan',
+      );
+    });
+
+    test('an undatable row is not mistaken for a recent change', () async {
+      await addSurah('surah-a', 112);
+      await (database.update(
+        database.masteredSurahs,
+      )..where((row) => row.surahId.equals('surah-a'))).write(
+        const MasteredSurahsCompanion(updatedAtUtc: Value<DateTime?>(null)),
+      );
+      final watermark = now.add(const Duration(hours: 1));
+
+      final report = await backfill.enqueueChangedSince(
+        nowUtc: watermark,
+        since: watermark,
+      );
+
+      expect(
+        report.enqueuedByType[SyncEntityType.masteredSurah],
+        isNull,
+        reason:
+            'a row with no date has not changed since the v10 upgrade — if it '
+            'had, it would have one — and offering it every cycle would be a '
+            'queue that never empties',
+      );
+    });
+
+    test('the whole history is the same walk from the beginning', () async {
+      await addSurah('surah-a', 112);
+      await recite('event-0', 'surah-a');
+
+      final everything = await backfill.enqueueEverything(nowUtc: now);
+      await outbox.clear();
+      final fromTheStart = await backfill.enqueueChangedSince(
+        nowUtc: now,
+        since: kUndatedByThisDevice,
+      );
+
+      expect(
+        fromTheStart.enqueuedByType,
+        everything.enqueuedByType,
+        reason:
+            'two walks that could drift apart is one more thing to keep in '
+            'step; there is one, asked a different question',
+      );
+    });
+  });
+
   test('the payload survives the round trip it was built for', () async {
     await addSurah('surah-a', 112);
     await recitations.register(

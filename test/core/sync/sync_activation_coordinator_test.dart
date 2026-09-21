@@ -494,6 +494,14 @@ final class _FakeBackfill implements SyncBackfill {
       },
     );
   }
+
+  @override
+  Future<SyncBackfillReport> enqueueChangedSince({
+    required DateTime nowUtc,
+    required DateTime since,
+  }) async => throw StateError(
+    'Activation offers the whole history, never a window of it.',
+  );
 }
 
 final class _RecordedChoice {

@@ -34,17 +34,29 @@ final class SyncCycleRunner implements SyncCycle {
     required DriftSyncStore store,
     required SyncGateway gateway,
     required DateTime Function() nowUtc,
+    SyncBackfill? scan,
     // Named parameters cannot be private, so an initializing formal is not
     // available for these fields.
     // ignore: prefer_initializing_formals
   }) : _store = store,
        // ignore: prefer_initializing_formals
        _nowUtc = nowUtc,
+       // ignore: prefer_initializing_formals
+       _scan = scan,
        _router = SyncEnvelopeRouter(database),
        _engine = SyncEngine(outbox: store.outbox, gateway: gateway);
 
   final DriftSyncStore _store;
   final DateTime Function() _nowUtc;
+
+  /// Collects local changes made since the last cycle, so they are in the queue
+  /// before it is drained.
+  ///
+  /// Optional only so a test can watch the transport without a database full of
+  /// rows behind it. In the app it is always present: without it, a change made
+  /// after activation would sit in the database with nothing to carry it.
+  final SyncBackfill? _scan;
+
   final SyncEnvelopeRouter _router;
   final SyncEngine _engine;
 
@@ -66,8 +78,44 @@ final class SyncCycleRunner implements SyncCycle {
     return started.whenComplete(() => _inFlight = null);
   }
 
+  /// Puts everything written since the last cycle into the queue.
+  ///
+  /// The watermark is advanced to **this cycle's start**, not to the latest row
+  /// found. A row written while the scan was running carries a time at or after
+  /// that start and is therefore picked up next cycle; advancing to the newest
+  /// row seen would step over anything written in between.
+  ///
+  /// It is also never advanced past the clock. A device whose time jumps
+  /// backwards would otherwise hold a watermark in its own future and stop
+  /// noticing its own changes; scanning again from further back only costs a
+  /// few duplicate envelopes, which coalesce.
+  ///
+  /// The watermark moves only after the enqueue returns. A failure leaves it
+  /// where it was and the same window is scanned again, which is the direction
+  /// that repeats work rather than skipping it.
+  Future<void> _collectLocalChanges() async {
+    final scan = _scan;
+    if (scan == null) return;
+    final now = _nowUtc().toUtc();
+    // Truncated to whole seconds, because that is the resolution the v10 touch
+    // triggers write at. A watermark carrying milliseconds would sit *after* a
+    // row stamped in the same second, and that row would be passed over — for
+    // one cycle, since the stored watermark is truncated too, but a change that
+    // needs a second cycle to be noticed is a change that looks lost.
+    final startedAt = DateTime.fromMillisecondsSinceEpoch(
+      (now.millisecondsSinceEpoch ~/ 1000) * 1000,
+      isUtc: true,
+    );
+    final stored = await _store.pushWatermark();
+    final since = stored.isAfter(startedAt) ? startedAt : stored;
+    await scan.enqueueChangedSince(nowUtc: now, since: since);
+    await _store.recordPushWatermark(startedAt);
+  }
+
   Future<SyncCycleOutcome> _run() async {
     if (!await _store.isSyncActive()) return SyncCycleOutcome.skipped;
+
+    await _collectLocalChanges();
 
     final drain = await _engine.drain();
     if (drain.hasFailure) {

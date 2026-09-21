@@ -161,6 +161,102 @@ void main() {
     expect(both.first.pushedCount, both.last.pushedCount);
   });
 
+  group('changes made after activation', () {
+    late SyncCycleRunner scanning;
+    late _CountingScan scan;
+
+    setUp(() {
+      scan = _CountingScan();
+      scanning = SyncCycleRunner(
+        database: database,
+        store: store,
+        gateway: gateway,
+        nowUtc: () => now,
+        scan: scan,
+      );
+    });
+
+    test('are collected before the queue is drained', () async {
+      await activate();
+
+      await scanning.runOnce();
+
+      expect(
+        scan.windows,
+        hasLength(1),
+        reason:
+            'a change written after activation reaches the queue because the '
+            'database noticed it, not because a repository remembered to say so',
+      );
+      expect(
+        scan.calledBeforeDrain,
+        isTrue,
+        reason: 'collecting after the drain would push it a cycle late',
+      );
+    });
+
+    test('a device kept local is not even scanned', () async {
+      await store.recordActivationChoice(
+        choice: SyncActivationChoice.keepDeviceLocalOnly,
+        backupId: 'backup-1',
+        decidedAtUtc: now,
+      );
+
+      await scanning.runOnce();
+
+      expect(scan.windows, isEmpty);
+    });
+
+    test('the first scan looks all the way back', () async {
+      await activate();
+
+      await scanning.runOnce();
+
+      expect(
+        scan.windows.single,
+        kUndatedByThisDevice,
+        reason:
+            'a device that has never scanned has everything still to offer, '
+            'and a watermark that started at "now" would skip all of it',
+      );
+    });
+
+    test(
+      'the next scan starts where this one began, not where it ended',
+      () async {
+        await activate();
+
+        await scanning.runOnce();
+        await scanning.runOnce();
+
+        expect(
+          scan.windows.last,
+          now,
+          reason:
+              'advancing to the newest row seen would step over anything written '
+              'while the scan was running',
+        );
+      },
+    );
+
+    test('a failed scan does not move the watermark on', () async {
+      await activate();
+      scan.failure = StateError('queue unavailable');
+
+      await expectLater(scanning.runOnce(), throwsA(isA<StateError>()));
+      scan.failure = null;
+      await scanning.runOnce();
+
+      expect(
+        scan.windows.last,
+        kUndatedByThisDevice,
+        reason:
+            'repeating a window costs duplicate envelopes that coalesce; '
+            'skipping one costs a change',
+      );
+    });
+  });
+
   test('a permanently refused envelope is quarantined, not retried', () async {
     await activate();
     await queue('theme');
@@ -177,6 +273,32 @@ void main() {
           'it blocks nothing and waits to be looked at, rather than rotting',
     );
   });
+}
+
+/// Records the window each scan was asked about, without touching a table.
+final class _CountingScan implements SyncBackfill {
+  final List<DateTime> windows = <DateTime>[];
+  bool calledBeforeDrain = false;
+  Object? failure;
+
+  /// Set by the gateway the moment a push happens, so the scan can tell
+  /// whether it ran first.
+  bool drained = false;
+
+  @override
+  Future<SyncBackfillReport> enqueueEverything({required DateTime nowUtc}) =>
+      enqueueChangedSince(nowUtc: nowUtc, since: kUndatedByThisDevice);
+
+  @override
+  Future<SyncBackfillReport> enqueueChangedSince({
+    required DateTime nowUtc,
+    required DateTime since,
+  }) async {
+    if (failure != null) throw failure!;
+    if (windows.isEmpty) calledBeforeDrain = !drained;
+    windows.add(since);
+    return SyncBackfillReport(enqueuedByType: const <SyncEntityType, int>{});
+  }
 }
 
 final class _RecordingGateway implements SyncGateway {

@@ -85,11 +85,21 @@ final class DriftSyncBackfill implements SyncBackfill {
   final int pageSize;
 
   @override
-  Future<SyncBackfillReport> enqueueEverything({
+  Future<SyncBackfillReport> enqueueEverything({required DateTime nowUtc}) =>
+      // The whole history is "everything changed since the beginning of time",
+      // so there is one walk rather than two that could drift apart.
+      enqueueChangedSince(nowUtc: nowUtc, since: kUndatedByThisDevice);
+
+  @override
+  Future<SyncBackfillReport> enqueueChangedSince({
     required DateTime nowUtc,
+    required DateTime since,
   }) async {
     if (!nowUtc.isUtc) {
       throw ArgumentError.value(nowUtc, 'nowUtc', 'Must be UTC.');
+    }
+    if (!since.isUtc) {
+      throw ArgumentError.value(since, 'since', 'Must be UTC.');
     }
     final deviceId = await _deviceId();
     if (deviceId.isEmpty) {
@@ -103,6 +113,10 @@ final class DriftSyncBackfill implements SyncBackfill {
     final tally = _Tally(
       outbox: _outbox,
       nowUtc: nowUtc,
+      since: since,
+      // A full run has to reach rows that carry no date at all; an incremental
+      // one is asking a question only a dated row can answer.
+      everything: !since.isAfter(kUndatedByThisDevice),
       enqueued: enqueued,
       skipped: skipped,
     );
@@ -133,6 +147,19 @@ final class DriftSyncBackfill implements SyncBackfill {
   static DateTime _versionedAt(DateTime? updatedAtUtc) =>
       updatedAtUtc?.toUtc() ?? kUndatedByThisDevice;
 
+  /// The latest of several moments, for a row whose change can show in more
+  /// than one column — a session that was created once and had a part
+  /// completed later, or a recitation that was written and then withdrawn.
+  static DateTime? _latest(Iterable<DateTime?> moments) {
+    DateTime? best;
+    for (final moment in moments) {
+      if (moment == null) continue;
+      final utc = moment.toUtc();
+      if (best == null || utc.isAfter(best)) best = utc;
+    }
+    return best;
+  }
+
   Future<void> _backfillMasteredSurahs(_Tally tally, String deviceId) async {
     await _forEachPage<MasteredSurahRow>(
       read: (limit, offset) =>
@@ -162,6 +189,7 @@ final class DriftSyncBackfill implements SyncBackfill {
           schemaVersion: schemaVersion,
           updatedAtUtc: _versionedAt(row.updatedAtUtc),
         ),
+        changedAtUtc: row.updatedAtUtc,
       ),
     );
   }
@@ -218,6 +246,9 @@ final class DriftSyncBackfill implements SyncBackfill {
             schemaVersion: schemaVersion,
             updatedAtUtc: _versionedAt(row.updatedAtUtc),
           ),
+          // A scheme's parts are written once with it and never edited after,
+          // so the scheme row's own date is the whole story.
+          changedAtUtc: row.updatedAtUtc,
         );
       },
     );
@@ -278,6 +309,10 @@ final class DriftSyncBackfill implements SyncBackfill {
             schemaVersion: schemaVersion,
             updatedAtUtc: _versionedAt(row.updatedAtUtc),
           ),
+          changedAtUtc: _latest(<DateTime?>[
+            row.updatedAtUtc,
+            for (final part in parts) part.completedAtUtc,
+          ]),
         );
       },
     );
@@ -335,6 +370,10 @@ final class DriftSyncBackfill implements SyncBackfill {
             schemaVersion: schemaVersion,
             updatedAtUtc: _versionedAt(row.updatedAtUtc),
           ),
+          // Editing a routine's parts goes through `replaceTemplate`, which
+          // bumps the template's revision, so the template row is touched
+          // whenever any part of it changes.
+          changedAtUtc: row.updatedAtUtc,
         );
       },
     );
@@ -378,6 +417,7 @@ final class DriftSyncBackfill implements SyncBackfill {
           schemaVersion: schemaVersion,
           updatedAtUtc: _versionedAt(row.updatedAtUtc),
         ),
+        changedAtUtc: row.updatedAtUtc,
       ),
     );
   }
@@ -411,6 +451,7 @@ final class DriftSyncBackfill implements SyncBackfill {
             idempotencyKey: _newId(),
             schemaVersion: schemaVersion,
           ),
+          changedAtUtc: row.updatedAtUtc,
         );
       },
     );
@@ -427,30 +468,37 @@ final class DriftSyncBackfill implements SyncBackfill {
       );
       if (page.isEmpty) return;
       for (final entry in page) {
-        await tally.attempt(SyncEntityType.recitationEvent, () {
-          final deletedAt = entry.deletedAtUtc;
-          // A withdrawn recitation travels as the withdrawal, not as the
-          // record plus a separate deletion: the account only ever needs to
-          // know the end state, and sending both would race them.
-          return deletedAt == null
-              ? RecitationSyncPayload.upsert(
-                  entry.event,
-                  envelopeId: _newId(),
-                  deviceId: deviceId,
-                  idempotencyKey: _newId(),
-                  schemaVersion: schemaVersion,
-                  updatedAtUtc: entry.event.createdAtUtc,
-                )
-              : RecitationSyncPayload.tombstone(
-                  entityId: entry.event.id,
-                  envelopeId: _newId(),
-                  deviceId: deviceId,
-                  idempotencyKey: _newId(),
-                  schemaVersion: schemaVersion,
-                  originalCreatedAtUtc: entry.event.createdAtUtc,
-                  deletedAtUtc: deletedAt,
-                );
-        });
+        await tally.attempt(
+          SyncEntityType.recitationEvent,
+          () {
+            final deletedAt = entry.deletedAtUtc;
+            // A withdrawn recitation travels as the withdrawal, not as the
+            // record plus a separate deletion: the account only ever needs to
+            // know the end state, and sending both would race them.
+            return deletedAt == null
+                ? RecitationSyncPayload.upsert(
+                    entry.event,
+                    envelopeId: _newId(),
+                    deviceId: deviceId,
+                    idempotencyKey: _newId(),
+                    schemaVersion: schemaVersion,
+                    updatedAtUtc: entry.event.createdAtUtc,
+                  )
+                : RecitationSyncPayload.tombstone(
+                    entityId: entry.event.id,
+                    envelopeId: _newId(),
+                    deviceId: deviceId,
+                    idempotencyKey: _newId(),
+                    schemaVersion: schemaVersion,
+                    originalCreatedAtUtc: entry.event.createdAtUtc,
+                    deletedAtUtc: deletedAt,
+                  );
+          },
+          changedAtUtc: _latest(<DateTime?>[
+            entry.event.createdAtUtc,
+            entry.deletedAtUtc,
+          ]),
+        );
       }
       if (page.length < pageSize) return;
       offset += page.length;
@@ -470,35 +518,39 @@ final class DriftSyncBackfill implements SyncBackfill {
                 ])
                 ..limit(limit, offset: offset))
               .get(),
-      each: (row) => tally.attempt(SyncEntityType.rotationAdjustment, () {
-        final deletedAt = row.deletedAtUtc?.toUtc();
-        if (deletedAt != null) {
-          return RotationAdjustmentSyncPayload.tombstone(
-            entityId: row.id,
+      each: (row) => tally.attempt(
+        SyncEntityType.rotationAdjustment,
+        () {
+          final deletedAt = row.deletedAtUtc?.toUtc();
+          if (deletedAt != null) {
+            return RotationAdjustmentSyncPayload.tombstone(
+              entityId: row.id,
+              envelopeId: _newId(),
+              deviceId: deviceId,
+              idempotencyKey: _newId(),
+              schemaVersion: schemaVersion,
+              originalCreatedAtUtc: row.createdAtUtc.toUtc(),
+              deletedAtUtc: deletedAt,
+            );
+          }
+          return RotationAdjustmentSyncPayload.upsert(
+            RotationAdjustmentSyncRecord(
+              id: row.id,
+              surahId: row.surahId,
+              rotationSchemeId: row.rotationSchemeId,
+              delta: row.delta,
+              reason: row.reason,
+              createdAtUtc: row.createdAtUtc.toUtc(),
+            ),
             envelopeId: _newId(),
             deviceId: deviceId,
             idempotencyKey: _newId(),
             schemaVersion: schemaVersion,
-            originalCreatedAtUtc: row.createdAtUtc.toUtc(),
-            deletedAtUtc: deletedAt,
+            updatedAtUtc: row.createdAtUtc.toUtc(),
           );
-        }
-        return RotationAdjustmentSyncPayload.upsert(
-          RotationAdjustmentSyncRecord(
-            id: row.id,
-            surahId: row.surahId,
-            rotationSchemeId: row.rotationSchemeId,
-            delta: row.delta,
-            reason: row.reason,
-            createdAtUtc: row.createdAtUtc.toUtc(),
-          ),
-          envelopeId: _newId(),
-          deviceId: deviceId,
-          idempotencyKey: _newId(),
-          schemaVersion: schemaVersion,
-          updatedAtUtc: row.createdAtUtc.toUtc(),
-        );
-      }),
+        },
+        changedAtUtc: _latest(<DateTime?>[row.createdAtUtc, row.deletedAtUtc]),
+      ),
     );
   }
 
@@ -547,6 +599,7 @@ final class DriftSyncBackfill implements SyncBackfill {
           schemaVersion: schemaVersion,
           updatedAtUtc: row.createdAtUtc.toUtc(),
         ),
+        changedAtUtc: row.createdAtUtc,
       ),
     );
   }
@@ -581,6 +634,7 @@ final class DriftSyncBackfill implements SyncBackfill {
           schemaVersion: schemaVersion,
           updatedAtUtc: row.createdAtUtc.toUtc(),
         ),
+        changedAtUtc: row.createdAtUtc,
       ),
     );
   }
@@ -612,6 +666,8 @@ final class _Tally {
   _Tally({
     required SyncOutbox outbox,
     required DateTime nowUtc,
+    required DateTime since,
+    required bool everything,
     required Map<SyncEntityType, int> enqueued,
     required Map<SyncEntityType, int> skipped,
     // Named parameters cannot be private, so an initializing formal is not
@@ -621,11 +677,17 @@ final class _Tally {
        // ignore: prefer_initializing_formals
        _nowUtc = nowUtc,
        // ignore: prefer_initializing_formals
+       _since = since,
+       // ignore: prefer_initializing_formals
+       _everything = everything,
+       // ignore: prefer_initializing_formals
        _enqueued = enqueued,
        // ignore: prefer_initializing_formals
        _skipped = skipped;
 
   final SyncOutbox _outbox;
+  final DateTime _since;
+  final bool _everything;
 
   /// When these entries joined the queue — which is now, and is not the
   /// envelope's `updatedAtUtc`, which is when the thing it describes actually
@@ -635,10 +697,27 @@ final class _Tally {
   final Map<SyncEntityType, int> _enqueued;
   final Map<SyncEntityType, int> _skipped;
 
+  /// Whether a row that last changed at [changedAtUtc] is in this run's window.
+  ///
+  /// A full run takes everything, including rows that carry no date at all. An
+  /// incremental run takes only what it can see changed, and an undatable row
+  /// has not changed since the v10 upgrade — if it had, it would have a date.
+  ///
+  /// Inclusive of [_since] on purpose: a change landing in the same second as
+  /// the watermark is offered again rather than risked. The cost is a handful
+  /// of identical envelopes per cycle; the alternative loses one.
+  bool _inWindow(DateTime? changedAtUtc) {
+    if (_everything) return true;
+    if (changedAtUtc == null) return false;
+    return !changedAtUtc.toUtc().isBefore(_since);
+  }
+
   Future<void> attempt(
     SyncEntityType type,
-    SyncEnvelope Function() build,
-  ) async {
+    SyncEnvelope Function() build, {
+    DateTime? changedAtUtc,
+  }) async {
+    if (!_inWindow(changedAtUtc)) return;
     final SyncEnvelope envelope;
     try {
       envelope = build();

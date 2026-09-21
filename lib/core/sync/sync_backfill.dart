@@ -79,9 +79,32 @@ final class SyncBackfillReport {
 /// has always been so".
 final DateTime kUndatedByThisDevice = DateTime.utc(1970);
 
-/// Queues everything this device holds, for an account that has just been
-/// allowed to have it.
+/// Queues what this device holds, for an account allowed to have it.
 abstract interface class SyncBackfill {
   /// Enqueues every syncable record. Safe to call again after a failure.
   Future<SyncBackfillReport> enqueueEverything({required DateTime nowUtc});
+
+  /// Enqueues only what has changed at or after [since].
+  ///
+  /// This is how changes made *after* activation reach the queue, and it is
+  /// deliberately the same walk as the full backfill rather than a second
+  /// mechanism beside it. The alternative — a recorder method called from
+  /// inside every repository write — has to be remembered at every call site,
+  /// and a call site that forgets is a silent hole that nothing fails on. This
+  /// asks the database instead, and the database already knows: schema v10 put
+  /// touch triggers on every versioned table, so an insert or an update stamps
+  /// `updated_at_utc` whether or not the code that did it knew about sync.
+  ///
+  /// What it cannot see is a row that was **deleted outright**, which leaves
+  /// nothing behind to find. The append-only journals are safe — they withdraw
+  /// by writing `deleted_at_utc` rather than by removing the row — and the one
+  /// remaining hard delete is a learning plan.
+  ///
+  /// [since] is inclusive, so an entity whose change lands in the same second
+  /// as the watermark is offered again rather than risked. That costs a handful
+  /// of identical envelopes per cycle and never loses one.
+  Future<SyncBackfillReport> enqueueChangedSince({
+    required DateTime nowUtc,
+    required DateTime since,
+  });
 }

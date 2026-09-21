@@ -149,6 +149,49 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
   Future<bool> isSyncActive() async =>
       (await _activationRow())?.isActive ?? false;
 
+  /// The key this owner's push watermark is stored under.
+  ///
+  /// In `app_settings` rather than a column of its own, which would have meant
+  /// a schema migration for one integer. It is scoped by owner for the same
+  /// reason every other row here is: two accounts on one phone have scanned
+  /// different amounts of the same database.
+  ///
+  /// Closed out of sync by construction — [SyncAppSettingPolicy] is an
+  /// allowlist, and how far this device has scanned is nobody else's business.
+  String get _watermarkKey => 'sync.pushWatermark.${owner.value}';
+
+  /// How far the local scan has already looked for changes to queue.
+  ///
+  /// The beginning of time when nothing has been scanned yet, which is exactly
+  /// right: a device that has never scanned has everything still to offer.
+  Future<DateTime> pushWatermark() async {
+    final row = await (_database.select(
+      _database.appSettings,
+    )..where((row) => row.key.equals(_watermarkKey))).getSingleOrNull();
+    final seconds = int.tryParse(row?.value ?? '');
+    if (seconds == null) return kUndatedByThisDevice;
+    return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
+  }
+
+  Future<void> recordPushWatermark(DateTime atUtc) async {
+    if (!atUtc.isUtc) {
+      throw ArgumentError.value(atUtc, 'atUtc', 'Must be UTC.');
+    }
+    await _database
+        .into(_database.appSettings)
+        .insertOnConflictUpdate(
+          AppSettingsCompanion.insert(
+            key: _watermarkKey,
+            // Whole seconds, matching what the v10 touch triggers write, so a
+            // watermark and a row's `updated_at_utc` are comparable without
+            // one of them being rounded behind the other's back.
+            value: '${atUtc.millisecondsSinceEpoch ~/ 1000}',
+            valueType: 'int',
+            updatedAtUtc: atUtc,
+          ),
+        );
+  }
+
   /// The whole summary in one pass.
   ///
   /// The quarantined count is queried here rather than taken from

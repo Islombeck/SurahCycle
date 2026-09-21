@@ -233,6 +233,10 @@ final syncCycleProvider = Provider.family<SyncCycle?, String>((ref, userId) {
     store: ref.watch(syncStoreProvider(userId)),
     gateway: gateway,
     nowUtc: ref.watch(timeProviderProvider).nowUtc,
+    // The same walk that filled the queue at activation, asked a narrower
+    // question. Without it a change made after activation would sit in the
+    // database with nothing to carry it.
+    scan: ref.watch(syncBackfillProvider(userId)),
   );
 });
 
