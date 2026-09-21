@@ -1298,6 +1298,19 @@ final catalogBootstrapProvider = FutureProvider<void>((ref) async {
       );
 });
 
+/// What the app calls when it opens and when it returns to the foreground.
+///
+/// Null by default, and deliberately so: this file must not import the account
+/// feature. That one reaches `package:appwrite`, and pulling the SDK in here
+/// would put it in the graph of every widget test — a regression this project
+/// has already made once and documented. The composition root in `main.dart`
+/// overrides it; a build without an account simply never does, and a null hook
+/// is an app that works exactly as it did before sync existed.
+///
+/// It returns a future so the caller can choose to ignore it, which it does: a
+/// sync must never be something the user waits for to see their own data.
+final syncOnResumeProvider = Provider<Future<void> Function()?>((ref) => null);
+
 final startupProvider = FutureProvider<void>((ref) async {
   await ref.watch(catalogBootstrapProvider.future);
   await ref.watch(tanzilUthmaniTextRepositoryProvider).load();

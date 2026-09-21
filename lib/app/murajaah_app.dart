@@ -70,6 +70,7 @@ final class _StartupGateState extends ConsumerState<_StartupGate>
     if (defaultTargetPlatform == TargetPlatform.android) {
       _startRevisionMonitor();
     }
+    unawaited(_syncWithAccount());
   }
 
   @override
@@ -81,6 +82,11 @@ final class _StartupGateState extends ConsumerState<_StartupGate>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Sync is not an Android concern, so it is decided before the platform
+    // guard below rather than inside it.
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_syncWithAccount());
+    }
     if (defaultTargetPlatform != TargetPlatform.android) return;
     if (state == AppLifecycleState.resumed) {
       _startRevisionMonitor();
@@ -88,6 +94,24 @@ final class _StartupGateState extends ConsumerState<_StartupGate>
     } else {
       _revisionTimer?.cancel();
       _revisionTimer = null;
+    }
+  }
+
+  /// Coming back to the app is the best moment to exchange with the account:
+  /// it is when a network is most likely to exist and when the user is about to
+  /// look at their data.
+  ///
+  /// Never awaited and never allowed to surface. The runner already refuses to
+  /// do anything for a device that is not activated, the queue is durable, and
+  /// a phone that is offline is in its ordinary state rather than a broken one.
+  Future<void> _syncWithAccount() async {
+    final run = ref.read(syncOnResumeProvider);
+    if (run == null) return;
+    try {
+      await run();
+    } on Object {
+      // A failed exchange leaves the queue exactly where it was. Nothing to
+      // report and nothing to do differently.
     }
   }
 
