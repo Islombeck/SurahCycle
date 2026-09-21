@@ -904,8 +904,28 @@ fall through silently.
    in one transaction — separately they are each accurate and jointly false.
    Quarantine is counted with a query, not from `outbox.quarantined()`, which
    returns a page.
-5. **Drive `SyncEngine.drain` and `pull`** from somewhere. Still nothing calls
-   either, so the queue fills and stays filled.
+5. ~~Drive `SyncEngine.drain` and `pull` from somewhere.~~ **Done** (`c64f05b`,
+   `0163f7a`). `SyncCycleRunner` is the missing caller: push, then pull, then
+   apply each page with its cursor in one transaction, and record a success only
+   for a cycle that actually moved something. Push before pull always — the
+   first cycle after activation carries a lifetime of history and it has to land
+   before anything can be applied on top of it; a failed push stops the cycle
+   rather than pulling anyway. A device that answered "keep this device local"
+   never runs at all. One cycle at a time: a caller arriving mid-cycle joins it,
+   because two drains would peek the same entries and the second acknowledge
+   would remove what the first was still working on.
+
+   Three triggers: app start, return to the foreground, and a "sync now" button
+   while activated. The lifecycle hook is `syncOnResumeProvider` in
+   `app_providers.dart` — null by default and overridden in `main.dart`, which
+   is the only place allowed to name the account feature, because that feature
+   reaches `package:appwrite` and importing it from the app layer would put the
+   SDK in every widget test's graph again.
+
+**So the one gap left is the recorder.** After activation only *new recitations*
+reach the queue. The other nine types have mappers, appliers and a router, and
+nothing calls them on a local write — so a routine edited, a surah added to the
+rotation or a setting changed after activation stays on this device.
 
 **The open question the backfill stops short of.** The seven versioned types
 resolve conflicts by `updatedAtUtc`, and rows untouched since schema v10 carry
