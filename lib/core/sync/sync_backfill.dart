@@ -48,6 +48,37 @@ final class SyncBackfillReport {
   bool get isEmpty => enqueuedCount == 0;
 }
 
+/// The date an envelope carries when this device cannot honestly supply one.
+///
+/// Schema v10 added `updated_at_utc` to six tables and backfilled nothing, so a
+/// row untouched since that upgrade records no last-changed time at all. An
+/// envelope must carry one, and both obvious answers are a lie: "now" claims
+/// the row changed at activation, and it did not; anything in between invents
+/// an edit that never happened.
+///
+/// So it carries a date that is recognisably not a real one, and the choice of
+/// *which* unreal date is the whole decision, because last-writer-wins reads it.
+/// The epoch makes an undatable local row lose to anything the account can
+/// date. That is the safe direction, and it is also the correct one: the only
+/// way the account holds a dated copy of a row this device cannot date is that
+/// some other device edited it after v10, while this one has not touched it
+/// since before. The remote copy really is the newer one.
+///
+/// The opposite rule — stamping "now" — would let a phone that has not opened a
+/// screen in a year overwrite a newer edit from another phone, simply by
+/// signing in. That is the loss this whole activation gate exists to prevent,
+/// arriving through the back door.
+///
+/// The user is not being surprised by this. The preview counts exactly these
+/// entities on their own line — "cannot be compared" — and the merge they agree
+/// to is the one where the account's copy stands for those, with the local copy
+/// still in the backup that was taken first.
+///
+/// A local-only entity is unaffected: with nothing to conflict with, it uploads
+/// in full, and the sentinel simply means "as far as this device knows, this
+/// has always been so".
+final DateTime kUndatedByThisDevice = DateTime.utc(1970);
+
 /// Queues everything this device holds, for an account that has just been
 /// allowed to have it.
 abstract interface class SyncBackfill {

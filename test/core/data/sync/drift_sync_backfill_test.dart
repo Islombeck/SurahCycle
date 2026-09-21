@@ -1,7 +1,9 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:murajaah/core/data/data.dart';
 import 'package:murajaah/core/domain/domain.dart';
+import 'package:murajaah/core/sync/prayer_routine_sync_payload.dart';
 import 'package:murajaah/core/sync/recitation_sync_payload.dart';
 import 'package:murajaah/core/sync/sync.dart';
 
@@ -79,12 +81,26 @@ void main() {
     return grouped;
   }
 
-  test('an empty device queues nothing at all', () async {
+  /// The envelopes of one type, in the order they were queued.
+  Future<List<SyncEnvelope>> queuedOfType(SyncEntityType type) async =>
+      <SyncEnvelope>[
+        for (final entry in await outbox.peek(limit: 1000))
+          if (entry.envelope.entityType == type) entry.envelope,
+      ];
+
+  test('a device with no history still has a configuration', () async {
+    // Not "queues nothing": a fresh database already holds the eight prayer
+    // routines, and they are the user's configuration whether or not they have
+    // edited them. An account that received none of them would hand a second
+    // device a blank set of prayers.
     final report = await backfill.enqueueEverything(nowUtc: now);
 
-    expect(report.isEmpty, isTrue);
+    expect(report.enqueuedByType[SyncEntityType.recitationEvent], isNull);
+    expect(
+      report.enqueuedByType[SyncEntityType.prayerRoutineTemplate],
+      greaterThan(0),
+    );
     expect(report.skippedCount, 0);
-    expect(await outbox.pendingCount(), 0);
   });
 
   test('every recitation reaches the queue, across pages', () async {
@@ -162,7 +178,9 @@ void main() {
 
     await backfill.enqueueEverything(nowUtc: now);
 
-    final envelope = (await outbox.peek(limit: 10)).single.envelope;
+    final envelope = (await queuedOfType(
+      SyncEntityType.recitationEvent,
+    )).single;
     expect(
       envelope.updatedAtUtc,
       longAgo,
@@ -183,7 +201,7 @@ void main() {
     );
 
     expect(
-      await outbox.pendingCount(),
+      (await queuedOfType(SyncEntityType.recitationEvent)).length,
       2,
       reason:
           'the outbox coalesces per entity, which is what makes re-running the '
@@ -326,6 +344,148 @@ void main() {
     );
   });
 
+  group('the versioned tables, and the date they cannot supply', () {
+    test('a row that records when it changed says so', () async {
+      await addSurah('surah-a', 112);
+      final changedAt = DateTime.utc(2026, 9, 20, 8);
+      await (database.update(
+        database.masteredSurahs,
+      )..where((row) => row.surahId.equals('surah-a'))).write(
+        MasteredSurahsCompanion(updatedAtUtc: Value<DateTime>(changedAt)),
+      );
+
+      await backfill.enqueueEverything(nowUtc: now);
+
+      final envelope = (await outbox.peek(limit: 100))
+          .map((entry) => entry.envelope)
+          .firstWhere(
+            (envelope) => envelope.entityType == SyncEntityType.masteredSurah,
+          );
+      expect(envelope.updatedAtUtc, changedAt);
+    });
+
+    test('a row that cannot be dated loses to anything that can', () async {
+      // Schema v10 added the column and backfilled nothing, so this is every
+      // row a long-standing device has not touched since the upgrade.
+      await addSurah('surah-a', 112);
+      await (database.update(
+        database.masteredSurahs,
+      )..where((row) => row.surahId.equals('surah-a'))).write(
+        const MasteredSurahsCompanion(updatedAtUtc: Value<DateTime?>(null)),
+      );
+
+      await backfill.enqueueEverything(nowUtc: now);
+
+      final envelope = (await outbox.peek(limit: 100))
+          .map((entry) => entry.envelope)
+          .firstWhere(
+            (envelope) => envelope.entityType == SyncEntityType.masteredSurah,
+          );
+      expect(
+        envelope.updatedAtUtc,
+        kUndatedByThisDevice,
+        reason:
+            'stamping it "now" would let a phone untouched for a year overwrite '
+            'a newer edit from another one, simply by signing in — which is the '
+            'loss the whole activation gate exists to prevent',
+      );
+      expect(
+        envelope.updatedAtUtc.isBefore(now),
+        isTrue,
+        reason: 'and the account, which can date its copy, keeps it',
+      );
+    });
+
+    test('a routine travels with its parts', () async {
+      final routines = PrayerRoutineRepository(database);
+      final witr = await routines.getTemplate(PrayerType.witr);
+      await routines.replaceTemplate(
+        prayerType: PrayerType.witr,
+        expectedRevision: witr.revision,
+        displayName: witr.displayName,
+        enabled: true,
+        parts: <PrayerRoutinePartTemplate>[
+          PrayerRoutinePartTemplate(
+            id: 'witr-wajib',
+            stableKey: 'witr-wajib',
+            orderIndex: 0,
+            kind: PrayerRoutinePartKind.witr,
+            customLabel: 'Важиб',
+            rakaatCount: 3,
+            requiredSurahSlots: 3,
+          ),
+        ],
+      );
+
+      final report = await backfill.enqueueEverything(nowUtc: now);
+
+      expect(
+        report.enqueuedByType[SyncEntityType.prayerRoutineTemplate],
+        isNotNull,
+      );
+      final envelope = (await outbox.peek(limit: 100))
+          .map((entry) => entry.envelope)
+          .firstWhere(
+            (envelope) =>
+                envelope.entityType == SyncEntityType.prayerRoutineTemplate &&
+                envelope.payload['prayerType'] == 'witr',
+          );
+      final decoded = PrayerRoutineSyncPayload.decode(
+        envelope.payload,
+        entityId: envelope.entityId,
+      );
+      expect(decoded.parts, hasLength(1));
+      expect(
+        decoded.parts.single.customLabel,
+        'Важиб',
+        reason: 'a part without its name is not the routine he configured',
+      );
+      expect(decoded.parts.single.kind, 'witr');
+    });
+
+    test('the rotation projection is never sent', () async {
+      await addSurah('surah-a', 112);
+
+      final report = await backfill.enqueueEverything(nowUtc: now);
+
+      expect(
+        report.enqueuedByType[SyncEntityType.rotationState],
+        isNull,
+        reason:
+            'the router refuses this type by name, so queueing one would stall '
+            'every other device on a record none of them can place',
+      );
+      expect(
+        (await outbox.peek(limit: 100)).every(
+          (entry) => entry.envelope.entityType != SyncEntityType.rotationState,
+        ),
+        isTrue,
+      );
+    });
+
+    test('a setting outside the allow-list is a rule, not a gap', () async {
+      final settings = AppSettingsRepository(database);
+      await settings.setString('sync.deviceId', 'device-a', updatedAtUtc: now);
+
+      final report = await backfill.enqueueEverything(nowUtc: now);
+
+      expect(
+        report.skippedByType[SyncEntityType.appSetting],
+        isNull,
+        reason:
+            'this one has been decided never to travel; counting it as skipped '
+            'would report a gap where there is a decision',
+      );
+      expect(
+        (await outbox.peek(
+          limit: 100,
+        )).every((entry) => entry.envelope.entityId != 'sync.deviceId'),
+        isTrue,
+        reason: 'and a device id belongs to the device, not to the account',
+      );
+    });
+  });
+
   test('the payload survives the round trip it was built for', () async {
     await addSurah('surah-a', 112);
     await recitations.register(
@@ -342,7 +502,9 @@ void main() {
 
     await backfill.enqueueEverything(nowUtc: now);
 
-    final envelope = (await outbox.peek(limit: 10)).single.envelope;
+    final envelope = (await queuedOfType(
+      SyncEntityType.recitationEvent,
+    )).single;
     final decoded = RecitationSyncPayload.decode(
       envelope.payload,
       entityId: envelope.entityId,
