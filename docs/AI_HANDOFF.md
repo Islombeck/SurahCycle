@@ -992,6 +992,54 @@ appliers refuse, retryably, and they are right to — the Quran arrives by
 manifest, not by sync. A real phone has the corpus before it signs in; the test
 gives Bob the same.
 
+### Five defects that only a real database could show — 2026-09-21
+
+Running the backfill's own envelopes into an empty database found all of these,
+and **none could have been found by a test that builds its own history**: they
+are consequences of rows written by older builds under looser rules, or of
+scale. Commits `3254898`, `af19fe1`, `adb918f`.
+
+1. **Every prayer session was refused by its own envelope.** An envelope refuses
+   an `updatedAtUtc` earlier than its `createdAtUtc`, rightly — a record cannot
+   change before it exists. A session's `createdAtUtc` is `startedAtUtc`, a real
+   past moment, so the epoch sentinel for an undated row contradicted it. v10
+   backfilled nothing, so that is nearly every session on an upgraded device.
+   The sentinel is now raised to the thing's own beginning where it has one.
+2. **All twenty-eight rotation schemes collided.** A device that has just taken
+   a roster entry holds a locally derived default scheme named the way *this*
+   build names one; his real ids were written by an older build
+   (`v1:<surahId>:scheme:1`), and the unique index on `(surah_id, version)`
+   refused every one. The incoming record wins and the placeholder is removed —
+   unless something references it, in which case it is a second *real* scheme
+   and the refusal stands.
+3. **A correction was numbered from the wrong counter.** Recitations and
+   adjustments share **one** journal sequence, because `rebuildFromJournal`
+   sorts them into a single history. Both appliers took the maximum of their own
+   table, so his single adjustment arrived as number one on a device holding
+   seven hundred recitations and subtracted from a score nothing had raised.
+   `RotationProjectionStore.takeJournalSequence` is now the one source.
+4. **The queue drained in an arbitrary order.** Ties on `enqueuedAtUs` were
+   broken by envelope id, which is random. Invisible while changes arrived one
+   at a time; wrong the moment a backfill enqueued nine hundred in one instant.
+   Both implementations fall back to insertion order now (`rowid`, and an
+   explicit counter), held by the shared contract test.
+5. **A pulled withdrawal never rebuilt the rotation.** The row was marked gone
+   and the standing stayed where the recitation had put it, so a recitation
+   undone on one phone went on counting on the other.
+
+**And the first merge was quadratic.** Every applier that touched the rotation
+rebuilt the whole projection from the whole journal, per envelope: applying his
+history took **17 seconds**, all inside transactions where the app does not
+draw. The router now rebuilds once per page (`settleProjection`, run by
+`applyPulledPage`'s `afterAll`, inside the page's transaction so a cursor can
+never move ahead of the projection). **2 seconds.**
+
+**A lesson about the tests themselves.** The first end-to-end rotation assertion
+compared the two devices' standings and passed while one of them was wrong: two
+zeros are also equal. It states a number now. And the first attempt to falsify
+it by string-replacing the code silently matched nothing — **falsify by editing,
+then read the diff, or the check proves only that the test ran.**
+
 **Verified against the owner's real database, 2026-09-21.**
 `test/tool/real_database_backfill_test.dart` runs the backfill over a pulled
 copy and reports what would travel and what would not. It skips itself unless
