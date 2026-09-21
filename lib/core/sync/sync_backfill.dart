@@ -27,8 +27,16 @@ final class SyncBackfillReport {
   SyncBackfillReport({
     required Map<SyncEntityType, int> enqueuedByType,
     Map<SyncEntityType, int> skippedByType = const <SyncEntityType, int>{},
+    Map<SyncEntityType, Set<String>> skippedFields =
+        const <SyncEntityType, Set<String>>{},
   }) : enqueuedByType = Map<SyncEntityType, int>.unmodifiable(enqueuedByType),
-       skippedByType = Map<SyncEntityType, int>.unmodifiable(skippedByType);
+       skippedByType = Map<SyncEntityType, int>.unmodifiable(skippedByType),
+       skippedFields = Map<SyncEntityType, Set<String>>.unmodifiable(
+         <SyncEntityType, Set<String>>{
+           for (final entry in skippedFields.entries)
+             entry.key: Set<String>.unmodifiable(entry.value),
+         },
+       );
 
   final Map<SyncEntityType, int> enqueuedByType;
 
@@ -38,6 +46,14 @@ final class SyncBackfillReport {
   /// than the whole history is the failure mode this feature can least afford,
   /// and a number the caller can log is what makes it noticeable.
   final Map<SyncEntityType, int> skippedByType;
+
+  /// Which field each refusal named, so a count is something one can act on.
+  ///
+  /// A number alone says a row was left behind and nothing about why, which is
+  /// the difference between a fault someone can fix and one they can only
+  /// watch. Field **names** only — `startedAtUtc`, `kind` — never the values,
+  /// because this reaches a log and a user's history must not.
+  final Map<SyncEntityType, Set<String>> skippedFields;
 
   int get enqueuedCount =>
       enqueuedByType.values.fold(0, (int sum, int count) => sum + count);

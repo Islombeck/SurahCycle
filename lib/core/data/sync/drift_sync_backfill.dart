@@ -137,7 +137,11 @@ final class DriftSyncBackfill implements SyncBackfill {
 
     await _backfillAppSettings(tally, deviceId);
 
-    return SyncBackfillReport(enqueuedByType: enqueued, skippedByType: skipped);
+    return SyncBackfillReport(
+      enqueuedByType: enqueued,
+      skippedByType: skipped,
+      skippedFields: tally.skippedFields,
+    );
   }
 
   /// What date an envelope for a versioned row carries.
@@ -146,6 +150,28 @@ final class DriftSyncBackfill implements SyncBackfill {
   /// loses to anything the account can date. See its documentation.
   static DateTime _versionedAt(DateTime? updatedAtUtc) =>
       updatedAtUtc?.toUtc() ?? kUndatedByThisDevice;
+
+  /// The same, raised to the thing's own beginning where it has one.
+  ///
+  /// An envelope refuses an `updatedAtUtc` earlier than its `createdAtUtc`, and
+  /// it is right to: a record cannot have changed before it existed. A prayer
+  /// session is the only entity here whose creation is a moment of its own —
+  /// the prayer began when it began, and a later edit to its parts does not
+  /// move that — so the epoch sentinel contradicts it outright. Without this
+  /// **every undated session on a long-standing device is refused**, which is
+  /// most of them: v10 backfilled nothing.
+  ///
+  /// Raising it costs nothing the sentinel was for. An undated session still
+  /// loses to any later edit from another device, which is the only conflict
+  /// that can arise.
+  static DateTime _versionedAtNotBefore(
+    DateTime? updatedAtUtc,
+    DateTime floor,
+  ) {
+    final at = _versionedAt(updatedAtUtc);
+    final from = floor.toUtc();
+    return at.isBefore(from) ? from : at;
+  }
 
   /// The latest of several moments, for a row whose change can show in more
   /// than one column — a session that was created once and had a part
@@ -162,15 +188,26 @@ final class DriftSyncBackfill implements SyncBackfill {
 
   Future<void> _backfillMasteredSurahs(_Tally tally, String deviceId) async {
     await _forEachPage<MasteredSurahRow>(
-      read: (limit, offset) =>
-          (_database.select(_database.masteredSurahs)
-                ..orderBy(<OrderingTerm Function(MasteredSurahs)>[
-                  (MasteredSurahs row) =>
-                      OrderingTerm(expression: row.displayOrder),
-                  (MasteredSurahs row) => OrderingTerm(expression: row.surahId),
-                ])
-                ..limit(limit, offset: offset))
-              .get(),
+      read: (limit, offset) {
+        final query = _database.select(_database.masteredSurahs);
+        // Asked of the database rather than of Dart. This runs on every app
+        // resume, and reading a whole table to discard all of it is a cost
+        // that grows with the history it is meant to protect.
+        if (tally.only case final since?) {
+          query.where(
+            (MasteredSurahs row) =>
+                row.updatedAtUtc.isBiggerOrEqualValue(since),
+          );
+        }
+        return (query
+              ..orderBy(<OrderingTerm Function(MasteredSurahs)>[
+                (MasteredSurahs row) =>
+                    OrderingTerm(expression: row.displayOrder),
+                (MasteredSurahs row) => OrderingTerm(expression: row.surahId),
+              ])
+              ..limit(limit, offset: offset))
+            .get();
+      },
       each: (row) => tally.attempt(
         SyncEntityType.masteredSurah,
         () => MasteredSurahSyncPayload.upsert(
@@ -196,16 +233,22 @@ final class DriftSyncBackfill implements SyncBackfill {
 
   Future<void> _backfillRotationSchemes(_Tally tally, String deviceId) async {
     await _forEachPage<RotationSchemeRow>(
-      read: (limit, offset) =>
-          (_database.select(_database.rotationSchemes)
-                ..orderBy(<OrderingTerm Function(RotationSchemes)>[
-                  (RotationSchemes row) =>
-                      OrderingTerm(expression: row.surahId),
-                  (RotationSchemes row) =>
-                      OrderingTerm(expression: row.version),
-                ])
-                ..limit(limit, offset: offset))
-              .get(),
+      read: (limit, offset) {
+        final query = _database.select(_database.rotationSchemes);
+        if (tally.only case final since?) {
+          query.where(
+            (RotationSchemes row) =>
+                row.updatedAtUtc.isBiggerOrEqualValue(since),
+          );
+        }
+        return (query
+              ..orderBy(<OrderingTerm Function(RotationSchemes)>[
+                (RotationSchemes row) => OrderingTerm(expression: row.surahId),
+                (RotationSchemes row) => OrderingTerm(expression: row.version),
+              ])
+              ..limit(limit, offset: offset))
+            .get();
+      },
       each: (row) async {
         final parts =
             await (_database.select(_database.rotationParts)
@@ -254,16 +297,49 @@ final class DriftSyncBackfill implements SyncBackfill {
     );
   }
 
+  /// The sessions that changed since [since], counting a part being completed.
+  ///
+  /// The only entity whose change can be entirely in a child row: filling the
+  /// last slot of a part writes `prayer_session_parts.completed_at_utc` and
+  /// never touches the session, so a scan that looked only at the parent would
+  /// miss the most common change this app makes.
+  ///
+  /// Null on a full run, meaning "no filter".
+  Future<Set<String>?> _sessionsTouchedSince(DateTime? since) async {
+    if (since == null) return null;
+    // Whole seconds: that is how Drift stores these columns and how the v10
+    // touch triggers write them.
+    final seconds = Variable<int>(since.millisecondsSinceEpoch ~/ 1000);
+    final rows = await _database
+        .customSelect(
+          'SELECT s.id AS id FROM prayer_sessions s '
+          'WHERE s.updated_at_utc >= ? '
+          'OR EXISTS (SELECT 1 FROM prayer_session_parts p '
+          'WHERE p.prayer_session_id = s.id AND p.completed_at_utc >= ?)',
+          variables: <Variable<Object>>[seconds, seconds],
+        )
+        .get();
+    return <String>{for (final row in rows) row.read<String>('id')};
+  }
+
   Future<void> _backfillPrayerSessions(_Tally tally, String deviceId) async {
+    final touched = await _sessionsTouchedSince(tally.only);
+    // `IN ()` is not valid SQL, and there is nothing to walk anyway.
+    if (touched != null && touched.isEmpty) return;
     await _forEachPage<PrayerSessionRow>(
-      read: (limit, offset) =>
-          (_database.select(_database.prayerSessions)
-                ..orderBy(<OrderingTerm Function(PrayerSessions)>[
-                  (PrayerSessions row) =>
-                      OrderingTerm(expression: row.startedAtUtc),
-                ])
-                ..limit(limit, offset: offset))
-              .get(),
+      read: (limit, offset) {
+        final query = _database.select(_database.prayerSessions);
+        if (touched != null) {
+          query.where((PrayerSessions row) => row.id.isIn(touched));
+        }
+        return (query
+              ..orderBy(<OrderingTerm Function(PrayerSessions)>[
+                (PrayerSessions row) =>
+                    OrderingTerm(expression: row.startedAtUtc),
+              ])
+              ..limit(limit, offset: offset))
+            .get();
+      },
       each: (row) async {
         final parts =
             await (_database.select(_database.prayerSessionParts)
@@ -307,7 +383,12 @@ final class DriftSyncBackfill implements SyncBackfill {
             deviceId: deviceId,
             idempotencyKey: _newId(),
             schemaVersion: schemaVersion,
-            updatedAtUtc: _versionedAt(row.updatedAtUtc),
+            // The session's envelope is dated from when the prayer began, so
+            // its change cannot be dated before that.
+            updatedAtUtc: _versionedAtNotBefore(
+              row.updatedAtUtc,
+              row.startedAtUtc,
+            ),
           ),
           changedAtUtc: _latest(<DateTime?>[
             row.updatedAtUtc,
@@ -320,14 +401,22 @@ final class DriftSyncBackfill implements SyncBackfill {
 
   Future<void> _backfillPrayerRoutines(_Tally tally, String deviceId) async {
     await _forEachPage<PrayerRoutineTemplateRow>(
-      read: (limit, offset) =>
-          (_database.select(_database.prayerRoutineTemplates)
-                ..orderBy(<OrderingTerm Function(PrayerRoutineTemplates)>[
-                  (PrayerRoutineTemplates row) =>
-                      OrderingTerm(expression: row.prayerType),
-                ])
-                ..limit(limit, offset: offset))
-              .get(),
+      read: (limit, offset) {
+        final query = _database.select(_database.prayerRoutineTemplates);
+        if (tally.only case final since?) {
+          query.where(
+            (PrayerRoutineTemplates row) =>
+                row.updatedAtUtc.isBiggerOrEqualValue(since),
+          );
+        }
+        return (query
+              ..orderBy(<OrderingTerm Function(PrayerRoutineTemplates)>[
+                (PrayerRoutineTemplates row) =>
+                    OrderingTerm(expression: row.prayerType),
+              ])
+              ..limit(limit, offset: offset))
+            .get();
+      },
       each: (row) async {
         final parts =
             await (_database.select(_database.prayerRoutinePartTemplates)
@@ -381,13 +470,21 @@ final class DriftSyncBackfill implements SyncBackfill {
 
   Future<void> _backfillLearningStates(_Tally tally, String deviceId) async {
     await _forEachPage<LearningSurahRow>(
-      read: (limit, offset) =>
-          (_database.select(_database.learningSurahs)
-                ..orderBy(<OrderingTerm Function(LearningSurahs)>[
-                  (LearningSurahs row) => OrderingTerm(expression: row.id),
-                ])
-                ..limit(limit, offset: offset))
-              .get(),
+      read: (limit, offset) {
+        final query = _database.select(_database.learningSurahs);
+        if (tally.only case final since?) {
+          query.where(
+            (LearningSurahs row) =>
+                row.updatedAtUtc.isBiggerOrEqualValue(since),
+          );
+        }
+        return (query
+              ..orderBy(<OrderingTerm Function(LearningSurahs)>[
+                (LearningSurahs row) => OrderingTerm(expression: row.id),
+              ])
+              ..limit(limit, offset: offset))
+            .get();
+      },
       each: (row) => tally.attempt(
         SyncEntityType.learningState,
         () => LearningStateSyncPayload.upsert(
@@ -424,13 +521,20 @@ final class DriftSyncBackfill implements SyncBackfill {
 
   Future<void> _backfillAppSettings(_Tally tally, String deviceId) async {
     await _forEachPage<AppSettingRow>(
-      read: (limit, offset) =>
-          (_database.select(_database.appSettings)
-                ..orderBy(<OrderingTerm Function(AppSettings)>[
-                  (AppSettings row) => OrderingTerm(expression: row.key),
-                ])
-                ..limit(limit, offset: offset))
-              .get(),
+      read: (limit, offset) {
+        final query = _database.select(_database.appSettings);
+        if (tally.only case final since?) {
+          query.where(
+            (AppSettings row) => row.updatedAtUtc.isBiggerOrEqualValue(since),
+          );
+        }
+        return (query
+              ..orderBy(<OrderingTerm Function(AppSettings)>[
+                (AppSettings row) => OrderingTerm(expression: row.key),
+              ])
+              ..limit(limit, offset: offset))
+            .get();
+      },
       each: (row) async {
         // Asked before building rather than caught after: a setting outside the
         // reviewed allow-list is not a failure to count, it is one this feature
@@ -465,6 +569,7 @@ final class DriftSyncBackfill implements SyncBackfill {
         limit: pageSize,
         offset: offset,
         includeDeleted: true,
+        changedSince: tally.only,
       );
       if (page.isEmpty) return;
       for (final entry in page) {
@@ -510,14 +615,25 @@ final class DriftSyncBackfill implements SyncBackfill {
     String deviceId,
   ) async {
     await _forEachPage<RotationAdjustmentRow>(
-      read: (limit, offset) =>
-          (_database.select(_database.rotationAdjustments)
-                ..orderBy(<OrderingTerm Function(RotationAdjustments)>[
-                  (RotationAdjustments row) =>
-                      OrderingTerm(expression: row.journalSequence),
-                ])
-                ..limit(limit, offset: offset))
-              .get(),
+      read: (limit, offset) {
+        final query = _database.select(_database.rotationAdjustments);
+        if (tally.only case final since?) {
+          // Written or withdrawn: an adjustment retracts by gaining a date,
+          // and asking only about creation would miss every retraction.
+          query.where(
+            (RotationAdjustments row) =>
+                row.createdAtUtc.isBiggerOrEqualValue(since) |
+                row.deletedAtUtc.isBiggerOrEqualValue(since),
+          );
+        }
+        return (query
+              ..orderBy(<OrderingTerm Function(RotationAdjustments)>[
+                (RotationAdjustments row) =>
+                    OrderingTerm(expression: row.journalSequence),
+              ])
+              ..limit(limit, offset: offset))
+            .get();
+      },
       each: (row) => tally.attempt(
         SyncEntityType.rotationAdjustment,
         () {
@@ -556,14 +672,21 @@ final class DriftSyncBackfill implements SyncBackfill {
 
   Future<void> _backfillLearningEvents(_Tally tally, String deviceId) async {
     await _forEachPage<LearningEventRow>(
-      read: (limit, offset) =>
-          (_database.select(_database.learningEvents)
-                ..orderBy(<OrderingTerm Function(LearningEvents)>[
-                  (LearningEvents row) =>
-                      OrderingTerm(expression: row.sequence),
-                ])
-                ..limit(limit, offset: offset))
-              .get(),
+      read: (limit, offset) {
+        final query = _database.select(_database.learningEvents);
+        if (tally.only case final since?) {
+          query.where(
+            (LearningEvents row) =>
+                row.createdAtUtc.isBiggerOrEqualValue(since),
+          );
+        }
+        return (query
+              ..orderBy(<OrderingTerm Function(LearningEvents)>[
+                (LearningEvents row) => OrderingTerm(expression: row.sequence),
+              ])
+              ..limit(limit, offset: offset))
+            .get();
+      },
       each: (row) => tally.attempt(
         SyncEntityType.learningEvent,
         () => LearningEventSyncPayload.upsert(
@@ -606,14 +729,21 @@ final class DriftSyncBackfill implements SyncBackfill {
 
   Future<void> _backfillRecallAttempts(_Tally tally, String deviceId) async {
     await _forEachPage<RecallAttemptRow>(
-      read: (limit, offset) =>
-          (_database.select(_database.recallAttempts)
-                ..orderBy(<OrderingTerm Function(RecallAttempts)>[
-                  (RecallAttempts row) =>
-                      OrderingTerm(expression: row.sequence),
-                ])
-                ..limit(limit, offset: offset))
-              .get(),
+      read: (limit, offset) {
+        final query = _database.select(_database.recallAttempts);
+        if (tally.only case final since?) {
+          query.where(
+            (RecallAttempts row) =>
+                row.createdAtUtc.isBiggerOrEqualValue(since),
+          );
+        }
+        return (query
+              ..orderBy(<OrderingTerm Function(RecallAttempts)>[
+                (RecallAttempts row) => OrderingTerm(expression: row.sequence),
+              ])
+              ..limit(limit, offset: offset))
+            .get();
+      },
       each: (row) => tally.attempt(
         SyncEntityType.recallAttempt,
         () => RecallAttemptSyncPayload.upsert(
@@ -689,6 +819,13 @@ final class _Tally {
   final DateTime _since;
   final bool _everything;
 
+  /// The window, for the walks that can ask the database about it directly
+  /// instead of reading everything and discarding most of it.
+  ///
+  /// [only] is null on a full run, which is what "no filter" means in the
+  /// queries below.
+  DateTime? get only => _everything ? null : _since;
+
   /// When these entries joined the queue — which is now, and is not the
   /// envelope's `updatedAtUtc`, which is when the thing it describes actually
   /// happened. Coalescing compares the latter; only ordering uses this.
@@ -696,6 +833,13 @@ final class _Tally {
 
   final Map<SyncEntityType, int> _enqueued;
   final Map<SyncEntityType, int> _skipped;
+  final Map<SyncEntityType, Set<String>> skippedFields =
+      <SyncEntityType, Set<String>>{};
+
+  void _skip(SyncEntityType type, String field) {
+    _skipped[type] = (_skipped[type] ?? 0) + 1;
+    skippedFields.putIfAbsent(type, () => <String>{}).add(field);
+  }
 
   /// Whether a row that last changed at [changedAtUtc] is in this run's window.
   ///
@@ -721,13 +865,25 @@ final class _Tally {
     final SyncEnvelope envelope;
     try {
       envelope = build();
-    } on ArgumentError {
+    } on ArgumentError catch (error) {
       // A row today's invariants refuse. Counted and left behind rather than
-      // allowed to abort a history that is otherwise fine.
-      _skipped[type] = (_skipped[type] ?? 0) + 1;
+      // allowed to abort a history that is otherwise fine. The field's *name*
+      // is kept — never its value, which is the owner's data.
+      _skip(type, error.name ?? 'unnamed');
       return;
-    } on Exception {
-      _skipped[type] = (_skipped[type] ?? 0) + 1;
+    } on Exception catch (error) {
+      // The payload types raise their own exceptions, each carrying a category
+      // rather than a payload. Anything else is recorded as its type alone.
+      _skip(type, switch (error) {
+        final PrayerSessionPayloadException reason => reason.reason,
+        final PrayerRoutinePayloadException reason => reason.reason,
+        final RotationSchemePayloadException reason => reason.reason,
+        final MasteredSurahPayloadException reason => reason.reason,
+        final LearningPayloadException reason => reason.reason,
+        final JournalPayloadException reason => reason.reason,
+        final AppSettingPayloadException reason => reason.reason,
+        _ => error.runtimeType.toString(),
+      });
       return;
     }
     await _outbox.enqueue(envelope, nowUtc: _nowUtc);

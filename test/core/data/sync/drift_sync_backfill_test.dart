@@ -396,6 +396,67 @@ void main() {
       );
     });
 
+    test(
+      'an undated prayer session is not refused by its own envelope',
+      () async {
+        // Found by the skipped counter, which is what it is for. An envelope
+        // refuses an `updatedAtUtc` earlier than its `createdAtUtc`, and a
+        // session's `createdAtUtc` is the moment the prayer began — a real past
+        // moment, unlike every other versioned entity here. Stamping an undated
+        // session at the epoch therefore contradicted it, and *every* session on
+        // a device that upgraded to v10 would have been left behind: v10
+        // backfilled nothing.
+        final routines = PrayerRoutineRepository(database);
+        final fajr = await routines.getTemplate(PrayerType.fajr);
+        await routines.replaceTemplate(
+          prayerType: PrayerType.fajr,
+          expectedRevision: fajr.revision,
+          displayName: fajr.displayName,
+          enabled: true,
+          parts: <PrayerRoutinePartTemplate>[
+            PrayerRoutinePartTemplate(
+              id: 'fajr-fard',
+              stableKey: 'fard',
+              orderIndex: 0,
+              kind: PrayerRoutinePartKind.fard,
+              rakaatCount: 2,
+              requiredSurahSlots: 2,
+            ),
+          ],
+        );
+        final session = (await routines.ensureCurrentSession(
+          context: PrayerContext(prayerType: PrayerType.fajr),
+          localDate: localDate,
+          startedAtUtc: now,
+        ))!;
+        // Exactly what an upgraded device holds: a real session with no date.
+        await (database.update(
+          database.prayerSessions,
+        )..where((row) => row.id.equals(session.session.id))).write(
+          const PrayerSessionsCompanion(updatedAtUtc: Value<DateTime?>(null)),
+        );
+
+        final report = await backfill.enqueueEverything(nowUtc: now);
+
+        expect(
+          report.skippedFields[SyncEntityType.prayerSession],
+          isNull,
+          reason: 'a session the owner really prayed has to reach his account',
+        );
+        expect(report.enqueuedByType[SyncEntityType.prayerSession], 1);
+        final envelope = (await queuedOfType(
+          SyncEntityType.prayerSession,
+        )).single;
+        expect(
+          envelope.updatedAtUtc,
+          now,
+          reason:
+              'raised to when the prayer began, which is the earliest it could '
+              'honestly have changed — and still loses to any later edit',
+        );
+      },
+    );
+
     test('a routine travels with its parts', () async {
       final routines = PrayerRoutineRepository(database);
       final witr = await routines.getTemplate(PrayerType.witr);
@@ -614,6 +675,74 @@ void main() {
             'a row with no date has not changed since the v10 upgrade — if it '
             'had, it would have one — and offering it every cycle would be a '
             'queue that never empties',
+      );
+    });
+
+    test('completing a part makes its session travel', () async {
+      // The one entity whose change can be entirely in a child row. Filling the
+      // last slot of a part writes `prayer_session_parts.completed_at_utc` and
+      // never touches the session, so a scan that looked only at the parent
+      // would miss the most common change this app makes.
+      await addSurah('surah-a', 112);
+      final routines = PrayerRoutineRepository(database);
+      // A prayer ships with an empty routine, and an empty routine has no
+      // session to create.
+      final fajr = await routines.getTemplate(PrayerType.fajr);
+      await routines.replaceTemplate(
+        prayerType: PrayerType.fajr,
+        expectedRevision: fajr.revision,
+        displayName: fajr.displayName,
+        enabled: true,
+        parts: <PrayerRoutinePartTemplate>[
+          PrayerRoutinePartTemplate(
+            id: 'fajr-fard',
+            stableKey: 'fard',
+            orderIndex: 0,
+            kind: PrayerRoutinePartKind.fard,
+            rakaatCount: 2,
+            requiredSurahSlots: 2,
+          ),
+        ],
+      );
+      final session = (await routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.fajr),
+        localDate: localDate,
+        startedAtUtc: now,
+      ))!;
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      final wall = DateTime.now().toUtc();
+      final watermark = DateTime.fromMillisecondsSinceEpoch(
+        (wall.millisecondsSinceEpoch ~/ 1000) * 1000,
+        isUtc: true,
+      );
+
+      // The part completes; the session row is untouched.
+      await (database.update(
+        database.prayerSessionParts,
+      )..where((row) => row.id.equals(session.parts.first.part.id))).write(
+        PrayerSessionPartsCompanion(
+          completedAtUtc: Value<DateTime>(
+            watermark.add(const Duration(seconds: 1)),
+          ),
+        ),
+      );
+
+      final report = await backfill.enqueueChangedSince(
+        nowUtc: watermark,
+        since: watermark,
+      );
+
+      expect(
+        report.skippedFields[SyncEntityType.prayerSession],
+        isNull,
+        reason: 'the session has to be expressible before it can travel',
+      );
+      expect(
+        report.enqueuedByType[SyncEntityType.prayerSession],
+        1,
+        reason:
+            'the account has to learn that the slot was filled, and nothing '
+            'about the session row says so',
       );
     });
 

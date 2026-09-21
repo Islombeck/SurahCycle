@@ -553,10 +553,29 @@ final class RecitationRepository {
     LocalDate? from,
     LocalDate? through,
     bool includeDeleted = false,
+    DateTime? changedSince,
   }) async {
     if (limit <= 0) throw ArgumentError.value(limit, 'limit');
     if (offset < 0) throw ArgumentError.value(offset, 'offset');
+    if (changedSince != null && !changedSince.isUtc) {
+      throw ArgumentError.value(changedSince, 'changedSince', 'Must be UTC.');
+    }
     final query = database.select(database.recitationEvents);
+    if (changedSince != null) {
+      // Written **or** withdrawn at or after this moment. Both columns matter:
+      // a withdrawal is an edit to a row whose creation time has not moved, so
+      // asking only about `created_at_utc` would miss every deletion.
+      //
+      // Added for the sync scan, which runs on every app resume. Reading the
+      // whole journal and discarding most of it in Dart worked and did not
+      // scale: this is the one caller that asks "what is new" rather than
+      // "what is there".
+      query.where(
+        (RecitationEvents row) =>
+            row.createdAtUtc.isBiggerOrEqualValue(changedSince) |
+            row.deletedAtUtc.isBiggerOrEqualValue(changedSince),
+      );
+    }
     if (!includeDeleted) {
       // Off by default, and every counting caller leaves it off: a deleted
       // entry must never reach statistics, the rotation balance or the set of
