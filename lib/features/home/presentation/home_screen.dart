@@ -1383,9 +1383,28 @@ final class _PrayerOccurrenceSheetState extends State<_PrayerOccurrenceSheet> {
         PrayerRegistrationShortcutStatus.missingSchedule,
       );
     }
-    return PrayerRegistrationShortcutResolver(widget.timeProvider).resolveNow(
-      currentResolution: today.resolveAutomaticContext(widget.timeProvider),
-      utcOffsetMinutes: today.day.utcOffsetMinutes,
+    final resolved = PrayerRegistrationShortcutResolver(widget.timeProvider)
+        .resolveNow(
+          currentResolution: today.resolveAutomaticContext(widget.timeProvider),
+          utcOffsetMinutes: today.day.utcOffsetMinutes,
+        );
+    final selection = resolved.selection;
+    if (selection == null ||
+        selection.prayerContext == widget.currentPrayerContext) {
+      return resolved;
+    }
+    // The schedule alone still says Иша after the Иша → Витр transition, and
+    // the mark will use what Home resolved. Tapping «сейчас» here would have
+    // switched the shown prayer back to Иша while the record still went to
+    // Витр — the same disagreement that made marking Витр impossible at all.
+    // The resolver still decides *whether* "now" is available and on which
+    // day; only the prayer it names comes from Home.
+    return PrayerRegistrationShortcutResult.resolved(
+      PrayerRegistrationSelection(
+        shortcut: selection.shortcut,
+        occurrenceLocalDate: selection.occurrenceLocalDate,
+        prayerContext: widget.currentPrayerContext,
+      ),
     );
   }
 

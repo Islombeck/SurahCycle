@@ -138,6 +138,59 @@ void main() {
       await _disposeWidgetTree(tester);
     });
 
+    testWidgets('the coverage sheet names Witr under «now» too', (
+      tester,
+    ) async {
+      // The sheet opens on Витр correctly; the «сейчас» shortcut resolved its
+      // prayer from the schedule and so said Иша. Tapping it swapped the shown
+      // prayer back while the record still went to Витр.
+      _sizePhone(tester);
+      await fixture.seedOwnersRoutines();
+      await fixture.addSurah('surah-a', 112);
+      await fixture.completeIsha();
+
+      await fixture.pumpWithRealSchedule(tester);
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('advanced-mark-surah-surah-a')),
+      );
+      await _pumpFrames(tester, 40);
+      // The shortcuts live in a second sheet, reached from the coverage sheet.
+      await tester.tap(
+        find.byKey(const ValueKey<String>('select-registration-occurrence')),
+      );
+      await _pumpFrames(tester, 40);
+      expect(
+        find.byKey(const ValueKey<String>('registration-now')),
+        findsOneWidget,
+        reason: 'the occurrence sheet is open',
+      );
+
+      await tester.tap(find.byKey(const ValueKey<String>('registration-now')));
+      await _pumpFrames(tester, 20);
+
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.byKey(const ValueKey<String>('registration-prayer-witr')),
+            )
+            .selected,
+        isTrue,
+        reason: '«сейчас» means the prayer Home resolved, which is Витр',
+      );
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.byKey(const ValueKey<String>('registration-prayer-isha')),
+            )
+            .selected,
+        isFalse,
+        reason: 'and never the one the schedule alone would name',
+      );
+
+      await _disposeWidgetTree(tester);
+    });
+
     testWidgets('after local midnight the automatic context reaches Witr', (
       tester,
     ) async {
