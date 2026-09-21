@@ -78,6 +78,22 @@ void main() {
           'nothing but the backfill can send history written before the '
           'account existed',
     );
+    // Stated as a number rather than only as "the same as hers". Two zeros are
+    // also the same, and an assertion that a device which received nothing
+    // agrees with one that has everything is no assertion at all.
+    expect(
+      await alice.scoreOf('surah-a'),
+      1,
+      reason: 'she recited it once, so her standing says one',
+    );
+    expect(
+      await bob.scoreOf('surah-a'),
+      1,
+      reason:
+          'the standing is derived, not carried, so the two must compute the '
+          'same answer — a device that took the history and never rebuilt its '
+          'projection would show a rotation that disagrees with its own journal',
+    );
   });
 
   test(
@@ -95,6 +111,11 @@ void main() {
       await bob.sync();
 
       expect(await bob.recitationIds(), <String>{'later'});
+      expect(
+        await bob.scoreOf('surah-a'),
+        await alice.scoreOf('surah-a'),
+        reason: 'and it counts toward his rotation as it does toward hers',
+      );
     },
   );
 
@@ -114,6 +135,14 @@ void main() {
       await bob.recitationIds(),
       isEmpty,
       reason: 'a tombstone is how a deletion reaches a device that was away',
+    );
+    expect(
+      await bob.scoreOf('surah-a'),
+      await alice.scoreOf('surah-a'),
+      reason:
+          'a withdrawal lowers the standing exactly as writing it raised it, '
+          'and a device that marked the row gone without rebuilding would go '
+          'on counting a recitation that no longer exists',
     );
 
     // And a later cycle must not resurrect it: the record is still in the
@@ -311,6 +340,17 @@ final class _Device {
   Future<Set<String>> recitationIds() async {
     final history = await recitations.getHistory(limit: 1000);
     return <String>{for (final entry in history) entry.event.id};
+  }
+
+  /// The rotation standing of one surah, as the screen would show it.
+  ///
+  /// Derived rather than carried: the projection is rebuilt from the journal
+  /// on each side, which is the point — two devices holding the same history
+  /// must compute the same standing, and a device that received the history
+  /// but never rebuilt would quietly disagree.
+  Future<int> scoreOf(String surahId) async {
+    final snapshot = await surahs.getRotationSnapshot();
+    return snapshot.surahById(surahId).rotationScheme.parts.first.rotationScore;
   }
 
   /// The owner says yes to the merge, and the first cycle carries the history.

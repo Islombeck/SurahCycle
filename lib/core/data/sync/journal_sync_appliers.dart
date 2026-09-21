@@ -15,11 +15,17 @@ import '../database/app_database.dart';
 import '../repositories/rotation_projection_store.dart';
 
 final class RotationAdjustmentSyncApplier {
-  RotationAdjustmentSyncApplier(this._database)
-    : _projection = RotationProjectionStore(_database);
+  RotationAdjustmentSyncApplier(
+    this._database, {
+    this.rebuildsProjection = true,
+  }) : _projection = RotationProjectionStore(_database);
 
   final AppDatabase _database;
   final RotationProjectionStore _projection;
+
+  /// Whether this applier rebuilds the rotation projection itself. See
+  /// [RecitationSyncApplier.rebuildsProjection] — the router batches a page.
+  final bool rebuildsProjection;
 
   bool handles(SyncEnvelope envelope) =>
       envelope.entityType == RotationAdjustmentSyncPayload.entityType;
@@ -107,6 +113,7 @@ final class RotationAdjustmentSyncApplier {
   }
 
   Future<void> _rebuild() async {
+    if (!rebuildsProjection) return;
     final state = await _projection.loadSnapshot();
     await _projection.rebuildFromJournal(targetFloor: state.rotationTarget);
   }

@@ -22,11 +22,21 @@ import '../database/app_database.dart';
 import '../repositories/rotation_projection_store.dart';
 
 final class RecitationSyncApplier {
-  RecitationSyncApplier(this._database)
+  RecitationSyncApplier(this._database, {this.rebuildsProjection = true})
     : _projection = RotationProjectionStore(_database);
 
   final AppDatabase _database;
   final RotationProjectionStore _projection;
+
+  /// Whether this applier rebuilds the rotation projection itself.
+  ///
+  /// True by default, because an applier used on its own has to leave the
+  /// device consistent. `SyncEnvelopeRouter` sets it false and rebuilds once
+  /// for a whole page: the rebuild reads the entire journal, so doing it per
+  /// envelope is quadratic — applying a real history of nine hundred records
+  /// took seventeen seconds before this, all of it inside transactions where
+  /// the app would simply appear to have stopped.
+  final bool rebuildsProjection;
 
   /// Whether this applier handles [envelope].
   bool handles(SyncEnvelope envelope) =>
@@ -60,6 +70,11 @@ final class RecitationSyncApplier {
         deletedAtUtc: Value<DateTime?>(envelope.updatedAtUtc),
       ),
     );
+    // A withdrawal lowers the surah's standing exactly as writing it raised it,
+    // and this did not rebuild. The score stayed where the recitation had put
+    // it until something unrelated happened to rebuild, so a recitation undone
+    // on another phone went on counting here.
+    await _rebuild();
   }
 
   Future<void> _applyUpsert(SyncEnvelope envelope) async {
@@ -84,9 +99,14 @@ final class RecitationSyncApplier {
       await _update(event, existing);
     }
     await _replaceCoverage(event, schemeId);
-    // Rebuilt from the journal rather than adjusted by hand, for the same
-    // reason a restore rebuilds: a second implementation of the rotation rules
-    // is free to disagree with the first.
+    await _rebuild();
+  }
+
+  /// Rebuilt from the journal rather than adjusted by hand, for the same reason
+  /// a restore rebuilds: a second implementation of the rotation rules is free
+  /// to disagree with the first.
+  Future<void> _rebuild() async {
+    if (!rebuildsProjection) return;
     final state = await _projection.loadSnapshot();
     await _projection.rebuildFromJournal(targetFloor: state.rotationTarget);
   }

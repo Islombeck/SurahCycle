@@ -23,6 +23,7 @@ library;
 import '../../sync/app_setting_sync_payload.dart';
 import '../../sync/sync.dart';
 import '../database/app_database.dart';
+import '../repositories/rotation_projection_store.dart';
 import 'app_setting_sync_applier.dart';
 import 'journal_sync_appliers.dart';
 import 'learning_sync_appliers.dart';
@@ -34,16 +35,30 @@ import 'rotation_scheme_sync_applier.dart';
 
 final class SyncEnvelopeRouter {
   SyncEnvelopeRouter(AppDatabase database)
-    : _roster = MasteredSurahSyncApplier(database),
-      _schemes = RotationSchemeSyncApplier(database),
+    : _projection = RotationProjectionStore(database),
+      _roster = MasteredSurahSyncApplier(database),
+      // The three that touch the rotation projection hand the rebuild to this
+      // router, which does it once for a whole page. Each rebuild reads the
+      // entire journal, so one per envelope is quadratic: a real history of
+      // nine hundred records took seventeen seconds that way, all of it inside
+      // transactions, where an app does not draw and a user sees a freeze.
+      _schemes = RotationSchemeSyncApplier(database, rebuildsProjection: false),
       _sessions = PrayerSessionSyncApplier(database),
       _routines = PrayerRoutineSyncApplier(database),
       _plans = LearningStateSyncApplier(database),
-      _recitations = RecitationSyncApplier(database),
-      _adjustments = RotationAdjustmentSyncApplier(database),
+      _recitations = RecitationSyncApplier(database, rebuildsProjection: false),
+      _adjustments = RotationAdjustmentSyncApplier(
+        database,
+        rebuildsProjection: false,
+      ),
       _recalls = RecallAttemptSyncApplier(database),
       _learningEvents = LearningEventSyncApplier(database),
       _settings = AppSettingSyncApplier(database);
+
+  final RotationProjectionStore _projection;
+
+  /// Whether anything applied since the last settle touched the rotation.
+  bool _rotationIsStale = false;
 
   final MasteredSurahSyncApplier _roster;
   final RotationSchemeSyncApplier _schemes;
@@ -107,8 +122,37 @@ final class SyncEnvelopeRouter {
     hasMore: page.hasMore,
   );
 
+  /// Rebuilds the rotation projection if anything applied since the last call
+  /// changed it, and does nothing otherwise.
+  ///
+  /// Call once after a page, inside the same transaction that applied it. A
+  /// page whose records left the rotation alone costs nothing here; one that
+  /// changed it pays for a single rebuild rather than one per record.
+  ///
+  /// It is the caller's job to call this. That is the price of batching, and
+  /// it is why the appliers still rebuild for themselves when used directly —
+  /// an applier on its own has to leave the device consistent.
+  Future<void> settleProjection() async {
+    if (!_rotationIsStale) return;
+    _rotationIsStale = false;
+    final state = await _projection.loadSnapshot();
+    await _projection.rebuildFromJournal(targetFloor: state.rotationTarget);
+  }
+
+  /// Whether applying [envelope] can change the rotation projection.
+  static bool _touchesRotation(SyncEnvelope envelope) =>
+      switch (envelope.entityType) {
+        SyncEntityType.recitationEvent ||
+        SyncEntityType.rotationAdjustment ||
+        SyncEntityType.rotationScheme ||
+        // A roster entry can create a scheme, which is a rotation change.
+        SyncEntityType.masteredSurah => true,
+        _ => false,
+      };
+
   /// Applies one envelope. Call inside a transaction.
   Future<void> apply(SyncEnvelope envelope) {
+    if (_touchesRotation(envelope)) _rotationIsStale = true;
     if (_roster.handles(envelope)) return _roster.apply(envelope);
     if (_schemes.handles(envelope)) return _schemes.apply(envelope);
     if (_sessions.handles(envelope)) return _sessions.apply(envelope);

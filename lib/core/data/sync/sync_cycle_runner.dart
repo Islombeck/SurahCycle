@@ -144,6 +144,8 @@ final class SyncCycleRunner implements SyncCycle {
           await _store.applyPulledPage(
             _router.ordered(page),
             apply: _router.apply,
+            // One rotation rebuild for the page rather than one per record.
+            afterAll: _router.settleProjection,
             nowUtc: _nowUtc().toUtc(),
           );
         },

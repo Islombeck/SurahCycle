@@ -112,6 +112,7 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
     SyncPullPage page, {
     required Future<void> Function(SyncEnvelope envelope) apply,
     required DateTime nowUtc,
+    Future<void> Function()? afterAll,
   }) {
     if (!nowUtc.isUtc) {
       throw ArgumentError.value(nowUtc, 'nowUtc', 'Must be UTC.');
@@ -120,6 +121,11 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
       for (final envelope in page.envelopes) {
         await apply(envelope);
       }
+      // Whatever the page as a whole implies — rebuilding a projection, say —
+      // done once, inside the same transaction, before the cursor moves. A
+      // rebuild after the commit could be interrupted and leave a cursor that
+      // says the page arrived and a projection that does not reflect it.
+      await afterAll?.call();
       await _database
           .into(_database.syncCursors)
           .insertOnConflictUpdate(

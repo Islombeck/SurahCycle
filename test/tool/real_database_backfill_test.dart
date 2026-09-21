@@ -131,6 +131,9 @@ void main() {
         refusals.add('${envelope.entityType.name}: $error');
       }
     }
+    // The router batches the rotation rebuild, so the caller settles it. A
+    // real pull does this once per page, inside the page's transaction.
+    await fresh.transaction(router.settleProjection);
 
     if (refusals.isNotEmpty) {
       // ignore: avoid_print
