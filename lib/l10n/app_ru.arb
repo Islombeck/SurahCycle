@@ -254,6 +254,9 @@
   ,"historyOccurrenceLabel": "Когда и в каком намазе прочитано"
   ,"historyCoverageLabel": "Прочитанный отрывок"
   ,"historyRakaatSpanExplanation": "Это только число ракаатов, которые заняло прочтение. Отдельные аяты не привязаны к конкретным ракаатам."
+  ,"partLabelOptional": "Название (необязательно)"
+  ,"routineNoQadaPart": "В этом намазе нет части вида «{kind}». Каза отмечает только обязательную часть, поэтому для каза здесь нечего будет отметить."
+  ,"@routineNoQadaPart": {"placeholders": {"kind": {"type": "String"}}}
   ,"historyShowDeleted": "Показать удалённые"
   ,"historyHideDeleted": "Скрыть удалённые"
   ,"historyDeletedAt": "Удалено {dateTime}"

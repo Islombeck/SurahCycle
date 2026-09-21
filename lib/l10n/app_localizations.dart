@@ -1480,6 +1480,18 @@ abstract class AppLocalizations {
   /// **'Это только число ракаатов, которые заняло прочтение. Отдельные аяты не привязаны к конкретным ракаатам.'**
   String get historyRakaatSpanExplanation;
 
+  /// No description provided for @partLabelOptional.
+  ///
+  /// In ru, this message translates to:
+  /// **'Название (необязательно)'**
+  String get partLabelOptional;
+
+  /// No description provided for @routineNoQadaPart.
+  ///
+  /// In ru, this message translates to:
+  /// **'В этом намазе нет части вида «{kind}». Каза отмечает только обязательную часть, поэтому для каза здесь нечего будет отметить.'**
+  String routineNoQadaPart(String kind);
+
   /// No description provided for @historyShowDeleted.
   ///
   /// In ru, this message translates to:

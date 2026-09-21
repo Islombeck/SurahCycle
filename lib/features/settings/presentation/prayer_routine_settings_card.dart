@@ -94,6 +94,34 @@ final class _PrayerRoutineSettingsCardState
                   ),
                 ),
         ),
+        if (_missingObligatoryPart(template))
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              key: const ValueKey<String>('routine-no-qada-part-warning'),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    context.l10n.routineNoQadaPart(
+                      _kindLabel(
+                        PrayerQadaPolicy.obligatoryPartKind(
+                          template.prayerType,
+                        )!,
+                      ),
+                    ),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
         if (template.parts.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -347,10 +375,22 @@ final class _PrayerRoutineSettingsCardState
     ),
   );
 
+  /// The owner's own name for the part if he gave it one, and the kind's name
+  /// otherwise — for every kind, not only `custom`.
   String _partLabel(PrayerRoutinePartTemplate part) =>
-      part.kind == PrayerRoutinePartKind.custom
-      ? part.customLabel!
-      : _kindLabel(part.kind);
+      part.customLabel ?? _kindLabel(part.kind);
+
+  /// Whether this prayer can be made up but has nothing carrying the
+  /// obligation.
+  ///
+  /// Silent until now, and the silence was the problem: a routine built only
+  /// from custom parts looks complete and works for an ordinary prayer, while
+  /// its Qada has nothing to show and never says why.
+  bool _missingObligatoryPart(PrayerRoutineTemplate template) {
+    final obligatory = PrayerQadaPolicy.obligatoryPartKind(template.prayerType);
+    if (obligatory == null) return false;
+    return !template.parts.any((part) => part.kind == obligatory);
+  }
 
   String _kindLabel(PrayerRoutinePartKind kind) => switch (kind) {
     PrayerRoutinePartKind.fard => context.l10n.partKindFard,
@@ -483,20 +523,30 @@ final class _PrayerRoutinePartDialogState
                   });
                 },
               ),
-              if (_kind == PrayerRoutinePartKind.custom) ...<Widget>[
-                const SizedBox(height: 12),
-                TextFormField(
-                  key: const ValueKey<String>('prayer-part-custom-label'),
-                  controller: _label,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.customPartLabel,
-                  ),
-                  textInputAction: TextInputAction.next,
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? context.l10n.customPartLabelRequired
-                      : null,
+              const SizedBox(height: 12),
+              // Offered for every kind, not only `custom`. It used to be
+              // custom-only, and that forced a choice with a consequence
+              // nobody could see: the owner wanted his Witr part called
+              // «Важиб», the only way to name a part was to make it custom,
+              // and a custom part is not the obligation of any prayer — so
+              // Qada for Witr silently had nothing to show. Naming a part and
+              // saying what it *is* are two different questions and are now
+              // asked separately.
+              TextFormField(
+                key: const ValueKey<String>('prayer-part-custom-label'),
+                controller: _label,
+                decoration: InputDecoration(
+                  labelText: _kind == PrayerRoutinePartKind.custom
+                      ? context.l10n.customPartLabel
+                      : context.l10n.partLabelOptional,
                 ),
-              ],
+                textInputAction: TextInputAction.next,
+                validator: (value) =>
+                    _kind == PrayerRoutinePartKind.custom &&
+                        (value == null || value.trim().isEmpty)
+                    ? context.l10n.customPartLabelRequired
+                    : null,
+              ),
               const SizedBox(height: 12),
               TextFormField(
                 key: const ValueKey<String>('prayer-part-rakaat-count'),
@@ -564,9 +614,8 @@ final class _PrayerRoutinePartDialogState
         stableKey: widget.initial.stableKey,
         orderIndex: widget.initial.orderIndex,
         kind: _kind,
-        customLabel: _kind == PrayerRoutinePartKind.custom
-            ? _label.text.trim()
-            : null,
+        // An empty field means "no name of its own", not an empty name.
+        customLabel: _label.text.trim().isEmpty ? null : _label.text.trim(),
         rakaatCount: int.parse(_rakaat.text),
         requiredSurahSlots: int.parse(_slots.text),
         allowsFollowingImam: _allowsFollowingImam,

@@ -248,6 +248,9 @@
   ,"historyOccurrenceLabel": "Recited during"
   ,"historyCoverageLabel": "Recited passage"
   ,"historyRakaatSpanExplanation": "This is only the number of rakaats spanned by the recitation. Individual ayahs are not mapped to specific rakaats."
+  ,"partLabelOptional": "Name (optional)"
+  ,"routineNoQadaPart": "This prayer has no part of kind \"{kind}\". A make-up records only the obligatory part, so there would be nothing to mark for Qada here."
+  ,"@routineNoQadaPart": {"placeholders": {"kind": {"type": "String"}}}
   ,"historyShowDeleted": "Show deleted"
   ,"historyHideDeleted": "Hide deleted"
   ,"historyDeletedAt": "Deleted {dateTime}"

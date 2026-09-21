@@ -196,6 +196,72 @@ at all. Qada can now say its original day is unknown (schema v8).
    below for the exact recipe; do not re-run `/mcp` → Authenticate, which
    cannot work.
 
+## Owner report 2026-09-21 — Witr: one defect fixed, one not reproduced
+
+### «Важиб для Витр не появляется как каза» — fixed, and it was the app's fault
+
+**The cause, read off his device rather than guessed.** His Witr routine holds
+exactly one part: `kind=custom`, label «Важиб», 3 rakaat, 3 slots. A Qada
+context keeps only the part carrying that prayer's obligation
+(`PrayerQadaPolicy.obligatoryPartKind(witr) == witr`), a `custom` part is not
+one, so `ensureCurrentSession` found no eligible parts and returned **null** —
+and a Qada Witr had nothing to mark. Silently.
+
+**It was not a misconfiguration.** The editor kept `customLabel` only when the
+kind was `custom`, and `_partLabel` displayed it only for `custom`. So the only
+way to have a part *called* «Важиб» was to make it custom — the app forced the
+choice, and the choice disabled Qada with no warning anywhere.
+
+Two changes, neither touching the Qada rule itself:
+
+- **A name is offered for every kind.** Naming a part and saying what it *is*
+  are different questions and are now asked separately. He can set
+  `kind: witr, label: «Важиб»` and keep his own word for it.
+- **The routine editor warns** when a prayer that supports Qada has no part
+  carrying its obligation (`routine-no-qada-part-warning`). The silence was the
+  real defect: such a routine looks complete and works for an ordinary prayer
+  while its Qada has nothing to show.
+
+A test reproduces his exact configuration (custom → `null` session) and then the
+fix (witr + label → one part, 3 slots, still called «Важиб»). Another pins that
+the rule did not loosen: a Sunnah **named** «Сунна» is still never made up.
+
+**His existing routine is unchanged and still `custom`.** Changing the kind of a
+part he configured is his decision, not one to make silently on his behalf — the
+warning now tells him, and it is one edit.
+
+### «Витр не отмечается при автовыборе» — could not reproduce; one precise question
+
+`test/app/witr_marking_after_isha_test.dart` builds his actual routines — Isha
+as Fard + Sunnah, Witr as the single «Важиб» part — and drives the real provider
+graph. Three results:
+
+1. automatic + Isha **fully** finished → context becomes Witr and
+   `routineMarkingEnabled` is **true**. The Witr session is created on demand
+   with three free slots.
+2. automatic + only the Isha **Fard** finished → context stays Isha, marking
+   stays possible, and a surah marked then belongs to **Isha**, not Witr —
+   because Home advances only when the whole Isha is done, Sunnah included.
+3. **manual** + Isha fully finished → context stays Isha and marking is
+   **disabled**. Nothing can be marked until another prayer is picked by hand.
+
+**Result 3 is the reported symptom exactly**, and it comes from this session's
+earlier change: a hand-picked prayer never advances on its own, which the owner
+asked for after being thrown from Иша to Витр. The cost is that a finished
+hand-picked prayer is a dead end with no hint.
+
+So either his context was manual when it happened — the prayer card would have
+read «Вручную», not «Автоматически» — or something the tests do not model is at
+work. **The question to put to him: what did the card say at that moment?** Not
+changing the transition again on a guess; he asked for that behaviour explicitly
+and it is working as agreed.
+
+If it was manual, the fix is a hint rather than a behaviour change: a finished
+hand-picked prayer should say it is finished and offer the next prayer, instead
+of looking like everything is already marked.
+
+7 tests, full suite **1140/1140**, analyzer clean.
+
 ## Stage J §6.2 — APPLIED, 2026-09-18. The cloud shape exists
 
 The dry run was re-run first (§H.5), then both operations were executed through

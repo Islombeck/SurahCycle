@@ -808,6 +808,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'This is only the number of rakaats spanned by the recitation. Individual ayahs are not mapped to specific rakaats.';
 
   @override
+  String get partLabelOptional => 'Name (optional)';
+
+  @override
+  String routineNoQadaPart(String kind) {
+    return 'This prayer has no part of kind \"$kind\". A make-up records only the obligatory part, so there would be nothing to mark for Qada here.';
+  }
+
+  @override
   String get historyShowDeleted => 'Show deleted';
 
   @override

@@ -808,6 +808,14 @@ class AppLocalizationsRu extends AppLocalizations {
       'Это только число ракаатов, которые заняло прочтение. Отдельные аяты не привязаны к конкретным ракаатам.';
 
   @override
+  String get partLabelOptional => 'Название (необязательно)';
+
+  @override
+  String routineNoQadaPart(String kind) {
+    return 'В этом намазе нет части вида «$kind». Каза отмечает только обязательную часть, поэтому для каза здесь нечего будет отметить.';
+  }
+
+  @override
   String get historyShowDeleted => 'Показать удалённые';
 
   @override

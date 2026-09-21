@@ -810,6 +810,14 @@ class AppLocalizationsUz extends AppLocalizations {
       'Bu faqat qiroat qamrab olgan rakaatlar soni. Oyatlar alohida rakaatlarga bog‘lanmagan.';
 
   @override
+  String get partLabelOptional => 'Nomi (ixtiyoriy)';
+
+  @override
+  String routineNoQadaPart(String kind) {
+    return 'Bu namozda «$kind» turidagi qism yo‘q. Qazo faqat farz qismini belgilaydi, shuning uchun bu yerda qazo uchun belgilaydigan narsa bo‘lmaydi.';
+  }
+
+  @override
   String get historyShowDeleted => 'O‘chirilganlarni ko‘rsatish';
 
   @override
