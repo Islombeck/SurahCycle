@@ -154,9 +154,38 @@ void main() {
       reason: 'an unnamed part still shows as its kind rather than as blank',
     );
     expect(
+      session.parts.single.part.customName,
+      isNull,
+      reason:
+          'and the screen is told there is no name of its own, so it shows the '
+          'kind rather than the word «witr»',
+    );
+    expect(
       (await routines.getTemplate(PrayerType.witr)).parts.single.customLabel,
       isNull,
       reason: 'absence is stored as absence, not as an empty string',
+    );
+  });
+
+  test('a named part keeps its name once it is no longer custom', () async {
+    // What the owner actually did on 2026-09-21, on my prompting: he kept the
+    // name «Важиб» and changed the kind to witr so that Qada would work. The
+    // screen showed «Витр» from that moment on, because it printed the stored
+    // name only for a custom part — the same asymmetry the editor had, in the
+    // one place that had not been fixed with it.
+    await setWitrPart(kind: PrayerRoutinePartKind.witr, label: 'Важиб');
+
+    final session = await sessionFor(isQada: true);
+
+    expect(
+      session!.parts.single.part.customName,
+      'Важиб',
+      reason: 'his word for it survives the change of kind',
+    );
+    expect(
+      session.parts.single.part.kind,
+      PrayerRoutinePartKind.witr,
+      reason: 'and it is genuinely a Witr part now, which is why Qada works',
     );
   });
 }

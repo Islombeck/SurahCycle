@@ -221,11 +221,37 @@ analyzer is clean; an installed APK is not acceptance. What needs his eyes: afte
 finishing Иша, that the card moves to Витр **and** that a surah can now actually
 be marked without «Порядок намаза завершён».
 
-**Still his decision, not mine:** his Витр part is kind `custom` named «Важиб»,
-which is why a Qada Витр still keeps no part (that is the first fix's warning,
-not a defect). Changing its kind to `witr` — keeping the same name, which the
-editor now allows — would make Qada Витр work. It is one edit in the routine
-editor and it is his to make; I have not touched his routine.
+**His Витр part is now kind `witr`, still named «Важиб» — and he asked for it.**
+He confirmed Qada Витр was still empty and said «делай что необходимо», so the
+change was made **through the routine editor on his phone over ADB**, not by
+writing to the database. Verified after the fact: `kind=witr`,
+`custom_label=Важиб`, 3 rakaat, 3 slots, template revision 2 → 3, and nothing
+else in the routine changed. Home immediately showed the Qada Витр card with
+«Слоты для сур: 0/3», where before there was no card at all. The new
+`routine-no-qada-part-warning` row was visible on his screen beforehand and is
+gone now — the first fix doing its job on real data. A copy of the database
+before the edit is in the scratchpad as `murajaah_user_before_witr_kind.sqlite`.
+
+**And that change immediately exposed a third defect, found on his screen:** the
+routine card on Home then called the part «Витр», not «Важиб». `_sessionPartLabel`
+printed the stored name only when the kind was `custom` and substituted the
+kind's localized name otherwise — the *same* asymmetry the first fix removed
+from the routine editor, left behind in the two places that render a session
+part: Home's card and `WidgetLocalization.prayerRoutineProjection`. So the
+moment his part stopped being custom, his own word for it disappeared.
+
+The rule now lives on the domain object as `PrayerSessionPart.customName`, which
+is null exactly when the stored label is the `kind.name` placeholder that
+`PrayerRoutinePartTemplate.displayLabel` writes for an unnamed part. Both
+renderers ask it and fall back to the localized kind. Pinned in
+`test/core/data/witr_qada_part_test.dart`.
+
+**Worth noticing as a pattern:** all three defects this session were one idea —
+something answered a question with what it could compute instead of what the
+owner had said, and a second place disagreed with the first. Naming vs kind in
+the editor, schedule vs resolved context on a tap, kind vs stored name on the
+card. When touching this area, look for the *other* place that answers the same
+question.
 
 ## §E and §F are done; what is left
 

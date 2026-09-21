@@ -1056,15 +1056,14 @@ final class _PrayerRoutinePartTile extends StatelessWidget {
 }
 
 String _sessionPartLabel(BuildContext context, PrayerSessionPart part) =>
-    part.kind == PrayerRoutinePartKind.custom
-    ? part.label
-    : switch (part.kind) {
-        PrayerRoutinePartKind.fard => context.l10n.partKindFard,
-        PrayerRoutinePartKind.sunnah => context.l10n.partKindSunnah,
-        PrayerRoutinePartKind.witr => context.l10n.partKindWitr,
-        PrayerRoutinePartKind.nafl => context.l10n.partKindNafl,
-        PrayerRoutinePartKind.custom => part.label,
-      };
+    part.customName ??
+    switch (part.kind) {
+      PrayerRoutinePartKind.fard => context.l10n.partKindFard,
+      PrayerRoutinePartKind.sunnah => context.l10n.partKindSunnah,
+      PrayerRoutinePartKind.witr => context.l10n.partKindWitr,
+      PrayerRoutinePartKind.nafl => context.l10n.partKindNafl,
+      PrayerRoutinePartKind.custom => part.label,
+    };
 
 final class _RecitationSelection {
   const _RecitationSelection({

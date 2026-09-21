@@ -202,4 +202,16 @@ final class PrayerSessionPart {
   bool get isCompleted => completedAtUtc != null;
   bool get wasFollowedImam =>
       isCompleted && completionMode == PrayerPartCompletionMode.followedImam;
+
+  /// The name its owner gave this part, or null when it has none of its own.
+  ///
+  /// A part without a name stores its kind's enum name as a placeholder — see
+  /// [PrayerRoutinePartTemplate.displayLabel] — and `fard` or `witr` is not a
+  /// word to show anyone. Callers substitute the kind's localized name.
+  ///
+  /// The name is shown for every kind, not only `custom`. Showing it only for
+  /// `custom` is what made the owner's «Важиб» vanish from Home the moment his
+  /// part stopped being custom, and naming a part is a different question from
+  /// saying what it is.
+  String? get customName => label == kind.name ? null : label;
 }

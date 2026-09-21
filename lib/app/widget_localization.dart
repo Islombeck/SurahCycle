@@ -66,15 +66,15 @@ final class WidgetLocalization {
     if (snapshot == null || snapshot.parts.isEmpty) return null;
     final current = snapshot.currentPart;
     final progress = current ?? snapshot.parts.last;
-    final partLabel = progress.part.kind == PrayerRoutinePartKind.custom
-        ? progress.part.label
-        : switch (progress.part.kind) {
-            PrayerRoutinePartKind.fard => l10n.partKindFard,
-            PrayerRoutinePartKind.sunnah => l10n.partKindSunnah,
-            PrayerRoutinePartKind.witr => l10n.partKindWitr,
-            PrayerRoutinePartKind.nafl => l10n.partKindNafl,
-            PrayerRoutinePartKind.custom => progress.part.label,
-          };
+    final partLabel =
+        progress.part.customName ??
+        switch (progress.part.kind) {
+          PrayerRoutinePartKind.fard => l10n.partKindFard,
+          PrayerRoutinePartKind.sunnah => l10n.partKindSunnah,
+          PrayerRoutinePartKind.witr => l10n.partKindWitr,
+          PrayerRoutinePartKind.nafl => l10n.partKindNafl,
+          PrayerRoutinePartKind.custom => progress.part.label,
+        };
     return RotationWidgetPrayerPartProjection(
       prayerSessionId: snapshot.session.id,
       prayerSessionPartId: progress.part.id,
