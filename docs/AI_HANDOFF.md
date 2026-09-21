@@ -160,10 +160,43 @@ tapping is not. What needs his eyes:
 the template now has 14 parts.
 
 **The Иша → Витр transition is closed.** The owner said not to wait for the
-observation, so `_applyIshaToWitrTransition` now applies only to an
+observation, so `applyIshaToWitrTransition` now applies only to an
 automatically resolved context: a prayer he chose himself never moves on its
 own. The agreed automatic behaviour is unchanged, and both halves are pinned by
 `test/app/isha_to_witr_transition_test.dart`.
+
+**And the second half of it, reported 2026-09-21 and now fixed: «отметить Витр
+не получается при автовыборе».** Two functions answered "which prayer is this",
+and only one knew about the transition. The card and the routine card read
+`homePrayerContextResolutionProvider`, which applies it; `_resolvePrayerForAction`
+in `home_screen.dart` resolved the tap's prayer straight from the schedule
+(`PrayerDaySchedule.resolveAutomaticContext`) and so still said Иша. After a
+finished Иша the screen therefore showed Витр while every mark went to the full
+Иша session and came back as «Порядок намаза завершён» — which is what he
+described as «пишет, что все суры отмечены». Picking Витр by hand worked only
+because an override short-circuits that function earlier.
+
+The rule is now public (`applyIshaToWitrTransition`) and all three callers —
+Home's resolution provider, the widget lifecycle provider, and the tap — use it.
+The tap reads the Иша routine from the repository rather than from the provider:
+a tap must not depend on whether a stream has settled.
+
+How it was found, because the method matters more than the fix: the
+provider-level tests in `test/app/witr_marking_after_isha_test.dart` all passed,
+so the defect had to be in what they bypassed. Modelling **his** data was what
+closed it — his routines were read off the device
+(`tool/dump_user_db.dart`: Иша = Fard + Sunnah, Витр = one `custom` part named
+«Важиб», template `enabled=1`), and so were the hours he actually marks at
+(the Иша parts of 2026-09-21 completed at 00:29 local, Витр at 01:08 — he marks
+*after local midnight*). `test/widget/home_witr_after_isha_test.dart` pins both:
+a tap after a finished Иша records Витр and raises no
+`prayer-routine-unavailable-snackbar`, and crossing local midnight does not undo
+the transition. One caution that cost time: a schedule fixture stamped
+`fetchedAtUtc` **after** `now` resolves as `unreliableSchedule` (context null) —
+correct behaviour, but it looks exactly like a resolver bug.
+
+**Not yet confirmed by the owner on his phone.** 1144/1144 tests pass and the
+analyzer is clean; that is not acceptance.
 
 ## §E and §F are done; what is left
 

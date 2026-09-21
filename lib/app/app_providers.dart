@@ -947,7 +947,7 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
       : null;
   final widgetPrayerResolution = rawWidgetPrayerResolution == null
       ? null
-      : _applyIshaToWitrTransition(
+      : applyIshaToWitrTransition(
           rawWidgetPrayerResolution,
           ishaRoutine: ishaRoutineForTransition,
           witrTemplate: witrTemplateForTransition,
@@ -1149,7 +1149,13 @@ final prayerContextResolutionProvider = StreamProvider<PrayerContextResolution>(
 /// configured Witr — never for Qada Isha, never by inventing a Witr time or
 /// event. It is a pure function of already-resolved data (not a mutation),
 /// which is what keeps re-opening the screen from repeating any transition.
-PrayerContextResolution _applyIshaToWitrTransition(
+///
+/// Public because Home has to apply the very same rule when a tap asks which
+/// prayer it belongs to. Resolving that from the schedule alone let the two
+/// answers disagree: the card and the routine card showed Витр while the mark
+/// went to the finished Иша and was refused with «Порядок намаза завершён».
+/// There is one rule, and everything that needs it calls this.
+PrayerContextResolution applyIshaToWitrTransition(
   PrayerContextResolution base, {
   required PrayerRoutineSessionSnapshot? ishaRoutine,
   required PrayerRoutineTemplate? witrTemplate,
@@ -1179,7 +1185,7 @@ PrayerContextResolution _applyIshaToWitrTransition(
 }
 
 /// Home's live recitation-attribution context: [prayerContextResolutionProvider]
-/// with [_applyIshaToWitrTransition] layered on top. Kept as a separate
+/// with [applyIshaToWitrTransition] layered on top. Kept as a separate
 /// provider (rather than folded into [prayerContextResolutionProvider]
 /// itself) so the base resolver's own extensive tests, several of which
 /// construct a bare [ProviderContainer] with a minimal override set, are not
@@ -1203,7 +1209,7 @@ final homePrayerContextResolutionProvider =
           .watch(prayerRoutineTemplateProvider(PrayerType.witr))
           .valueOrNull;
       return AsyncData<PrayerContextResolution>(
-        _applyIshaToWitrTransition(
+        applyIshaToWitrTransition(
           resolution!,
           ishaRoutine: ishaRoutine,
           witrTemplate: witrTemplate,

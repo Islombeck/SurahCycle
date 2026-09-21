@@ -273,7 +273,16 @@ prayer part) оба новых уровня тривиально совпада�
 part, включая followed-imam) и у пользователя включён и настроен (`enabled`,
 непустые parts) Witr template, `homePrayerContextResolutionProvider` (Home) и
 `widgetSyncLifecycleProvider` (widget) применяют один и тот же чистый
-`_applyIshaToWitrTransition` поверх уже разрешённого `PrayerContextResolution`.
+`applyIshaToWitrTransition` поверх уже разрешённого `PrayerContextResolution`.
+
+Третий вызывающий — `_resolvePrayerForAction` в Home: именно он отвечает на
+вопрос «какому намазу принадлежит это нажатие». Раньше он разрешал намаз прямо
+из расписания (`PrayerDaySchedule.resolveAutomaticContext`) и потому ничего не
+знал о переходе: карточка и routine card показывали Витр, а отметка уходила в
+завершённую Иша и отклонялась сообщением «Порядок намаза завершён». Правило
+одно, и все три места обязаны звать именно его. Routine для этой проверки
+читается из репозитория, а не из провайдера: нажатие не должно зависеть от
+того, успел ли устояться stream.
 
 Это не отдельный провайдер над `prayerContextResolutionProvider` — тот
 специально остаётся неизменным, так как его читают многие существующие тесты

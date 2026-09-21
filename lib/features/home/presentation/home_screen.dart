@@ -586,9 +586,43 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
       ref.read(timeProviderProvider),
     );
     final context = resolution.context;
-    return context == null
-        ? null
-        : _ActionPrayerContext(context: context, isAutomatic: true);
+    if (context == null) return null;
+    return _ActionPrayerContext(
+      context: await _withIshaToWitrTransition(context),
+      isAutomatic: true,
+    );
+  }
+
+  /// The prayer a mark is recorded against must be the prayer on screen.
+  ///
+  /// The card and the routine card read [homePrayerContextResolutionProvider],
+  /// which applies [applyIshaToWitrTransition]; the tap resolved its prayer
+  /// straight from the schedule and so never learned about the transition.
+  /// After a finished Иша the screen therefore said Витр while the mark went
+  /// to Иша, whose slots were all taken, and the owner was told «Порядок
+  /// намаза завершён» with no way forward but picking Витр by hand.
+  ///
+  /// The routine is read from the repository rather than from the provider on
+  /// purpose: a tap must not depend on whether a stream has settled yet. The
+  /// session it ensures is the same one the provider ensures for the same
+  /// prayer and day, so this adds no state of its own.
+  Future<PrayerContext> _withIshaToWitrTransition(PrayerContext context) async {
+    if (context.prayerType != PrayerType.isha || context.isQada) return context;
+    final repository = ref.read(prayerRoutineRepositoryProvider);
+    final ishaRoutine = await repository.ensureCurrentSession(
+      context: context,
+      localDate: ref.read(localDateProvider).today(),
+      startedAtUtc: ref.read(timeProviderProvider).nowUtc(),
+    );
+    return applyIshaToWitrTransition(
+          PrayerContextResolution(
+            status: PrayerContextResolutionStatus.automatic,
+            context: context,
+          ),
+          ishaRoutine: ishaRoutine,
+          witrTemplate: await repository.getTemplate(PrayerType.witr),
+        ).context ??
+        context;
   }
 
   Future<PrayerTimeSettings> _loadPrayerTimeSettings() async {
