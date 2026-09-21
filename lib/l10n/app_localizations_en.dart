@@ -1230,7 +1230,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountPreviewNoChoiceYet =>
-      'This is a report only. Nothing was sent or changed, and no choice is offered yet: the app cannot move data at all.';
+      'A report only: nothing has been sent or changed yet. The decision is below, and it is yours.';
 
   @override
   String get accountPreviewFailedTitle => 'No report';
@@ -1238,6 +1238,57 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get accountPreviewFailedBody =>
       'One of the two sides could not be read. Nothing was changed — try again later.';
+
+  @override
+  String get accountChooseMerge => 'Merge with the account';
+
+  @override
+  String get accountChooseKeepLocal => 'Keep this device local';
+
+  @override
+  String get accountMergeConfirmTitle => 'Merge with the account?';
+
+  @override
+  String accountMergeConfirmBody(String id) {
+    return 'This device\'s history will be queued for upload. Nothing local is deleted or overwritten. A backup already exists: $id';
+  }
+
+  @override
+  String get accountMergeConfirmAction => 'Merge';
+
+  @override
+  String get accountKeepLocalConfirmTitle => 'Keep this device local?';
+
+  @override
+  String get accountKeepLocalConfirmBody =>
+      'The account stays for signing in only. Nothing will be sent, and the upload queue will be cleared. You can revisit this later.';
+
+  @override
+  String get accountKeepLocalConfirmAction => 'Keep local';
+
+  @override
+  String get accountChoiceCancel => 'Cancel';
+
+  @override
+  String get accountMergedTitle => 'Merging is on';
+
+  @override
+  String get accountMergedBody =>
+      'The history is queued. It will upload once there is a network.';
+
+  @override
+  String get accountKeptLocalTitle => 'This device stays local';
+
+  @override
+  String get accountKeptLocalBody =>
+      'Nothing is sent. The account is used for signing in only.';
+
+  @override
+  String get accountChoiceFailedTitle => 'The decision was not applied';
+
+  @override
+  String get accountChoiceFailedBody =>
+      'Nothing changed and sync stayed off. Run the report again and answer once more.';
 
   @override
   String get accountUnavailableTitle => 'No cloud in this build';

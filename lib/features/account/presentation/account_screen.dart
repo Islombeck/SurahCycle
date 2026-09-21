@@ -26,13 +26,16 @@ final class AccountScreen extends ConsumerStatefulWidget {
 final class _AccountScreenState extends ConsumerState<AccountScreen> {
   bool _busy = false;
 
-  /// The last preview, held only for display.
+  /// The last preview, and the question it poses.
   ///
-  /// Not persisted and not acted on: no choice is offered yet, because nothing
-  /// in the app moves data and a button whose effect the user cannot observe is
-  /// exactly the consent this architecture refuses to collect.
+  /// Held rather than persisted: it is bound to counts read at one moment, and
+  /// a preview that survived a restart would invite an answer to a question
+  /// about data that has since moved. Cleared as soon as it is answered.
   SyncMergePreview? _preview;
   bool _previewFailed = false;
+
+  /// What the last answer did, or null while none has been given.
+  _ActivationOutcome? _outcome;
 
   @override
   Widget build(BuildContext context) {
@@ -224,8 +227,134 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
             l10n.accountPreviewNoChoiceYet,
           ].join('\n'),
         ),
+        const SizedBox(height: 12),
+        // Both answers are offered as buttons of the same weight. Keeping the
+        // device local is a real decision, not a way of postponing the merge,
+        // and rendering it as a quiet link would say otherwise.
+        FilledButton.icon(
+          key: const ValueKey<String>('account-choose-merge'),
+          onPressed: _busy
+              ? null
+              : () => _answer(preview, SyncActivationChoice.merge),
+          icon: const Icon(Icons.merge_outlined),
+          label: Text(l10n.accountChooseMerge),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          key: const ValueKey<String>('account-choose-keep-local'),
+          onPressed: _busy
+              ? null
+              : () =>
+                    _answer(preview, SyncActivationChoice.keepDeviceLocalOnly),
+          icon: const Icon(Icons.phone_android_outlined),
+          label: Text(l10n.accountChooseKeepLocal),
+        ),
+      ],
+      if (_outcome case final outcome?) ...<Widget>[
+        const SizedBox(height: 12),
+        _StatusCard(
+          key: const ValueKey<String>('account-activation-outcome'),
+          title: switch (outcome) {
+            _ActivationOutcome.merged => l10n.accountMergedTitle,
+            _ActivationOutcome.keptLocal => l10n.accountKeptLocalTitle,
+            _ActivationOutcome.failed => l10n.accountChoiceFailedTitle,
+          },
+          body: switch (outcome) {
+            _ActivationOutcome.merged => l10n.accountMergedBody,
+            _ActivationOutcome.keptLocal => l10n.accountKeptLocalBody,
+            _ActivationOutcome.failed => l10n.accountChoiceFailedBody,
+          },
+          icon: switch (outcome) {
+            _ActivationOutcome.merged => Icons.cloud_done_outlined,
+            _ActivationOutcome.keptLocal => Icons.phone_android_outlined,
+            _ActivationOutcome.failed => Icons.error_outline,
+          },
+        ),
       ],
     ];
+  }
+
+  /// Confirms the choice, then applies it.
+  ///
+  /// The confirmation names the backup rather than only promising one: the
+  /// whole reason this gate exists is that a user cannot meaningfully agree to
+  /// something they cannot undo, and the backup is what makes it undoable.
+  Future<void> _answer(
+    SyncMergePreview preview,
+    SyncActivationChoice choice,
+  ) async {
+    final l10n = context.l10n;
+    final isMerge = choice == SyncActivationChoice.merge;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        key: const ValueKey<String>('account-activation-confirm'),
+        title: Text(
+          isMerge
+              ? l10n.accountMergeConfirmTitle
+              : l10n.accountKeepLocalConfirmTitle,
+        ),
+        content: Text(
+          isMerge
+              ? l10n.accountMergeConfirmBody(preview.backupId)
+              : l10n.accountKeepLocalConfirmBody,
+        ),
+        actions: <Widget>[
+          TextButton(
+            key: const ValueKey<String>('account-activation-cancel'),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.accountChoiceCancel),
+          ),
+          FilledButton(
+            key: const ValueKey<String>('account-activation-apply'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              isMerge
+                  ? l10n.accountMergeConfirmAction
+                  : l10n.accountKeepLocalConfirmAction,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final account = ref.read(currentAccountProvider).valueOrNull;
+    final coordinator = account == null
+        ? null
+        : ref.read(syncActivationProvider(account.userId));
+    if (coordinator == null) return;
+
+    setState(() => _busy = true);
+    try {
+      await coordinator.finishFirstSync(
+        previewToken: preview.token,
+        choice: choice,
+      );
+      if (!mounted) return;
+      setState(() {
+        // The question has been answered; leaving it on screen would invite a
+        // second answer that the coordinator would refuse anyway.
+        _preview = null;
+        _outcome = isMerge
+            ? _ActivationOutcome.merged
+            : _ActivationOutcome.keptLocal;
+      });
+      // The summary above is derived from durable state this has just changed.
+      ref.invalidate(syncStatusProvider);
+    } on Object {
+      // The reason is deliberately unshown: it can name a transport or a store,
+      // and the user's next step is the same for all of them. The token is
+      // spent either way, so the message says to run the report again.
+      if (mounted) {
+        setState(() {
+          _preview = null;
+          _outcome = _ActivationOutcome.failed;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _preparePreview() async {
@@ -236,6 +365,9 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
     setState(() {
       _busy = true;
       _previewFailed = false;
+      // A fresh question supersedes the last answer's notice: leaving it up
+      // beside new counts would read as if it described them.
+      _outcome = null;
     });
     try {
       final preview = await coordinator.prepareFirstSync(account);
@@ -308,6 +440,13 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
     }
   }
 }
+
+/// What the last answer to the activation question did.
+///
+/// A failure is one of the three rather than an absence: "nothing happened"
+/// and "your answer did not take effect" look identical on screen otherwise,
+/// and only one of them means the user has to answer again.
+enum _ActivationOutcome { merged, keptLocal, failed }
 
 final class _Body extends StatelessWidget {
   const _Body({required this.children});

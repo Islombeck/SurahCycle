@@ -1234,7 +1234,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get accountPreviewNoChoiceYet =>
-      'Это только отчёт. Ничего не отправлено и не изменено, и выбор пока не предлагается: переносить данные приложение ещё не умеет.';
+      'Это только отчёт: пока ничего не отправлено и не изменено. Решение — ниже, и оно ваше.';
 
   @override
   String get accountPreviewFailedTitle => 'Отчёт не составлен';
@@ -1242,6 +1242,57 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get accountPreviewFailedBody =>
       'Не удалось прочитать одну из сторон. Ничего не изменено — попробуйте позже.';
+
+  @override
+  String get accountChooseMerge => 'Объединить с аккаунтом';
+
+  @override
+  String get accountChooseKeepLocal => 'Оставить только на устройстве';
+
+  @override
+  String get accountMergeConfirmTitle => 'Объединить с аккаунтом?';
+
+  @override
+  String accountMergeConfirmBody(String id) {
+    return 'История с этого устройства встанет в очередь на отправку. Локальные записи не удаляются и не переписываются. Резервная копия уже сделана: $id';
+  }
+
+  @override
+  String get accountMergeConfirmAction => 'Объединить';
+
+  @override
+  String get accountKeepLocalConfirmTitle => 'Оставить только на устройстве?';
+
+  @override
+  String get accountKeepLocalConfirmBody =>
+      'Аккаунт останется только для входа. Ничего не отправится, а очередь отправки будет очищена. Решение можно пересмотреть позже.';
+
+  @override
+  String get accountKeepLocalConfirmAction => 'Оставить локальным';
+
+  @override
+  String get accountChoiceCancel => 'Отмена';
+
+  @override
+  String get accountMergedTitle => 'Объединение включено';
+
+  @override
+  String get accountMergedBody =>
+      'История поставлена в очередь. Отправка пойдёт, когда появится сеть.';
+
+  @override
+  String get accountKeptLocalTitle => 'Устройство оставлено локальным';
+
+  @override
+  String get accountKeptLocalBody =>
+      'Ничего не отправляется. Аккаунт используется только для входа.';
+
+  @override
+  String get accountChoiceFailedTitle => 'Решение не применено';
+
+  @override
+  String get accountChoiceFailedBody =>
+      'Ничего не изменено, синхронизация осталась выключенной. Составьте отчёт заново и ответьте ещё раз.';
 
   @override
   String get accountUnavailableTitle => 'В этой сборке нет облака';

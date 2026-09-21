@@ -2203,7 +2203,7 @@ abstract class AppLocalizations {
   /// No description provided for @accountPreviewNoChoiceYet.
   ///
   /// In ru, this message translates to:
-  /// **'Это только отчёт. Ничего не отправлено и не изменено, и выбор пока не предлагается: переносить данные приложение ещё не умеет.'**
+  /// **'Это только отчёт: пока ничего не отправлено и не изменено. Решение — ниже, и оно ваше.'**
   String get accountPreviewNoChoiceYet;
 
   /// No description provided for @accountPreviewFailedTitle.
@@ -2217,6 +2217,96 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Не удалось прочитать одну из сторон. Ничего не изменено — попробуйте позже.'**
   String get accountPreviewFailedBody;
+
+  /// No description provided for @accountChooseMerge.
+  ///
+  /// In ru, this message translates to:
+  /// **'Объединить с аккаунтом'**
+  String get accountChooseMerge;
+
+  /// No description provided for @accountChooseKeepLocal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оставить только на устройстве'**
+  String get accountChooseKeepLocal;
+
+  /// No description provided for @accountMergeConfirmTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Объединить с аккаунтом?'**
+  String get accountMergeConfirmTitle;
+
+  /// No description provided for @accountMergeConfirmBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'История с этого устройства встанет в очередь на отправку. Локальные записи не удаляются и не переписываются. Резервная копия уже сделана: {id}'**
+  String accountMergeConfirmBody(String id);
+
+  /// No description provided for @accountMergeConfirmAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Объединить'**
+  String get accountMergeConfirmAction;
+
+  /// No description provided for @accountKeepLocalConfirmTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оставить только на устройстве?'**
+  String get accountKeepLocalConfirmTitle;
+
+  /// No description provided for @accountKeepLocalConfirmBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Аккаунт останется только для входа. Ничего не отправится, а очередь отправки будет очищена. Решение можно пересмотреть позже.'**
+  String get accountKeepLocalConfirmBody;
+
+  /// No description provided for @accountKeepLocalConfirmAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оставить локальным'**
+  String get accountKeepLocalConfirmAction;
+
+  /// No description provided for @accountChoiceCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отмена'**
+  String get accountChoiceCancel;
+
+  /// No description provided for @accountMergedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Объединение включено'**
+  String get accountMergedTitle;
+
+  /// No description provided for @accountMergedBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'История поставлена в очередь. Отправка пойдёт, когда появится сеть.'**
+  String get accountMergedBody;
+
+  /// No description provided for @accountKeptLocalTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Устройство оставлено локальным'**
+  String get accountKeptLocalTitle;
+
+  /// No description provided for @accountKeptLocalBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ничего не отправляется. Аккаунт используется только для входа.'**
+  String get accountKeptLocalBody;
+
+  /// No description provided for @accountChoiceFailedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Решение не применено'**
+  String get accountChoiceFailedTitle;
+
+  /// No description provided for @accountChoiceFailedBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ничего не изменено, синхронизация осталась выключенной. Составьте отчёт заново и ответьте ещё раз.'**
+  String get accountChoiceFailedBody;
 
   /// No description provided for @accountUnavailableTitle.
   ///

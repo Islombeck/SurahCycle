@@ -10,10 +10,9 @@ import 'package:murajaah/l10n/app_localizations.dart';
 /// The preview is the moment the whole activation design exists for: the last
 /// point at which a user can see what a merge would do and still say no.
 ///
-/// What these tests hold it to is that it never overstates itself. It reports
-/// counts, it says a backup was taken, and it says plainly that nothing was
-/// sent and no choice is on offer — because nothing in the app moves data yet,
-/// and a button whose effect cannot be observed is not consent.
+/// What these tests hold it to is that it never overstates itself, and that
+/// both answers are really available — "keep this device local" is a decision
+/// with its own consequences, not a way of putting the merge off.
 void main() {
   final account = SyncAccount(
     userId: 'user-a',
@@ -24,6 +23,13 @@ void main() {
     WidgetTester tester, {
     required SyncActivationGateway? coordinator,
   }) async {
+    // The card, the counts and both answers together are taller than the
+    // default 800pt surface, and a list does not build what it cannot show —
+    // which reads in a test exactly like a missing button.
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       ProviderScope(
         overrides: <Override>[
@@ -62,6 +68,9 @@ void main() {
       find.byKey(const ValueKey<String>('account-preview-merge'));
   Finder result() =>
       find.byKey(const ValueKey<String>('account-preview-result'));
+  Finder merge() => find.byKey(const ValueKey<String>('account-choose-merge'));
+  Finder keepLocal() =>
+      find.byKey(const ValueKey<String>('account-choose-keep-local'));
 
   testWidgets('nothing is offered when there is no coordinator', (
     tester,
@@ -119,9 +128,143 @@ void main() {
     );
     expect(find.textContaining('backup-1'), findsOneWidget);
     expect(
-      find.textContaining('no choice is offered yet'),
+      find.textContaining('The decision is below'),
       findsOneWidget,
-      reason: 'the screen must not imply a merge is available',
+      reason: 'the counts are a report; the answer is a separate, later act',
+    );
+  });
+
+  testWidgets('both answers are offered, and only after the report', (
+    tester,
+  ) async {
+    await pump(tester, coordinator: _FakeCoordinator());
+
+    expect(merge(), findsNothing, reason: 'there is nothing to agree to yet');
+    expect(keepLocal(), findsNothing);
+
+    await tester.tap(button());
+    await tester.pumpAndSettle();
+
+    expect(merge(), findsOneWidget);
+    expect(
+      keepLocal(),
+      findsOneWidget,
+      reason:
+          'the honest third option has to be on screen beside the merge, not '
+          'hidden behind a back button',
+    );
+  });
+
+  testWidgets('a merge is confirmed against the backup it was shown', (
+    tester,
+  ) async {
+    final coordinator = _FakeCoordinator();
+    await pump(tester, coordinator: coordinator);
+    await tester.tap(button());
+    await tester.pumpAndSettle();
+
+    await tester.tap(merge());
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('backup-1'),
+      findsWidgets,
+      reason:
+          'a merge is agreeable only because it can be undone, so the dialog '
+          'names the copy rather than promising one',
+    );
+    expect(coordinator.answered, isEmpty, reason: 'nothing until it is agreed');
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('account-activation-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(coordinator.answered, <SyncActivationChoice>[
+      SyncActivationChoice.merge,
+    ]);
+    expect(
+      coordinator.tokens,
+      <String>['preview-abc'],
+      reason: 'the answer quotes back the exact snapshot it was given for',
+    );
+    expect(find.textContaining('Merging is on'), findsOneWidget);
+    expect(
+      result(),
+      findsNothing,
+      reason:
+          'the question has been answered; leaving it up invites a second '
+          'answer the coordinator would refuse',
+    );
+  });
+
+  testWidgets('cancelling the dialog changes nothing', (tester) async {
+    final coordinator = _FakeCoordinator();
+    await pump(tester, coordinator: coordinator);
+    await tester.tap(button());
+    await tester.pumpAndSettle();
+
+    await tester.tap(keepLocal());
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('account-activation-cancel')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(coordinator.answered, isEmpty);
+    expect(
+      result(),
+      findsOneWidget,
+      reason: 'the question is still open and still shows its counts',
+    );
+  });
+
+  testWidgets('keeping the device local says so plainly', (tester) async {
+    final coordinator = _FakeCoordinator();
+    await pump(tester, coordinator: coordinator);
+    await tester.tap(button());
+    await tester.pumpAndSettle();
+
+    await tester.tap(keepLocal());
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('account-activation-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(coordinator.answered, <SyncActivationChoice>[
+      SyncActivationChoice.keepDeviceLocalOnly,
+    ]);
+    expect(find.textContaining('This device stays local'), findsOneWidget);
+    expect(find.textContaining('Nothing is sent'), findsOneWidget);
+  });
+
+  testWidgets('a refused answer does not look like nothing happened', (
+    tester,
+  ) async {
+    final coordinator = _FakeCoordinator(refuseAnswer: true);
+    await pump(tester, coordinator: coordinator);
+    await tester.tap(button());
+    await tester.pumpAndSettle();
+
+    await tester.tap(merge());
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('account-activation-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('was not applied'),
+      findsOneWidget,
+      reason:
+          'a silent return would read as success, and sync would be off with '
+          'nobody aware of it',
+    );
+    expect(
+      find.textContaining('Run the report again'),
+      findsOneWidget,
+      reason: 'the token is spent either way, so this is the real next step',
     );
   });
 
@@ -142,10 +285,17 @@ void main() {
 }
 
 final class _FakeCoordinator implements SyncActivationGateway {
-  _FakeCoordinator({this.fail = false});
+  _FakeCoordinator({this.fail = false, this.refuseAnswer = false});
 
   final bool fail;
+
+  /// Makes `finishFirstSync` throw, which is how a spent token or an
+  /// unreachable queue reaches the screen.
+  final bool refuseAnswer;
+
   int prepared = 0;
+  final List<SyncActivationChoice> answered = <SyncActivationChoice>[];
+  final List<String> tokens = <String>[];
 
   @override
   Future<SyncMergePreview> prepareFirstSync(SyncAccount account) async {
@@ -166,7 +316,13 @@ final class _FakeCoordinator implements SyncActivationGateway {
   Future<void> finishFirstSync({
     required String previewToken,
     required SyncActivationChoice choice,
-  }) async => throw UnimplementedError('No choice is offered yet.');
+  }) async {
+    if (refuseAnswer) {
+      throw const SyncActivationException('preview-superseded');
+    }
+    tokens.add(previewToken);
+    answered.add(choice);
+  }
 
   @override
   Future<bool> isSyncActiveFor(String userId) async => false;

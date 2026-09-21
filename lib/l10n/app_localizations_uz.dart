@@ -1234,7 +1234,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get accountPreviewNoChoiceYet =>
-      'Bu faqat hisobot. Hech narsa yuborilmadi va oʻzgartirilmadi, tanlov ham taklif qilinmaydi: ilova hali maʼlumot koʻchira olmaydi.';
+      'Bu faqat hisobot: hozircha hech narsa yuborilmadi va oʻzgartirilmadi. Qaror quyida va u sizniki.';
 
   @override
   String get accountPreviewFailedTitle => 'Hisobot tuzilmadi';
@@ -1242,6 +1242,57 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get accountPreviewFailedBody =>
       'Ikki tomondan biri oʻqilmadi. Hech narsa oʻzgarmadi — keyinroq urinib koʻring.';
+
+  @override
+  String get accountChooseMerge => 'Hisob bilan birlashtirish';
+
+  @override
+  String get accountChooseKeepLocal => 'Faqat shu qurilmada qoldirish';
+
+  @override
+  String get accountMergeConfirmTitle => 'Hisob bilan birlashtirilsinmi?';
+
+  @override
+  String accountMergeConfirmBody(String id) {
+    return 'Shu qurilmadagi tarix yuborish navbatiga qoʻyiladi. Mahalliy yozuvlar oʻchirilmaydi va qayta yozilmaydi. Zaxira nusxa allaqachon tayyor: $id';
+  }
+
+  @override
+  String get accountMergeConfirmAction => 'Birlashtirish';
+
+  @override
+  String get accountKeepLocalConfirmTitle => 'Faqat shu qurilmada qolsinmi?';
+
+  @override
+  String get accountKeepLocalConfirmBody =>
+      'Hisob faqat kirish uchun qoladi. Hech narsa yuborilmaydi, yuborish navbati esa tozalanadi. Keyinroq qaytadan koʻrib chiqsa boʻladi.';
+
+  @override
+  String get accountKeepLocalConfirmAction => 'Mahalliy qoldirish';
+
+  @override
+  String get accountChoiceCancel => 'Bekor qilish';
+
+  @override
+  String get accountMergedTitle => 'Birlashtirish yoqildi';
+
+  @override
+  String get accountMergedBody =>
+      'Tarix navbatga qoʻyildi. Tarmoq paydo boʻlishi bilan yuboriladi.';
+
+  @override
+  String get accountKeptLocalTitle => 'Qurilma mahalliy qoldirildi';
+
+  @override
+  String get accountKeptLocalBody =>
+      'Hech narsa yuborilmaydi. Hisob faqat kirish uchun ishlatiladi.';
+
+  @override
+  String get accountChoiceFailedTitle => 'Qaror qoʻllanmadi';
+
+  @override
+  String get accountChoiceFailedBody =>
+      'Hech narsa oʻzgarmadi, sinxronlash oʻchiq qoldi. Hisobotni qaytadan tuzing va yana javob bering.';
 
   @override
   String get accountUnavailableTitle => 'Bu yigʻmada bulut yoʻq';
