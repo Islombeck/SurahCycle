@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import 'package:uuid/uuid.dart';
 
 import '../core/application/application.dart';
 import '../core/data/data.dart';
+import '../core/data/sync/sync_recorder.dart';
 import '../core/domain/domain.dart';
 import '../core/widgets/widgets.dart';
 import '../features/learning/application/recall_controller.dart';
@@ -336,9 +338,34 @@ final recitationRepositoryProvider = Provider<RecitationRepository>(
   (ref) => RecitationRepository(ref.watch(appDatabaseProvider)),
 );
 
-final learningRepositoryProvider = Provider<LearningRepository>(
-  (ref) => LearningRepository(ref.watch(appDatabaseProvider)),
-);
+final learningRepositoryProvider = Provider<LearningRepository>((ref) {
+  final timeProvider = ref.watch(timeProviderProvider);
+  final settings = ref.watch(settingsRepositoryProvider);
+  return LearningRepository(
+    ref.watch(appDatabaseProvider),
+    // Deleting a plan is the one hard delete in the app, so it is the one
+    // deletion a sync scan cannot see and the only place that has to say so
+    // itself. None of this reaches the account feature — the device id lives
+    // in settings and the rest is a clock and a random number — so the SDK
+    // stays out of this file's graph.
+    syncDeviceId: () => SyncDeviceId.ensure(
+      settings,
+      newId: _randomSyncId,
+      nowUtc: timeProvider.nowUtc(),
+    ),
+    newSyncId: _randomSyncId,
+    syncNowUtc: timeProvider.nowUtc,
+  );
+});
+
+/// A random identifier for sync, from the secure generator.
+///
+/// Never sequential: an envelope id and an idempotency key are only ever
+/// required to be unique and unguessable, and a counter would make them
+/// neither across a reinstall.
+String _randomSyncId() =>
+    '${Random.secure().nextInt(1 << 32).toRadixString(16)}'
+    '${Random.secure().nextInt(1 << 32).toRadixString(16)}';
 
 final recallRepositoryProvider = Provider<RecallRepository>(
   (ref) => RecallRepository(ref.watch(appDatabaseProvider)),

@@ -951,17 +951,35 @@ fall through silently.
    over. A test caught it, and in the app it would have delayed a change by a
    cycle while looking like a loss.
 
-**What a scan cannot see, and what is therefore still owed:** a row deleted
-outright leaves nothing to find. The journals are safe (they withdraw by
-writing `deleted_at_utc`), and a routine's parts travel inside their template,
-so the one real hard delete left is **a learning plan** — `LearningRepository.delete`
-removes the row and its events cascade, and nothing tells the account. That is
-one explicit tombstone at one call site, not a return to the recorder design.
+**What a scan cannot see is now handled too.** A row deleted outright leaves
+nothing to find. The journals are safe (they withdraw by writing
+`deleted_at_utc`) and a routine's parts travel inside their template, so there
+was exactly one real hard delete: a learning plan. `SyncTombstones.recordDelete`
+queues one inside the same transaction as the delete — separately it could be
+lost to a crash in the gap, leaving the plan gone here and present in the
+account forever. It finds its own owners from the activation table, because a
+repository has no business knowing which account is signed in and a tombstone is
+a fact about the data rather than about a session. Used once, deliberately: this
+is for what a scan structurally cannot see, not a way back to a recorder in
+every write.
 
-**Also still owed, and none of it blocking:** a real two-device check against
+**The merge rules now have the ADR and the property tests the architecture
+document asked for** (`docs/adr/ADR-0002-merge-conflict-resolution.md`,
+`test/core/sync/merge_rules_property_test.dart`). Writing them found a real
+disagreement: on a complete tie — same instant, same kind, same device — the
+server kept the existing record while `DriftSyncOutbox` had always taken the
+incoming one. That case is one device sending two edits inside the same second,
+where arrival order *is* the device's order, so the incoming envelope is the
+later edit and keeping the existing one discarded it. Fixed on the server side
+to match the queue. **Note for anyone writing more of these:** the property is
+convergence over every *interleaving that preserves each device's own sequence*,
+not over every permutation — a device has one queue, and demanding more asks the
+rules to settle a case the system cannot produce.
+
+**Still owed, and none of it blocking:** a real two-device check against
 Appwrite (nothing here has talked to the live project since the preview call on
-2026-09-18); the merge rules in `ACCOUNT_SYNC_ARCHITECTURE.md` still want the
-ADR and property tests they ask for; and `rotationState` should come out of
+2026-09-18); clock skew is unhandled and a server-assigned receive time is the
+obvious next step; and `rotationState` should come out of
 `SyncEntityType` altogether — it is refused by the router, skipped by the
 backfill and named in `deliberatelyUnrouted`, which is three places agreeing to
 work around one enum member that should not exist. That is a cloud migration,

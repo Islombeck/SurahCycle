@@ -119,9 +119,11 @@ date is a record neither device ever held. Whole records win or lose.
 
 - **Clock skew is unhandled.** A server-assigned receive time, used only to
   detect an implausible client clock, is the obvious next step and is not built.
-- **A hard-deleted row has no tombstone** unless something records one. The
-  journals withdraw by writing a date; a learning plan is deleted outright and
-  its deletion does not travel.
+- ~~A hard-deleted row has no tombstone.~~ **Closed.** `SyncTombstones` records
+  one inside the same transaction as the delete, for every account this device
+  has activated. It is used exactly once — `LearningRepository.delete` — and is
+  not a return to "call a recorder from every write": it exists for the cases a
+  scan *structurally* cannot see, and there is one.
 - **Nothing has run against two real devices.** These rules are verified against
   a local double. That is not the same thing, and it is the check that has to
   happen before this ships.

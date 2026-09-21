@@ -1,12 +1,27 @@
 import 'package:drift/drift.dart';
 
 import '../../domain/domain.dart';
+import '../../sync/sync.dart';
 import '../database/app_database.dart';
+import '../sync/sync_tombstones.dart';
 
 final class LearningRepository {
-  const LearningRepository(this.database);
+  const LearningRepository(
+    this.database, {
+    this.syncDeviceId,
+    this.newSyncId,
+    this.syncNowUtc,
+  });
 
   final AppDatabase database;
+
+  /// What a tombstone needs in order to exist: who wrote it, what to call it,
+  /// and when. All three or none — they are one piece of wiring, and a
+  /// deletion simply does not travel without it, which is what it did before
+  /// any of this existed.
+  final Future<String> Function()? syncDeviceId;
+  final String Function()? newSyncId;
+  final DateTime Function()? syncNowUtc;
 
   Future<void> saveState(LearningSurahState state) =>
       database.transaction(() => _writeState(state));
@@ -131,11 +146,36 @@ final class LearningRepository {
     );
   }
 
-  Future<bool> delete(String id) async =>
-      (database.delete(database.learningSurahs)
-            ..where((LearningSurahs row) => row.id.equals(id)))
-          .go()
-          .then((int count) => count == 1);
+  /// Stops learning a surah, removing the plan and cascading its journal.
+  ///
+  /// The one hard delete in the app, and therefore the one deletion a sync scan
+  /// cannot see: every other kind writes a date rather than removing a row, and
+  /// a row that is gone leaves nothing to notice. So this records a tombstone
+  /// itself, inside the same transaction — one that committed separately could
+  /// be lost to a crash in the gap, leaving the plan gone here and present in
+  /// the account forever.
+  Future<bool> delete(String id) => database.transaction(() async {
+    final removed = await (database.delete(
+      database.learningSurahs,
+    )..where((LearningSurahs row) => row.id.equals(id))).go();
+    if (removed != 1) return false;
+
+    final deviceId = syncDeviceId;
+    final newId = newSyncId;
+    final nowUtc = syncNowUtc;
+    if (deviceId == null || newId == null || nowUtc == null) return true;
+    await SyncTombstones.recordDelete(
+      database,
+      entityType: SyncEntityType.learningState,
+      entityId: id,
+      // The plan's own last-changed time went with it, so the deletion is
+      // dated now — which is honest: now is when it happened.
+      deletedAtUtc: nowUtc().toUtc(),
+      newId: newId,
+      deviceId: deviceId,
+    );
+    return true;
+  });
 
   Future<void> _writeState(LearningSurahState state) async {
     final sameSurah =

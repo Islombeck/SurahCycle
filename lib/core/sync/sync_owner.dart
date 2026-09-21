@@ -18,6 +18,18 @@ final class SyncOwnerKey {
     return SyncOwnerKey._('user:$userId');
   }
 
+  /// Rebuilds a key from the form it was stored in.
+  ///
+  /// For the storage layer reading its own rows back, and nothing else. A
+  /// caller that has a user id should use [SyncOwnerKey.user], which is the
+  /// one place that decides what the stored form looks like.
+  factory SyncOwnerKey.stored(String value) {
+    if (value.isEmpty) {
+      throw ArgumentError.value(value, 'value', 'Must not be empty.');
+    }
+    return SyncOwnerKey._(value);
+  }
+
   const SyncOwnerKey._(this.value);
 
   static const SyncOwnerKey local = SyncOwnerKey._('local');
