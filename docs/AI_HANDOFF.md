@@ -891,9 +891,8 @@ fall through silently.
    **Still to do here: the seven versioned types** (mastered surahs, rotation
    state and schemes, routine templates, prayer sessions, learning states, app
    settings). They were left out deliberately — see the open question below.
-2. **The recorder still covers recitations only.** Unchanged. The other nine
-   types have mappers and appliers but nothing calls them on a local write, so
-   after activation only new recitations reach the queue.
+2. **The recorder** — see the entry after item 5, where the answer turned out
+   to be a different shape than "call a recorder from every write".
 3. ~~The merge / keep-local buttons.~~ **Done.** Both are buttons of the same
    weight; the confirmation dialog names the backup rather than promising one;
    answering clears the preview; a refusal is shown as its own outcome, because
@@ -922,10 +921,51 @@ fall through silently.
    reaches `package:appwrite` and importing it from the app layer would put the
    SDK in every widget test's graph again.
 
-**So the one gap left is the recorder.** After activation only *new recitations*
-reach the queue. The other nine types have mappers, appliers and a router, and
-nothing calls them on a local write — so a routine edited, a surah added to the
-rotation or a setting changed after activation stays on this device.
+2. ~~The recorder covers recitations only.~~ **Done** (`9d71434`), and not in
+   the shape the list above assumed. A recorder method called from inside every
+   repository write would have been twenty methods across ten repositories, and
+   a call site that forgets is a silent hole nothing fails on — the same shape
+   of bug as the Витр one this session opened with, where two places answered
+   the same question and only one was right.
+
+   So it asks the database instead, because the database already knows. The v10
+   touch triggers stamp `updated_at_utc` on every insert and update to the six
+   versioned tables whether or not the code that did it had heard of sync, and
+   the append-only journals carry their own dates and withdraw by writing one
+   rather than by removing the row. "What changed since last time" is therefore
+   a query, and it is the **same walk** as the activation backfill:
+   `enqueueEverything` is literally `enqueueChangedSince(the beginning of time)`,
+   so there are not two walks to keep in step.
+
+   The watermark (`app_settings`, owner-scoped, outside the sync allowlist)
+   advances to the cycle's **start**, not to the newest row found — a row
+   written while the scan ran carries a later time and is picked up next cycle,
+   where advancing to the newest row seen would step over it. It never advances
+   past the clock, so a device whose time jumps backwards re-scans rather than
+   going blind, and it moves only after the enqueue returns, so a failure
+   repeats a window instead of skipping one.
+
+   **Both sides are truncated to whole seconds and the window is inclusive.**
+   That is the resolution the triggers write at; a watermark carrying
+   milliseconds sits *after* a row stamped in the same second and passes it
+   over. A test caught it, and in the app it would have delayed a change by a
+   cycle while looking like a loss.
+
+**What a scan cannot see, and what is therefore still owed:** a row deleted
+outright leaves nothing to find. The journals are safe (they withdraw by
+writing `deleted_at_utc`), and a routine's parts travel inside their template,
+so the one real hard delete left is **a learning plan** — `LearningRepository.delete`
+removes the row and its events cascade, and nothing tells the account. That is
+one explicit tombstone at one call site, not a return to the recorder design.
+
+**Also still owed, and none of it blocking:** a real two-device check against
+Appwrite (nothing here has talked to the live project since the preview call on
+2026-09-18); the merge rules in `ACCOUNT_SYNC_ARCHITECTURE.md` still want the
+ADR and property tests they ask for; and `rotationState` should come out of
+`SyncEntityType` altogether — it is refused by the router, skipped by the
+backfill and named in `deliberatelyUnrouted`, which is three places agreeing to
+work around one enum member that should not exist. That is a cloud migration,
+not a code edit.
 
 **The open question the backfill stops short of.** The seven versioned types
 resolve conflicts by `updatedAtUtc`, and rows untouched since schema v10 carry
