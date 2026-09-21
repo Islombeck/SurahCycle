@@ -320,9 +320,8 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
     if (confirmed != true || !mounted) return;
 
     final account = ref.read(currentAccountProvider).valueOrNull;
-    final coordinator = account == null
-        ? null
-        : ref.read(syncActivationProvider(account.userId));
+    if (account == null) return;
+    final coordinator = ref.read(syncActivationProvider(account.userId));
     if (coordinator == null) return;
 
     setState(() => _busy = true);
@@ -341,7 +340,7 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
             : _ActivationOutcome.keptLocal;
       });
       // The summary above is derived from durable state this has just changed.
-      ref.invalidate(syncStatusProvider);
+      ref.invalidate(syncTransportProvider(account.userId));
     } on Object {
       // The reason is deliberately unshown: it can name a transport or a store,
       // and the user's next step is the same for all of them. The token is

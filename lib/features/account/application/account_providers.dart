@@ -187,22 +187,42 @@ final syncStatusProvider = Provider<AsyncValue<SyncStatus>>((ref) {
       SyncStatus.resolve(config: config, isSignedIn: false, isActivated: false),
     );
   }
+  final account = ref.watch(currentAccountProvider);
+  final user = account.valueOrNull;
+  if (user == null) {
+    return account.whenData(
+      (_) => SyncStatus.resolve(
+        config: config,
+        isSignedIn: false,
+        isActivated: false,
+      ),
+    );
+  }
+  // Nobody-signed-in is answered above without touching the database, so the
+  // only case that waits on a read is the one where the numbers matter.
   return ref
-      .watch(currentAccountProvider)
+      .watch(syncTransportProvider(user.userId))
       .whenData(
-        (account) => SyncStatus.resolve(
+        (transport) => SyncStatus.resolve(
           config: config,
-          isSignedIn: account != null,
-          isActivated: false,
-          // Queue counts are deliberately not read yet, and passing zero is
-          // provably honest rather than convenient: nothing in the app enqueues
-          // anything, because no repository is sync-aware. It is also
-          // unreachable — SyncStatus.resolve decides `notActivated` before it
-          // ever looks at a count.
-          //
-          // WHEN ACTIVATION LANDS, THIS MUST START READING THE REAL OUTBOX.
-          // Leaving the zeros here would turn a queue full of unsent work into
-          // a screen that says everything is fine.
+          isSignedIn: true,
+          isActivated: transport.isActivated,
+          queuedCount: transport.queuedCount,
+          quarantinedCount: transport.quarantinedCount,
+          lastSuccessAtUtc: transport.lastSuccessAtUtc,
+          lastFailureReason: transport.lastFailureReason,
+          consecutiveFailureCount: transport.consecutiveFailureCount,
         ),
       );
 });
+
+/// The durable queue and activation state, read as one consistent moment.
+///
+/// A future rather than a stream on purpose: this screen is not a live monitor,
+/// and a summary that re-rendered on every enqueue during a backfill would
+/// flicker through thousands of numbers that mean nothing individually. It is
+/// invalidated at the points where it can actually have changed.
+final syncTransportProvider =
+    FutureProvider.family<SyncTransportSnapshot, String>(
+      (ref, userId) => ref.watch(syncStoreProvider(userId)).transportSnapshot(),
+    );

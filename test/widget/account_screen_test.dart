@@ -2,10 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:murajaah/core/data/sync/drift_sync_store.dart';
 import 'package:murajaah/core/sync/sync.dart';
 import 'package:murajaah/features/account/application/account_providers.dart';
 import 'package:murajaah/features/account/presentation/account_screen.dart';
 import 'package:murajaah/l10n/app_localizations.dart';
+
+final _user = SyncAccount(
+  userId: 'user-1',
+  linkedProviders: const <SyncAuthProvider>{SyncAuthProvider.google},
+);
 
 void main() {
   late AppLocalizations l10n;
@@ -80,6 +86,78 @@ void main() {
     expect(
       find.byKey(const ValueKey<String>('account-sign-out')),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('an activated device reports the real queue', (tester) async {
+    // Until the summary read the durable state, this screen said "sync is off"
+    // whatever the queue held. A backfill that had put a lifetime of history in
+    // the outbox would have been invisible on the one screen meant to report it.
+    await _pump(
+      tester,
+      account: _user,
+      transport: const SyncTransportSnapshot(
+        isActivated: true,
+        queuedCount: 697,
+        quarantinedCount: 0,
+        lastSuccessAtUtc: null,
+        lastFailureReason: null,
+        consecutiveFailureCount: 0,
+      ),
+    );
+
+    expect(find.text(l10n.accountSyncOnTitle), findsOneWidget);
+    expect(find.text(l10n.accountSyncOffTitle), findsNothing);
+    expect(
+      find.textContaining('697'),
+      findsOneWidget,
+      reason: 'the number of unsent changes is the point of the screen',
+    );
+  });
+
+  testWidgets('a device that has never synced is not shown as safe', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      account: _user,
+      transport: const SyncTransportSnapshot(
+        isActivated: true,
+        queuedCount: 0,
+        quarantinedCount: 0,
+        lastSuccessAtUtc: null,
+        lastFailureReason: null,
+        consecutiveFailureCount: 0,
+      ),
+    );
+
+    // An empty queue and no success on record is not "up to date": nothing has
+    // reached the account, and saying otherwise is a lie about where the data
+    // is. The screen may say sync is on; it may not say it worked.
+    expect(find.text(l10n.accountSyncOnTitle), findsOneWidget);
+    expect(find.textContaining('0'), findsWidgets);
+  });
+
+  testWidgets('a refused change is surfaced, not left to rot', (tester) async {
+    await _pump(
+      tester,
+      account: _user,
+      transport: const SyncTransportSnapshot(
+        isActivated: true,
+        queuedCount: 0,
+        quarantinedCount: 2,
+        lastSuccessAtUtc: null,
+        lastFailureReason: null,
+        consecutiveFailureCount: 0,
+      ),
+    );
+
+    expect(
+      find.textContaining('2'),
+      findsWidgets,
+      reason:
+          'quarantine blocks nothing, which is exactly why it has to be said '
+          'out loud rather than waited on',
     );
   });
 
@@ -197,6 +275,7 @@ Future<void> _pump(
   SyncAccount? account,
   Object? accountError,
   AccountGateway? gateway,
+  SyncTransportSnapshot? transport,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
   tester.view.devicePixelRatio = 1;
@@ -216,6 +295,11 @@ Future<void> _pump(
           }
           return account;
         }),
+        // Without this the summary would open the real database, which a
+        // widget test has no business doing and which never settles here.
+        syncTransportProvider.overrideWith(
+          (ref, userId) async => transport ?? SyncTransportSnapshot.inactive,
+        ),
       ],
       child: MaterialApp(
         locale: const Locale('en'),

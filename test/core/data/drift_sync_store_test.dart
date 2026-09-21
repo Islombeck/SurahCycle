@@ -261,6 +261,93 @@ void main() {
     });
   });
 
+  group('the summary the account screen is derived from', () {
+    test('an untouched device claims nothing', () async {
+      final snapshot = await store.transportSnapshot();
+
+      expect(snapshot.isActivated, isFalse);
+      expect(snapshot.queuedCount, 0);
+      expect(snapshot.quarantinedCount, 0);
+      expect(
+        snapshot.lastSuccessAtUtc,
+        isNull,
+        reason:
+            'no success on record is the difference between "nothing to send" '
+            'and "nothing has ever been protected"',
+      );
+    });
+
+    test('pending and quarantined are counted apart', () async {
+      await store.outbox.enqueue(
+        envelopeOf(entityId: 'a', id: 'e1'),
+        nowUtc: at(1),
+      );
+      await store.outbox.enqueue(
+        envelopeOf(entityId: 'b', id: 'e2'),
+        nowUtc: at(1),
+      );
+      await store.outbox.enqueue(
+        envelopeOf(entityId: 'c', id: 'e3'),
+        nowUtc: at(1),
+      );
+      await store.outbox.quarantine(<String>['e3'], 'schema-too-new');
+
+      final snapshot = await store.transportSnapshot();
+
+      expect(snapshot.queuedCount, 2);
+      expect(
+        snapshot.quarantinedCount,
+        1,
+        reason:
+            'a refused change blocks nothing, so an empty-looking queue would '
+            'hide it completely',
+      );
+    });
+
+    test('a failing queue says so, with the attempts behind it', () async {
+      await store.outbox.enqueue(
+        envelopeOf(entityId: 'a', id: 'e1'),
+        nowUtc: at(1),
+      );
+      await store.outbox.recordFailure(<String>['e1'], 'network-unreachable');
+      await store.outbox.recordFailure(<String>['e1'], 'network-unreachable');
+
+      final snapshot = await store.transportSnapshot();
+
+      expect(snapshot.lastFailureReason, 'network-unreachable');
+      expect(
+        snapshot.consecutiveFailureCount,
+        2,
+        reason:
+            'a success removes the entry, so its attempts are consecutive by '
+            'construction',
+      );
+    });
+
+    test('it reads one owner and not the other', () async {
+      final mine = DriftSyncStore(database, owner: SyncOwnerKey.user('a'));
+      final theirs = DriftSyncStore(database, owner: SyncOwnerKey.user('b'));
+      await mine.outbox.enqueue(
+        envelopeOf(entityId: 'x', id: 'e1'),
+        nowUtc: at(1),
+      );
+      await mine.recordActivationChoice(
+        choice: SyncActivationChoice.merge,
+        backupId: 'backup-1',
+        decidedAtUtc: at(1),
+      );
+
+      expect((await mine.transportSnapshot()).queuedCount, 1);
+      expect((await mine.transportSnapshot()).isActivated, isTrue);
+      expect(
+        (await theirs.transportSnapshot()).queuedCount,
+        0,
+        reason: 'two accounts on one phone share a database and nothing else',
+      );
+      expect((await theirs.transportSnapshot()).isActivated, isFalse);
+    });
+  });
+
   test('forgetting one owner leaves every other owner untouched', () async {
     final forA = DriftSyncStore(database, owner: SyncOwnerKey.user('a'));
     final forB = DriftSyncStore(database, owner: SyncOwnerKey.user('b'));

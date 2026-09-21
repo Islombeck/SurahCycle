@@ -23,6 +23,43 @@ final class SyncActivationRecord {
   final DateTime? lastSuccessAtUtc;
 }
 
+/// Everything the account screen's summary is derived from, read at once.
+///
+/// One read rather than five, because the parts have to describe the same
+/// moment: a queue counted before a success was recorded and an activation read
+/// after it would produce a screen that is individually accurate and jointly
+/// false.
+final class SyncTransportSnapshot {
+  const SyncTransportSnapshot({
+    required this.isActivated,
+    required this.queuedCount,
+    required this.quarantinedCount,
+    required this.lastSuccessAtUtc,
+    required this.lastFailureReason,
+    required this.consecutiveFailureCount,
+  });
+
+  static const SyncTransportSnapshot inactive = SyncTransportSnapshot(
+    isActivated: false,
+    queuedCount: 0,
+    quarantinedCount: 0,
+    lastSuccessAtUtc: null,
+    lastFailureReason: null,
+    consecutiveFailureCount: 0,
+  );
+
+  final bool isActivated;
+  final int queuedCount;
+  final int quarantinedCount;
+  final DateTime? lastSuccessAtUtc;
+
+  /// The queue's own content-free category, never a server message: this
+  /// reaches a screen and a log, and a user's recitation must not.
+  final String? lastFailureReason;
+
+  final int consecutiveFailureCount;
+}
+
 /// Durable, owner-scoped sync state: the queue, the pull cursor and whether an
 /// account has been allowed to touch this device's data.
 ///
@@ -111,6 +148,47 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
   @override
   Future<bool> isSyncActive() async =>
       (await _activationRow())?.isActive ?? false;
+
+  /// The whole summary in one pass.
+  ///
+  /// The quarantined count is queried here rather than taken from
+  /// `outbox.quarantined()`: that returns a page, and a screen that said "3
+  /// refused" because the page stops at fifty would understate the one thing
+  /// on this screen nobody else will notice.
+  Future<SyncTransportSnapshot> transportSnapshot() =>
+      _database.transaction(() async {
+        final activation = await _activationRow();
+        final rows = await (_database.select(
+          _database.syncOutboxEntries,
+        )..where((row) => row.ownerKey.equals(owner.value))).get();
+
+        var queued = 0;
+        var quarantined = 0;
+        String? failure;
+        var attempts = 0;
+        for (final row in rows) {
+          if (row.status == 'quarantined') {
+            quarantined++;
+            continue;
+          }
+          queued++;
+          // Any pending failure is worth reporting, and the most-attempted
+          // entry is the honest number for "how long has this been failing":
+          // a success removes an entry, so its attempts are consecutive by
+          // construction.
+          if (row.lastFailureReason != null) failure ??= row.lastFailureReason;
+          if (row.attemptCount > attempts) attempts = row.attemptCount;
+        }
+
+        return SyncTransportSnapshot(
+          isActivated: activation?.isActive ?? false,
+          queuedCount: queued,
+          quarantinedCount: quarantined,
+          lastSuccessAtUtc: activation?.lastSuccessAtUtc?.toUtc(),
+          lastFailureReason: failure,
+          consecutiveFailureCount: failure == null ? 0 : attempts,
+        );
+      });
 
   /// Records the user's answer to the first-sync preview.
   ///
