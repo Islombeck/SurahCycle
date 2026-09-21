@@ -1329,6 +1329,18 @@ class AppLocalizationsUz extends AppLocalizations {
   String get accountProviderYandex => 'Yandex';
 
   @override
+  String get accountSyncNow => 'Hozir sinxronlash';
+
+  @override
+  String accountSyncNowResult(int pushed, int remaining) {
+    return 'Yuborildi: $pushed · Navbatda qoldi: $remaining';
+  }
+
+  @override
+  String get accountSyncNowFailed =>
+      'Hisobga ulanib boʻlmadi. Navbat saqlandi va keyinroq yuboriladi.';
+
+  @override
   String get accountSyncOnTitle => 'Sinxronizatsiya yoqilgan';
 
   @override

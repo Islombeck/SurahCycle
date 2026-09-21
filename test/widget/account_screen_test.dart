@@ -8,6 +8,16 @@ import 'package:murajaah/features/account/application/account_providers.dart';
 import 'package:murajaah/features/account/presentation/account_screen.dart';
 import 'package:murajaah/l10n/app_localizations.dart';
 
+final class _FakeCycle implements SyncCycle {
+  int runs = 0;
+
+  @override
+  Future<SyncCycleOutcome> runOnce() async {
+    runs++;
+    return const SyncCycleOutcome(ran: true, pushedCount: 4);
+  }
+}
+
 final _user = SyncAccount(
   userId: 'user-1',
   linkedProviders: const <SyncAuthProvider>{SyncAuthProvider.google},
@@ -136,6 +146,41 @@ void main() {
     // is. The screen may say sync is on; it may not say it worked.
     expect(find.text(l10n.accountSyncOnTitle), findsOneWidget);
     expect(find.textContaining('0'), findsWidgets);
+  });
+
+  testWidgets('an activated device can ask for a cycle by hand', (
+    tester,
+  ) async {
+    final runner = _FakeCycle();
+    await _pump(
+      tester,
+      account: _user,
+      cycle: runner,
+      transport: const SyncTransportSnapshot(
+        isActivated: true,
+        queuedCount: 4,
+        quarantinedCount: 0,
+        lastSuccessAtUtc: null,
+        lastFailureReason: 'network-unreachable',
+        consecutiveFailureCount: 2,
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey<String>('account-sync-now')));
+    await tester.pumpAndSettle();
+
+    expect(
+      runner.runs,
+      1,
+      reason:
+          'a queue waiting on a network is the one case where the user knows '
+          'something the app does not: that they are back online',
+    );
+    expect(
+      find.byKey(const ValueKey<String>('account-sync-now-result')),
+      findsOneWidget,
+      reason: 'a button with no visible effect teaches that it does nothing',
+    );
   });
 
   testWidgets('a refused change is surfaced, not left to rot', (tester) async {
@@ -276,6 +321,7 @@ Future<void> _pump(
   Object? accountError,
   AccountGateway? gateway,
   SyncTransportSnapshot? transport,
+  _FakeCycle? cycle,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
   tester.view.devicePixelRatio = 1;
@@ -300,6 +346,7 @@ Future<void> _pump(
         syncTransportProvider.overrideWith(
           (ref, userId) async => transport ?? SyncTransportSnapshot.inactive,
         ),
+        syncCycleProvider.overrideWith((ref, userId) => cycle),
       ],
       child: MaterialApp(
         locale: const Locale('en'),

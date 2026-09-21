@@ -420,6 +420,10 @@
   ,"accountSignOutFailed": "Chiqib boʻlmadi"
   ,"accountProviderGoogle": "Google"
   ,"accountProviderYandex": "Yandex"
+  ,"accountSyncNow": "Hozir sinxronlash"
+  ,"accountSyncNowResult": "Yuborildi: {pushed} · Navbatda qoldi: {remaining}"
+  ,"@accountSyncNowResult": {"placeholders": {"pushed": {"type": "int"}, "remaining": {"type": "int"}}}
+  ,"accountSyncNowFailed": "Hisobga ulanib boʻlmadi. Navbat saqlandi va keyinroq yuboriladi."
   ,"accountSyncOnTitle": "Sinxronizatsiya yoqilgan"
   ,"accountSyncCounts": "Yuborilishi kutilmoqda: {queued} · Rad etilgan: {refused}"
   ,"@accountSyncCounts": {"placeholders": {"queued": {"type": "int"}, "refused": {"type": "int"}}}

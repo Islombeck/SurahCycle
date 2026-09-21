@@ -426,6 +426,10 @@
   ,"accountSignOutFailed": "Не удалось выйти"
   ,"accountProviderGoogle": "Google"
   ,"accountProviderYandex": "Яндекс"
+  ,"accountSyncNow": "Синхронизировать сейчас"
+  ,"accountSyncNowResult": "Отправлено: {pushed} · Осталось в очереди: {remaining}"
+  ,"@accountSyncNowResult": {"placeholders": {"pushed": {"type": "int"}, "remaining": {"type": "int"}}}
+  ,"accountSyncNowFailed": "Связаться с аккаунтом не удалось. Очередь сохранена и уйдёт позже."
   ,"accountSyncOnTitle": "Синхронизация включена"
   ,"accountSyncCounts": "Ждут отправки: {queued} · Отклонено: {refused}"
   ,"@accountSyncCounts": {"placeholders": {"queued": {"type": "int"}, "refused": {"type": "int"}}}

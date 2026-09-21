@@ -420,6 +420,10 @@
   ,"accountSignOutFailed": "Could not sign out"
   ,"accountProviderGoogle": "Google"
   ,"accountProviderYandex": "Yandex"
+  ,"accountSyncNow": "Sync now"
+  ,"accountSyncNowResult": "Sent: {pushed} · Still queued: {remaining}"
+  ,"@accountSyncNowResult": {"placeholders": {"pushed": {"type": "int"}, "remaining": {"type": "int"}}}
+  ,"accountSyncNowFailed": "The account could not be reached. The queue is kept and will go later."
   ,"accountSyncOnTitle": "Sync is on"
   ,"accountSyncCounts": "Waiting to send: {queued} · Refused: {refused}"
   ,"@accountSyncCounts": {"placeholders": {"queued": {"type": "int"}, "refused": {"type": "int"}}}

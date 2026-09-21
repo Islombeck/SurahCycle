@@ -15,3 +15,4 @@ export 'sync/drift_sync_backfill.dart';
 export 'sync/drift_sync_inventory.dart';
 export 'sync/drift_sync_outbox.dart';
 export 'sync/drift_sync_store.dart';
+export 'sync/sync_cycle_runner.dart';

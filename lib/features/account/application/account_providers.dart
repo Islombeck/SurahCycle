@@ -216,6 +216,26 @@ final syncStatusProvider = Provider<AsyncValue<SyncStatus>>((ref) {
       );
 });
 
+/// One complete exchange with the account, when something asks for it.
+///
+/// Null when there is no transport in this build or nobody signed in — the same
+/// empty state as everything else here, rather than a runner that would fail on
+/// being called.
+///
+/// Kept alive for the life of the provider rather than made per call: the
+/// runner holds the "one cycle at a time" guard, and a fresh instance per tap
+/// would have nothing to guard.
+final syncCycleProvider = Provider.family<SyncCycle?, String>((ref, userId) {
+  final gateway = ref.watch(syncGatewayProvider(userId));
+  if (gateway == null) return null;
+  return SyncCycleRunner(
+    database: ref.watch(appDatabaseProvider),
+    store: ref.watch(syncStoreProvider(userId)),
+    gateway: gateway,
+    nowUtc: ref.watch(timeProviderProvider).nowUtc,
+  );
+});
+
 /// The durable queue and activation state, read as one consistent moment.
 ///
 /// A future rather than a stream on purpose: this screen is not a live monitor,

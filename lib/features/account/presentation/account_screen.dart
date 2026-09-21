@@ -128,11 +128,8 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
           icon: Icons.sync_disabled_outlined,
           extra: _previewSection(l10n),
         ),
-        // Every remaining case needs `isActivated`, and no activation gateway
-        // exists yet, so none of them can occur today. They are rendered from
-        // the counts SyncStatus already carries rather than from invented copy,
-        // so whenever activation does land this stays truthful instead of
-        // needing to be remembered.
+        // Every remaining case is an activated device, told apart by the counts
+        // SyncStatus already carries rather than by invented copy.
         _ => _signedIn(
           l10n,
           title: l10n.accountSyncOnTitle,
@@ -141,6 +138,19 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
             status.quarantinedCount,
           ),
           icon: Icons.sync_outlined,
+          extra: <Widget>[
+            const SizedBox(height: 12),
+            // A cycle runs on its own after activation and whenever the app
+            // asks; this is here because a queue that is waiting on a network
+            // is the one case where the user knows something the app does not —
+            // that they are back online.
+            OutlinedButton.icon(
+              key: const ValueKey<String>('account-sync-now'),
+              onPressed: _busy ? null : _syncNow,
+              icon: const Icon(Icons.sync),
+              label: Text(l10n.accountSyncNow),
+            ),
+          ],
         ),
       };
 
@@ -341,6 +351,13 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
       });
       // The summary above is derived from durable state this has just changed.
       ref.invalidate(syncTransportProvider(account.userId));
+      if (isMerge) {
+        // The backfill has just queued the history. Sending it now is the
+        // follow-through the user agreed to; leaving it for the next time
+        // something happened to ask would mean a device that said "merging is
+        // on" and had sent nothing.
+        await _syncNow(silent: true);
+      }
     } on Object {
       // The reason is deliberately unshown: it can name a transport or a store,
       // and the user's next step is the same for all of them. The token is
@@ -380,6 +397,46 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
           _previewFailed = true;
         });
       }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Runs one exchange with the account and reports what it did.
+  ///
+  /// [silent] suppresses the notice only — the cycle itself is identical. It is
+  /// used right after activation, where the outcome card already says what
+  /// happened and a snackbar on top of it would be two answers to one action.
+  Future<void> _syncNow({bool silent = false}) async {
+    final account = ref.read(currentAccountProvider).valueOrNull;
+    if (account == null) return;
+    final runner = ref.read(syncCycleProvider(account.userId));
+    if (runner == null) return;
+
+    setState(() => _busy = true);
+    try {
+      final outcome = await runner.runOnce();
+      if (!mounted) return;
+      // Whatever happened, the queue and the success record may have moved.
+      ref.invalidate(syncTransportProvider(account.userId));
+      if (silent) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.removeCurrentSnackBar(reason: SnackBarClosedReason.hide);
+      messenger.showSnackBar(
+        SnackBar(
+          key: const ValueKey<String>('account-sync-now-result'),
+          content: Text(
+            outcome.hasFailure
+                // The category is never shown: it can name a transport, and the
+                // user's answer to any of them is the same.
+                ? context.l10n.accountSyncNowFailed
+                : context.l10n.accountSyncNowResult(
+                    outcome.pushedCount,
+                    outcome.remainingCount,
+                  ),
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }

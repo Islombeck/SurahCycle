@@ -1327,6 +1327,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountProviderYandex => 'Yandex';
 
   @override
+  String get accountSyncNow => 'Sync now';
+
+  @override
+  String accountSyncNowResult(int pushed, int remaining) {
+    return 'Sent: $pushed · Still queued: $remaining';
+  }
+
+  @override
+  String get accountSyncNowFailed =>
+      'The account could not be reached. The queue is kept and will go later.';
+
+  @override
   String get accountSyncOnTitle => 'Sync is on';
 
   @override

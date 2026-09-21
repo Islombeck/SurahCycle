@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:murajaah/core/data/sync/drift_sync_store.dart';
 import 'package:murajaah/core/sync/sync.dart';
 import 'package:murajaah/features/account/application/account_providers.dart';
 import 'package:murajaah/features/account/presentation/account_screen.dart';
@@ -22,6 +23,7 @@ void main() {
   Future<void> pump(
     WidgetTester tester, {
     required SyncActivationGateway? coordinator,
+    _FakeCycle? cycle,
   }) async {
     // The card, the counts and both answers together are taller than the
     // default 800pt surface, and a list does not build what it cannot show —
@@ -47,6 +49,10 @@ void main() {
             ),
           ),
           syncActivationProvider.overrideWith((ref, userId) => coordinator),
+          syncCycleProvider.overrideWith((ref, userId) => cycle),
+          syncTransportProvider.overrideWith(
+            (ref, userId) async => SyncTransportSnapshot.inactive,
+          ),
         ],
         child: const MaterialApp(
           locale: Locale('en'),
@@ -198,6 +204,51 @@ void main() {
     );
   });
 
+  testWidgets('agreeing to a merge actually starts one', (tester) async {
+    final cycle = _FakeCycle();
+    await pump(tester, coordinator: _FakeCoordinator(), cycle: cycle);
+    await tester.tap(button());
+    await tester.pumpAndSettle();
+
+    await tester.tap(merge());
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('account-activation-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      cycle.runs,
+      1,
+      reason:
+          'the backfill has just queued the history; a device that said '
+          '"merging is on" and had sent nothing is the failure this avoids',
+    );
+    expect(
+      find.byKey(const ValueKey<String>('account-sync-now-result')),
+      findsNothing,
+      reason:
+          'the outcome card already says what happened, and a snackbar on top '
+          'would be two answers to one action',
+    );
+  });
+
+  testWidgets('keeping the device local starts nothing', (tester) async {
+    final cycle = _FakeCycle();
+    await pump(tester, coordinator: _FakeCoordinator(), cycle: cycle);
+    await tester.tap(button());
+    await tester.pumpAndSettle();
+
+    await tester.tap(keepLocal());
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('account-activation-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(cycle.runs, 0);
+  });
+
   testWidgets('cancelling the dialog changes nothing', (tester) async {
     final coordinator = _FakeCoordinator();
     await pump(tester, coordinator: coordinator);
@@ -282,6 +333,16 @@ void main() {
       reason: 'the one thing a user needs to know after a failed dry run',
     );
   });
+}
+
+final class _FakeCycle implements SyncCycle {
+  int runs = 0;
+
+  @override
+  Future<SyncCycleOutcome> runOnce() async {
+    runs++;
+    return const SyncCycleOutcome(ran: true, pushedCount: 700);
+  }
 }
 
 final class _FakeCoordinator implements SyncActivationGateway {

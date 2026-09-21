@@ -2374,6 +2374,24 @@ abstract class AppLocalizations {
   /// **'Яндекс'**
   String get accountProviderYandex;
 
+  /// No description provided for @accountSyncNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Синхронизировать сейчас'**
+  String get accountSyncNow;
+
+  /// No description provided for @accountSyncNowResult.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отправлено: {pushed} · Осталось в очереди: {remaining}'**
+  String accountSyncNowResult(int pushed, int remaining);
+
+  /// No description provided for @accountSyncNowFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Связаться с аккаунтом не удалось. Очередь сохранена и уйдёт позже.'**
+  String get accountSyncNowFailed;
+
   /// No description provided for @accountSyncOnTitle.
   ///
   /// In ru, this message translates to:

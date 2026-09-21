@@ -1331,6 +1331,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get accountProviderYandex => 'Яндекс';
 
   @override
+  String get accountSyncNow => 'Синхронизировать сейчас';
+
+  @override
+  String accountSyncNowResult(int pushed, int remaining) {
+    return 'Отправлено: $pushed · Осталось в очереди: $remaining';
+  }
+
+  @override
+  String get accountSyncNowFailed =>
+      'Связаться с аккаунтом не удалось. Очередь сохранена и уйдёт позже.';
+
+  @override
   String get accountSyncOnTitle => 'Синхронизация включена';
 
   @override
