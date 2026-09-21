@@ -992,6 +992,23 @@ appliers refuse, retryably, and they are right to — the Quran arrives by
 manifest, not by sync. A real phone has the corpus before it signs in; the test
 gives Bob the same.
 
+**Verified against the owner's real database, 2026-09-21.**
+`test/tool/real_database_backfill_test.dart` runs the backfill over a pulled
+copy and reports what would travel and what would not. It skips itself unless
+`MURAJAAH_DRY_RUN_DB` points at a file, so it costs nothing in an ordinary run,
+and it refuses a path that looks like a live device file because it writes.
+
+On his data: **941 entities, none left behind** — 771 recitations, 65 prayer
+sessions, 28 rotation schemes, 27 mastered surahs, 8 routine templates, 32
+learning events, 4 recall attempts, 4 app settings (of ten rows; the rest are
+outside the allowlist), one learning plan and one rotation adjustment.
+
+It is also how the prayer-session refusal was *confirmed* rather than argued
+about. Every other test here builds the history it examines, which means every
+other test examines a history this project knows how to build; a phone in use
+for a year holds rows written under invariants that have since been tightened.
+**Run this against a fresh copy after any change to a payload's validation.**
+
 **Built for Android and deliberately not installed, 2026-09-21.**
 `app-debug.apk`, sha256
 `610DC06F75261A46DBEA703DB0DE0E5D6F758D5D0FB76A32BAB4A3EB5F88D30F`,
