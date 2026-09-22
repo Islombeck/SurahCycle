@@ -35,13 +35,13 @@ void main() {
     cloud = FakeSyncBackend(maxSupportedSchemaVersion: 6);
     alice = await _Device.create(
       name: 'alice',
-      cloud: cloud,
+      gateway: _BackendGateway(cloud, userId),
       userId: userId,
       nowUtc: () => clock,
     );
     bob = await _Device.create(
       name: 'bob',
-      cloud: cloud,
+      gateway: _BackendGateway(cloud, userId),
       userId: userId,
       nowUtc: () => clock,
     );
@@ -225,6 +225,152 @@ void main() {
     );
     expect(await bob.recitationIds(), <String>{'r1'});
   });
+
+  /// The same two phones, over a server shaped like the one this app uses.
+  ///
+  /// `FakeSyncBackend` above decides conflicts itself — it compares
+  /// `updatedAtUtc`, refuses an update to an append-only record and keeps an
+  /// audit trail. **Appwrite's TablesDB does none of that**: `upsertRow` writes
+  /// what it is handed, and the project deploys no function to compare anything
+  /// in. So every convergence property proved above was proved against a
+  /// server this app does not have, and the one below is the same property
+  /// proved against the one it does.
+  group('against a server that decides nothing', () {
+    late _DumbCloud cloud;
+
+    setUp(() async {
+      clock = DateTime.utc(2026, 9, 21, 9);
+      cloud = _DumbCloud();
+      alice = await _Device.create(
+        name: 'alice',
+        gateway: AppwriteSyncGateway(api: cloud, userId: userId),
+        userId: userId,
+        nowUtc: () => clock,
+      );
+      bob = await _Device.create(
+        name: 'bob',
+        gateway: AppwriteSyncGateway(api: cloud, userId: userId),
+        userId: userId,
+        nowUtc: () => clock,
+      );
+    });
+
+    /// Both rename the surah while the other is away, and Alice's edit — the
+    /// earlier one — is pushed last. A blind upsert leaves the account holding
+    /// it, so this is the shape that has to be survived without the server's
+    /// help.
+    Future<void> bothRenameOffline() async {
+      await alice.addSurah('surah-a', 112);
+      await bob.knowSurah('surah-a', 112);
+      await alice.activateAndSync();
+      await bob.activateAndSync();
+      await alice.rename('surah-a', 'Alice', at: tick());
+      await bob.rename('surah-a', 'Bob', at: tick());
+      await bob.sync();
+      await alice.sync();
+      await bob.sync();
+      await alice.sync();
+    }
+
+    test('a device never takes an older edit over its own', () async {
+      await bothRenameOffline();
+
+      expect(
+        await bob.aliasOf('surah-a'),
+        'Bob',
+        reason:
+            "her push overwrote the account's newer copy — nothing on that "
+            'side compares anything — and he must not take it back from there',
+      );
+    });
+
+    test(
+      'and the device that lost finds out',
+      () async {
+        await bothRenameOffline();
+
+        expect(await alice.aliasOf('surah-a'), 'Bob');
+      },
+      // **A real defect, reproduced here and not yet fixed.** The pull cursor
+      // is a row id, and the pull is ordered by the server's `$updatedAt`. A
+      // row that is rewritten moves to the end of that order, so a device
+      // whose cursor *is* that row now has nothing after it and stops seeing
+      // the row's own later versions — until some other row is written, which
+      // in a small account can be a long time.
+      //
+      // The fix is not a patch to the cursor: the table is called `sync_log`
+      // and the unique index on `(userId, idempotencyKey)` is already what
+      // catches a replay, so one row per change — ordered by `$createdAt`,
+      // which never moves — costs nothing this design was relying on and gives
+      // the audit trail ADR-0002 §4 asks for. It also stops being a decision
+      // for one session to take alone, which is why it is written down instead.
+      // See `docs/AI_HANDOFF.md`, 2026-09-22.
+      skip: 'Defect: the pull cursor is a row id over a mutable ordering.',
+    );
+
+    test('a history reaches a second device through the real mapping', () async {
+      await alice.addSurah('surah-a', 112);
+      await bob.knowSurah('surah-a', 112);
+      await alice.recite('r1', 'surah-a', at: tick());
+
+      await alice.activateAndSync();
+      await bob.activateAndSync();
+
+      expect(await bob.recitationIds(), <String>{'r1'});
+      expect(
+        await bob.masteredSurahIds(),
+        <String>{'surah-a'},
+        reason:
+            'every row crossed as an Appwrite row and came back as one, which '
+            'is the only form these ever travel in',
+      );
+    });
+  });
+}
+
+/// A server shaped like TablesDB: one row per id, blind upsert, and no opinion.
+///
+/// Deliberately stupid. The row-id rule is enforced because the real one
+/// enforces it — a row id it would refuse must not quietly work here — and
+/// nothing else is: no timestamp comparison, no append-only refusal, no audit
+/// log. Anything this app needs to be true has to be true without help from it.
+final class _DumbCloud implements AppwriteSyncApi {
+  static final RegExp _rowId = RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9._-]{0,35}$');
+
+  final Map<String, Map<String, Object?>> _rows =
+      <String, Map<String, Object?>>{};
+  final List<String> _order = <String>[];
+
+  @override
+  Future<AppwriteSyncWriteOutcome> upsertRow({
+    required String rowId,
+    required Map<String, Object?> data,
+    required List<String> permissions,
+  }) async {
+    if (!_rowId.hasMatch(rowId)) return AppwriteSyncWriteOutcome.rejected;
+    if (!_rows.containsKey(rowId)) _order.add(rowId);
+    _rows[rowId] = <String, Object?>{...data, r'$id': rowId};
+    // Last written, last returned: the pull is ordered by the server's own
+    // clock, so a row rewritten now is at the end of the page again.
+    _order
+      ..remove(rowId)
+      ..add(rowId);
+    return AppwriteSyncWriteOutcome.written;
+  }
+
+  @override
+  Future<AppwriteSyncPage> listRowsAfter({
+    required String cursor,
+    required int limit,
+  }) async {
+    final start = cursor.isEmpty ? 0 : _order.indexOf(cursor) + 1;
+    final ids = _order.skip(start).take(limit).toList();
+    return AppwriteSyncPage(
+      rows: <Map<String, Object?>>[for (final id in ids) _rows[id]!],
+      lastRowId: ids.isEmpty ? null : ids.last,
+      hasMore: _order.length > start + ids.length,
+    );
+  }
 }
 
 /// One phone: its own database, its own queue, its own view of the account.
@@ -241,7 +387,7 @@ final class _Device {
 
   static Future<_Device> create({
     required String name,
-    required FakeSyncBackend cloud,
+    required SyncGateway gateway,
     required String userId,
     required DateTime Function() nowUtc,
   }) async {
@@ -263,7 +409,7 @@ final class _Device {
       runner: SyncCycleRunner(
         database: database,
         store: store,
-        gateway: _BackendGateway(cloud, userId),
+        gateway: gateway,
         nowUtc: nowUtc,
         scan: backfill,
       ),
