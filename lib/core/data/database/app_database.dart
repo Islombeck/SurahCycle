@@ -1186,6 +1186,22 @@ class AppDatabase extends _$AppDatabase {
         <Object?>['routine:$type', type, type],
       );
     }
+    // A seeded template is nobody's edit, and the insert trigger has just
+    // dated it `now`. Left that way, a phone set up this morning would refuse
+    // the owner's real routine because its own blank one looks newer — the
+    // merge rule cannot tell an opinion from a placeholder unless the
+    // placeholder says it has none. Still-pristine means revision 1 with no
+    // parts; `replaceTemplate` advances the revision, so a routine the owner
+    // has actually configured is never touched by this.
+    await customStatement('''
+      UPDATE prayer_routine_templates
+      SET updated_at_utc = NULL
+      WHERE revision = 1
+        AND updated_at_utc IS NOT NULL
+        AND id NOT IN (
+          SELECT routine_template_id FROM prayer_routine_part_templates
+        )
+    ''');
   }
 
   Future<void> _migrateVersionFourToFive(

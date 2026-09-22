@@ -30,6 +30,7 @@ export 'sync_cycle.dart';
 export 'sync_engine.dart';
 export 'sync_envelope.dart';
 export 'sync_app_setting_policy.dart';
+export 'sync_merge_decision.dart';
 export 'sync_owner.dart';
 export 'sync_ports.dart';
 export 'sync_status.dart';

@@ -23,6 +23,7 @@ import 'package:drift/drift.dart';
 import '../../sync/mastered_surah_sync_payload.dart';
 import '../../sync/sync.dart';
 import '../database/app_database.dart';
+import 'sync_versioned_rows.dart';
 
 final class MasteredSurahSyncApplier {
   const MasteredSurahSyncApplier(this._database);
@@ -37,6 +38,7 @@ final class MasteredSurahSyncApplier {
     if (!handles(envelope)) {
       throw StateError('Not a roster envelope: ${envelope.entityKey}');
     }
+    if (!await _mayApply(envelope)) return;
     if (envelope.isTombstone) {
       // Deliberately not a delete. Removing a roster row would cascade into
       // every recitation that references it — the schema forbids it outright
@@ -45,6 +47,7 @@ final class MasteredSurahSyncApplier {
       // survives. A tombstone therefore arrives as `isCurrentlyMastered:
       // false`, which is what the owner actually did.
       await _setNoLongerMastered(envelope.entityId);
+      await _stampAuthoredAt(envelope.entityId, envelope.updatedAtUtc);
       return;
     }
 
@@ -102,8 +105,36 @@ final class MasteredSurahSyncApplier {
             ),
           );
     }
+    await _stampAuthoredAt(record.surahId, envelope.updatedAtUtc);
     await _ensureDefaultScheme(record.surahId, metadata.ayahCount);
   }
+
+  /// Whether the account's copy outranks the one this device holds.
+  ///
+  /// The server decides nothing — TablesDB upserts what it is handed — so
+  /// ADR-0002's rule runs here or nowhere. Absent locally counts as "nothing
+  /// to outrank it", and so does an undated row: see [SyncMergeDecision].
+  Future<bool> _mayApply(SyncEnvelope envelope) async =>
+      SyncMergeDecision.incomingWins(
+        incomingUpdatedAtUtc: envelope.updatedAtUtc,
+        localUpdatedAtUtc: await SyncVersionedRows(
+          _database,
+        ).updatedAtUtc(table: 'mastered_surahs', key: envelope.entityId),
+      );
+
+  /// Writes the time the record was **authored**, not the time it arrived.
+  ///
+  /// The insert trigger stamps `now` unconditionally, and the update trigger
+  /// steps aside when the writer sets the column itself — so this runs after
+  /// the write and is left alone. Without it every device that receives a
+  /// record would re-date it on arrival, and the copy would grow newer each
+  /// time it was passed on until it outranked the edit it came from.
+  Future<void> _stampAuthoredAt(String surahId, DateTime authoredAtUtc) =>
+      SyncVersionedRows(_database).stampAuthored(
+        table: 'mastered_surahs',
+        key: surahId,
+        authoredAtUtc: authoredAtUtc,
+      );
 
   Future<void> _setNoLongerMastered(String surahId) async {
     await (_database.update(
@@ -157,5 +188,12 @@ final class MasteredSurahSyncApplier {
             cachedRecitationCount: 0,
           ),
         );
+    // Nobody authored this. The insert trigger dated it `now`, and left that
+    // way it would outrank the owner's real scheme arriving a page later —
+    // a placeholder invented during a pull refusing the record it was standing
+    // in for.
+    await SyncVersionedRows(
+      _database,
+    ).markUndated(table: 'rotation_schemes', key: schemeId);
   }
 }

@@ -10,6 +10,7 @@ import 'package:drift/drift.dart';
 import '../../sync/prayer_session_sync_payload.dart';
 import '../../sync/sync.dart';
 import '../database/app_database.dart';
+import 'sync_versioned_rows.dart';
 
 final class PrayerSessionSyncApplier {
   const PrayerSessionSyncApplier(this._database);
@@ -26,6 +27,16 @@ final class PrayerSessionSyncApplier {
   Future<void> apply(SyncEnvelope envelope) async {
     if (!handles(envelope)) {
       throw StateError('Not a prayer session envelope: ${envelope.entityKey}');
+    }
+    // ADR-0002's rule, run here because the server does not run it: TablesDB
+    // upserts whatever it is handed and compares nothing.
+    if (!SyncMergeDecision.incomingWins(
+      incomingUpdatedAtUtc: envelope.updatedAtUtc,
+      localUpdatedAtUtc: await SyncVersionedRows(
+        _database,
+      ).updatedAtUtc(table: 'prayer_sessions', key: envelope.entityId),
+    )) {
+      return;
     }
     if (envelope.isTombstone) {
       await _applyTombstone(envelope.entityId);
@@ -48,6 +59,13 @@ final class PrayerSessionSyncApplier {
           ),
         );
     await _writeParts(record);
+    // After the parts, because writing one touches the session row through the
+    // trigger and would put this device's clock on another device's edit.
+    await SyncVersionedRows(_database).stampAuthored(
+      table: 'prayer_sessions',
+      key: record.id,
+      authoredAtUtc: envelope.updatedAtUtc,
+    );
   }
 
   Future<void> _applyTombstone(String sessionId) async {

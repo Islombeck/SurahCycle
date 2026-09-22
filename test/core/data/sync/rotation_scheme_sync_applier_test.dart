@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:murajaah/core/data/data.dart';
 import 'package:murajaah/core/data/sync/rotation_scheme_sync_applier.dart';
+import 'package:murajaah/core/data/sync/sync_versioned_rows.dart';
 import 'package:murajaah/core/domain/domain.dart';
 import 'package:murajaah/core/sync/rotation_scheme_sync_payload.dart';
 import 'package:murajaah/core/sync/sync.dart';
@@ -33,6 +34,15 @@ void main() {
       sourceVersion: 'test-v1',
     );
     await surahs.addMastered('surah-112');
+    // Dated the way the owner's own row would be: created days before the
+    // envelopes below, not a millisecond ago. Without this the local scheme
+    // carries the wall clock, every envelope here is "older", and the merge
+    // rule skips the very applications these tests are about.
+    await SyncVersionedRows(database).stampAuthored(
+      table: 'rotation_schemes',
+      key: 'surah-112:scheme:1',
+      authoredAtUtc: DateTime.utc(2026, 9, 1),
+    );
   });
 
   tearDown(() => database.close());

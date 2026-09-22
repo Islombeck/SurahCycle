@@ -14,6 +14,7 @@ import 'package:drift/drift.dart';
 import '../../sync/learning_sync_payloads.dart';
 import '../../sync/sync.dart';
 import '../database/app_database.dart';
+import 'sync_versioned_rows.dart';
 
 final class LearningStateSyncApplier {
   const LearningStateSyncApplier(this._database);
@@ -27,6 +28,15 @@ final class LearningStateSyncApplier {
   Future<void> apply(SyncEnvelope envelope) async {
     if (!handles(envelope)) {
       throw StateError('Not a learning plan envelope: ${envelope.entityKey}');
+    }
+    // ADR-0002's rule, run here because the server does not run it.
+    if (!SyncMergeDecision.incomingWins(
+      incomingUpdatedAtUtc: envelope.updatedAtUtc,
+      localUpdatedAtUtc: await SyncVersionedRows(
+        _database,
+      ).updatedAtUtc(table: 'learning_surahs', key: envelope.entityId),
+    )) {
+      return;
     }
     if (envelope.isTombstone) {
       await _remove(envelope.entityId);
@@ -86,6 +96,11 @@ final class LearningStateSyncApplier {
             ),
           ),
         );
+    await SyncVersionedRows(_database).stampAuthored(
+      table: 'learning_surahs',
+      key: record.id,
+      authoredAtUtc: envelope.updatedAtUtc,
+    );
   }
 
   Future<void> _remove(String id) async {

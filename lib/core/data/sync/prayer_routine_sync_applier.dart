@@ -12,6 +12,7 @@ import 'package:drift/drift.dart';
 import '../../sync/prayer_routine_sync_payload.dart';
 import '../../sync/sync.dart';
 import '../database/app_database.dart';
+import 'sync_versioned_rows.dart';
 
 final class PrayerRoutineSyncApplier {
   const PrayerRoutineSyncApplier(this._database);
@@ -38,12 +39,27 @@ final class PrayerRoutineSyncApplier {
       throw const SyncTransportException('remote-routine-cannot-be-deleted');
     }
 
+    // ADR-0002's rule, run here because the server does not run it.
+    if (!SyncMergeDecision.incomingWins(
+      incomingUpdatedAtUtc: envelope.updatedAtUtc,
+      localUpdatedAtUtc: await SyncVersionedRows(
+        _database,
+      ).updatedAtUtc(table: 'prayer_routine_templates', key: envelope.entityId),
+    )) {
+      return;
+    }
+
     final record = PrayerRoutineSyncPayload.decode(
       envelope.payload,
       entityId: envelope.entityId,
     );
     await _writeTemplate(record);
     await _writeParts(record);
+    await SyncVersionedRows(_database).stampAuthored(
+      table: 'prayer_routine_templates',
+      key: record.id,
+      authoredAtUtc: envelope.updatedAtUtc,
+    );
   }
 
   Future<void> _writeTemplate(PrayerRoutineSyncRecord record) async {

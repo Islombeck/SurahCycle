@@ -22,6 +22,7 @@ import '../../sync/rotation_scheme_sync_payload.dart';
 import '../../sync/sync.dart';
 import '../database/app_database.dart';
 import '../repositories/rotation_projection_store.dart';
+import 'sync_versioned_rows.dart';
 
 final class RotationSchemeSyncApplier {
   RotationSchemeSyncApplier(this._database, {this.rebuildsProjection = true})
@@ -49,6 +50,16 @@ final class RotationSchemeSyncApplier {
       throw const SyncTransportException('remote-scheme-cannot-be-deleted');
     }
 
+    // ADR-0002's rule, run here because the server does not run it.
+    if (!SyncMergeDecision.incomingWins(
+      incomingUpdatedAtUtc: envelope.updatedAtUtc,
+      localUpdatedAtUtc: await SyncVersionedRows(
+        _database,
+      ).updatedAtUtc(table: 'rotation_schemes', key: envelope.entityId),
+    )) {
+      return;
+    }
+
     final record = RotationSchemeSyncPayload.decode(
       envelope.payload,
       entityId: envelope.entityId,
@@ -57,6 +68,11 @@ final class RotationSchemeSyncApplier {
     await _writeScheme(record);
     await _writeParts(record);
     await _settleWhichIsActive(record);
+    await SyncVersionedRows(_database).stampAuthored(
+      table: 'rotation_schemes',
+      key: record.id,
+      authoredAtUtc: envelope.updatedAtUtc,
+    );
 
     if (!rebuildsProjection) return;
     final state = await _projection.loadSnapshot();
