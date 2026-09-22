@@ -386,6 +386,92 @@ void main() {
       );
       expect(store.recorded, isEmpty);
     });
+
+    test('what the merge could not send outlives the merge', () async {
+      final store = _FakeActivationStore(_ownerA);
+      final coordinator = _coordinatorFor(
+        store,
+        _FakeBackups(),
+        _FakeInventory(),
+        backfill: _FakeBackfill(
+          skippedByType: const <SyncEntityType, int>{
+            SyncEntityType.prayerSession: 2,
+          },
+          skippedFields: const <SyncEntityType, Set<String>>{
+            SyncEntityType.prayerSession: <String>{'startedAtUtc'},
+          },
+        ),
+      );
+
+      final preview = await coordinator.prepareFirstSync(_accountA);
+      await coordinator.finishFirstSync(
+        previewToken: preview.token,
+        choice: SyncActivationChoice.merge,
+      );
+
+      expect(
+        store.backfillOutcome?.skippedCount,
+        2,
+        reason:
+            'the report is gone when the call returns, and "two of your '
+            'records never reached your account" has to be findable tomorrow',
+      );
+      expect(store.backfillOutcome?.skippedFields, <String>{'startedAtUtc'});
+      expect(
+        store.backfillOutcome?.enqueuedCount,
+        3,
+        reason:
+            'what did go is half of what makes the skipped number mean '
+            'anything',
+      );
+    });
+
+    test('a merge that left nothing behind still says so', () async {
+      final store = _FakeActivationStore(_ownerA);
+      final coordinator = _coordinatorFor(
+        store,
+        _FakeBackups(),
+        _FakeInventory(),
+      );
+
+      final preview = await coordinator.prepareFirstSync(_accountA);
+      await coordinator.finishFirstSync(
+        previewToken: preview.token,
+        choice: SyncActivationChoice.merge,
+      );
+
+      expect(
+        store.backfillOutcome?.skippedCount,
+        0,
+        reason:
+            'recording nothing would make "history went in full" and "nobody '
+            'ever looked" the same row',
+      );
+      expect(store.backfillOutcome?.hasSkipped, isFalse);
+    });
+
+    test('a device kept local records no outcome', () async {
+      final store = _FakeActivationStore(_ownerA);
+      final coordinator = _coordinatorFor(
+        store,
+        _FakeBackups(),
+        _FakeInventory(),
+      );
+
+      final preview = await coordinator.prepareFirstSync(_accountA);
+      await coordinator.finishFirstSync(
+        previewToken: preview.token,
+        choice: SyncActivationChoice.keepDeviceLocalOnly,
+      );
+
+      expect(
+        store.backfillOutcome,
+        isNull,
+        reason:
+            'a zero here would be a report about a merge that was declined, '
+            'and `forgetOwner` has just dropped the row it would live in',
+      );
+    });
   });
 
   group('asking whether sync is active', () {
@@ -474,11 +560,19 @@ SyncActivationCoordinator _coordinatorFor(
 
 /// Records whether the history was offered to the account, and can refuse to.
 final class _FakeBackfill implements SyncBackfill {
-  _FakeBackfill({this.failure});
+  _FakeBackfill({
+    this.failure,
+    this.skippedByType = const <SyncEntityType, int>{},
+    this.skippedFields = const <SyncEntityType, Set<String>>{},
+  });
 
   /// Set to make a run fail, which is how the "activation stays off if the
   /// history could not be sent" rule is checked.
   final Object? failure;
+
+  /// What the run leaves behind, for the tests about reporting that.
+  final Map<SyncEntityType, int> skippedByType;
+  final Map<SyncEntityType, Set<String>> skippedFields;
 
   final List<DateTime> runs = <DateTime>[];
 
@@ -492,6 +586,8 @@ final class _FakeBackfill implements SyncBackfill {
       enqueuedByType: const <SyncEntityType, int>{
         SyncEntityType.recitationEvent: 3,
       },
+      skippedByType: skippedByType,
+      skippedFields: skippedFields,
     );
   }
 
@@ -541,6 +637,22 @@ final class _FakeActivationStore implements SyncActivationStore {
     final entry = _RecordedChoice(choice, backupId, decidedAtUtc);
     recorded.add(entry);
     _row = entry;
+  }
+
+  /// What the coordinator said the backfill achieved, if it said anything.
+  SyncBackfillOutcome? backfillOutcome;
+
+  @override
+  Future<void> recordBackfillOutcome({
+    required int enqueuedCount,
+    required int skippedCount,
+    required Set<String> skippedFields,
+  }) async {
+    backfillOutcome = SyncBackfillOutcome(
+      enqueuedCount: enqueuedCount,
+      skippedCount: skippedCount,
+      skippedFields: skippedFields,
+    );
   }
 
   @override

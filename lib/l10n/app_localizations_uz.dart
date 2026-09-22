@@ -1337,6 +1337,15 @@ class AppLocalizationsUz extends AppLocalizations {
   String get coveragePartAlreadyMarked => 'allaqachon belgilangan';
 
   @override
+  String get accountBackfillIncompleteTitle =>
+      'Tarixning bir qismi shu qurilmada qoldi';
+
+  @override
+  String accountBackfillIncomplete(int count, String fields) {
+    return 'Yuborib boʻlmagan yozuvlar: $count ($fields). Ular qurilmada qoldi.';
+  }
+
+  @override
   String get accountSyncNow => 'Hozir sinxronlash';
 
   @override

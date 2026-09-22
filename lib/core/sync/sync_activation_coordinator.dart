@@ -57,6 +57,19 @@ abstract interface class SyncActivationStore {
     required DateTime decidedAtUtc,
   });
 
+  /// Keeps what the backfill managed to offer, and what it could not.
+  ///
+  /// Durable rather than returned, because the number that matters is the one
+  /// nobody is looking at. A count shown once on the screen that ran the merge
+  /// is gone as soon as the user leaves it, and "twelve of your records never
+  /// reached your account" is precisely the thing that must still be findable
+  /// tomorrow.
+  Future<void> recordBackfillOutcome({
+    required int enqueuedCount,
+    required int skippedCount,
+    required Set<String> skippedFields,
+  });
+
   Future<void> forgetOwner();
 }
 
@@ -216,7 +229,19 @@ final class SyncActivationCoordinator implements SyncActivationGateway {
       // This is also the only moment the whole existing history can be sent. A
       // recorder queues a change as it is written and therefore has nothing to
       // say about anything written before the account existed.
-      await _backfill.enqueueEverything(nowUtc: _nowUtc().toUtc());
+      final report = await _backfill.enqueueEverything(
+        nowUtc: _nowUtc().toUtc(),
+      );
+      // Kept whether or not anything was left behind. A zero is a statement
+      // too — it is how the account screen can say the history went in full
+      // rather than say nothing and be believed.
+      await _store.recordBackfillOutcome(
+        enqueuedCount: report.enqueuedCount,
+        skippedCount: report.skippedCount,
+        skippedFields: <String>{
+          for (final fields in report.skippedFields.values) ...fields,
+        },
+      );
     }
 
     if (choice == SyncActivationChoice.keepDeviceLocalOnly) {

@@ -1,8 +1,10 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:murajaah/core/data/sync/drift_sync_store.dart';
+import 'package:murajaah/app/app_providers.dart';
+import 'package:murajaah/core/data/data.dart';
 import 'package:murajaah/core/sync/sync.dart';
 import 'package:murajaah/features/account/application/account_providers.dart';
 import 'package:murajaah/features/account/presentation/account_screen.dart';
@@ -206,6 +208,100 @@ void main() {
     );
   });
 
+  testWidgets('records the merge could not send are said out loud', (
+    tester,
+  ) async {
+    // Nothing else on this screen would mention them: they are not queued, so
+    // "0 waiting" is true and reads as "everything went".
+    await _pump(
+      tester,
+      account: _user,
+      transport: const SyncTransportSnapshot(
+        isActivated: true,
+        queuedCount: 0,
+        quarantinedCount: 0,
+        lastSuccessAtUtc: null,
+        lastFailureReason: null,
+        consecutiveFailureCount: 0,
+        backfill: SyncBackfillOutcome(
+          enqueuedCount: 940,
+          skippedCount: 12,
+          skippedFields: <String>{'startedAtUtc'},
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('account-backfill-incomplete')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('12'), findsWidgets);
+    expect(
+      find.textContaining('startedAtUtc'),
+      findsOneWidget,
+      reason: 'a count alone says a row was left behind and nothing about why',
+    );
+  });
+
+  testWidgets('a merge that left nothing behind shows no warning', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      account: _user,
+      transport: const SyncTransportSnapshot(
+        isActivated: true,
+        queuedCount: 0,
+        quarantinedCount: 0,
+        lastSuccessAtUtc: null,
+        lastFailureReason: null,
+        consecutiveFailureCount: 0,
+        backfill: SyncBackfillOutcome(
+          enqueuedCount: 940,
+          skippedCount: 0,
+          skippedFields: <String>{},
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('account-backfill-incomplete')),
+      findsNothing,
+      reason: 'a warning that fires on a clean merge is one nobody reads twice',
+    );
+  });
+
+  testWidgets('a device kept local is told nothing about a backfill', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      account: _user,
+      transport: const SyncTransportSnapshot(
+        isActivated: false,
+        queuedCount: 0,
+        quarantinedCount: 0,
+        lastSuccessAtUtc: null,
+        lastFailureReason: null,
+        consecutiveFailureCount: 0,
+        backfill: SyncBackfillOutcome(
+          enqueuedCount: 0,
+          skippedCount: 12,
+          skippedFields: <String>{'startedAtUtc'},
+        ),
+      ),
+    );
+
+    expect(find.text(l10n.accountSyncOffTitle), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('account-backfill-incomplete')),
+      findsNothing,
+      reason:
+          'a device that chose to stay local has nothing outstanding to report '
+          'about an account it is not part of',
+    );
+  });
+
   testWidgets('an unreachable account is not reported as signed out', (
     tester,
   ) async {
@@ -328,9 +424,18 @@ Future<void> _pump(
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
+  // The screen watches the activation gateway, which reaches the store and so
+  // constructs the app's real database object. Nothing here queries it, but a
+  // widget test that opens the owner's database file is one edit away from
+  // writing to it — and the "database created twice" warning it prints would
+  // hide the next real one.
+  final database = AppDatabase(NativeDatabase.memory());
+  addTearDown(database.close);
+
   await tester.pumpWidget(
     ProviderScope(
       overrides: <Override>[
+        appDatabaseProvider.overrideWithValue(database),
         appwriteConfigProvider.overrideWithValue(config ?? _ready),
         accountGatewayProvider.overrideWithValue(
           gateway ?? _FakeAccountGateway(),

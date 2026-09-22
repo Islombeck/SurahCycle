@@ -1,4 +1,5 @@
 import 'appwrite_config.dart';
+import 'sync_backfill.dart';
 
 /// What the account screen is allowed to say, decided in one place.
 ///
@@ -53,6 +54,7 @@ final class SyncStatus {
     required this.lastFailureReason,
     required this.consecutiveFailureCount,
     required this.problem,
+    required this.backfillSkipped,
   });
 
   /// [lastFailureReason] must be the engine's content-free category, never a
@@ -66,6 +68,7 @@ final class SyncStatus {
     DateTime? lastSuccessAtUtc,
     String? lastFailureReason,
     int consecutiveFailureCount = 0,
+    SyncBackfillOutcome? backfill,
   }) {
     if (queuedCount < 0 || quarantinedCount < 0) {
       throw ArgumentError.value(
@@ -117,6 +120,11 @@ final class SyncStatus {
           ? consecutiveFailureCount
           : 0,
       problem: health == SyncHealth.misconfigured ? config.problem : null,
+      // Only while sync is on. A device that was kept local, or signed out,
+      // has nothing outstanding to report about a merge it is not part of.
+      backfillSkipped: (backfill?.hasSkipped ?? false) && isActivated
+          ? backfill
+          : null,
     );
   }
 
@@ -129,6 +137,13 @@ final class SyncStatus {
 
   /// Why the configuration is unusable, present only when it is.
   final String? problem;
+
+  /// Records the backfill could not express, present only when there are any.
+  ///
+  /// Kept apart from [queuedCount] because it is a different fact: a queued
+  /// record is on its way and a skipped one is not going at all. Folding them
+  /// together would let "still sending" describe something that has stopped.
+  final SyncBackfillOutcome? backfillSkipped;
 
   /// The one state a screen may render as success.
   ///

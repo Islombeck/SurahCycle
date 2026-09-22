@@ -346,6 +346,96 @@ void main() {
       );
       expect((await theirs.transportSnapshot()).isActivated, isFalse);
     });
+
+    test('it carries what the last backfill could not send', () async {
+      await store.recordBackfillOutcome(
+        enqueuedCount: 940,
+        skippedCount: 2,
+        skippedFields: <String>{'startedAtUtc', 'kind'},
+      );
+
+      final backfill = (await store.transportSnapshot()).backfill;
+
+      expect(backfill?.enqueuedCount, 940);
+      expect(backfill?.skippedCount, 2);
+      expect(
+        backfill?.skippedFields,
+        <String>{'kind', 'startedAtUtc'},
+        reason: 'the field names are what makes a count actionable',
+      );
+    });
+
+    test('a device that has never merged reports no backfill at all', () async {
+      expect(
+        (await store.transportSnapshot()).backfill,
+        isNull,
+        reason:
+            'a zero here would say the history went in full, which is a claim '
+            'about a merge that never ran',
+      );
+    });
+
+    test('a later backfill replaces the earlier one', () async {
+      await store.recordBackfillOutcome(
+        enqueuedCount: 10,
+        skippedCount: 4,
+        skippedFields: <String>{'startedAtUtc'},
+      );
+      await store.recordBackfillOutcome(
+        enqueuedCount: 14,
+        skippedCount: 0,
+        skippedFields: const <String>{},
+      );
+
+      final backfill = (await store.transportSnapshot()).backfill;
+
+      expect(
+        backfill?.skippedCount,
+        0,
+        reason:
+            'a re-run is the recovery path, and a stale "4 left behind" would '
+            'go on asking the owner to fix something already fixed',
+      );
+      expect(backfill?.skippedFields, isEmpty);
+    });
+
+    test('a backfill row this build cannot read costs one line, not the '
+        'screen', () async {
+      await database.customStatement(
+        'INSERT INTO app_settings (key, value, value_type, updated_at_utc) '
+        'VALUES (?, ?, ?, ?)',
+        <Object?>['sync.backfill.local', 'not json at all', 'string', 0],
+      );
+
+      final snapshot = await store.transportSnapshot();
+
+      expect(snapshot.backfill, isNull);
+      expect(
+        snapshot.queuedCount,
+        0,
+        reason: 'the rest of the summary is still true and still owed',
+      );
+    });
+
+    test('one owner cannot read another owner\'s backfill', () async {
+      final mine = DriftSyncStore(database, owner: SyncOwnerKey.user('a'));
+      final theirs = DriftSyncStore(database, owner: SyncOwnerKey.user('b'));
+
+      await mine.recordBackfillOutcome(
+        enqueuedCount: 7,
+        skippedCount: 1,
+        skippedFields: <String>{'startedAtUtc'},
+      );
+
+      expect((await mine.transportSnapshot()).backfill?.skippedCount, 1);
+      expect(
+        (await theirs.transportSnapshot()).backfill,
+        isNull,
+        reason:
+            'how much of this device\'s history reached one account says '
+            'nothing about the other',
+      );
+    });
   });
 
   test('forgetting one owner leaves every other owner untouched', () async {
@@ -370,6 +460,12 @@ void main() {
         backupId: 'backup',
         decidedAtUtc: at(1),
       );
+      await owned.recordPushWatermark(at(2));
+      await owned.recordBackfillOutcome(
+        enqueuedCount: 5,
+        skippedCount: 1,
+        skippedFields: <String>{'startedAtUtc'},
+      );
     }
 
     await forB.forgetOwner();
@@ -377,8 +473,23 @@ void main() {
     expect(await forA.outbox.pendingCount(), 1);
     expect(await forA.pullCursor(), const SyncCursor('user:a-page'));
     expect(await forA.isSyncActive(), isTrue);
+    expect(await forA.pushWatermark(), at(2));
+    expect((await forA.transportSnapshot()).backfill?.skippedCount, 1);
     expect(await forB.outbox.pendingCount(), 0);
     expect(await forB.pullCursor(), SyncCursor.beginning);
     expect(await forB.activation(), isNull);
+    expect(
+      await forB.pushWatermark(),
+      kUndatedByThisDevice,
+      reason:
+          'a device that has forgotten its queue has not scanned anything for '
+          'this account; re-offering the history costs a cycle, skipping it '
+          'loses records',
+    );
+    expect(
+      (await forB.transportSnapshot()).backfill,
+      isNull,
+      reason: 'nothing may report on a merge whose activation is gone',
+    );
   });
 }

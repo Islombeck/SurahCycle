@@ -212,6 +212,7 @@ final syncStatusProvider = Provider<AsyncValue<SyncStatus>>((ref) {
           lastSuccessAtUtc: transport.lastSuccessAtUtc,
           lastFailureReason: transport.lastFailureReason,
           consecutiveFailureCount: transport.consecutiveFailureCount,
+          backfill: transport.backfill,
         ),
       );
 });

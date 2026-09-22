@@ -139,6 +139,24 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
           ),
           icon: Icons.sync_outlined,
           extra: <Widget>[
+            // Records the backfill could not express are not in the queue and
+            // never will be, so no count on this screen mentions them. Said
+            // out loud or not at all: silence here reads as "everything went".
+            if (status.backfillSkipped case final skipped?) ...<Widget>[
+              const SizedBox(height: 12),
+              _StatusCard(
+                key: const ValueKey<String>('account-backfill-incomplete'),
+                // Its own heading rather than the card above it: "sync is on"
+                // over a warning is the sentence that made the warning easy to
+                // read past in the first place.
+                title: l10n.accountBackfillIncompleteTitle,
+                body: l10n.accountBackfillIncomplete(
+                  skipped.skippedCount,
+                  skipped.skippedFields.join(', '),
+                ),
+                icon: Icons.report_problem_outlined,
+              ),
+            ],
             const SizedBox(height: 12),
             // A cycle runs on its own after activation and whenever the app
             // asks; this is here because a queue that is waiting on a network

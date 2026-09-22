@@ -64,6 +64,28 @@ final class SyncBackfillReport {
   bool get isEmpty => enqueuedCount == 0;
 }
 
+/// What the last backfill managed to offer the account, kept afterwards.
+///
+/// The report itself is a return value and is gone once the call returns. This
+/// is the part worth keeping: the number that matters most is the one nobody is
+/// looking at, and "twelve of your records never reached your account" has to
+/// still be findable tomorrow rather than only on the screen that ran the merge.
+final class SyncBackfillOutcome {
+  const SyncBackfillOutcome({
+    required this.enqueuedCount,
+    required this.skippedCount,
+    required this.skippedFields,
+  });
+
+  final int enqueuedCount;
+  final int skippedCount;
+
+  /// Which field each refusal named — categories, never values.
+  final Set<String> skippedFields;
+
+  bool get hasSkipped => skippedCount > 0;
+}
+
 /// The date an envelope carries when this device cannot honestly supply one.
 ///
 /// Schema v10 added `updated_at_utc` to six tables and backfilled nothing, so a

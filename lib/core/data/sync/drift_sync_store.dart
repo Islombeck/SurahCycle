@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../../sync/sync.dart';
@@ -37,6 +39,7 @@ final class SyncTransportSnapshot {
     required this.lastSuccessAtUtc,
     required this.lastFailureReason,
     required this.consecutiveFailureCount,
+    this.backfill,
   });
 
   static const SyncTransportSnapshot inactive = SyncTransportSnapshot(
@@ -47,6 +50,12 @@ final class SyncTransportSnapshot {
     lastFailureReason: null,
     consecutiveFailureCount: 0,
   );
+
+  /// What the last backfill did, or null on a device that has never merged.
+  ///
+  /// Counted separately from the queue because it is a different fact: a
+  /// queued record is on its way, and a skipped one is not going at all.
+  final SyncBackfillOutcome? backfill;
 
   final bool isActivated;
   final int queuedCount;
@@ -75,10 +84,21 @@ final class SyncTransportSnapshot {
 /// as B" safe: B's engine reads B's queue and B's cursor, and A's rows are
 /// simply not visible to it.
 final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
-  DriftSyncStore(this._database, {this.owner = SyncOwnerKey.local})
-    : outbox = DriftSyncOutbox(_database, owner: owner);
+  DriftSyncStore(
+    this._database, {
+    this.owner = SyncOwnerKey.local,
+    DateTime Function()? nowUtc,
+  }) : _nowUtc = nowUtc ?? _systemNowUtc,
+       outbox = DriftSyncOutbox(_database, owner: owner);
 
   final AppDatabase _database;
+
+  /// Only for the `updated_at_utc` of the settings rows written here; every
+  /// sync-visible timestamp arrives as an argument from the caller that owns
+  /// the decision. Injectable so a test is not at the mercy of the wall clock.
+  final DateTime Function() _nowUtc;
+
+  static DateTime _systemNowUtc() => DateTime.now().toUtc();
 
   @override
   final SyncOwnerKey owner;
@@ -86,7 +106,7 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
 
   /// The same store for a different account, sharing this database.
   DriftSyncStore forOwner(SyncOwnerKey other) =>
-      DriftSyncStore(_database, owner: other);
+      DriftSyncStore(_database, owner: other, nowUtc: _nowUtc);
 
   @override
   Future<void> commitLocalChangeAndEnqueue(
@@ -198,6 +218,67 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
         );
   }
 
+  /// Where this owner's last backfill outcome is kept.
+  ///
+  /// In `app_settings` for the same reason the watermark is: a column of its
+  /// own would have meant a schema migration to hold one small fact. Outside
+  /// the sync allowlist by construction, and rightly — how much of *this*
+  /// device's history reached the account is not something to hand to another
+  /// device as if it were about theirs.
+  String get _backfillKey => 'sync.backfill.${owner.value}';
+
+  @override
+  Future<void> recordBackfillOutcome({
+    required int enqueuedCount,
+    required int skippedCount,
+    required Set<String> skippedFields,
+  }) async {
+    await _database
+        .into(_database.appSettings)
+        .insertOnConflictUpdate(
+          AppSettingsCompanion.insert(
+            key: _backfillKey,
+            value: jsonEncode(<String, Object?>{
+              'enqueued': enqueuedCount,
+              'skipped': skippedCount,
+              // Field names only. They are categories; the values behind them
+              // are the owner's history and never leave the row they are in.
+              'fields': skippedFields.toList()..sort(),
+            }),
+            // `string`, not `json`: `value_type` is constrained to the four
+            // types a setting can be read back as, and a fifth would be a
+            // schema migration for one internal row. The shape is JSON and the
+            // storage is text; only `_backfillOutcome` reads this key, and it
+            // already treats anything it cannot parse as absent.
+            valueType: 'string',
+            updatedAtUtc: _nowUtc(),
+          ),
+        );
+  }
+
+  Future<SyncBackfillOutcome?> _backfillOutcome() async {
+    final row = await (_database.select(
+      _database.appSettings,
+    )..where((row) => row.key.equals(_backfillKey))).getSingleOrNull();
+    if (row == null) return null;
+    try {
+      final decoded = jsonDecode(row.value) as Map<String, Object?>;
+      return SyncBackfillOutcome(
+        enqueuedCount: decoded['enqueued'] as int? ?? 0,
+        skippedCount: decoded['skipped'] as int? ?? 0,
+        skippedFields: <String>{
+          for (final field
+              in decoded['fields'] as List<Object?>? ?? const <Object?>[])
+            if (field is String) field,
+        },
+      );
+    } on Object {
+      // A row this build cannot read is not worth failing the whole summary
+      // for: the screen loses one line and keeps the rest.
+      return null;
+    }
+  }
+
   /// The whole summary in one pass.
   ///
   /// The quarantined count is queried here rather than taken from
@@ -207,6 +288,7 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
   Future<SyncTransportSnapshot> transportSnapshot() =>
       _database.transaction(() async {
         final activation = await _activationRow();
+        final backfill = await _backfillOutcome();
         final rows = await (_database.select(
           _database.syncOutboxEntries,
         )..where((row) => row.ownerKey.equals(owner.value))).get();
@@ -236,6 +318,7 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
           lastSuccessAtUtc: activation?.lastSuccessAtUtc?.toUtc(),
           lastFailureReason: failure,
           consecutiveFailureCount: failure == null ? 0 : attempts,
+          backfill: backfill,
         );
       });
 
@@ -294,6 +377,17 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
     await (_database.delete(
       _database.syncActivations,
     )..where((row) => row.ownerKey.equals(owner.value))).go();
+    // The two owner-scoped settings rows go with them. They are transport
+    // state that happens to live in `app_settings` rather than in a table of
+    // its own, and leaving them would contradict the row that was just
+    // deleted: a device with no activation would still be reporting how a
+    // merge went, and a device that has forgotten its queue would still claim
+    // to have scanned up to a watermark that no longer describes anything.
+    // Dropping the watermark makes a later activation re-offer everything,
+    // which is the safe direction — too much rather than too little.
+    await (_database.delete(_database.appSettings)
+          ..where((row) => row.key.isIn(<String>[_watermarkKey, _backfillKey])))
+        .go();
   });
 
   static SyncActivationChoice? _choiceFrom(String? stored) {

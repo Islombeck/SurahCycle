@@ -2386,6 +2386,18 @@ abstract class AppLocalizations {
   /// **'уже отмечено'**
   String get coveragePartAlreadyMarked;
 
+  /// No description provided for @accountBackfillIncompleteTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Часть истории осталась здесь'**
+  String get accountBackfillIncompleteTitle;
+
+  /// No description provided for @accountBackfillIncomplete.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось отправить записей: {count} ({fields}). Они остались на устройстве.'**
+  String accountBackfillIncomplete(int count, String fields);
+
   /// No description provided for @accountSyncNow.
   ///
   /// In ru, this message translates to:

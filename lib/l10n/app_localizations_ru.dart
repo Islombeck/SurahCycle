@@ -1339,6 +1339,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get coveragePartAlreadyMarked => 'уже отмечено';
 
   @override
+  String get accountBackfillIncompleteTitle => 'Часть истории осталась здесь';
+
+  @override
+  String accountBackfillIncomplete(int count, String fields) {
+    return 'Не удалось отправить записей: $count ($fields). Они остались на устройстве.';
+  }
+
+  @override
   String get accountSyncNow => 'Синхронизировать сейчас';
 
   @override

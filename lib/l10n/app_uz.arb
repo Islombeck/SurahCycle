@@ -423,6 +423,9 @@
   ,"coverageAlreadyMarked": "Bu namoz uchun allaqachon belgilangan: {count}. Bu qismlar tanlanmagan — ikkinchi marta oʻqigan boʻlsangiz belgilang."
   ,"@coverageAlreadyMarked": {"placeholders": {"count": {"type": "int"}}}
   ,"coveragePartAlreadyMarked": "allaqachon belgilangan"
+  ,"accountBackfillIncompleteTitle": "Tarixning bir qismi shu qurilmada qoldi"
+  ,"accountBackfillIncomplete": "Yuborib boʻlmagan yozuvlar: {count} ({fields}). Ular qurilmada qoldi."
+  ,"@accountBackfillIncomplete": {"placeholders": {"count": {"type": "int"}, "fields": {"type": "String"}}}
   ,"accountSyncNow": "Hozir sinxronlash"
   ,"accountSyncNowResult": "Yuborildi: {pushed} · Navbatda qoldi: {remaining}"
   ,"@accountSyncNowResult": {"placeholders": {"pushed": {"type": "int"}, "remaining": {"type": "int"}}}

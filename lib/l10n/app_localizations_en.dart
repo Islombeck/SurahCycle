@@ -1335,6 +1335,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coveragePartAlreadyMarked => 'already recorded';
 
   @override
+  String get accountBackfillIncompleteTitle =>
+      'Part of the history stayed here';
+
+  @override
+  String accountBackfillIncomplete(int count, String fields) {
+    return 'Records that could not be sent: $count ($fields). They stayed on this device.';
+  }
+
+  @override
   String get accountSyncNow => 'Sync now';
 
   @override
