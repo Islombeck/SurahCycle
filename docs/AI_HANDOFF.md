@@ -357,6 +357,15 @@ vocabularies and the required flags **from `AppwriteDesiredState`** rather than
 from a copy. With the old gateway the dry run over his database now fails —
 that is how this was confirmed, not by argument.
 
+**Where the evidence stops.** The rule is quoted verbatim from the live API's
+own parameter documentation, and the failing dry run shows the client breaking
+it. The obvious last step — writing one row with the old id to the live table
+and watching it come back 400 — was **not** run: the environment refused the
+write, which is the right refusal for a production project, and no attempt was
+made to get around it. So the constraint is documented rather than observed.
+If a future session wants it observed, one create-then-delete against the empty
+table settles it in a minute, with the owner's say-so.
+
 **What else was compared, and matches** (read-only, through the Appwrite MCP,
 2026-09-22):
 
