@@ -323,6 +323,35 @@ redo finished work, which this document says about itself elsewhere.*
    below for the exact recipe; do not re-run `/mcp` → Authenticate, which
    cannot work.
 
+## A third defect, found by the same method and deliberately left open (2026-09-22)
+
+Running the two-device test over a **deliberately stupid** server double — one
+row per id, blind upsert, no opinion about anything — reproduced this:
+
+**A device can stop seeing an entity's later versions.** The pull asks for
+`orderAsc($updatedAt)` with `cursorAfter(<row id>)`. A row that is rewritten
+moves to the end of that ordering, so a device whose cursor **is** that row now
+has nothing after it — and the row's own newer content is exactly what it will
+never be handed. It resumes only when some other row is written, which in an
+account with a handful of entities can be a long time.
+
+It is reproduced in `test/app/two_device_sync_test.dart` as a test that is
+**skipped with its reason** rather than deleted or asserted the wrong way
+round, so it turns green the day it is fixed.
+
+**The fix is a design decision, not a patch, which is why it was written down
+instead of taken.** The table is called `sync_log`; the unique index on
+`(userId, idempotencyKey)` is already what catches a replay, and the client
+already decides the winner locally. One row **per change**, ordered by
+`$createdAt` — which never moves — would therefore cost nothing this design
+relies on, and would give the audit trail ADR-0002 §4 asks for and does not
+have. The cost is that the account grows with history instead of with entities:
+at this owner's rate, a few thousand rows a year against 977 today.
+
+Today's row-id work is not wasted either way: a per-change row still needs an
+id the server accepts, and the same derivation with the idempotency key in it
+is one line away.
+
 ## The merge rules were enforced nowhere (2026-09-22)
 
 Found by the same comparison as the row-id defect below, and worse than it.
