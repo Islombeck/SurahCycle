@@ -323,6 +323,58 @@ redo finished work, which this document says about itself elsewhere.*
    below for the exact recipe; do not re-run `/mcp` → Authenticate, which
    cannot work.
 
+## The client was compared to the live project, and it was wrong (2026-09-22)
+
+Everything in this feature had been checked against a fake. The fake was
+kinder than Appwrite, and one comparison with the real project found a defect
+that would have hit on the owner's very first sync.
+
+**`AppwriteSyncGateway.push` addressed each row by the entity's own id.**
+TablesDB states the rule on that parameter itself — «Valid chars are a-z, A-Z,
+0-9, period, hyphen, and underscore. Can't start with a special char. Max
+length is 36 chars.» Half of this app's identifiers are neither:
+`routine-session:2026-09-22:witr:qada` carries colons and
+`routine-session:2026-09-22:jumuah:ordinary` is 42 characters. Every prayer
+session and every routine template would have come back **400**, which this
+client classifies — correctly — as a permanent refusal, and gone to
+quarantine one at a time. On his history that is **81 records of 977**. The
+provisioning declaration two files away states the same limit for the database
+and table ids; only the row id was never held to it.
+
+A second fault in the same line: the row id was not scoped to the account, and
+a row id is unique across the whole table. Two accounts would have contended
+for the row called `surah-112`, and the loser would have been refused by row
+security — a **403**, which this client reads as "sign in again", about a row
+that can never be theirs.
+
+It is now `md5(userId, entityType, entityId)`: 32 hex characters, deterministic
+so a retry still replaces rather than duplicates, per-account so nobody
+inherits anyone else's row. MD5 for its length, not its strength.
+
+**The fake is what let it through, so the fake was fixed too.** `_RowStore` in
+the dry run now enforces the row-id rule and reads the column sizes, the enum
+vocabularies and the required flags **from `AppwriteDesiredState`** rather than
+from a copy. With the old gateway the dry run over his database now fails —
+that is how this was confirmed, not by argument.
+
+**What else was compared, and matches** (read-only, through the Appwrite MCP,
+2026-09-22):
+
+- `sync_log`: 10 columns, 3 indexes, `rowSecurity: true`, table permission
+  `create("users")` — identical to `AppwriteDesiredState`.
+- **0 rows.** Nothing has ever synced, which is why this cost nothing.
+- Android platform `dev.murajaah.murajaah` — exactly the app's applicationId.
+- Google and Yandex OAuth providers are both **enabled** with client ids set,
+  confirming the 2026-09-18 note independently.
+- The largest payload his history produces is **1795 bytes**
+  (`prayerSession/routine-session:2026-09-16:dhuhr:ordinary`), so nothing here
+  is near a request-size limit.
+
+**One item is now cheaper than this document says.** Removing `rotationState`
+from `SyncEntityType` was deferred as "a cloud migration, not a code edit".
+With the table empty and nothing ever having written that type, it is a code
+edit again — the live enum would simply keep a value no client produces.
+
 ## Installed on his phone, 2026-09-22 — and the build had to be fixed first
 
 `app-debug.apk`, sha256

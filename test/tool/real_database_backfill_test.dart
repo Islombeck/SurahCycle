@@ -7,6 +7,8 @@ import 'package:murajaah/core/data/data.dart';
 import 'package:murajaah/core/data/sync/sync_envelope_router.dart';
 import 'package:murajaah/core/sync/sync.dart';
 
+import '../../tool/appwrite_provisioning.dart';
+
 /// Runs the backfill against a **copy** of a real device database and says what
 /// would travel, what would not, and why.
 ///
@@ -246,12 +248,11 @@ final class _RowStore implements AppwriteSyncApi {
   /// `routine-session:2026-09-22:witr:qada` without blinking. The column sizes
   /// are from the live project's own declaration.
   static final RegExp _rowId = RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9._-]{0,35}$');
-  static const Map<String, int> _stringColumnSizes = <String, int>{
-    'userId': 64,
-    'deviceId': 64,
-    'entityId': 64,
-    'idempotencyKey': 128,
-  };
+
+  /// Read from the provisioning declaration rather than copied out of it, so
+  /// a column that is widened or an entity type that is added cannot leave a
+  /// stale copy here quietly disagreeing with the project.
+  static final List<AppwriteColumn> _columns = AppwriteDesiredState.syncColumns;
 
   final Map<String, Map<String, Object?>> _rowsById =
       <String, Map<String, Object?>>{};
@@ -269,9 +270,17 @@ final class _RowStore implements AppwriteSyncApi {
       // would.
       return AppwriteSyncWriteOutcome.rejected;
     }
-    for (final entry in _stringColumnSizes.entries) {
-      final value = data[entry.key];
-      if (value is String && value.length > entry.value) {
+    for (final column in _columns) {
+      final value = data[column.key];
+      if (column.required && value == null) {
+        return AppwriteSyncWriteOutcome.rejected;
+      }
+      if (value is! String) continue;
+      final size = column.size;
+      if (size != null && value.length > size) {
+        return AppwriteSyncWriteOutcome.rejected;
+      }
+      if (column.elements.isNotEmpty && !column.elements.contains(value)) {
         return AppwriteSyncWriteOutcome.rejected;
       }
     }
