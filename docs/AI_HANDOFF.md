@@ -359,9 +359,26 @@ the SUBST drive, like the two workarounds already in
 **Do not run `flutter test` while a Gradle build is running in this tree** —
 the first failure was mine, and it cost a four-minute build to learn.
 
-**Not verified, and only he can:** that the hint appears on his phone, and that
-a Qada Витр can be marked — which still needs him to change that part's kind
-from `custom` to `witr` in the routine editor. The warning is there to tell him.
+**Both open points closed the same afternoon.**
+
+- **The hint.** His words, 2026-09-22: «Да появилась». That is acceptance of
+  the dead-end hint and of nothing else.
+- **Qada Витр works, and this is read off his database rather than reported.**
+  He said «вроде уже отображается» and asked for it to be checked, so it was.
+  A copy pulled at 15:10 shows his Витр part is now
+  `kind: witr, custom_label: «Важиб»` — he made that edit on 2026-09-21
+  (`routine:witr` revision 3, `updated_at_utc` 1789968110), and the name
+  survived the change, which is the whole point of separating what a part is
+  called from what it is. Under it there is now
+  `routine-session:2026-09-22:witr:qada`, created at ≈15:09 — minutes after
+  this build went on, while he was looking — carrying one part «Важиб»,
+  `kind: witr`, 3 rakaat, **3 free slots**, `completed_at_utc: null`.
+
+  Before the fix this session could not exist: `ensureCurrentSession` found no
+  part carrying the prayer's obligation and returned null, which is what
+  «пусто для Каза» was. **What is not yet true:** no Qada Витр *recitation*
+  exists yet — the section opens with slots, and nothing has been marked into
+  it. The other Qada events in the file are Фаджр, Иша and Магриб.
 
 ## The finished hand-picked prayer was a dead end (2026-09-22)
 
