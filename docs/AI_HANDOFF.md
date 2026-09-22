@@ -323,6 +323,30 @@ redo finished work, which this document says about itself elsewhere.*
    below for the exact recipe; do not re-run `/mcp` → Authenticate, which
    cannot work.
 
+## The finished hand-picked prayer was a dead end (2026-09-22)
+
+Result 3 of the Витр investigation below — manual context + a finished Иша →
+marking disabled, context stays put — is behaviour the owner asked for and is
+not being changed. What was missing is that **nothing said so**: every tile in
+the rotation went quiet, and the list read as one where everything had already
+been marked. That is close enough to his original report to be worth removing
+whether or not it was what he saw.
+
+The routine card now carries one line and one button
+(`routine-choose-next-prayer`) when a hand-picked prayer has nothing left to
+mark: the next prayer will not start by itself, and the button opens the
+existing picker, which applies the choice itself. Shown from the **same**
+condition `_PrayerContextCard` prints «Вручную» from, so a hint claiming the
+prayer was hand-picked can never sit under a card saying «Автоматически».
+
+An automatic context never sees it. There a finished routine means the day's
+prayers are done — which the card already says — and offering the picker would
+invite a mark against a prayer that is over.
+
+Three widget tests on his own routines (`home_witr_after_isha_test.dart`),
+including the tap that opens the picker. Falsified by inverting the condition:
+two of the three went red, which is both directions at once.
+
 ## The backfill counted what it could not send, and then threw the number away (2026-09-22)
 
 `SyncBackfillReport` had gained `skippedByType` and `skippedFields` so that a
