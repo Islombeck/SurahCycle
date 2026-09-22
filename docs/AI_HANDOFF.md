@@ -323,6 +323,46 @@ redo finished work, which this document says about itself elsewhere.*
    below for the exact recipe; do not re-run `/mcp` → Authenticate, which
    cannot work.
 
+## Installed on his phone, 2026-09-22 — and the build had to be fixed first
+
+`app-debug.apk`, sha256
+`D7623C3640460B8E09ED62487332142A310B1C516E466B492C21A714C1711435`,
+230 245 873 bytes, built 15:01:46 at commit `9ba3269` plus the build fix
+committed as `3a83130`, installed with `adb install -r`,
+`lastUpdateTime=2026-09-22 15:02:10`. It carries the hand-picked dead-end hint
+and the backfill report; everything else in it he already had.
+
+**His data is intact, checked rather than assumed.** A copy was pulled before
+and after, the app was started once, and every table holds exactly what it held
+at `user_version = 10`: `recitation_events=799`, `recitation_event_parts=801`,
+`prayer_sessions=71`, `prayer_session_parts=116`, `mastered_surahs=27`,
+`rotation_schemes=28`, `learning_events=32`, `recall_attempts=4`,
+`app_settings=10`, `surah_metadata=114`. Copies are in this session's
+scratchpad as `murajaah_user_before_2026-09-22.sqlite` and
+`..._after_install_2026-09-22.sqlite`.
+
+**The check is a test now**, not a command someone has to remember:
+`test/tool/real_database_counts_test.dart`, pointed at two pulled copies with
+`MURAJAAH_DB_BEFORE`/`MURAJAAH_DB_AFTER`. It reads them with plain sqlite3,
+read-only — opening them through `AppDatabase` would run the migrator over the
+very file being checked — and fails if any table lost rows.
+
+**On the same copy, the backfill dry run was re-run against today's history:
+975 entities, none refused, and a second device applies every one.** (799
+recitation events, 71 prayer sessions, 27 mastered surahs, 32 learning events.)
+
+**The build itself was broken and is fixed.** Every Kotlin module died at the
+end of its compilation with «Could not close incremental caches …
+`class-fq-name-to-source.tab`», one module further along each attempt. It is
+the SUBST drive, like the two workarounds already in
+`android/gradle.properties`; `kotlin.incremental=false` is now beside them.
+**Do not run `flutter test` while a Gradle build is running in this tree** —
+the first failure was mine, and it cost a four-minute build to learn.
+
+**Not verified, and only he can:** that the hint appears on his phone, and that
+a Qada Витр can be marked — which still needs him to change that part's kind
+from `custom` to `witr` in the routine editor. The warning is there to tell him.
+
 ## The finished hand-picked prayer was a dead end (2026-09-22)
 
 Result 3 of the Витр investigation below — manual context + a finished Иша →
