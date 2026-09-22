@@ -1053,6 +1053,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prayerRoutineComplete => 'Prayer routine complete';
 
   @override
+  String get prayerRoutineManualDeadEnd =>
+      'This prayer was chosen by hand, so the next one will not start on its own. Until you choose it, nothing below can be marked.';
+
+  @override
+  String get prayerRoutineChooseNextPrayer => 'Choose a prayer';
+
+  @override
   String get prayerRoutineNoAvailableSlot =>
       'The current prayer part has no available surah slot.';
 

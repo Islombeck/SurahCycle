@@ -1056,6 +1056,13 @@ class AppLocalizationsUz extends AppLocalizations {
   String get prayerRoutineComplete => 'Namoz tartibi yakunlandi';
 
   @override
+  String get prayerRoutineManualDeadEnd =>
+      'Namoz qoʻlda tanlangan, shuning uchun keyingisi oʻzi boshlanmaydi. U tanlanmaguncha quyida hech narsani belgilab boʻlmaydi.';
+
+  @override
+  String get prayerRoutineChooseNextPrayer => 'Namozni tanlash';
+
+  @override
   String get prayerRoutineNoAvailableSlot =>
       'Namozning joriy qismida sura uchun bo‘sh slot yo‘q.';
 

@@ -337,6 +337,8 @@
   ,"prayerRoutineSlotProgress": "Слоты для сур: {done}/{total}"
   ,"@prayerRoutineSlotProgress": {"placeholders": {"done": {"type": "int"}, "total": {"type": "int"}}}
   ,"prayerRoutineComplete": "Порядок намаза завершён"
+  ,"prayerRoutineManualDeadEnd": "Намаз выбран вручную, поэтому следующий сам не включится. Пока он не выбран, отметить ниже ничего нельзя."
+  ,"prayerRoutineChooseNextPrayer": "Выбрать намаз"
   ,"prayerRoutineNoAvailableSlot": "В текущей части намаза нет доступного слота для суры."
   ,"followedImamAction": "Следовал за имамом"
   ,"followedImamConfirmTitle": "Завершить с имамом?"

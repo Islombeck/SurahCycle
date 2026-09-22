@@ -331,6 +331,8 @@
   ,"prayerRoutineSlotProgress": "Surah slots: {done}/{total}"
   ,"@prayerRoutineSlotProgress": {"placeholders": {"done": {"type": "int"}, "total": {"type": "int"}}}
   ,"prayerRoutineComplete": "Prayer routine complete"
+  ,"prayerRoutineManualDeadEnd": "This prayer was chosen by hand, so the next one will not start on its own. Until you choose it, nothing below can be marked."
+  ,"prayerRoutineChooseNextPrayer": "Choose a prayer"
   ,"prayerRoutineNoAvailableSlot": "The current prayer part has no available surah slot."
   ,"followedImamAction": "Followed the imam"
   ,"followedImamConfirmTitle": "Complete with the imam?"

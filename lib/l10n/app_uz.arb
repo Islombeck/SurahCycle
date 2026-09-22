@@ -331,6 +331,8 @@
   ,"prayerRoutineSlotProgress": "Sura slotlari: {done}/{total}"
   ,"@prayerRoutineSlotProgress": {"placeholders": {"done": {"type": "int"}, "total": {"type": "int"}}}
   ,"prayerRoutineComplete": "Namoz tartibi yakunlandi"
+  ,"prayerRoutineManualDeadEnd": "Namoz qoʻlda tanlangan, shuning uchun keyingisi oʻzi boshlanmaydi. U tanlanmaguncha quyida hech narsani belgilab boʻlmaydi."
+  ,"prayerRoutineChooseNextPrayer": "Namozni tanlash"
   ,"prayerRoutineNoAvailableSlot": "Namozning joriy qismida sura uchun bo‘sh slot yo‘q."
   ,"followedImamAction": "Imomga ergashdim"
   ,"followedImamConfirmTitle": "Imom bilan yakunlansinmi?"

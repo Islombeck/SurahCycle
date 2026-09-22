@@ -89,6 +89,103 @@ void main() {
     });
   });
 
+  group('a hand-picked prayer with nothing left to mark', () {
+    testWidgets('says why, and offers the way out', (tester) async {
+      // Result 3 of the investigation: manual + a finished Иша leaves marking
+      // disabled and the context where it is. That is the behaviour he asked
+      // for; the dead end was that nothing said so, and the rotation below
+      // read as a list where everything had already been marked.
+      _sizePhone(tester);
+      await fixture.seedOwnersRoutines();
+      await fixture.addSurah('surah-a', 112);
+      await fixture.completeIsha();
+
+      await fixture.pumpWithHandPickedPrayer(tester);
+
+      expect(
+        _markEnabled(tester, 'surah-a'),
+        isFalse,
+        reason: 'the prayer is finished, so there is genuinely no slot',
+      );
+      expect(
+        find.byKey(const ValueKey<String>('routine-choose-next-prayer')),
+        findsOneWidget,
+        reason:
+            'a disabled list with no explanation is the report this came from',
+      );
+      expect(
+        find.byType(ChoiceChip),
+        findsNothing,
+        reason:
+            'nothing on Home offers a prayer to choose until this is tapped',
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('routine-choose-next-prayer')),
+      );
+      await _pumpFrames(tester, 40);
+
+      expect(
+        find.byType(ChoiceChip),
+        findsWidgets,
+        reason:
+            'a hint that named the way out without opening it would be one '
+            'more thing to read past',
+      );
+      expect(find.text('Witr'), findsWidgets);
+
+      await _disposeWidgetTree(tester);
+    });
+
+    testWidgets('an unfinished one is left alone', (tester) async {
+      _sizePhone(tester);
+      await fixture.seedOwnersRoutines();
+      await fixture.addSurah('surah-a', 112);
+
+      await fixture.pumpWithHandPickedPrayer(tester);
+
+      expect(_markEnabled(tester, 'surah-a'), isTrue);
+      expect(
+        find.byKey(const ValueKey<String>('routine-choose-next-prayer')),
+        findsNothing,
+        reason: 'offering the next prayer while this one is unmarked is noise',
+      );
+
+      await _disposeWidgetTree(tester);
+    });
+
+    testWidgets('an automatic context is never told to pick by hand', (
+      tester,
+    ) async {
+      // Automatic and everything finished is a different sentence: the day's
+      // routine is done, which the card already says. Offering the picker here
+      // would invite a mark against a prayer that is over.
+      _sizePhone(tester);
+      await fixture.seedOwnersRoutines();
+      await fixture.addSurah('surah-a', 112);
+      await fixture.completeIsha();
+      await fixture.completePrayer(PrayerType.witr);
+
+      await fixture.pumpWithStubbedResolution(tester);
+
+      expect(
+        _containerOf(tester)
+            .read(homePrayerContextResolutionProvider)
+            .valueOrNull
+            ?.context
+            ?.prayerType,
+        PrayerType.witr,
+      );
+      expect(_markEnabled(tester, 'surah-a'), isFalse);
+      expect(
+        find.byKey(const ValueKey<String>('routine-choose-next-prayer')),
+        findsNothing,
+      );
+
+      await _disposeWidgetTree(tester);
+    });
+  });
+
   group('with the real schedule and the real resolver', () {
     testWidgets('a tap after a finished Isha records Witr', (tester) async {
       // This is the report itself. The card and the routine card have already
@@ -345,13 +442,17 @@ final class _Fixture {
     await surahs.addMastered(id);
   }
 
-  Future<PrayerRoutineSessionSnapshot> _ishaSession(
+  Future<PrayerRoutineSessionSnapshot> _sessionFor(
+    PrayerType prayerType,
     LocalDate localDate,
   ) async => (await routines.ensureCurrentSession(
-    context: PrayerContext(prayerType: PrayerType.isha),
+    context: PrayerContext(prayerType: prayerType),
     localDate: localDate,
     startedAtUtc: defaultNowUtc,
   ))!;
+
+  Future<PrayerRoutineSessionSnapshot> _ishaSession(LocalDate localDate) =>
+      _sessionFor(PrayerType.isha, localDate);
 
   Future<void> fillIshaFard(
     List<String> surahIds, {
@@ -377,8 +478,17 @@ final class _Fixture {
     }
   }
 
-  Future<void> completeIsha({LocalDate? localDate}) async {
-    final session = await _ishaSession(localDate ?? defaultLocalDate);
+  Future<void> completeIsha({LocalDate? localDate}) =>
+      completePrayer(PrayerType.isha, localDate: localDate);
+
+  Future<void> completePrayer(
+    PrayerType prayerType, {
+    LocalDate? localDate,
+  }) async {
+    final session = await _sessionFor(
+      prayerType,
+      localDate ?? defaultLocalDate,
+    );
     for (final progress in session.parts) {
       await (database.update(
         database.prayerSessionParts,
@@ -405,6 +515,36 @@ final class _Fixture {
           PrayerContextResolution(
             status: PrayerContextResolutionStatus.automatic,
             context: PrayerContext(prayerType: PrayerType.isha),
+          ),
+        ),
+      ),
+      prayerTodayScheduleProvider.overrideWith(
+        (ref) async => throw StateError('Fixture schedule unavailable.'),
+      ),
+    ],
+  );
+
+  /// The prayer picked by hand — where result 3 of this investigation left the
+  /// owner. A hand-picked prayer never advances on its own, which he asked for
+  /// after being thrown from Иша to Витр.
+  Future<void> pumpWithHandPickedPrayer(
+    WidgetTester tester, {
+    PrayerType prayerType = PrayerType.isha,
+  }) => _pump(
+    tester,
+    nowUtc: defaultNowUtc,
+    localDates: _FixedLocalDateProvider(defaultLocalDate),
+    settings: PrayerTimeSettings(
+      location: testTashkentLocation(),
+      contextSelectionMode: PrayerContextSelectionMode.manual,
+      contextModeExplicitlyChosen: true,
+    ),
+    extra: <Override>[
+      prayerContextResolutionProvider.overrideWith(
+        (ref) => Stream<PrayerContextResolution>.value(
+          PrayerContextResolution(
+            status: PrayerContextResolutionStatus.manual,
+            context: PrayerContext(prayerType: prayerType),
           ),
         ),
       ),

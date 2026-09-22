@@ -170,6 +170,13 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
       routineMarkingEnabled =
           routine == null || routine.currentPart?.nextSlotIndex != null;
     }
+    // The same condition the prayer card prints «Вручную» from, deliberately
+    // not a second one: a hint that said the prayer was hand-picked while the
+    // card above it said «Автоматически» would be worse than no hint.
+    final isPrayerPickedByHand =
+        prayerResolution?.status == PrayerContextResolutionStatus.manual ||
+        prayerSettings?.contextSelectionMode ==
+            PrayerContextSelectionMode.manual;
     final selectedLearningSurahId = ref.watch(selectedLearningSurahProvider);
     final rollbackQueue = ref.watch(learningRollbackQueueProvider);
     if (currentRoutine?.valueOrNull != null) {
@@ -252,6 +259,18 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   prayerContext: resolvedPrayerContext!,
                                   busyPartIds: _busyRoutinePartIds,
                                   onFollowedImam: _completeByFollowingImam,
+                                  // Only for a hand-picked prayer. An
+                                  // automatic one moves on by itself, so a
+                                  // finished routine there is the end of the
+                                  // day rather than a dead end; a hand-picked
+                                  // one stays put — which the owner asked for
+                                  // — and the list below it then refuses every
+                                  // tap with nothing said.
+                                  onChooseNextPrayer: isPrayerPickedByHand
+                                      ? () => _showPrayerPicker(
+                                          resolvedPrayerContext,
+                                        )
+                                      : null,
                                 ),
                               ),
                         // Switching prayers loads a different routine, and
@@ -958,12 +977,17 @@ final class _PrayerRoutineCard extends StatelessWidget {
     required this.prayerContext,
     required this.busyPartIds,
     required this.onFollowedImam,
+    this.onChooseNextPrayer,
   });
 
   final PrayerRoutineSessionSnapshot snapshot;
   final PrayerContext prayerContext;
   final Set<String> busyPartIds;
   final ValueChanged<PrayerSessionPartProgress> onFollowedImam;
+
+  /// Offered once a hand-picked prayer has nothing left to mark. Null for an
+  /// automatic one, which moves on without being asked.
+  final VoidCallback? onChooseNextPrayer;
 
   @override
   Widget build(BuildContext context) {
@@ -984,6 +1008,25 @@ final class _PrayerRoutineCard extends StatelessWidget {
                     ),
               style: Theme.of(context).textTheme.titleMedium,
             ),
+            // A finished hand-picked prayer disables every tile below this
+            // card, and until now said nothing about why: the list looked like
+            // a rotation with everything already marked.
+            if (current == null && onChooseNextPrayer != null) ...<Widget>[
+              const SizedBox(height: 8),
+              Text(
+                context.l10n.prayerRoutineManualDeadEnd,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton(
+                  key: const ValueKey<String>('routine-choose-next-prayer'),
+                  onPressed: onChooseNextPrayer,
+                  child: Text(context.l10n.prayerRoutineChooseNextPrayer),
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             for (final progress in snapshot.parts)
               _PrayerRoutinePartTile(

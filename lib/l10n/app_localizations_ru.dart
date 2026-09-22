@@ -1055,6 +1055,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get prayerRoutineComplete => 'Порядок намаза завершён';
 
   @override
+  String get prayerRoutineManualDeadEnd =>
+      'Намаз выбран вручную, поэтому следующий сам не включится. Пока он не выбран, отметить ниже ничего нельзя.';
+
+  @override
+  String get prayerRoutineChooseNextPrayer => 'Выбрать намаз';
+
+  @override
   String get prayerRoutineNoAvailableSlot =>
       'В текущей части намаза нет доступного слота для суры.';
 

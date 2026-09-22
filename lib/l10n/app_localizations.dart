@@ -1900,6 +1900,18 @@ abstract class AppLocalizations {
   /// **'Порядок намаза завершён'**
   String get prayerRoutineComplete;
 
+  /// No description provided for @prayerRoutineManualDeadEnd.
+  ///
+  /// In ru, this message translates to:
+  /// **'Намаз выбран вручную, поэтому следующий сам не включится. Пока он не выбран, отметить ниже ничего нельзя.'**
+  String get prayerRoutineManualDeadEnd;
+
+  /// No description provided for @prayerRoutineChooseNextPrayer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать намаз'**
+  String get prayerRoutineChooseNextPrayer;
+
   /// No description provided for @prayerRoutineNoAvailableSlot.
   ///
   /// In ru, this message translates to:
