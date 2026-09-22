@@ -159,12 +159,15 @@ and matches what `FakeSyncBackend` already does on a complete tie.
    created during setup. Null is "nobody has an opinion here", which is §7's
    reasoning applied to a placeholder instead of to a pre-v10 row.
 
-3. **The account can still hold an older copy than a device has.** When the
-   local copy wins, this device keeps it and the account keeps the older one;
-   a third device that pulls before anything touches that entity again takes
-   the older one. Correcting it means re-queuing the local record when it wins,
-   which needs the outbox to be addressable by entity and is **not built** —
-   see "still open".
+3. **The account is corrected rather than left holding the older copy.** When
+   the local copy wins, the account still has the one it handed over, and
+   nothing else would ever fix it: this device's queue is empty and its own row
+   has not changed since it was last sent, so a phone joining tomorrow would
+   take the stale one as truth. The router remembers the oldest instant it
+   out-ranked, and the cycle re-scans from there after the pull — which
+   re-offers the local record that won — and drains once more. Exactly once,
+   never a loop: what goes up is at least as new as what it replaces, so the
+   next pull brings back a tie, and a tie is applied rather than superseded.
 
 ## Still open
 
@@ -180,8 +183,9 @@ and matches what `FakeSyncBackend` already does on a complete tie.
   happen before this ships. The 2026-09-22 amendment is the strongest argument
   for it there has been: the double was doing the deciding, and nobody noticed
   until the real project was read.
-- **A winning local copy is not pushed back.** The device keeps it and the
-  account keeps the older one, so a device joining later takes the older one.
-  The fix is to re-queue the entity when the local copy wins, which needs a way
-  to enqueue one named entity — the outbox is addressable by entity, the
-  backfill is not.
+- ~~A winning local copy is not pushed back.~~ **Closed the same day.** The
+  cycle re-scans from the instant it out-ranked and drains once more; see
+  consequence 3 of the amendment. It re-offers a handful of neighbouring
+  entities along with the one that won, because the scan takes a window and not
+  a name — they coalesce in the outbox and upsert identically on the server,
+  which is the cheap side of not adding a second way to enqueue.

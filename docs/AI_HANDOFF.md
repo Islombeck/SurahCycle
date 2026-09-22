@@ -361,16 +361,28 @@ present:
 `SyncVersionedRows` is the one place that reads and writes `updated_at_utc` for
 the six tables that carry it, so the trap above is written down once.
 
-**Still open, and now the honest next step:** when the local copy wins, the
-account keeps the older one and a device joining later takes it. Correcting it
-means re-queuing that entity, and the backfill can enqueue everything or
-everything-since — not one named entity.
+**And the account is corrected rather than left holding the older copy.** When
+the local record wins, the account still has the one it handed over, and
+nothing else would ever fix it — this device's queue is empty and its own row
+has not changed since it was last sent, so a phone joining tomorrow would take
+the stale one as truth. The router remembers the oldest instant it out-ranked;
+the cycle re-scans from there after the pull and drains once more. Once, never
+a loop: what goes up is at least as new as what it replaces, so the next pull
+brings back a tie, and a tie is applied.
 
-7 new tests over the real router; the scheme suite's fixture is now dated the
-way the owner's own row would be rather than a millisecond ago, which is what
-made one of its cases start passing for the wrong reason. **1257 passing, 4
-skipped.** His whole history still applies to a fresh device: 977 entities,
-none refused.
+**The decision moved to the router** in the same pass. It had been in six
+appliers, one copy each — one place too many to keep a rule, and no place at
+all to count what it refused. The appliers keep only the authored stamp.
+
+**One test of it was vacuous and was caught by falsifying it**: the entity was
+inside the ordinary scan's window anyway, so the push it asserted would have
+happened with the whole mechanism disabled. It now starts from a watermark that
+excludes it.
+
+8 new tests; the scheme suite's fixture is now dated the way the owner's own row
+would be rather than a millisecond ago, which is what made one of its cases
+start passing for the wrong reason. **1258 passing, 4 skipped.** His whole
+history still applies to a fresh device: 977 entities, none refused.
 
 ## The client was compared to the live project, and it was wrong (2026-09-22)
 
