@@ -376,9 +376,36 @@ the first failure was mine, and it cost a four-minute build to learn.
 
   Before the fix this session could not exist: `ensureCurrentSession` found no
   part carrying the prayer's obligation and returned null, which is what
-  «пусто для Каза» was. **What is not yet true:** no Qada Витр *recitation*
-  exists yet — the section opens with slots, and nothing has been marked into
-  it. The other Qada events in the file are Фаджр, Иша and Магриб.
+  «пусто для Каза» was.
+
+**And the mark itself works — checked, on his data, through the screen.**
+`test/tool/real_database_qada_witr_test.dart` runs the real widget tree over a
+**copy** of his database with «Витр · Каза» selected, taps the mark button and
+asserts where the record lands: `surah-110` into
+`routine-session:2026-09-22:witr:qada`, slot 0. On a copy rather than on his
+phone deliberately — tapping it there would write a recitation he never made
+into his own history, and a check that has to falsify an act of worship is
+worth less than the thing it checks.
+
+Two things that cost an hour and are worth not rediscovering:
+
+- **The tap does not read the resolution stream.** `_resolvePrayerForAction` in
+  manual mode reads the stored `selected_prayer_type` /
+  `selected_prayer_is_qada` pair. Overriding `prayerContextResolutionProvider`
+  alone gives a screen that says Qada over a tap that resolves whatever was
+  last saved — the harness then records against the wrong prayer and it looks
+  like a defect in the app. Save the pair with
+  `PrayerRepository.saveSelectedContext`, which is what the picker does.
+- **A split surah opens the coverage sheet instead of recording.** Correct
+  behaviour and a different path; the test picks a surah recited whole.
+
+**Six Qada Витр recitations already existed**, three on 2026-09-05 and three on
+2026-09-11, all with `prayer_session_id` and `slot_index` null. That is the
+same defect seen from the other side: the mark was accepted and kept, but had
+no session to belong to, so the routine card had nothing to show. They are
+intact and still his. **Not repaired, and not to be repaired without asking
+him** — attaching them to sessions after the fact would be rewriting his
+history on a guess about which slot each one filled.
 
 ## The finished hand-picked prayer was a dead end (2026-09-22)
 
