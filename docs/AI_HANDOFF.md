@@ -204,22 +204,31 @@ prayer it names now comes from Home. (`PrayerRegistrationShortcutResolver.resolv
 itself is untouched — it must keep refusing Витр under a non-manual resolution,
 because Витр has no schedule boundary of its own.)
 
-**Installed on his phone, 2026-09-21**, carrying both Витр fixes and the
-«сейчас» follow-up: `app-debug.apk`, sha256
-`79DCB2939A635701A244900775105014318D34D192BC2D23EF445F0819F63327`,
-230 056 287 bytes, `adb install -r`, `lastUpdateTime=2026-09-21 10:12:53`, built
-at commit `397920e`. His data survived: the database pulled before and after
-reports identical row counts at `user_version = 10` (`recitation_events=771`,
+**What he actually tested, 2026-09-21.** Three builds were installed that
+morning and only the last one matters; the device reports
+`lastUpdateTime=2026-09-21 10:27:46`, which is sha256
+`E7522B07603469B1806E64001C1CB17E01D48F91EC2069FA7B148BFF33DDED13`, built at
+commit `159b1fa` — both Витр fixes, the «сейчас» follow-up, and the part-name
+fix. The two before it (`498BAE2B…` at 10:01:46, `79DCB293…` at 10:12:53) were
+superseded within the half hour and are recorded only so the times in this
+document are not read as describing one install.
+
+His data survived all three: the database pulled before and after reports
+identical row counts at `user_version = 10` (`recitation_events=771`,
 `recitation_event_parts=773`, `prayer_sessions=64`, `prayer_session_parts=104`,
 `mastered_surahs=27`, `prayer_routine_part_templates=14`). Copies are in this
 session's scratchpad as `murajaah_user_before_witr_fix.sqlite` and
-`..._after_witr_fix2.sqlite`. (An earlier install at 10:01:46, sha256
-`498BAE2B…`, carried only the first fix and was superseded eleven minutes later.)
+`..._after_witr_fix2.sqlite`.
 
-**Not yet confirmed by the owner on his phone.** 1145/1145 tests pass and the
-analyzer is clean; an installed APK is not acceptance. What needs his eyes: after
-finishing Иша, that the card moves to Витр **and** that a surah can now actually
-be marked without «Порядок намаза завершён».
+**Confirmed by the owner, 2026-09-22.** His words: «после отметки за Ишу, Витр
+отмечается теперь без проблем». That is acceptance of this defect and of
+nothing else — he reported on marking Витр after Иша, and said nothing about
+Qada Витр or about the part's name, so neither is confirmed by it.
+
+He tested it during his own Иша on the night of 21→22 September, which is the
+only time it can be tested: the automatic context has to actually be Иша and
+that Иша has to actually be finished. Anything about this path is therefore a
+once-a-day check for him, and worth batching rather than asking twice.
 
 **His Витр part is now kind `witr`, still named «Важиб» — and he asked for it.**
 He confirmed Qada Витр was still empty and said «делай что необходимо», so the
@@ -313,6 +322,67 @@ redo finished work, which this document says about itself elsewhere.*
    back bound to no project. See "Stage J §6.0 — the Appwrite OAuth grant"
    below for the exact recipe; do not re-run `/mcp` → Authenticate, which
    cannot work.
+
+## The backfill counted what it could not send, and then threw the number away (2026-09-22)
+
+`SyncBackfillReport` had gained `skippedByType` and `skippedFields` so that a
+row the walk could not turn into an envelope would be counted rather than
+silently dropped. The coordinator computed the report and discarded it, which
+made the counters decorative: the one number that matters here is the one
+nobody is looking at.
+
+It is now kept and shown.
+
+- `SyncActivationStore.recordBackfillOutcome({enqueuedCount, skippedCount,
+  skippedFields})`, written by the coordinator **after** `enqueueEverything`
+  and only on a merge. Recorded for zero skips too — a zero is how the screen
+  can say the history went in full rather than say nothing and be believed.
+- `DriftSyncStore` stores it as JSON in `app_settings` under
+  `sync.backfill.<owner>`, beside the push watermark, and reads it back
+  tolerantly: a row this build cannot parse costs one line of the summary, not
+  the summary. Field **names** only (`startedAtUtc`, `kind`) — never values,
+  because this reaches a screen and a log.
+- `SyncTransportSnapshot.backfill` → `SyncStatus.backfillSkipped` (only while
+  activated) → the account card keyed `account-backfill-incomplete`, with its
+  own heading in ru/en/uz. Deliberately apart from the queue count: a queued
+  record is on its way, a skipped one is not going at all.
+
+**Two real defects were found by writing the tests, not by reading the code:**
+
+1. `app_settings.value_type` carries `CHECK (value_type IN ('string', 'bool',
+   'int', 'double'))`. The first implementation wrote `'json'`, so
+   `recordBackfillOutcome` would have thrown `SqliteException(275)` on the
+   owner's device — and because it runs inside `finishFirstSync` before the
+   activation choice is recorded, **the whole merge would have failed**. It
+   writes `'string'` now; the shape is JSON and the storage is text, and only
+   `_backfillOutcome()` reads that key. This is the second time a change that
+   analyzed clean was wrong in a way only a real table could show.
+2. `forgetOwner()` deleted the queue, the cursor and the activation row but
+   left both owner-scoped `app_settings` rows behind. A device that had
+   forgotten an account went on reporting how that account's merge had gone,
+   and claimed a scan watermark for a queue that no longer existed. Both are
+   dropped with the rest now; dropping the watermark makes a later activation
+   re-offer everything, which is the safe direction.
+
+`DriftSyncStore` also takes an injectable `nowUtc` (defaulting to the system
+clock) instead of reaching for `DateTime.now()` inside a write.
+
+Tests added: three in the coordinator suite (skips kept, a clean merge still
+records its zero, keep-local records nothing), six in the store suite (round
+trip, never-merged is null, a re-run replaces the old row, an unreadable row
+costs one line, owner scoping, and `forgetOwner` in the existing cross-owner
+test), three widget tests on the card. The coordinator tests were falsified by
+removing the `recordBackfillOutcome` call and confirming two of them go red —
+not by reasoning that they would.
+
+`flutter analyze` clean; **1241 passing, 2 skipped**, full suite.
+
+**Still not done, and not mine to do:** removing `rotationState` from
+`SyncEntityType` (a live-Appwrite migration — the owner's call), clock-skew
+handling (needs a server-assigned receive time TablesDB does not expose), and
+the real two-device check against the live project. Nothing here has been seen
+on the owner's phone: the last install is the 2026-09-21 build below, which
+predates all of it.
 
 ## Owner report 2026-09-21 — Witr: one defect fixed, one not reproduced
 
