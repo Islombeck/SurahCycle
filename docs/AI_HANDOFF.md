@@ -323,6 +323,55 @@ redo finished work, which this document says about itself elsewhere.*
    below for the exact recipe; do not re-run `/mcp` → Authenticate, which
    cannot work.
 
+## The merge rules were enforced nowhere (2026-09-22)
+
+Found by the same comparison as the row-id defect below, and worse than it.
+
+**ADR-0002 is accepted and was implemented in the wrong place.** Its rules live
+in `FakeSyncBackend`, which decides them *on the server*. The server is
+Appwrite's TablesDB: `upsertRow` writes what it is handed, the project deploys
+no function, and there is no hook a comparison could live in. The appliers, for
+their part, wrote whatever arrived. So the rule in the shipped path was **last
+push wins** — what the ADR's own "What was rejected" section calls a race
+rather than a rule. Every test passed because every test asked the fake.
+
+It holds for exactly as long as there is one device, which is why nothing
+noticed. The first day of two devices, an edit made offline on the old phone
+and pushed a day later would have silently replaced a newer one.
+
+**`SyncMergeDecision` now runs on the device, in every applier for a mutable
+entity**: the account's copy is applied unless this device holds a strictly
+newer one. That is the ADR's first step exactly; steps two and three fold into
+"the account wins a tie", because a local row records when it changed and not
+which device changed it. The amendment in the ADR says all of this properly.
+
+Two things had to be fixed for that rule to be correct rather than merely
+present:
+
+- **An applied record keeps the time it was authored.** Stamping arrival makes
+  every device re-date a record as it passes it on, until the copy outranks the
+  edit it came from. Expressible only because the v10 update trigger steps
+  aside when the writer sets the column itself — the insert trigger does not,
+  so the stamp is its own statement after the write.
+- **Rows this app invents are undated**: the eight empty routine templates each
+  install seeds, and the placeholder scheme created when a roster entry arrives
+  before its real one. Dated `now`, a phone set up this morning refused the
+  owner's real routine because its own blank one looked newer.
+
+`SyncVersionedRows` is the one place that reads and writes `updated_at_utc` for
+the six tables that carry it, so the trap above is written down once.
+
+**Still open, and now the honest next step:** when the local copy wins, the
+account keeps the older one and a device joining later takes it. Correcting it
+means re-queuing that entity, and the backfill can enqueue everything or
+everything-since — not one named entity.
+
+7 new tests over the real router; the scheme suite's fixture is now dated the
+way the owner's own row would be rather than a millisecond ago, which is what
+made one of its cases start passing for the wrong reason. **1257 passing, 4
+skipped.** His whole history still applies to a fresh device: 977 entities,
+none refused.
+
 ## The client was compared to the live project, and it was wrong (2026-09-22)
 
 Everything in this feature had been checked against a fake. The fake was

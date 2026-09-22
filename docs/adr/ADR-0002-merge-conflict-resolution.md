@@ -115,6 +115,57 @@ date is a record neither device ever held. Whole records win or lose.
   against `FakeSyncBackend`: it is the written-down form of what the server must
   do, and a real backend that disagrees with it is a bug in the backend.
 
+## Amendment, 2026-09-22 — the rules run on the device, because the server cannot
+
+The paragraph above was wrong in a way that mattered, and it was wrong from the
+day it was written. **The chosen backend cannot be a party to any of this.**
+Appwrite's TablesDB is a row store: `upsertRow` writes what it is handed, and
+the project deploys no function, so there is no hook a comparison could live in.
+"A real backend that disagrees is a bug in the backend" describes a backend this
+project is not using and cannot obtain by fixing.
+
+Meanwhile every applier wrote whatever arrived. So the effective rule in the
+shipped path was **the last push wins** — the very thing "What was rejected"
+calls a race rather than a rule — and it held for exactly as long as there was
+one device, which is why nothing noticed.
+
+**The decision is unchanged; where it runs is.** `SyncMergeDecision` is asked by
+every applier for a mutable entity, before writing:
+
+```
+the account's copy is applied
+  unless this device holds a strictly newer one
+```
+
+That is step 1 exactly. Steps 2 and 3 are folded into "the account wins a tie",
+because a local row records *when* it last changed and not *which device* wrote
+it, so `deviceId` is not available on this side. The fold gives the same answer
+step 2 would — a withdrawal at the same instant wins, and History can undo it —
+and matches what `FakeSyncBackend` already does on a complete tie.
+
+**Three consequences worth stating, because each was a defect until it was.**
+
+1. **An applied record keeps the time it was authored, not the time it landed.**
+   Otherwise each device re-dates a record as it passes it on, and the copy
+   grows newer with every hop until it outranks the edit it came from. The v10
+   update trigger steps aside when the writer sets the column itself, which is
+   what makes this expressible at all; the insert trigger does not, so the stamp
+   is a separate statement after the write.
+
+2. **A row this app invents is undated.** The eight empty routine templates each
+   install seeds, and the placeholder scheme created when a roster entry arrives
+   ahead of its real one. Dated `now` by the insert trigger they outranked the
+   owner's real records: a routine authored last week refused by a blank one
+   created during setup. Null is "nobody has an opinion here", which is §7's
+   reasoning applied to a placeholder instead of to a pre-v10 row.
+
+3. **The account can still hold an older copy than a device has.** When the
+   local copy wins, this device keeps it and the account keeps the older one;
+   a third device that pulls before anything touches that entity again takes
+   the older one. Correcting it means re-queuing the local record when it wins,
+   which needs the outbox to be addressable by entity and is **not built** —
+   see "still open".
+
 ## Still open
 
 - **Clock skew is unhandled.** A server-assigned receive time, used only to
@@ -126,4 +177,11 @@ date is a record neither device ever held. Whole records win or lose.
   scan *structurally* cannot see, and there is one.
 - **Nothing has run against two real devices.** These rules are verified against
   a local double. That is not the same thing, and it is the check that has to
-  happen before this ships.
+  happen before this ships. The 2026-09-22 amendment is the strongest argument
+  for it there has been: the double was doing the deciding, and nobody noticed
+  until the real project was read.
+- **A winning local copy is not pushed back.** The device keeps it and the
+  account keeps the older one, so a device joining later takes the older one.
+  The fix is to re-queue the entity when the local copy wins, which needs a way
+  to enqueue one named entity — the outbox is addressable by entity, the
+  backfill is not.
