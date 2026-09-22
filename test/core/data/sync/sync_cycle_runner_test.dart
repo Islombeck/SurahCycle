@@ -1,6 +1,8 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:murajaah/core/data/data.dart';
+import 'package:murajaah/core/data/sync/sync_versioned_rows.dart';
+import 'package:murajaah/core/domain/domain.dart';
 import 'package:murajaah/core/sync/sync.dart';
 
 import '../../sync/sync_fixtures.dart';
@@ -273,6 +275,96 @@ void main() {
           'it blocks nothing and waits to be looked at, rather than rotting',
     );
   });
+
+  test(
+    'an account holding an older copy is corrected, not left holding it',
+    () async {
+      // The account hands this device a record the owner has already moved past.
+      // The device keeps its own — that is ADR-0002 — and the account goes on
+      // holding the stale one, which the next phone to join would take as truth.
+      // Nothing else would ever correct it: this device's queue is empty and its
+      // own row has not changed since it was last sent.
+      final surahs = SurahRepository(database);
+      await surahs.upsertCatalog(<SurahDescriptor>[
+        SurahDescriptor(
+          id: 'surah-112',
+          surahNumber: 112,
+          officialName: 'Al-Ikhlas',
+          ayahCount: 4,
+        ),
+      ]);
+      await surahs.addMastered('surah-112');
+      await SyncVersionedRows(database).stampAuthored(
+        table: 'mastered_surahs',
+        key: 'surah-112',
+        authoredAtUtc: now.subtract(const Duration(hours: 1)),
+      );
+      await activate();
+      // Already sent once and not touched since, which is the whole point: the
+      // ordinary scan has nothing to offer for this entity, so anything that
+      // reaches the account can only be the correction.
+      await store.recordPushWatermark(now);
+
+      final stale = SyncEnvelope(
+        id: 'remote-1',
+        deviceId: 'other-device',
+        entityType: SyncEntityType.masteredSurah,
+        entityId: 'surah-112',
+        operation: SyncOperation.upsert,
+        schemaVersion: 10,
+        createdAtUtc: now.subtract(const Duration(days: 3)),
+        updatedAtUtc: now.subtract(const Duration(days: 2)),
+        idempotencyKey: 'remote-key-1',
+        payload: const <String, Object?>{
+          'isCurrentlyMastered': true,
+          'isActive': false,
+          'hasEnteredRotation': true,
+          'activationBaselineScore': null,
+          'alias': 'его старое имя',
+          'displayOrder': 0,
+        },
+      );
+      gateway.pullPages = <SyncPullPage>[
+        SyncPullPage(
+          envelopes: <SyncEnvelope>[stale],
+          cursor: const SyncCursor('page-1'),
+          hasMore: false,
+        ),
+      ];
+
+      var ids = 0;
+      final withScan = SyncCycleRunner(
+        database: database,
+        store: store,
+        gateway: gateway,
+        nowUtc: () => now,
+        scan: DriftSyncBackfill(
+          database: database,
+          outbox: store.outbox,
+          deviceId: () async => 'this-device',
+          newId: () => 'id-${++ids}',
+        ),
+      );
+      await withScan.runOnce();
+
+      final row =
+          await (database.select(database.masteredSurahs)
+                ..where((MasteredSurahs r) => r.surahId.equals('surah-112')))
+              .getSingle();
+      expect(
+        row.alias,
+        isNull,
+        reason: 'the older copy must not have been applied at all',
+      );
+      expect(
+        gateway.pushes.last.map((one) => one.entityKey),
+        contains(stale.entityKey),
+        reason:
+            'the account is still holding the version this device out-ranked, '
+            'and a phone joining tomorrow would take it as the truth',
+      );
+    },
+  );
 }
 
 /// Records the window each scan was asked about, without touching a table.
@@ -309,6 +401,10 @@ final class _RecordingGateway implements SyncGateway {
   String? pushFailure;
   bool rejectEverything = false;
 
+  /// Pages handed out one per pull; an empty list means the account has
+  /// nothing, which is what most tests here want.
+  List<SyncPullPage> pullPages = <SyncPullPage>[];
+
   @override
   Future<SyncPushResult> push(List<SyncEnvelope> envelopes) async {
     order.add('push');
@@ -333,10 +429,13 @@ final class _RecordingGateway implements SyncGateway {
   }) async {
     order.add('pull');
     pulls.add(after);
-    return SyncPullPage(
-      envelopes: const <SyncEnvelope>[],
-      cursor: after,
-      hasMore: false,
-    );
+    if (pullPages.isEmpty) {
+      return SyncPullPage(
+        envelopes: const <SyncEnvelope>[],
+        cursor: after,
+        hasMore: false,
+      );
+    }
+    return pullPages.removeAt(0);
   }
 }

@@ -32,6 +32,7 @@ import 'prayer_routine_sync_applier.dart';
 import 'prayer_session_sync_applier.dart';
 import 'recitation_sync_applier.dart';
 import 'rotation_scheme_sync_applier.dart';
+import 'sync_versioned_rows.dart';
 
 final class SyncEnvelopeRouter {
   SyncEnvelopeRouter(AppDatabase database)
@@ -53,12 +54,43 @@ final class SyncEnvelopeRouter {
       ),
       _recalls = RecallAttemptSyncApplier(database),
       _learningEvents = LearningEventSyncApplier(database),
-      _settings = AppSettingSyncApplier(database);
+      _settings = AppSettingSyncApplier(database),
+      _versioned = SyncVersionedRows(database);
+
+  /// The table each mutable entity's local copy lives in.
+  ///
+  /// Only these can lose to a local row: the rest are append-only facts, where
+  /// "two versions of the same one" is a symptom rather than a conflict and the
+  /// appliers refuse it by name.
+  static const Map<SyncEntityType, String> _versionedTables =
+      <SyncEntityType, String>{
+        SyncEntityType.masteredSurah: 'mastered_surahs',
+        SyncEntityType.rotationScheme: 'rotation_schemes',
+        SyncEntityType.prayerSession: 'prayer_sessions',
+        SyncEntityType.prayerRoutineTemplate: 'prayer_routine_templates',
+        SyncEntityType.learningState: 'learning_surahs',
+        SyncEntityType.appSetting: 'app_settings',
+      };
 
   final RotationProjectionStore _projection;
+  final SyncVersionedRows _versioned;
 
   /// Whether anything applied since the last settle touched the rotation.
   bool _rotationIsStale = false;
+
+  /// The oldest incoming record this device out-ranked since the last ask.
+  ///
+  /// Kept so the account can be corrected rather than left holding a version
+  /// the owner has already moved past: re-scanning from this instant re-offers
+  /// the local copy that won. Null means every record that arrived was applied.
+  DateTime? _supersededRemoteAtUtc;
+
+  /// The oldest superseded instant, clearing it. See [_supersededRemoteAtUtc].
+  DateTime? takeSupersededRemoteAtUtc() {
+    final at = _supersededRemoteAtUtc;
+    _supersededRemoteAtUtc = null;
+    return at;
+  }
 
   final MasteredSurahSyncApplier _roster;
   final RotationSchemeSyncApplier _schemes;
@@ -151,7 +183,29 @@ final class SyncEnvelopeRouter {
       };
 
   /// Applies one envelope. Call inside a transaction.
-  Future<void> apply(SyncEnvelope envelope) {
+  Future<void> apply(SyncEnvelope envelope) async {
+    // ADR-0002's rule, decided once, here. It cannot be decided on the server:
+    // TablesDB upserts what it is handed and the project deploys no function,
+    // so an account holds whatever was pushed last rather than what is newest.
+    // Without this the appliers wrote whatever arrived, and an edit made
+    // offline on one phone silently replaced a newer one made on another.
+    final table = _versionedTables[envelope.entityType];
+    if (table != null) {
+      final localAtUtc = await _versioned.updatedAtUtc(
+        table: table,
+        key: envelope.entityId,
+      );
+      if (!SyncMergeDecision.incomingWins(
+        incomingUpdatedAtUtc: envelope.updatedAtUtc,
+        localUpdatedAtUtc: localAtUtc,
+      )) {
+        final seen = _supersededRemoteAtUtc;
+        if (seen == null || envelope.updatedAtUtc.isBefore(seen)) {
+          _supersededRemoteAtUtc = envelope.updatedAtUtc;
+        }
+        return;
+      }
+    }
     if (_touchesRotation(envelope)) _rotationIsStale = true;
     if (_roster.handles(envelope)) return _roster.apply(envelope);
     if (_schemes.handles(envelope)) return _schemes.apply(envelope);

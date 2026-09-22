@@ -38,7 +38,6 @@ final class MasteredSurahSyncApplier {
     if (!handles(envelope)) {
       throw StateError('Not a roster envelope: ${envelope.entityKey}');
     }
-    if (!await _mayApply(envelope)) return;
     if (envelope.isTombstone) {
       // Deliberately not a delete. Removing a roster row would cascade into
       // every recitation that references it — the schema forbids it outright
@@ -108,19 +107,6 @@ final class MasteredSurahSyncApplier {
     await _stampAuthoredAt(record.surahId, envelope.updatedAtUtc);
     await _ensureDefaultScheme(record.surahId, metadata.ayahCount);
   }
-
-  /// Whether the account's copy outranks the one this device holds.
-  ///
-  /// The server decides nothing — TablesDB upserts what it is handed — so
-  /// ADR-0002's rule runs here or nowhere. Absent locally counts as "nothing
-  /// to outrank it", and so does an undated row: see [SyncMergeDecision].
-  Future<bool> _mayApply(SyncEnvelope envelope) async =>
-      SyncMergeDecision.incomingWins(
-        incomingUpdatedAtUtc: envelope.updatedAtUtc,
-        localUpdatedAtUtc: await SyncVersionedRows(
-          _database,
-        ).updatedAtUtc(table: 'mastered_surahs', key: envelope.entityId),
-      );
 
   /// Writes the time the record was **authored**, not the time it arrived.
   ///

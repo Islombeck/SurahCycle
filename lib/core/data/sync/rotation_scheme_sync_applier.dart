@@ -50,16 +50,6 @@ final class RotationSchemeSyncApplier {
       throw const SyncTransportException('remote-scheme-cannot-be-deleted');
     }
 
-    // ADR-0002's rule, run here because the server does not run it.
-    if (!SyncMergeDecision.incomingWins(
-      incomingUpdatedAtUtc: envelope.updatedAtUtc,
-      localUpdatedAtUtc: await SyncVersionedRows(
-        _database,
-      ).updatedAtUtc(table: 'rotation_schemes', key: envelope.entityId),
-    )) {
-      return;
-    }
-
     final record = RotationSchemeSyncPayload.decode(
       envelope.payload,
       entityId: envelope.entityId,

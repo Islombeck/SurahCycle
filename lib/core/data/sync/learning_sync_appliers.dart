@@ -29,15 +29,6 @@ final class LearningStateSyncApplier {
     if (!handles(envelope)) {
       throw StateError('Not a learning plan envelope: ${envelope.entityKey}');
     }
-    // ADR-0002's rule, run here because the server does not run it.
-    if (!SyncMergeDecision.incomingWins(
-      incomingUpdatedAtUtc: envelope.updatedAtUtc,
-      localUpdatedAtUtc: await SyncVersionedRows(
-        _database,
-      ).updatedAtUtc(table: 'learning_surahs', key: envelope.entityId),
-    )) {
-      return;
-    }
     if (envelope.isTombstone) {
       await _remove(envelope.entityId);
       return;

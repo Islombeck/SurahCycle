@@ -28,16 +28,6 @@ final class PrayerSessionSyncApplier {
     if (!handles(envelope)) {
       throw StateError('Not a prayer session envelope: ${envelope.entityKey}');
     }
-    // ADR-0002's rule, run here because the server does not run it: TablesDB
-    // upserts whatever it is handed and compares nothing.
-    if (!SyncMergeDecision.incomingWins(
-      incomingUpdatedAtUtc: envelope.updatedAtUtc,
-      localUpdatedAtUtc: await SyncVersionedRows(
-        _database,
-      ).updatedAtUtc(table: 'prayer_sessions', key: envelope.entityId),
-    )) {
-      return;
-    }
     if (envelope.isTombstone) {
       await _applyTombstone(envelope.entityId);
       return;

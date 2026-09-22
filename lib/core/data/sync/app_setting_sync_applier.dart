@@ -8,7 +8,6 @@ library;
 import '../../sync/app_setting_sync_payload.dart';
 import '../../sync/sync.dart';
 import '../database/app_database.dart';
-import 'sync_versioned_rows.dart';
 
 final class AppSettingSyncApplier {
   const AppSettingSyncApplier(this._database);
@@ -22,18 +21,6 @@ final class AppSettingSyncApplier {
   Future<void> apply(SyncEnvelope envelope) async {
     if (!handles(envelope)) {
       throw StateError('Not a setting envelope: ${envelope.entityKey}');
-    }
-    // ADR-0002's rule, run here because the server does not run it. A setting
-    // is the one entity whose payload already carries its own timestamp, but
-    // the envelope's is the one every other entity is compared by, and one
-    // rule in one place is worth more than a special case here.
-    if (!SyncMergeDecision.incomingWins(
-      incomingUpdatedAtUtc: envelope.updatedAtUtc,
-      localUpdatedAtUtc: await SyncVersionedRows(
-        _database,
-      ).updatedAtUtc(table: 'app_settings', key: envelope.entityId),
-    )) {
-      return;
     }
     if (envelope.isTombstone) {
       if (!AppSettingSyncPayload.isSyncable(envelope.entityId)) {

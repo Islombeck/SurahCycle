@@ -157,6 +157,25 @@ final class SyncCycleRunner implements SyncCycle {
       pullFailure = error.reason;
     }
 
+    // An account that handed this device an older copy is still holding it,
+    // and nothing else would ever correct it: this device keeps its own, its
+    // queue is empty, and a phone that joins tomorrow would take the stale one
+    // as truth. Re-scanning from the superseded instant re-offers the local
+    // record that won, and one extra drain sends it.
+    //
+    // Exactly once, never a loop. The record it sends is at least as new as
+    // the one it replaces, so the next pull brings back a tie, and a tie is
+    // applied rather than superseded.
+    final superseded = _router.takeSupersededRemoteAtUtc();
+    final scan = _scan;
+    if (pullFailure == null && superseded != null && scan != null) {
+      await scan.enqueueChangedSince(
+        nowUtc: _nowUtc().toUtc(),
+        since: superseded,
+      );
+      await _engine.drain();
+    }
+
     if (pullFailure == null && (drain.didPushAnything || pages > 0)) {
       // Recorded only for a cycle that actually moved something. A successful
       // round trip that carried nothing proves the server is reachable, not

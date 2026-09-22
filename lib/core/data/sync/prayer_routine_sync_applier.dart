@@ -39,16 +39,6 @@ final class PrayerRoutineSyncApplier {
       throw const SyncTransportException('remote-routine-cannot-be-deleted');
     }
 
-    // ADR-0002's rule, run here because the server does not run it.
-    if (!SyncMergeDecision.incomingWins(
-      incomingUpdatedAtUtc: envelope.updatedAtUtc,
-      localUpdatedAtUtc: await SyncVersionedRows(
-        _database,
-      ).updatedAtUtc(table: 'prayer_routine_templates', key: envelope.entityId),
-    )) {
-      return;
-    }
-
     final record = PrayerRoutineSyncPayload.decode(
       envelope.payload,
       entityId: envelope.entityId,
