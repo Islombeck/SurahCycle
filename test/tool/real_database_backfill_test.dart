@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/native.dart';
@@ -81,6 +82,27 @@ void main() {
     // Printed either way: the counts are the point of running this at all.
     // ignore: avoid_print
     print(summary.join('\n'));
+
+    // The one dimension a count cannot show. `payload` is a `longtext`, but a
+    // request still has to carry it, and the largest record a real history
+    // produces is worth knowing before a phone on a bus tries to send it.
+    final envelopes = <SyncEnvelope>[
+      for (final entry in await outbox.peek(limit: 100000)) entry.envelope,
+    ];
+    var largest = 0;
+    SyncEnvelope? fattest;
+    for (final envelope in envelopes) {
+      final size = jsonEncode(envelope.payload).length;
+      if (size > largest) {
+        largest = size;
+        fattest = envelope;
+      }
+    }
+    // ignore: avoid_print
+    print(
+      'largest payload: $largest bytes '
+      '(${fattest?.entityType.name}/${fattest?.entityId})',
+    );
 
     expect(
       report.skippedCount,
@@ -214,6 +236,23 @@ void main() {
 /// dates to strings, payload to JSON, enums to names — is exercised by real
 /// payloads rather than by rows a test wrote to match it.
 final class _RowStore implements AppwriteSyncApi {
+  /// The shape the live table will accept, mirrored here rather than assumed.
+  ///
+  /// A fake that takes anything is worse than no fake at all on this path: it
+  /// ran a whole real history through the mapping, reported that the account
+  /// refuses nothing, and would have been wrong about every prayer session,
+  /// because TablesDB spells its `rowId` rule out — `a-z A-Z 0-9 . - _`, never
+  /// starting with a separator, at most 36 characters — and this accepted
+  /// `routine-session:2026-09-22:witr:qada` without blinking. The column sizes
+  /// are from the live project's own declaration.
+  static final RegExp _rowId = RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9._-]{0,35}$');
+  static const Map<String, int> _stringColumnSizes = <String, int>{
+    'userId': 64,
+    'deviceId': 64,
+    'entityId': 64,
+    'idempotencyKey': 128,
+  };
+
   final Map<String, Map<String, Object?>> _rowsById =
       <String, Map<String, Object?>>{};
   final List<String> _order = <String>[];
@@ -224,6 +263,18 @@ final class _RowStore implements AppwriteSyncApi {
     required Map<String, Object?> data,
     required List<String> permissions,
   }) async {
+    if (!_rowId.hasMatch(rowId)) {
+      // A 400 from the live server, which the gateway quarantines. Returned
+      // rather than thrown so the dry run reports it the same way production
+      // would.
+      return AppwriteSyncWriteOutcome.rejected;
+    }
+    for (final entry in _stringColumnSizes.entries) {
+      final value = data[entry.key];
+      if (value is String && value.length > entry.value) {
+        return AppwriteSyncWriteOutcome.rejected;
+      }
+    }
     if (!_rowsById.containsKey(rowId)) _order.add(rowId);
     _rowsById[rowId] = <String, Object?>{...data, r'$id': rowId};
     return AppwriteSyncWriteOutcome.written;

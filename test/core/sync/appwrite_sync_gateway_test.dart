@@ -56,6 +56,113 @@ void main() {
     'payload': payload,
   };
 
+  group('the row an envelope is written to', () {
+    // TablesDB states the rule on `rowId` itself: «Valid chars are a-z, A-Z,
+    // 0-9, period, hyphen, and underscore. Can't start with a special char.
+    // Max length is 36 chars.» A row id that breaks it comes back 400, which
+    // this client reads — correctly — as a permanent refusal and quarantines.
+    final valid = RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9._-]{0,35}$');
+
+    test('an identifier this app uses would not have been accepted', () {
+      // Not a hypothetical: these two are his, read off his device. The first
+      // carries colons, the second is 42 characters long.
+      expect(valid.hasMatch('routine-session:2026-09-22:witr:qada'), isFalse);
+      expect(
+        valid.hasMatch('routine-session:2026-09-22:jumuah:ordinary'),
+        isFalse,
+      );
+    });
+
+    test('every entity type this app can send produces a legal row id', () {
+      for (final type in SyncEntityType.values) {
+        final id = AppwriteSyncGateway.rowIdFor(
+          userId: 'a-very-long-account-identifier-0123456789',
+          envelope: SyncEnvelope(
+            id: 'envelope-1',
+            deviceId: 'device-1',
+            entityType: type,
+            entityId: 'routine-session:2026-09-22:jumuah:ordinary',
+            operation: SyncOperation.upsert,
+            schemaVersion: 9,
+            createdAtUtc: createdAt,
+            updatedAtUtc: updatedAt,
+            idempotencyKey: 'key-1',
+            payload: const <String, Object?>{'a': 1},
+          ),
+        );
+        expect(valid.hasMatch(id), isTrue, reason: '${type.name} → $id');
+      }
+    });
+
+    test('the same entity always names the same row', () {
+      expect(
+        AppwriteSyncGateway.rowIdFor(userId: owner, envelope: envelopeOf()),
+        AppwriteSyncGateway.rowIdFor(
+          userId: owner,
+          envelope: envelopeOf(id: 'envelope-2'),
+        ),
+        reason:
+            'a second push of one entity must replace the first row, not add '
+            'another — the envelope id and the idempotency key differ between '
+            'those two pushes and must not reach the row id',
+      );
+    });
+
+    test('two accounts never contend for one row', () {
+      expect(
+        AppwriteSyncGateway.rowIdFor(userId: 'user-a', envelope: envelopeOf()),
+        isNot(
+          AppwriteSyncGateway.rowIdFor(
+            userId: 'user-b',
+            envelope: envelopeOf(),
+          ),
+        ),
+        reason:
+            'row ids are unique across the whole table, and «surah-112» is the '
+            "same string in everyone's database",
+      );
+    });
+
+    test('two entity types with one id are two rows', () {
+      String idFor(SyncEntityType type) => AppwriteSyncGateway.rowIdFor(
+        userId: owner,
+        envelope: SyncEnvelope(
+          id: 'envelope-1',
+          deviceId: 'device-1',
+          entityType: type,
+          entityId: 'surah-112',
+          operation: SyncOperation.upsert,
+          schemaVersion: 9,
+          createdAtUtc: createdAt,
+          updatedAtUtc: updatedAt,
+          idempotencyKey: 'key-1',
+          payload: const <String, Object?>{'a': 1},
+        ),
+      );
+
+      expect(
+        idFor(SyncEntityType.masteredSurah),
+        isNot(idFor(SyncEntityType.rotationScheme)),
+        reason: 'a surah is mastered and also has a scheme, under one id',
+      );
+    });
+
+    test('the parts cannot be run together into the same id', () {
+      expect(
+        AppwriteSyncGateway.rowIdFor(
+          userId: 'ab',
+          envelope: envelopeOf(entityId: 'c'),
+        ),
+        isNot(
+          AppwriteSyncGateway.rowIdFor(
+            userId: 'a',
+            envelope: envelopeOf(entityId: 'bc'),
+          ),
+        ),
+      );
+    });
+  });
+
   group('pushing', () {
     test('one row per entity, carrying the whole envelope', () async {
       final api = _FakeSyncApi();
@@ -68,10 +175,10 @@ void main() {
       final write = api.writes.single;
       expect(
         write.rowId,
-        'entity-1',
+        AppwriteSyncGateway.rowIdFor(userId: owner, envelope: envelopeOf()),
         reason:
-            'addressing by entity is what makes a retry a replacement '
-            'rather than a duplicate',
+            'addressing one entity by one row is what makes a retry a '
+            'replacement rather than a duplicate',
       );
       expect(write.data['userId'], owner);
       expect(write.data['entityType'], 'recitationEvent');
