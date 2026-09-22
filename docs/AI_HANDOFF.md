@@ -401,6 +401,15 @@ not by reasoning that they would.
 
 `flutter analyze` clean; **1241 passing, 2 skipped**, full suite.
 
+**One deliberate boundary, so it is not read as an oversight:** only the merge
+records an outcome. The per-cycle scan (`enqueueChangedSince`) returns the same
+report and nothing keeps it, so a row that starts failing to map *after*
+activation is counted nowhere. The merge-time card does not go stale from this
+— the same rows keep being skipped by every later cycle, so what it says stays
+true — but a *new* refusal is invisible until the next full backfill. Recording
+the cycle's numbers in the same row would have mixed two different facts under
+one count, and that is the version worth avoiding.
+
 **Still not done, and not mine to do:** removing `rotationState` from
 `SyncEntityType` (a live-Appwrite migration — the owner's call), clock-skew
 handling (needs a server-assigned receive time TablesDB does not expose), and
