@@ -144,6 +144,66 @@ void main() {
     );
   });
 
+  group('a pull that dies has nothing in the queue to say so', () {
+    test('so the cycle writes the reason down itself', () async {
+      await activate();
+      await queue('theme');
+      gateway.pullFailure = 'remote-scheme-version-already-used';
+
+      final outcome = await runner.runOnce();
+      expect(outcome.failureReason, 'remote-scheme-version-already-used');
+
+      final snapshot = await store.transportSnapshot();
+      expect(
+        snapshot.queuedCount,
+        0,
+        reason: 'the push went through; it is only the pull that died',
+      );
+      expect(
+        snapshot.lastFailureReason,
+        'remote-scheme-version-already-used',
+        reason:
+            'without this the screen reads "Синхронизация включена · Ждут '
+            'отправки: 0" over a device that is receiving nothing — every '
+            'number on it true, and the whole of it false',
+      );
+      expect(
+        SyncStatus.resolve(
+          config: AppwriteConfig.resolve(
+            projectId: 'project',
+            endpoint: 'https://example.invalid/v1',
+          ),
+          isSignedIn: true,
+          isActivated: snapshot.isActivated,
+          queuedCount: snapshot.queuedCount,
+          quarantinedCount: snapshot.quarantinedCount,
+          lastSuccessAtUtc: snapshot.lastSuccessAtUtc,
+          lastFailureReason: snapshot.lastFailureReason,
+        ).health,
+        SyncHealth.retrying,
+      );
+    });
+
+    test('and the next cycle that works takes it back off', () async {
+      await activate();
+      await queue('theme');
+      gateway.pullFailure = 'remote-scheme-version-already-used';
+      await runner.runOnce();
+
+      gateway.pullFailure = null;
+      await queue('language', id: 'e2');
+      await runner.runOnce();
+
+      expect(
+        (await store.transportSnapshot()).lastFailureReason,
+        isNull,
+        reason:
+            'a reason that outlived the problem would send him looking for a '
+            'fault that is no longer there',
+      );
+    });
+  });
+
   test('two callers at once share one cycle', () async {
     await activate();
     await queue('theme');
@@ -446,6 +506,11 @@ final class _RecordingGateway implements SyncGateway {
   final List<String> order = <String>[];
 
   String? pushFailure;
+
+  /// A pull that cannot be applied — an arriving record this build refuses,
+  /// say. It leaves the queue empty and the cursor still, which is why it has
+  /// to be reported from somewhere other than the queue.
+  String? pullFailure;
   bool rejectEverything = false;
 
   /// Neither accepts nor refuses: the queue comes back exactly as it went.
@@ -482,6 +547,7 @@ final class _RecordingGateway implements SyncGateway {
   }) async {
     order.add('pull');
     pulls.add(after);
+    if (pullFailure != null) throw SyncTransportException(pullFailure!);
     if (pullPages.isEmpty) {
       return SyncPullPage(
         envelopes: const <SyncEnvelope>[],

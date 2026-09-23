@@ -256,6 +256,53 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
         );
   }
 
+  /// Where the last exchange's failure category is kept.
+  ///
+  /// In `app_settings` beside the watermark, for the same reason: one small
+  /// fact is not worth a schema migration. Outside the sync allowlist by
+  /// construction, and rightly — whether *this* device's last exchange failed
+  /// is not something to hand another device as if it were about theirs.
+  String get _cycleFailureKey => 'sync.lastFailure.${owner.value}';
+
+  /// Remembers why the last exchange failed, or clears it when one succeeds.
+  ///
+  /// The queue carries a reason for anything it could not push, so a failing
+  /// **push** has always been visible. A failing **pull** leaves no trace in it
+  /// at all: the queue is empty, the cursor simply never moves. His second
+  /// phone spent an afternoon reporting "Синхронизация включена · Ждут
+  /// отправки: 0" over a pull that had been dead-ended on its first page —
+  /// the most convincing kind of wrong a status can be, because every number
+  /// on the screen was true.
+  ///
+  /// A category, never a server message: this reaches a screen, and the user's
+  /// own recitation must not.
+  Future<void> recordCycleFailure(String? reason) async {
+    if (reason == null) {
+      await (_database.delete(
+        _database.appSettings,
+      )..where((row) => row.key.equals(_cycleFailureKey))).go();
+      return;
+    }
+    await _database
+        .into(_database.appSettings)
+        .insertOnConflictUpdate(
+          AppSettingsCompanion.insert(
+            key: _cycleFailureKey,
+            value: reason,
+            valueType: 'string',
+            updatedAtUtc: _nowUtc(),
+          ),
+        );
+  }
+
+  Future<String?> _storedCycleFailure() async {
+    final row = await (_database.select(
+      _database.appSettings,
+    )..where((row) => row.key.equals(_cycleFailureKey))).getSingleOrNull();
+    final value = row?.value;
+    return value == null || value.isEmpty ? null : value;
+  }
+
   Future<SyncBackfillOutcome?> _backfillOutcome() async {
     final row = await (_database.select(
       _database.appSettings,
@@ -289,6 +336,7 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
       _database.transaction(() async {
         final activation = await _activationRow();
         final backfill = await _backfillOutcome();
+        final cycleFailure = await _storedCycleFailure();
         final rows = await (_database.select(
           _database.syncOutboxEntries,
         )..where((row) => row.ownerKey.equals(owner.value))).get();
@@ -311,12 +359,19 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
           if (row.attemptCount > attempts) attempts = row.attemptCount;
         }
 
+        // A queued entry's own reason first — it names a record the user can be
+        // told about — and the last exchange's only when the queue has none.
+        // An empty queue with a dead pull has nothing else to report it.
+        final reported = failure ?? cycleFailure;
         return SyncTransportSnapshot(
           isActivated: activation?.isActive ?? false,
           queuedCount: queued,
           quarantinedCount: quarantined,
           lastSuccessAtUtc: activation?.lastSuccessAtUtc?.toUtc(),
-          lastFailureReason: failure,
+          lastFailureReason: reported,
+          // Counted from the queue only. A pull that keeps failing has no
+          // attempt count of its own, and inventing one would be a number on a
+          // screen that nothing measured.
           consecutiveFailureCount: failure == null ? 0 : attempts,
           backfill: backfill,
         );
@@ -385,8 +440,13 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
     // to have scanned up to a watermark that no longer describes anything.
     // Dropping the watermark makes a later activation re-offer everything,
     // which is the safe direction — too much rather than too little.
-    await (_database.delete(_database.appSettings)
-          ..where((row) => row.key.isIn(<String>[_watermarkKey, _backfillKey])))
+    await (_database.delete(_database.appSettings)..where(
+          (row) => row.key.isIn(<String>[
+            _watermarkKey,
+            _backfillKey,
+            _cycleFailureKey,
+          ]),
+        ))
         .go();
   });
 

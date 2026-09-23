@@ -161,6 +161,7 @@ final class SyncCycleRunner implements SyncCycle {
 
     final drain = await _drainQueue();
     if (drain.hasFailure) {
+      await _store.recordCycleFailure(drain.failureReason);
       // Stop here rather than pulling anyway. The queue is what this device
       // knows and the network has just said it cannot be reached; taking
       // records down over local work that failed to go up is the one ordering
@@ -217,6 +218,12 @@ final class SyncCycleRunner implements SyncCycle {
       );
       await _engine.drain();
     }
+
+    // Recorded, or cleared, on every cycle that got this far. A pull that
+    // stalls leaves nothing in the queue to explain itself — the queue is
+    // empty and the cursor merely stops moving — so without this the account
+    // screen reports a perfectly healthy device that is receiving nothing.
+    await _store.recordCycleFailure(pullFailure);
 
     if (pullFailure == null && (drain.didPushAnything || pages > 0)) {
       // Recorded only for a cycle that actually moved something. A successful
