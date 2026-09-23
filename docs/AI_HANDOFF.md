@@ -37,6 +37,17 @@ His outbox is **empty** — no pending, no quarantined — and the account holds
 More rows than records is the log working as intended: a record edited twice is
 two rows, and the newest wins on the device that applies them.
 
+**Checked by name, not by count, for the three types that had been refused.**
+The account's 84 `prayerSession` rows carry **78 distinct ids**, which is
+exactly the number of prayer sessions on his device, from
+`routine-session:2026-08-25:witr:ordinary` through
+`routine-session:2026-09-23:witr:ordinary`, Qada sessions included. The 29
+`rotationScheme` rows carry 28 distinct ids — his 28, under both naming schemes
+his history contains (`v1:surah-90:scheme:1` and `surah-2:scheme:1`) — and all
+eight routine templates are there, `routine:asr` through `routine:witr`.
+Nothing is missing. A count alone could have hidden a missing session behind a
+duplicate elsewhere; this cannot.
+
 **One more defect was in the way and is fixed.** He reported pressing
 «Синхронизировать сейчас» and seeing no change. He was right: `SyncEngine`
 pushes at most a batch (50) per call and the cycle called it once, so the 112
