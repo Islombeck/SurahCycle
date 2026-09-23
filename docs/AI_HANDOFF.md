@@ -22,11 +22,49 @@ describing.
 - The account is a log: one row per change, never rewritten.
 - Every client assumption about the live project checked against it, read-only.
 
+### He turned it on, and the row-id defect happened to him
+
+**2026-09-23, found while installing the morning's build.** His database holds
+an activation (`merge`, decided 2026-09-22 11:19 UTC, backup
+`murajaah-backup-v10-20260922T111923Z.sqlite`) and the account holds **915
+rows**. So the "nothing has run against the live project" line below was true
+when it was written and was overtaken the same evening.
+
+**He activated on the build installed at 15:02 on 2026-09-22 — the one that
+still addressed each row by the record's own id.** Everything whose id carries
+a colon came back 400 and went to quarantine. Read off his phone this morning:
+
+| quarantined | type |
+|---|---|
+| 77 | `prayerSession` |
+| 27 | `rotationScheme` |
+| 8 | `prayerRoutineTemplate` |
+
+**112 records**, and the account held 824 recitations with one prayer session.
+That combination could not have restored a new phone at all: the recitation
+applier refuses a record whose prayer session is missing, so a second device
+would have stalled on the first recitation it pulled.
+
+**What is fixed, and what he has to press.** Today's build pushed 23 new rows
+with the corrected id, including a prayer session, so new work now travels.
+The 112 already-refused entries are not retried by design — a queue that
+retried what a server called permanent would hammer it forever. So
+`SyncOutbox.requeueQuarantined` and an account-screen button
+(`account-retry-refused`) exist now: it offers them again and runs a cycle.
+**Owner action: Настройки → Аккаунт → «Отправить заново отклонённые».**
+
+`last_success_at_utc` is still null on his activation row, so the screen calls
+it never-synced despite 915 rows. Worth a look next session: the cycle records
+success only when it pushed or pulled something, and the cycle that carried
+those rows should have qualified.
+
 **Not done, and each with its reason**
 
-1. **Nothing has run against the live project with a real account.** This needs
-   the owner to sign in on the phone and agree to a merge. It is the last
-   acceptance step and it is his, not a session's.
+1. ~~Nothing has run against the live project with a real account.~~ **He ran
+   it**, see above. What is left of this item is the *verification*: that after
+   pressing the recovery button his account holds every prayer session, and
+   that a second device can rebuild from it. The second half still needs a
+   second device.
 2. **Clock skew is detected nowhere.** No longer blocked — `$createdAt` is the
    server-assigned receive time the notes said TablesDB does not expose, and
    the pull already orders by it. Not built because a warning nobody can act on
