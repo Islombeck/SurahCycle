@@ -340,6 +340,87 @@ void runSyncOutboxContract(String name, SyncOutbox Function() createOutbox) {
       },
     );
 
+    group('offering the refused entries again', () {
+      // The recovery `quarantine` has always promised. It was needed for real
+      // on 2026-09-22: a defect in this client made the server refuse every
+      // record whose id contains a colon — 112 of the owner's prayer sessions,
+      // routines and schemes — and they were still good records.
+      test('a refused entry goes back in the queue with its envelope', () async {
+        await outbox.enqueue(
+          envelopeOf(entityId: 'a', id: 'e1'),
+          nowUtc: at(1),
+        );
+        await outbox.quarantine(<String>['e1'], 'rejected-by-server');
+
+        expect(await outbox.requeueQuarantined(), 1);
+
+        expect(await outbox.quarantined(), isEmpty);
+        final pending = await outbox.peek();
+        expect(pending.single.envelope.id, 'e1');
+        expect(
+          pending.single.attemptCount,
+          0,
+          reason:
+              'the count is about a queue that was failing; this one is being '
+              'offered for the first time since the reason was fixed',
+        );
+        expect(pending.single.lastFailureReason, isNull);
+      });
+
+      test('a newer pending entry for the same record wins', () async {
+        await outbox.enqueue(
+          envelopeOf(entityId: 'a', id: 'e1'),
+          nowUtc: at(1),
+        );
+        await outbox.quarantine(<String>['e1'], 'rejected-by-server');
+        await outbox.enqueue(
+          envelopeOf(entityId: 'a', id: 'e2', updatedMinute: 5),
+          nowUtc: at(5),
+        );
+
+        expect(
+          await outbox.requeueQuarantined(),
+          0,
+          reason:
+              'the queue already holds a newer answer about that record, and '
+              'only one entry per record may be pending at a time',
+        );
+        expect((await outbox.peek()).single.envelope.id, 'e2');
+        expect(await outbox.quarantined(), isEmpty);
+      });
+
+      test('two refusals about one record come back as one', () async {
+        await outbox.enqueue(
+          envelopeOf(entityId: 'a', id: 'e1'),
+          nowUtc: at(1),
+        );
+        await outbox.quarantine(<String>['e1'], 'rejected-by-server');
+        await outbox.enqueue(
+          envelopeOf(entityId: 'a', id: 'e2', updatedMinute: 5),
+          nowUtc: at(5),
+        );
+        await outbox.quarantine(<String>['e2'], 'rejected-by-server');
+
+        expect(await outbox.requeueQuarantined(), 1);
+
+        expect(
+          (await outbox.peek()).single.envelope.id,
+          'e2',
+          reason: 'the newer version of the record is the one worth sending',
+        );
+      });
+
+      test('nothing refused is nothing to do', () async {
+        await outbox.enqueue(
+          envelopeOf(entityId: 'a', id: 'e1'),
+          nowUtc: at(1),
+        );
+
+        expect(await outbox.requeueQuarantined(), 0);
+        expect((await outbox.peek()).single.envelope.id, 'e1');
+      });
+    });
+
     test('quarantining an unknown id is harmless', () async {
       await outbox.quarantine(<String>['missing'], 'rejected');
 

@@ -204,6 +204,61 @@ final class DriftSyncOutbox implements SyncOutbox {
   }
 
   @override
+  @override
+  Future<int> requeueQuarantined() => _database.transaction(() async {
+    // The partial unique index allows one *pending* entry per entity, so
+    // flipping a status is not enough: two entries for one entity would
+    // collide, and the collision would be the recovery failing rather than a
+    // refusal anyone could read.
+    //
+    // Two kinds are dropped rather than queued, and both are older copies of
+    // something the queue already has a better answer for — transport state,
+    // never the owner's records, which are untouched in their own tables:
+    //
+    // 1. a quarantined entry whose entity already has a pending one: that
+    //    entry carries the newer state and this one would be overwritten by it
+    //    the moment both arrived;
+    // 2. all but the newest quarantined entry for one entity.
+    await _database.customUpdate(
+      'DELETE FROM sync_outbox_entries '
+      "WHERE owner_key = ? AND status = 'quarantined' AND entity_key IN ("
+      '  SELECT entity_key FROM sync_outbox_entries '
+      "  WHERE owner_key = ? AND status = 'pending')",
+      variables: <Variable<Object>>[
+        Variable<String>(owner.value),
+        Variable<String>(owner.value),
+      ],
+      updates: <ResultSetImplementation<Table, Object?>>{
+        _database.syncOutboxEntries,
+      },
+    );
+    await _database.customUpdate(
+      'DELETE FROM sync_outbox_entries '
+      "WHERE owner_key = ? AND status = 'quarantined' AND rowid NOT IN ("
+      '  SELECT rowid FROM sync_outbox_entries AS newest '
+      "  WHERE newest.owner_key = ? AND newest.status = 'quarantined' "
+      '  GROUP BY newest.entity_key '
+      '  HAVING max(newest.envelope_updated_at_us))',
+      variables: <Variable<Object>>[
+        Variable<String>(owner.value),
+        Variable<String>(owner.value),
+      ],
+      updates: <ResultSetImplementation<Table, Object?>>{
+        _database.syncOutboxEntries,
+      },
+    );
+    return _database.customUpdate(
+      'UPDATE sync_outbox_entries '
+      "SET status = 'pending', attempt_count = 0, last_failure_reason = NULL "
+      "WHERE owner_key = ? AND status = 'quarantined'",
+      variables: <Variable<Object>>[Variable<String>(owner.value)],
+      updates: <ResultSetImplementation<Table, Object?>>{
+        _database.syncOutboxEntries,
+      },
+    );
+  });
+
+  @override
   Future<void> clear() async {
     await (_database.delete(
       _database.syncOutboxEntries,

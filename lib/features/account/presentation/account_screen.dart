@@ -168,6 +168,21 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
               icon: const Icon(Icons.sync),
               label: Text(l10n.accountSyncNow),
             ),
+            // The recovery a permanent refusal has always promised and nothing
+            // offered. Deliberately a separate button and never automatic: a
+            // queue that retried what the server called permanent, on its own,
+            // would hammer it forever over something nobody had fixed. It
+            // appears only when there is something to recover, and the count
+            // says how much.
+            if (status.quarantinedCount > 0) ...<Widget>[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                key: const ValueKey<String>('account-retry-refused'),
+                onPressed: _busy ? null : _retryRefused,
+                icon: const Icon(Icons.replay),
+                label: Text(l10n.accountRetryRefused(status.quarantinedCount)),
+              ),
+            ],
           ],
         ),
       };
@@ -458,6 +473,37 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Offers the refused entries again, then sends them.
+  ///
+  /// Two steps rather than one button that only re-queues: putting records
+  /// back in a queue and leaving them there would look identical to doing
+  /// nothing, and the owner would have no way to tell which it was.
+  Future<void> _retryRefused() async {
+    final account = ref.read(currentAccountProvider).valueOrNull;
+    if (account == null) return;
+    final store = ref.read(syncStoreProvider(account.userId));
+
+    setState(() => _busy = true);
+    int requeued;
+    try {
+      requeued = await store.outbox.requeueQuarantined();
+      if (!mounted) return;
+      ref.invalidate(syncTransportProvider(account.userId));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.removeCurrentSnackBar(reason: SnackBarClosedReason.hide);
+    messenger.showSnackBar(
+      SnackBar(
+        key: const ValueKey<String>('account-retry-refused-result'),
+        content: Text(context.l10n.accountRetryRefusedResult(requeued)),
+      ),
+    );
+    await _syncNow(silent: true);
   }
 
   static String _providerLabel(AppLocalizations l10n, SyncAuthProvider p) =>

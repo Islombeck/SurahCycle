@@ -1351,6 +1351,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String accountRetryRefused(int count) {
+    return 'Send the refused records again: $count';
+  }
+
+  @override
+  String accountRetryRefusedResult(int count) {
+    return 'Put back in the queue: $count';
+  }
+
+  @override
   String get accountSyncNow => 'Sync now';
 
   @override

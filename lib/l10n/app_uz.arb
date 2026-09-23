@@ -428,6 +428,10 @@
   ,"accountBackfillIncompleteTitle": "Tarixning bir qismi shu qurilmada qoldi"
   ,"accountBackfillIncomplete": "Yuborib boʻlmagan yozuvlar: {count} ({fields}). Ular qurilmada qoldi."
   ,"@accountBackfillIncomplete": {"placeholders": {"count": {"type": "int"}, "fields": {"type": "String"}}}
+  ,"accountRetryRefused": "Rad etilganlarni qayta yuborish: {count}"
+  ,"@accountRetryRefused": {"placeholders": {"count": {"type": "int"}}}
+  ,"accountRetryRefusedResult": "Navbatga qaytarildi: {count}"
+  ,"@accountRetryRefusedResult": {"placeholders": {"count": {"type": "int"}}}
   ,"accountSyncNow": "Hozir sinxronlash"
   ,"accountSyncNowResult": "Yuborildi: {pushed} · Navbatda qoldi: {remaining}"
   ,"@accountSyncNowResult": {"placeholders": {"pushed": {"type": "int"}, "remaining": {"type": "int"}}}

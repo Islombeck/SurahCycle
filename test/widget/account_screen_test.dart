@@ -302,6 +302,61 @@ void main() {
     );
   });
 
+  testWidgets('refused records can be offered again, by hand', (tester) async {
+    // It happened: a defect in this client made the server refuse every record
+    // whose id contains a colon, and 112 of the owner's prayer sessions,
+    // routines and schemes sat in quarantine with nothing able to release
+    // them. A permanent refusal has always promised an explicit recovery; this
+    // is the first thing that offers one.
+    await _pump(
+      tester,
+      account: _user,
+      transport: const SyncTransportSnapshot(
+        isActivated: true,
+        queuedCount: 0,
+        quarantinedCount: 112,
+        lastSuccessAtUtc: null,
+        lastFailureReason: null,
+        consecutiveFailureCount: 0,
+      ),
+    );
+
+    final button = find.byKey(const ValueKey<String>('account-retry-refused'));
+    expect(button, findsOneWidget);
+    expect(find.textContaining('112'), findsWidgets);
+
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('account-retry-refused-result')),
+      findsOneWidget,
+      reason:
+          'putting records back in a queue and saying nothing looks exactly '
+          'like doing nothing',
+    );
+  });
+
+  testWidgets('nothing refused means no button to press', (tester) async {
+    await _pump(
+      tester,
+      account: _user,
+      transport: const SyncTransportSnapshot(
+        isActivated: true,
+        queuedCount: 4,
+        quarantinedCount: 0,
+        lastSuccessAtUtc: null,
+        lastFailureReason: null,
+        consecutiveFailureCount: 0,
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('account-retry-refused')),
+      findsNothing,
+    );
+  });
+
   testWidgets('an unreachable account is not reported as signed out', (
     tester,
   ) async {

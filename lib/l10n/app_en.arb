@@ -428,6 +428,10 @@
   ,"accountBackfillIncompleteTitle": "Part of the history stayed here"
   ,"accountBackfillIncomplete": "Records that could not be sent: {count} ({fields}). They stayed on this device."
   ,"@accountBackfillIncomplete": {"placeholders": {"count": {"type": "int"}, "fields": {"type": "String"}}}
+  ,"accountRetryRefused": "Send the refused records again: {count}"
+  ,"@accountRetryRefused": {"placeholders": {"count": {"type": "int"}}}
+  ,"accountRetryRefusedResult": "Put back in the queue: {count}"
+  ,"@accountRetryRefusedResult": {"placeholders": {"count": {"type": "int"}}}
   ,"accountSyncNow": "Sync now"
   ,"accountSyncNowResult": "Sent: {pushed} · Still queued: {remaining}"
   ,"@accountSyncNowResult": {"placeholders": {"pushed": {"type": "int"}, "remaining": {"type": "int"}}}

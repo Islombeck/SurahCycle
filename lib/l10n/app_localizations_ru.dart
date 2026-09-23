@@ -1354,6 +1354,16 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String accountRetryRefused(int count) {
+    return 'Отправить заново отклонённые: $count';
+  }
+
+  @override
+  String accountRetryRefusedResult(int count) {
+    return 'Возвращено в очередь: $count';
+  }
+
+  @override
   String get accountSyncNow => 'Синхронизировать сейчас';
 
   @override

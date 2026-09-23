@@ -155,6 +155,37 @@ final class InMemorySyncOutbox implements SyncOutbox {
   Future<int> pendingCount() async => _entriesById.length;
 
   @override
+  @override
+  Future<int> requeueQuarantined() async {
+    final byEntity = <String, SyncOutboxEntry>{};
+    for (final entry in _quarantinedById.values) {
+      final key = entry.envelope.entityKey;
+      // A pending entry carries the newer state of the same record; an older
+      // quarantined copy of it has nothing left to say.
+      if (_envelopeIdByEntityKey.containsKey(key)) continue;
+      final kept = byEntity[key];
+      if (kept == null ||
+          entry.envelope.updatedAtUtc.isAfter(kept.envelope.updatedAtUtc)) {
+        byEntity[key] = entry;
+      }
+    }
+    _quarantinedById.clear();
+    for (final entry in byEntity.values) {
+      // The attempt count and the reason describe a queue that was failing.
+      // This entry is being offered for the first time since the reason was
+      // fixed, and carrying the old tally forward would make the next failure
+      // look like the continuation of an older one.
+      _entriesById[entry.envelope.id] = SyncOutboxEntry(
+        envelope: entry.envelope,
+        enqueuedAtUtc: entry.enqueuedAtUtc,
+      );
+      _sequenceById[entry.envelope.id] = _nextSequence++;
+      _envelopeIdByEntityKey[entry.envelope.entityKey] = entry.envelope.id;
+    }
+    return byEntity.length;
+  }
+
+  @override
   Future<void> clear() async {
     _entriesById.clear();
     _envelopeIdByEntityKey.clear();

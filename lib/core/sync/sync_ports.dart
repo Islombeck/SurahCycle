@@ -65,6 +65,19 @@ abstract interface class SyncOutbox {
   /// Permanently rejected entries, oldest first.
   Future<List<SyncOutboxEntry>> quarantined({int limit = 50});
 
+  /// Puts quarantined entries back in the queue, and says how many.
+  ///
+  /// This is the "explicit recovery" [quarantine] promises and nothing else
+  /// provides. A permanent refusal is permanent *for that server as it was*:
+  /// when the reason was a defect in this client — and on 2026-09-22 it was,
+  /// for every record whose id contains a colon — the entries are still good
+  /// and the fix is to offer them again rather than to ask the owner to
+  /// recreate a year of prayers.
+  ///
+  /// It is never automatic. A queue that silently retried what a server called
+  /// permanent would hammer it forever over something nobody had fixed.
+  Future<int> requeueQuarantined();
+
   Future<int> pendingCount();
 
   /// Explicitly drops both pending and quarantined transport state.

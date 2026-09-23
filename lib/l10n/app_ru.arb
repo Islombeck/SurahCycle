@@ -434,6 +434,10 @@
   ,"accountBackfillIncompleteTitle": "Часть истории осталась здесь"
   ,"accountBackfillIncomplete": "Не удалось отправить записей: {count} ({fields}). Они остались на устройстве."
   ,"@accountBackfillIncomplete": {"placeholders": {"count": {"type": "int"}, "fields": {"type": "String"}}}
+  ,"accountRetryRefused": "Отправить заново отклонённые: {count}"
+  ,"@accountRetryRefused": {"placeholders": {"count": {"type": "int"}}}
+  ,"accountRetryRefusedResult": "Возвращено в очередь: {count}"
+  ,"@accountRetryRefusedResult": {"placeholders": {"count": {"type": "int"}}}
   ,"accountSyncNow": "Синхронизировать сейчас"
   ,"accountSyncNowResult": "Отправлено: {pushed} · Осталось в очереди: {remaining}"
   ,"@accountSyncNowResult": {"placeholders": {"pushed": {"type": "int"}, "remaining": {"type": "int"}}}

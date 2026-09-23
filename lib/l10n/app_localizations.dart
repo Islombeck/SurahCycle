@@ -2410,6 +2410,18 @@ abstract class AppLocalizations {
   /// **'Не удалось отправить записей: {count} ({fields}). Они остались на устройстве.'**
   String accountBackfillIncomplete(int count, String fields);
 
+  /// No description provided for @accountRetryRefused.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отправить заново отклонённые: {count}'**
+  String accountRetryRefused(int count);
+
+  /// No description provided for @accountRetryRefusedResult.
+  ///
+  /// In ru, this message translates to:
+  /// **'Возвращено в очередь: {count}'**
+  String accountRetryRefusedResult(int count);
+
   /// No description provided for @accountSyncNow.
   ///
   /// In ru, this message translates to:

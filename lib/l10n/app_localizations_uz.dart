@@ -1353,6 +1353,16 @@ class AppLocalizationsUz extends AppLocalizations {
   }
 
   @override
+  String accountRetryRefused(int count) {
+    return 'Rad etilganlarni qayta yuborish: $count';
+  }
+
+  @override
+  String accountRetryRefusedResult(int count) {
+    return 'Navbatga qaytarildi: $count';
+  }
+
+  @override
   String get accountSyncNow => 'Hozir sinxronlash';
 
   @override
