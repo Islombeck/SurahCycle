@@ -53,8 +53,24 @@ retried what a server called permanent would hammer it forever. So
 (`account-retry-refused`) exist now: it offers them again and runs a cycle.
 **Owner action: Настройки → Аккаунт → «Отправить заново отклонённые».**
 Carrying build sha256
-`C22F78D79A5D95F0CBC299AB2501BB4763B642D8B03F3CE390BE0F854D56A729`, installed
-`lastUpdateTime=2026-09-23 09:49:30`.
+`4664EFD8C81C76246BCB610E414A0CFD1B2E286B9FF38B2EEE7BB36244573044`, installed
+`lastUpdateTime=2026-09-23 10:15:29`. **The 09:49 build must not be used**: its
+copy of that button had the `HAVING max(...)` fault below and would have
+deleted 34 of the records it was meant to rescue. It was replaced within the
+hour and nothing pressed it in between.
+
+**The first version of that button would have deleted 34 of the 112.** Found by
+rehearsing it on a copy of his database rather than by reasoning about it —
+`test/tool/real_database_requeue_test.dart`, which is now the thing to run
+before asking him to press anything. `requeueQuarantined` chose the survivors
+with `GROUP BY entity_key HAVING max(envelope_updated_at_us)`: a bare `rowid`
+beside a GROUP BY is an arbitrary row of the group, and `HAVING max(x)` filters
+on whether that maximum is **truthy**. `kUndatedByThisDevice` is the epoch,
+the epoch is zero, zero is false — so every entry carrying the sentinel was
+deleted. On his data: all 27 rotation schemes and 7 of the 8 routine templates,
+the rows schema v10 left undated. It asks "does a better one exist" per row
+now, and on the same copy all 112 are released and all 112 accepted by a server
+double as strict as the real one.
 
 **Pressing it for him was attempted and abandoned, on purpose.** The Jelly Max
 keyguard would not advance from the clock to the PIN pad through `input
