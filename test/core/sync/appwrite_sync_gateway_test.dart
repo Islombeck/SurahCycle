@@ -94,17 +94,28 @@ void main() {
       }
     });
 
-    test('the same entity always names the same row', () {
+    test('the same change always names the same row', () {
       expect(
         AppwriteSyncGateway.rowIdFor(userId: owner, envelope: envelopeOf()),
-        AppwriteSyncGateway.rowIdFor(
-          userId: owner,
-          envelope: envelopeOf(id: 'envelope-2'),
+        AppwriteSyncGateway.rowIdFor(userId: owner, envelope: envelopeOf()),
+        reason:
+            'a retry after a lost acknowledgement writes the same row with the '
+            'same content, which is what makes it harmless',
+      );
+    });
+
+    test('two changes to one record are two rows', () {
+      expect(
+        AppwriteSyncGateway.rowIdFor(userId: owner, envelope: envelopeOf()),
+        isNot(
+          AppwriteSyncGateway.rowIdFor(
+            userId: owner,
+            envelope: envelopeOf(id: 'envelope-2'),
+          ),
         ),
         reason:
-            'a second push of one entity must replace the first row, not add '
-            'another — the envelope id and the idempotency key differ between '
-            'those two pushes and must not reach the row id',
+            'the table is a log: rewriting one row per record is what moved it '
+            'under the pull cursor and stranded the device reading it',
       );
     });
 
@@ -123,42 +134,19 @@ void main() {
       );
     });
 
-    test('two entity types with one id are two rows', () {
-      String idFor(SyncEntityType type) => AppwriteSyncGateway.rowIdFor(
-        userId: owner,
-        envelope: SyncEnvelope(
-          id: 'envelope-1',
-          deviceId: 'device-1',
-          entityType: type,
-          entityId: 'surah-112',
-          operation: SyncOperation.upsert,
-          schemaVersion: 9,
-          createdAtUtc: createdAt,
-          updatedAtUtc: updatedAt,
-          idempotencyKey: 'key-1',
-          payload: const <String, Object?>{'a': 1},
-        ),
-      );
-
-      expect(
-        idFor(SyncEntityType.masteredSurah),
-        isNot(idFor(SyncEntityType.rotationScheme)),
-        reason: 'a surah is mastered and also has a scheme, under one id',
-      );
-    });
-
     test('the parts cannot be run together into the same id', () {
       expect(
         AppwriteSyncGateway.rowIdFor(
           userId: 'ab',
-          envelope: envelopeOf(entityId: 'c'),
+          envelope: envelopeOf(id: 'c'),
         ),
         isNot(
           AppwriteSyncGateway.rowIdFor(
             userId: 'a',
-            envelope: envelopeOf(entityId: 'bc'),
+            envelope: envelopeOf(id: 'bc'),
           ),
         ),
+        reason: 'the key is derived from the envelope id in this fixture',
       );
     });
   });

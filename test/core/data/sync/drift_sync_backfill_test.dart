@@ -562,7 +562,12 @@ void main() {
       await addSurah('surah-a', 112);
       await recite('event-0', 'surah-a');
       // Past both clocks, so neither kind of row can fall inside the window.
-      final after = now.add(const Duration(days: 1));
+      // Taken from the real clock rather than from the fixture's `now`: the
+      // trigger stamps wall time, and a fixture date plus a day stops being in
+      // the future the moment the calendar passes it. It did, on 2026-09-23,
+      // and this test failed for a reason that had nothing to do with the
+      // change being made that day.
+      final after = DateTime.now().toUtc().add(const Duration(days: 1));
 
       final report = await backfill.enqueueChangedSince(
         nowUtc: after,

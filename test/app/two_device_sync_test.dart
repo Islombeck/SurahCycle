@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:murajaah/core/data/data.dart';
+import 'package:murajaah/core/data/sync/sync_versioned_rows.dart';
 import 'package:murajaah/core/domain/domain.dart';
 import 'package:murajaah/core/sync/sync.dart';
 
@@ -284,28 +285,36 @@ void main() {
       );
     });
 
+    test('and the device that lost finds out', () async {
+      await bothRenameOffline();
+
+      expect(
+        await alice.aliasOf('surah-a'),
+        'Bob',
+        reason:
+            'her own older edit is in the account too, and a log keeps both — '
+            'so what she applies is the last one she has not seen, which is his',
+      );
+    });
+
     test(
-      'and the device that lost finds out',
+      'a row is written once, so a cursor cannot be stranded on it',
       () async {
         await bothRenameOffline();
 
-        expect(await alice.aliasOf('surah-a'), 'Bob');
+        // The defect this replaced: one row per entity, rewritten on every
+        // edit, ordered by the server's `$updatedAt`. A rewritten row moved to
+        // the end of that order, and a device whose cursor *was* that row then
+        // had nothing after it — the one thing it could never be handed again
+        // being that row's own newer content.
+        expect(
+          cloud.rowCount,
+          greaterThan(cloud.entityCount),
+          reason:
+              'two renames of one surah are two rows; if they were one, the '
+              'second would have moved out from under both cursors',
+        );
       },
-      // **A real defect, reproduced here and not yet fixed.** The pull cursor
-      // is a row id, and the pull is ordered by the server's `$updatedAt`. A
-      // row that is rewritten moves to the end of that order, so a device
-      // whose cursor *is* that row now has nothing after it and stops seeing
-      // the row's own later versions — until some other row is written, which
-      // in a small account can be a long time.
-      //
-      // The fix is not a patch to the cursor: the table is called `sync_log`
-      // and the unique index on `(userId, idempotencyKey)` is already what
-      // catches a replay, so one row per change — ordered by `$createdAt`,
-      // which never moves — costs nothing this design was relying on and gives
-      // the audit trail ADR-0002 §4 asks for. It also stops being a decision
-      // for one session to take alone, which is why it is written down instead.
-      // See `docs/AI_HANDOFF.md`, 2026-09-22.
-      skip: 'Defect: the pull cursor is a row id over a mutable ordering.',
     );
 
     test('a history reaches a second device through the real mapping', () async {
@@ -341,6 +350,14 @@ final class _DumbCloud implements AppwriteSyncApi {
       <String, Map<String, Object?>>{};
   final List<String> _order = <String>[];
 
+  /// How many rows the account holds, and how many distinct records they are
+  /// about. A log has more of the first than the second.
+  int get rowCount => _rows.length;
+  int get entityCount => _rows.values
+      .map((row) => '${row['entityType']}:${row['entityId']}')
+      .toSet()
+      .length;
+
   @override
   Future<AppwriteSyncWriteOutcome> upsertRow({
     required String rowId,
@@ -348,13 +365,12 @@ final class _DumbCloud implements AppwriteSyncApi {
     required List<String> permissions,
   }) async {
     if (!_rowId.hasMatch(rowId)) return AppwriteSyncWriteOutcome.rejected;
+    // Creation order, and it never changes: the pull asks for
+    // `orderAsc($createdAt)`, and a row written once keeps the place it was
+    // given. A row rewritten under `$updatedAt` used to move to the end here,
+    // which is exactly how a cursor was stranded.
     if (!_rows.containsKey(rowId)) _order.add(rowId);
     _rows[rowId] = <String, Object?>{...data, r'$id': rowId};
-    // Last written, last returned: the pull is ordered by the server's own
-    // clock, so a row rewritten now is at the end of the page again.
-    _order
-      ..remove(rowId)
-      ..add(rowId);
     return AppwriteSyncWriteOutcome.written;
   }
 
@@ -470,8 +486,23 @@ final class _Device {
 
   /// Renames a surah, which is a versioned change rather than a journal entry:
   /// the row is edited in place and dated by the v10 trigger.
-  Future<void> rename(String surahId, String alias, {required DateTime at}) =>
-      surahs.setAlias(surahId, alias);
+  /// Renames it, and dates the edit.
+  ///
+  /// The stamp is not decoration: the touch trigger writes the wall clock, so
+  /// two renames a test intends to be a day apart land in the same second and
+  /// the merge rule sees a tie. `FakeSyncBackend` hid that by breaking ties on
+  /// `deviceId` server-side; a real server breaks nothing, and the test that
+  /// tied was passing for a reason it was not about.
+  Future<void> rename(
+    String surahId,
+    String alias, {
+    required DateTime at,
+  }) async {
+    await surahs.setAlias(surahId, alias);
+    await SyncVersionedRows(
+      database,
+    ).stampAuthored(table: 'mastered_surahs', key: surahId, authoredAtUtc: at);
+  }
 
   Future<String?> aliasOf(String surahId) async {
     final snapshot = await surahs.getRotationSnapshot();

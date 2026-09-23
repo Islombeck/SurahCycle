@@ -107,7 +107,13 @@ final class LiveAppwriteSyncApi implements AppwriteSyncApi {
         queries: <String>[
           // Server time, not the client's: two devices with skewed clocks
           // would otherwise interleave badly and a page could be skipped.
-          Query.orderAsc(r'$updatedAt'),
+          //
+          // **Creation, not update.** A row here is written once and never
+          // rewritten, so the two are the same instant — but ordering by the
+          // one that *can* move is what stranded a cursor when rows were
+          // rewritten, and naming the immutable one keeps that impossible
+          // rather than merely untrue today. See `AppwriteSyncGateway`.
+          Query.orderAsc(r'$createdAt'),
           Query.limit(limit),
           if (cursor.isNotEmpty) Query.cursorAfter(cursor),
         ],
