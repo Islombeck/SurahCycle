@@ -22,6 +22,37 @@ describing.
 - The account is a log: one row per change, never rewritten.
 - Every client assumption about the live project checked against it, read-only.
 
+### The recovery ran, and his account is whole (2026-09-23, 11:30)
+
+**Verified against the live project, read-only, after he pressed the button.**
+His outbox is **empty** — no pending, no quarantined — and the account holds:
+
+| rows | type | his device |
+|---|---|---|
+| 842 | `recitationEvent` | 824 records |
+| 84 | `prayerSession` | 78 records |
+| 29 | `rotationScheme` | 28 records |
+| 8 | `prayerRoutineTemplate` | 8 records |
+
+More rows than records is the log working as intended: a record edited twice is
+two rows, and the newest wins on the device that applies them.
+
+**One more defect was in the way and is fixed.** He reported pressing
+«Синхронизировать сейчас» and seeing no change. He was right: `SyncEngine`
+pushes at most a batch (50) per call and the cycle called it once, so the 112
+recovered records left fifty at a time with nothing saying so. A cycle now
+drains until the queue is empty, stopping on a failure or on a round that moved
+nothing. Build sha256
+`31EF72BB732BC443EB45300C5B91E825BC1D5EADD6DABFFECE7B9C7BE6D86F83`.
+
+**What this closes:** the account can now restore a device. Every recitation
+has the prayer session it points at, every surah its scheme, every prayer its
+routine — which is what the applier refuses to work without, and what was
+missing for a day.
+
+**Still not done:** a *second real device* pulling it all down. That is the
+only remaining acceptance step and it needs a second phone.
+
 ### He turned it on, and the row-id defect happened to him
 
 **2026-09-23, found while installing the morning's build.** His database holds
@@ -90,10 +121,9 @@ those rows should have qualified.
 **Not done, and each with its reason**
 
 1. ~~Nothing has run against the live project with a real account.~~ **He ran
-   it**, see above. What is left of this item is the *verification*: that after
-   pressing the recovery button his account holds every prayer session, and
-   that a second device can rebuild from it. The second half still needs a
-   second device.
+   it, the recovery completed, and the account was checked row by type against
+   his device** — see the 11:30 entry. What is left is a *second real device*
+   pulling it down, which needs a second phone and nothing else.
 2. **Clock skew is detected nowhere.** No longer blocked — `$createdAt` is the
    server-assigned receive time the notes said TablesDB does not expose, and
    the pull already orders by it. Not built because a warning nobody can act on
