@@ -114,7 +114,36 @@ The preview, read live from the account: **только на устройств�
 | — | `last_success_at_utc` still null |
 | «Синхронизация включена · Ждут отправки: 0 · Отклонено: 0» | what the screen said |
 
-**Two defects, both now fixed, both falsified before being fixed.**
+**Three defects, all now fixed, all falsified before being fixed.** The first
+below is the one that actually emptied his phone; the other two were found on
+the way to it and would each have done the same later.
+
+**0. A prerequisite one page late killed the pull, permanently.** Every applier
+calls these refusals retryable — "the roster entry is itself an entity that
+syncs, so the ordinary case is that it arrives and the page then applies" — and
+**nothing anywhere retried them**. The refusal killed the page, the cursor
+stayed, the same page came back.
+
+Sorting a page cannot put into it what is not in it, and his account cannot be
+sorted: the row-id defect of 2026-09-22 refused every id carrying a colon, so
+all 27 rotation schemes, 77 prayer sessions and 8 routine templates were
+recovered a day *after* the 842 recitations that point at them. `$createdAt` is
+the order pages come back in. His phone died on page one with
+`remote-recitation-scheme-missing`, which is exactly what the reproduction
+prints against his real databases in the account's real order.
+
+A page now hands back what it could not place, the cycle carries it into the
+next page, and **the cursor moves only when nothing is left waiting**. Records
+that did apply stay applied — re-applying after an interrupted pull is
+idempotent, and holding a whole account in memory until its last page is not
+something a phone can do. Each envelope gets a savepoint, so a refusal thrown
+halfway through an applier undoes that applier and nothing else. Anything that
+is not a `SyncTransportException` still aborts the whole page.
+
+The unit test for it went green at first **against a deliberately broken
+carry-forward**: taking a roster entry derives a default scheme named exactly
+like the arriving one, so "a scheme exists" was true either way. It asserts on
+a two-part split now, which nothing can invent.
 
 **1. One split under two names dead-ended the pull.** That phone had put surah
 104 in rotation by itself in August, so it held `surah-104:scheme:1`; the
@@ -143,10 +172,16 @@ never been given this one.
 **Reproduced from his two real databases, not from fixtures.**
 `test/tool/real_pull_pagination_test.dart` drives the real `SyncCycleRunner`
 against a copy of the second phone, page by page, over a store that hands rows
-back in `$createdAt` order. Before the fix: `pushed 52, pages 11, failure
-remote-scheme-version-already-used`. After: `failure null`, and the phone holds
-718 recitations, 78 sessions, 27 surahs. The existing two-device test passed
-throughout — it applies every envelope in one heap, which no phone can do.
+back in `$createdAt` order. It runs two orders: backfill order, which failed
+with `remote-scheme-version-already-used` at page 11, and **the order his
+account really holds**, with the recovered types last, which failed on page one
+with `remote-recitation-scheme-missing` — the failure his phone had. Both now
+pass, and the phone holds 718 recitations, 78 sessions, 27 surahs.
+
+The existing two-device test passed throughout, and that is the lesson worth
+keeping: it hands the router every envelope at once, so it can always place a
+prerequisite first. No phone can. **Every defect in this section was invisible
+to it.**
 
 **The test was then undone, at his request.** The 52 rows the second phone had
 pushed were deleted from the account by their `deviceId`, leaving the 1105 rows
@@ -157,9 +192,20 @@ plans, 34 events, 2 surahs intact; zero activation, cursor, queue or sync
 settings left), and the backup the merge had taken was removed. The Appwrite
 account has exactly one session left, his main phone's, from 2026-09-17.
 
-**His main phone carries the fix**, installed and driven through one full cycle
-at 10:50 UTC: the push watermark advanced, no failure was recorded, and the
-queue stayed empty.
+**His main phone carries the first two fixes**, installed and driven through
+one full cycle at 10:50 UTC: the push watermark advanced, no failure was
+recorded, and the queue stayed empty. The carry-forward fix came afterwards and
+is **not on any phone yet** — it changes nothing for his, which already holds
+everything the account has and so never waits on a prerequisite, and everything
+for the next device that restores from the account.
+
+**What is still open** is now in ADR-0002 under "Still open", and one entry
+there is new and worth reading before the next device: a record this build
+cannot place at all stops the cursor for good. Carrying refusals forward made
+the pull finish and report itself, but the cursor still cannot advance past a
+page holding such a record, so every later cycle re-fetches from there. The
+outbox has quarantine for this shape of problem on the way out; the inbox has
+nothing on the way in.
 
 ### He turned it on, and the row-id defect happened to him
 

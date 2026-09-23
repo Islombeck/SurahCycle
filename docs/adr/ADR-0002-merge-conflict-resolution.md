@@ -219,11 +219,32 @@ and matches what `FakeSyncBackend` already does on a complete tie.
   has activated. It is used exactly once — `LearningRepository.delete` — and is
   not a return to "call a recorder from every write": it exists for the cases a
   scan *structurally* cannot see, and there is one.
-- **Nothing has run against two real devices.** These rules are verified against
-  a local double. That is not the same thing, and it is the check that has to
-  happen before this ships. The 2026-09-22 amendment is the strongest argument
-  for it there has been: the double was doing the deciding, and nobody noticed
-  until the real project was read.
+- ~~Nothing has run against two real devices.~~ **It did, on 2026-09-23, and it
+  received nothing.** The account's own order is not dependency order and
+  cannot be made so, and every page a second phone fetched died on the first
+  recitation whose rotation scheme had not arrived. The cycle now carries a
+  refused record into the next page and holds the cursor until nothing is
+  waiting. Worth keeping as the strongest argument these notes contain: both
+  the 2026-09-22 amendment and this were invisible to a double that applies
+  every envelope at once, and a third real device is still the only thing that
+  can say what remains invisible now.
+- **A record whose prerequisite can never arrive stops the cursor for good.**
+  Carrying it forward makes the pull finish and report itself, which it did not
+  before, but the cursor cannot advance past a page holding a record this build
+  refuses — so every later cycle re-fetches from there and re-applies what it
+  already has. It is correct and it is loud; it is also unbounded. The outbox
+  has quarantine for exactly this shape of problem on the way out, and the
+  inbox has no equivalent on the way in. Two known ways to reach it: a
+  `rotationState` row, which the router refuses by name, and a recitation
+  naming a rotation scheme that some device absorbed as a duplicate of its own
+  (see below).
+- **An absorbed scheme leaves its id pointing at nothing.** When an arriving
+  scheme is recognised as the same split the device already holds under another
+  name, the arriving *id* ceases to exist here. A recitation from the other
+  device that names that id can then never be placed. It costs nothing today —
+  the phone this was found on had no recitations of its own — and closing it
+  properly means remembering the absorption, which is a table and therefore a
+  schema version.
 - ~~A winning local copy is not pushed back.~~ **Closed the same day.** The
   cycle re-scans from the instant it out-ranked and drains once more; see
   consequence 3 of the amendment. It re-offers a handful of neighbouring
