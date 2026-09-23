@@ -61,8 +61,42 @@ has the prayer session it points at, every surah its scheme, every prayer its
 routine — which is what the applier refuses to work without, and what was
 missing for a day.
 
-**Still not done:** a *second real device* pulling it all down. That is the
-only remaining acceptance step and it needs a second phone.
+### The second phone, 2026-09-23 — everything but the sign-in
+
+He connected an **Honor 50** (`A7QXVB1B05001411`, Android 13, 1080×2340). It
+already had SurahCycle from 2026-08-28, last updated 2026-09-03, **on schema
+v4**, carrying its own history: 2 mastered surahs, 4 learning plans, 34
+learning events, 0 recitations.
+
+**The v4 → v10 migration ran on a real old database and lost nothing.** Pulled
+before and after: 34 learning events, 4 plans, 2 surahs, 4 settings and 114
+catalogue rows all intact, `user_version = 10`, plus the eight seeded routine
+templates. Every migration test until now used a synthetic v4; this was his.
+
+**The merge was then run for real, on both real databases**, through the strict
+server double — `test/tool/real_two_device_merge_test.dart`:
+
+| on the Honor after | |
+|---|---|
+| 718 | recitations — every one he still holds |
+| 0 | of the 106 he withdrew, which is correct |
+| 78 | prayer sessions |
+| 27 | mastered surahs |
+| 28 | rotation schemes |
+| 5 | learning plans: its own 4 **kept**, plus his 1 |
+| 66 | learning events: its own 34 kept, plus his 32 |
+
+Nothing refused. The assertion that matters to him is the learning plans: a
+device receiving a history does not pay for it with what it already had.
+
+**What is left is the sign-in, and it is his.** The account is
+`achilov.uz@gmail.com` (Appwrite user `6aabe5f12539ee6ac2cd`). The Honor's
+Google chooser offers two other accounts — `mmrgiyasov@`, `smirasqarova@` —
+so reaching his needs "Использовать другой аккаунт" and his password. That was
+not attempted and must not be: the app was left on Settings with the browser
+tab closed. **His three taps: Настройки → Аккаунт → Войти через Google →
+Использовать другой аккаунт.** Everything after that has now been exercised
+end to end with his own data.
 
 ### He turned it on, and the row-id defect happened to him
 
@@ -133,8 +167,11 @@ those rows should have qualified.
 
 1. ~~Nothing has run against the live project with a real account.~~ **He ran
    it, the recovery completed, and the account was checked row by type against
-   his device** — see the 11:30 entry. What is left is a *second real device*
-   pulling it down, which needs a second phone and nothing else.
+   his device** — see the 11:30 entry. ~~A second real device.~~ **Done too,
+   on the Honor 50: real v4→v10 migration, real merge of both databases, his
+   history arriving without costing the second phone its own.** What is left is
+   one sign-in on that phone, which needs his Google password and is therefore
+   his to do — see "The second phone".
 2. **Clock skew is detected nowhere.** No longer blocked — `$createdAt` is the
    server-assigned receive time the notes said TablesDB does not expose, and
    the pull already orders by it. Not built because a warning nobody can act on
