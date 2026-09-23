@@ -52,6 +52,19 @@ retried what a server called permanent would hammer it forever. So
 `SyncOutbox.requeueQuarantined` and an account-screen button
 (`account-retry-refused`) exist now: it offers them again and runs a cycle.
 **Owner action: Настройки → Аккаунт → «Отправить заново отклонённые».**
+Carrying build sha256
+`C22F78D79A5D95F0CBC299AB2501BB4763B642D8B03F3CE390BE0F854D56A729`, installed
+`lastUpdateTime=2026-09-23 09:49:30`.
+
+**Pressing it for him was attempted and abandoned, on purpose.** The Jelly Max
+keyguard would not advance from the clock to the PIN pad through `input
+keyevent 26/82` or a swipe — three gestures, three dumps, still the clock — and
+the next thing to try would have been typing a passcode blind into a screen
+whose state could not be read. Repeated wrong entries lock a phone out, and the
+action is one tap for its owner. Writing the requeue straight into the device
+database was the other option and is the one this project has always refused:
+it would be going behind the app. The screen was put back to sleep and the
+device left as found.
 
 `last_success_at_utc` is still null on his activation row, so the screen calls
 it never-synced despite 915 rows. Worth a look next session: the cycle records
