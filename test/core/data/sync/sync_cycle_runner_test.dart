@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:murajaah/core/data/data.dart';
 import 'package:murajaah/core/data/sync/sync_versioned_rows.dart';
 import 'package:murajaah/core/domain/domain.dart';
+import 'package:murajaah/core/sync/mastered_surah_sync_payload.dart';
+import 'package:murajaah/core/sync/rotation_scheme_sync_payload.dart';
 import 'package:murajaah/core/sync/sync.dart';
 
 import '../../sync/sync_fixtures.dart';
@@ -200,6 +202,179 @@ void main() {
         reason:
             'a reason that outlived the problem would send him looking for a '
             'fault that is no longer there',
+      );
+    });
+  });
+
+  group('a prerequisite one page late', () {
+    /// The order his account really holds: on 2026-09-22 a build addressed
+    /// each row by the record's own id, so every id carrying a colon came back
+    /// 400. All his rotation schemes were refused and recovered a day later —
+    /// **after** the 842 recitations that point at them. `$createdAt` is the
+    /// order pages come back in, so the dependant comes first and always will.
+    ///
+    /// Scheme then roster is the same shape in two envelopes: the scheme
+    /// applier refuses a surah that is not in the roster, retryably.
+    setUp(() async {
+      await SurahRepository(database).upsertCatalog(
+        <SurahDescriptor>[
+          SurahDescriptor(
+            id: 'surah-112',
+            surahNumber: 112,
+            officialName: 'Al-Ikhlas',
+            ayahCount: 4,
+          ),
+        ],
+        sourceId: 'verified-test-source',
+        sourceVersion: 'test-v1',
+      );
+    });
+
+    /// A split of his own — version 2, in two parts. Deliberately **not** the
+    /// default: taking a roster entry derives `surah-112:scheme:1` locally and
+    /// names it identically, so a test built on the default passes whether the
+    /// arriving scheme was applied or invented. This one cannot be invented.
+    SyncEnvelope schemeEnvelope() => RotationSchemeSyncPayload.upsert(
+      RotationSchemeSyncRecord(
+        id: 'surah-112:scheme:2',
+        surahId: 'surah-112',
+        version: 2,
+        ayahCountSnapshot: 4,
+        baselineScore: 0,
+        baselineTotalRecitations: 0,
+        isActive: true,
+        parts: <RotationSchemeSyncPart>[
+          RotationSchemeSyncPart(
+            id: 'surah-112:scheme:2:part:1',
+            ordinal: 1,
+            startAyah: 1,
+            endAyah: 2,
+          ),
+          RotationSchemeSyncPart(
+            id: 'surah-112:scheme:2:part:2',
+            ordinal: 2,
+            startAyah: 3,
+            endAyah: 4,
+          ),
+        ],
+      ),
+      envelopeId: 'envelope-scheme',
+      deviceId: 'other-device',
+      idempotencyKey: 'key-scheme',
+      schemaVersion: 10,
+      updatedAtUtc: now,
+    );
+
+    SyncEnvelope rosterEnvelope() => MasteredSurahSyncPayload.upsert(
+      MasteredSurahSyncRecord(
+        surahId: 'surah-112',
+        isCurrentlyMastered: true,
+        isActive: true,
+        hasEnteredRotation: true,
+      ),
+      envelopeId: 'envelope-roster',
+      deviceId: 'other-device',
+      idempotencyKey: 'key-roster',
+      schemaVersion: 10,
+      updatedAtUtc: now,
+    );
+
+    Future<bool> hasHisSplit() async =>
+        (await database
+                .customSelect(
+                  "SELECT count(*) AS n FROM rotation_schemes "
+                  "WHERE id = 'surah-112:scheme:2'",
+                )
+                .getSingle())
+            .read<int>('n') ==
+        1;
+
+    test('is waited for, and the record it blocks still arrives', () async {
+      await activate();
+      gateway.pullPages = <SyncPullPage>[
+        SyncPullPage(
+          envelopes: <SyncEnvelope>[schemeEnvelope()],
+          cursor: const SyncCursor('page-1'),
+          hasMore: true,
+        ),
+        SyncPullPage(
+          envelopes: <SyncEnvelope>[rosterEnvelope()],
+          cursor: const SyncCursor('page-2'),
+          hasMore: false,
+        ),
+      ];
+
+      final outcome = await runner.runOnce();
+
+      expect(
+        outcome.failureReason,
+        isNull,
+        reason:
+            'sorting a page cannot put into it something that is not in it; '
+            'carrying the record forward is the retry these refusals were '
+            'always documented to expect',
+      );
+      expect(
+        await hasHisSplit(),
+        isTrue,
+        reason: 'his own split, not the default the roster entry derives',
+      );
+      expect(
+        await store.pullCursor(),
+        const SyncCursor('page-2'),
+        reason: 'the cursor moves once nothing is left waiting',
+      );
+    });
+
+    test('holds the cursor back while it waits', () async {
+      await activate();
+      gateway.pullPages = <SyncPullPage>[
+        SyncPullPage(
+          envelopes: <SyncEnvelope>[schemeEnvelope()],
+          cursor: const SyncCursor('page-1'),
+          hasMore: false,
+        ),
+      ];
+
+      final outcome = await runner.runOnce();
+
+      expect(
+        outcome.failureReason,
+        'remote-scheme-surah-not-in-roster',
+        reason:
+            'the prerequisite never came, and a cycle that reported success '
+            'over a record it could not place would be the fake green this '
+            'whole type exists to prevent',
+      );
+      expect(await hasHisSplit(), isFalse);
+      expect(
+        await store.pullCursor(),
+        SyncCursor.beginning,
+        reason: 'the page is fetched again next cycle, never skipped',
+      );
+    });
+
+    test('what could be placed is kept, even when something cannot', () async {
+      await activate();
+      gateway.pullPages = <SyncPullPage>[
+        SyncPullPage(
+          envelopes: <SyncEnvelope>[rosterEnvelope(), _unplaceable()],
+          cursor: const SyncCursor('page-1'),
+          hasMore: false,
+        ),
+      ];
+
+      await runner.runOnce();
+
+      expect(
+        await database
+            .customSelect('SELECT count(*) AS n FROM mastered_surahs')
+            .getSingle()
+            .then((row) => row.read<int>('n')),
+        1,
+        reason:
+            'one record this build cannot place must not cost him the rest of '
+            'the page — that is how a single bad row emptied a whole sync',
       );
     });
   });
@@ -475,6 +650,21 @@ void main() {
 }
 
 /// Records the window each scan was asked about, without touching a table.
+/// A record no build places: `rotationState` is the rotation projection, which
+/// is rebuilt rather than synced, and the router refuses it by name.
+SyncEnvelope _unplaceable() => SyncEnvelope(
+  id: 'envelope-unplaceable',
+  deviceId: 'other-device',
+  entityType: SyncEntityType.rotationState,
+  entityId: 'rotation-state',
+  operation: SyncOperation.upsert,
+  schemaVersion: 10,
+  createdAtUtc: DateTime.utc(2026, 9, 21, 12),
+  updatedAtUtc: DateTime.utc(2026, 9, 21, 12),
+  idempotencyKey: 'key-unplaceable',
+  payload: const <String, Object?>{},
+);
+
 final class _CountingScan implements SyncBackfill {
   final List<DateTime> windows = <DateTime>[];
   bool calledBeforeDrain = false;

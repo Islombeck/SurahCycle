@@ -141,6 +141,42 @@ void main() {
       );
     });
 
+    test('a record waiting for its prerequisite is handed back', () async {
+      final residue = await store.applyPulledPage(
+        pageOf('page-1', <SyncEnvelope>[
+          envelopeOf(entityId: 'theme'),
+          envelopeOf(entityId: 'not-yet', id: 'e2'),
+        ]),
+        apply: (envelope) async {
+          if (envelope.entityId == 'not-yet') {
+            throw const SyncTransportException('remote-prerequisite-missing');
+          }
+          await writeSetting(envelope.entityId);
+        },
+        nowUtc: at(1),
+      );
+
+      expect(
+        residue.deferred.map((envelope) => envelope.entityId),
+        <String>['not-yet'],
+      );
+      expect(residue.reason, 'remote-prerequisite-missing');
+      expect(
+        await settingCount(),
+        1,
+        reason:
+            'what could be placed is kept: one record waiting on another page '
+            'must not cost him the rest of the account',
+      );
+      expect(
+        await store.pullCursor(),
+        SyncCursor.beginning,
+        reason:
+            'the cursor moves only when nothing was left behind, so the '
+            'waiting record is fetched again rather than skipped',
+      );
+    });
+
     test('two owners keep separate cursors', () async {
       final forA = DriftSyncStore(database, owner: SyncOwnerKey.user('a'));
       final forB = DriftSyncStore(database, owner: SyncOwnerKey.user('b'));

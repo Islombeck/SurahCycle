@@ -69,6 +69,12 @@ final class SyncTransportSnapshot {
   final int consecutiveFailureCount;
 }
 
+/// What a pulled page left behind: the records that could not be placed yet,
+/// and the first reason one of them gave.
+///
+/// Empty is the ordinary outcome and the only one that moves the cursor.
+typedef SyncPageResidue = ({List<SyncEnvelope> deferred, String? reason});
+
 /// Durable, owner-scoped sync state: the queue, the pull cursor and whether an
 /// account has been allowed to touch this device's data.
 ///
@@ -125,10 +131,26 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
 
   /// Applies one pulled page and advances the cursor in a single transaction.
   ///
-  /// If [apply] throws, nothing commits and the cursor stays where it was, so
-  /// the same page is fetched again. Advancing the cursor without the data is
-  /// precisely how a device silently loses remote changes.
-  Future<void> applyPulledPage(
+  /// **A record whose prerequisite has not arrived is set aside, not thrown.**
+  /// The appliers call those refusals retryable — "the roster entry is itself
+  /// an entity that syncs" — but until 2026-09-23 nothing anywhere retried
+  /// them, and the refusal killed the whole page instead. His account holds
+  /// 842 recitations written a day *before* the 27 rotation schemes they point
+  /// at, because those schemes were refused by an older build and recovered
+  /// later; `$createdAt` is the order pages come back in, so the dependants
+  /// come first and always will. Every page his second phone fetched died on
+  /// the first recitation, the cursor never moved, and it received nothing.
+  ///
+  /// So what could not be placed is returned, for the caller to carry into the
+  /// next page — and **the cursor moves only when nothing was left behind.**
+  /// Records that did apply stay applied either way: re-applying them after an
+  /// interrupted pull is idempotent, and the alternative, holding a whole
+  /// account in memory until its last page, is not something a phone can do.
+  ///
+  /// Anything that is *not* a [SyncTransportException] still aborts the page
+  /// and commits nothing: a record this build cannot read is not a record
+  /// waiting for its turn.
+  Future<SyncPageResidue> applyPulledPage(
     SyncPullPage page, {
     required Future<void> Function(SyncEnvelope envelope) apply,
     required DateTime nowUtc,
@@ -138,23 +160,37 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
       throw ArgumentError.value(nowUtc, 'nowUtc', 'Must be UTC.');
     }
     return _database.transaction(() async {
+      final deferred = <SyncEnvelope>[];
+      String? reason;
       for (final envelope in page.envelopes) {
-        await apply(envelope);
+        try {
+          // A savepoint of its own, because a refusal can be thrown halfway
+          // through an applier: undoing that applier's writes and nothing
+          // else is the difference between setting a record aside and
+          // corrupting the ones around it.
+          await _database.transaction(() => apply(envelope));
+        } on SyncTransportException catch (error) {
+          deferred.add(envelope);
+          reason ??= error.reason;
+        }
       }
       // Whatever the page as a whole implies — rebuilding a projection, say —
       // done once, inside the same transaction, before the cursor moves. A
       // rebuild after the commit could be interrupted and leave a cursor that
       // says the page arrived and a projection that does not reflect it.
       await afterAll?.call();
-      await _database
-          .into(_database.syncCursors)
-          .insertOnConflictUpdate(
-            SyncCursorsCompanion.insert(
-              ownerKey: owner.value,
-              pullCursor: page.cursor.value,
-              updatedAtUtc: nowUtc,
-            ),
-          );
+      if (deferred.isEmpty) {
+        await _database
+            .into(_database.syncCursors)
+            .insertOnConflictUpdate(
+              SyncCursorsCompanion.insert(
+                ownerKey: owner.value,
+                pullCursor: page.cursor.value,
+                updatedAtUtc: nowUtc,
+              ),
+            );
+      }
+      return (deferred: deferred, reason: reason);
     });
   }
 

@@ -175,6 +175,14 @@ final class SyncCycleRunner implements SyncCycle {
 
     var pages = 0;
     String? pullFailure;
+    // Records whose prerequisite was not in their own page, carried into the
+    // next one. The account hands pages back in the order rows reached it, and
+    // that order is **not** dependency order: his 842 recitations were written
+    // a day before the rotation schemes they point at, because those schemes
+    // were refused by an older build and only recovered afterwards. Sorting a
+    // page cannot fix what is not in the page; carrying it forward can.
+    final deferred = <SyncEnvelope>[];
+    String? deferredReason;
     try {
       await _engine.pull(
         from: await _store.pullCursor(),
@@ -182,22 +190,41 @@ final class SyncCycleRunner implements SyncCycle {
           pages++;
           // The page is applied and its cursor saved in one transaction: a
           // cursor that moved without its data is how a device silently loses
-          // remote changes. The router sorts first so a self-contained page
-          // does not stall on its own ordering.
-          await _store.applyPulledPage(
-            _router.ordered(page),
+          // remote changes. The router sorts first — the carried-over records
+          // ahead of the new ones at the same rank, which is the order they
+          // arrived in — so a page that is self-contained applies in one go.
+          final residue = await _store.applyPulledPage(
+            _router.ordered(
+              SyncPullPage(
+                envelopes: <SyncEnvelope>[...deferred, ...page.envelopes],
+                cursor: page.cursor,
+                hasMore: page.hasMore,
+              ),
+            ),
             apply: _router.apply,
             // One rotation rebuild for the page rather than one per record.
             afterAll: _router.settleProjection,
             nowUtc: _nowUtc().toUtc(),
           );
+          deferred
+            ..clear()
+            ..addAll(residue.deferred);
+          deferredReason = residue.reason;
         },
       );
     } on SyncTransportException catch (error) {
-      // Includes an applier refusing a record whose prerequisite has not
-      // arrived yet. The cursor stayed where it was, so the same page is
-      // fetched again next time rather than skipped.
+      // A transport failure, or a record this build cannot place at all. The
+      // cursor stayed where it was, so the same page is fetched again next
+      // time rather than skipped.
       pullFailure = error.reason;
+    }
+
+    // Records still waiting when the account ran out of pages. Their
+    // prerequisite is not coming in this cycle, so this is a real failure and
+    // says so — the cursor is already back at the last page that left nothing
+    // behind, and the next cycle starts again from there.
+    if (pullFailure == null && deferred.isNotEmpty) {
+      pullFailure = deferredReason ?? 'remote-prerequisite-never-arrived';
     }
 
     // An account that handed this device an older copy is still holding it,
