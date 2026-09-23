@@ -112,12 +112,54 @@ final class SyncCycleRunner implements SyncCycle {
     await _store.recordPushWatermark(startedAt);
   }
 
+  /// Empties the queue, rather than taking one batch out of it.
+  ///
+  /// The engine pushes at most a batch per call, and the cycle used to call it
+  /// once. A backfill queues a lifetime of history — his was 985 envelopes —
+  /// so "Синхронизировать сейчас" moved fifty of them and stopped, and the
+  /// owner pressing it read the unchanged-looking number as nothing happening.
+  /// It happened for real on 2026-09-23, with 112 recovered records leaving
+  /// fifty at a time.
+  ///
+  /// Three ways to stop, and a queue can only be one of them: emptied, refused
+  /// by the network, or making no progress. The round cap is a backstop
+  /// against a queue that somehow reports work it never drains, not a limit
+  /// anyone should reach.
+  Future<SyncDrainOutcome> _drainQueue() async {
+    const maxRounds = 40;
+    final pushed = <String>[];
+    final rejected = <String>[];
+    var remaining = 0;
+    for (var round = 0; round < maxRounds; round += 1) {
+      final outcome = await _engine.drain();
+      pushed.addAll(outcome.pushedEnvelopeIds);
+      rejected.addAll(outcome.rejectedEnvelopeIds);
+      remaining = outcome.remaining;
+      final movedNothing =
+          outcome.pushedEnvelopeIds.isEmpty &&
+          outcome.rejectedEnvelopeIds.isEmpty;
+      if (outcome.hasFailure || remaining == 0 || movedNothing) {
+        return SyncDrainOutcome(
+          pushedEnvelopeIds: pushed,
+          rejectedEnvelopeIds: rejected,
+          remaining: remaining,
+          failureReason: outcome.failureReason,
+        );
+      }
+    }
+    return SyncDrainOutcome(
+      pushedEnvelopeIds: pushed,
+      rejectedEnvelopeIds: rejected,
+      remaining: remaining,
+    );
+  }
+
   Future<SyncCycleOutcome> _run() async {
     if (!await _store.isSyncActive()) return SyncCycleOutcome.skipped;
 
     await _collectLocalChanges();
 
-    final drain = await _engine.drain();
+    final drain = await _drainQueue();
     if (drain.hasFailure) {
       // Stop here rather than pulling anyway. The queue is what this device
       // knows and the network has just said it cannot be reached; taking

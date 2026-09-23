@@ -276,6 +276,53 @@ void main() {
     );
   });
 
+  test('one cycle empties the queue, not one batch of it', () async {
+    // The engine pushes a batch at a time and the cycle used to call it once,
+    // so a backfill of several hundred envelopes moved fifty per tap. The
+    // owner pressed «Синхронизировать сейчас», watched the number barely move
+    // and reported that nothing had happened — which was very nearly true.
+    await activate();
+    for (var index = 0; index < 120; index += 1) {
+      await store.outbox.enqueue(
+        envelopeOf(entityId: 'entity-$index', id: 'e$index'),
+        nowUtc: now,
+      );
+    }
+
+    final outcome = await runner.runOnce();
+
+    expect(await store.outbox.pendingCount(), 0);
+    expect(outcome.pushedCount, 120);
+    expect(
+      gateway.pushes.length,
+      greaterThan(1),
+      reason: 'it took several batches, which is the point: it kept going',
+    );
+  });
+
+  test('a queue that stops moving is not drained forever', () async {
+    await activate();
+    for (var index = 0; index < 120; index += 1) {
+      await store.outbox.enqueue(
+        envelopeOf(entityId: 'entity-$index', id: 'e$index'),
+        nowUtc: now,
+      );
+    }
+    // Accepts nothing and refuses nothing: the queue stays exactly as it is.
+    gateway.acceptNothing = true;
+
+    final outcome = await runner.runOnce();
+
+    expect(
+      gateway.pushes,
+      hasLength(1),
+      reason:
+          'a round that moved nothing will move nothing next time either, and '
+          'a loop that kept asking would hammer the server over it',
+    );
+    expect(outcome.remainingCount, 120);
+  });
+
   test(
     'an account holding an older copy is corrected, not left holding it',
     () async {
@@ -401,6 +448,9 @@ final class _RecordingGateway implements SyncGateway {
   String? pushFailure;
   bool rejectEverything = false;
 
+  /// Neither accepts nor refuses: the queue comes back exactly as it went.
+  bool acceptNothing = false;
+
   /// Pages handed out one per pull; an empty list means the account has
   /// nothing, which is what most tests here want.
   List<SyncPullPage> pullPages = <SyncPullPage>[];
@@ -410,6 +460,9 @@ final class _RecordingGateway implements SyncGateway {
     order.add('push');
     pushes.add(envelopes);
     if (pushFailure != null) throw SyncTransportException(pushFailure!);
+    if (acceptNothing) {
+      return SyncPushResult(acceptedEnvelopeIds: const <String>[]);
+    }
     if (rejectEverything) {
       return SyncPushResult(
         acceptedEnvelopeIds: const <String>[],
