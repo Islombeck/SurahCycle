@@ -232,17 +232,30 @@ final class DriftSyncOutbox implements SyncOutbox {
         _database.syncOutboxEntries,
       },
     );
+    // "Delete me if a better one exists", not "keep the group's maximum".
+    //
+    // The first attempt was `GROUP BY entity_key HAVING max(updated_at)`, and
+    // it deleted 34 of the owner's 112 refused records on a copy of his
+    // database. Two faults in one line: a bare `rowid` beside a GROUP BY is an
+    // arbitrary row of the group, and `HAVING max(x)` filters on whether that
+    // maximum is *truthy* — so every entry carrying `kUndatedByThisDevice`,
+    // which is the epoch and therefore zero, was dropped. Those were exactly
+    // his rotation schemes and routine templates: the rows schema v10 left
+    // undated, which are the ones most likely to be queued and least likely to
+    // be noticed missing.
     await _database.customUpdate(
       'DELETE FROM sync_outbox_entries '
-      "WHERE owner_key = ? AND status = 'quarantined' AND rowid NOT IN ("
-      '  SELECT rowid FROM sync_outbox_entries AS newest '
-      "  WHERE newest.owner_key = ? AND newest.status = 'quarantined' "
-      '  GROUP BY newest.entity_key '
-      '  HAVING max(newest.envelope_updated_at_us))',
-      variables: <Variable<Object>>[
-        Variable<String>(owner.value),
-        Variable<String>(owner.value),
-      ],
+      "WHERE owner_key = ? AND status = 'quarantined' AND EXISTS ("
+      '  SELECT 1 FROM sync_outbox_entries AS better '
+      '  WHERE better.owner_key = sync_outbox_entries.owner_key '
+      "    AND better.status = 'quarantined' "
+      '    AND better.entity_key = sync_outbox_entries.entity_key '
+      '    AND (better.envelope_updated_at_us > '
+      '           sync_outbox_entries.envelope_updated_at_us '
+      '      OR (better.envelope_updated_at_us = '
+      '            sync_outbox_entries.envelope_updated_at_us '
+      '        AND better.rowid > sync_outbox_entries.rowid)))',
+      variables: <Variable<Object>>[Variable<String>(owner.value)],
       updates: <ResultSetImplementation<Table, Object?>>{
         _database.syncOutboxEntries,
       },

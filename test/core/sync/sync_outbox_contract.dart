@@ -410,6 +410,29 @@ void runSyncOutboxContract(String name, SyncOutbox Function() createOutbox) {
         );
       });
 
+      test('an undatable record comes back like any other', () async {
+        // `kUndatedByThisDevice` is the epoch, and the epoch is zero. The first
+        // implementation of this picked the survivors with
+        // `GROUP BY entity_key HAVING max(envelope_updated_at_us)`, which
+        // filters on whether that maximum is *truthy* — so it deleted every
+        // entry carrying the sentinel. On the owner's own database that was 34
+        // of 112: his rotation schemes and routine templates, the rows schema
+        // v10 left undated, which are the ones least likely to be missed.
+        await outbox.enqueue(
+          envelopeOf(
+            entityId: 'a',
+            id: 'e1',
+            updatedAtUtc: kUndatedByThisDevice,
+          ),
+          nowUtc: at(1),
+        );
+        await outbox.quarantine(<String>['e1'], 'rejected-by-server');
+
+        expect(await outbox.requeueQuarantined(), 1);
+
+        expect((await outbox.peek()).single.envelope.id, 'e1');
+      });
+
       test('nothing refused is nothing to do', () async {
         await outbox.enqueue(
           envelopeOf(entityId: 'a', id: 'e1'),

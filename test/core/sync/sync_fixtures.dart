@@ -13,6 +13,10 @@ SyncEnvelope envelopeOf({
   String? idempotencyKey,
   String? userId,
   Map<String, Object?> payload = const <String, Object?>{'value': 'x'},
+
+  /// Overrides [updatedMinute] outright, for the one date a minute cannot
+  /// express: `kUndatedByThisDevice`, which is the epoch.
+  DateTime? updatedAtUtc,
 }) => SyncEnvelope(
   id: id,
   userId: userId,
@@ -21,8 +25,8 @@ SyncEnvelope envelopeOf({
   entityId: entityId,
   operation: SyncOperation.upsert,
   schemaVersion: schemaVersion,
-  createdAtUtc: at(0),
-  updatedAtUtc: at(updatedMinute),
+  createdAtUtc: updatedAtUtc ?? at(0),
+  updatedAtUtc: updatedAtUtc ?? at(updatedMinute),
   idempotencyKey: idempotencyKey ?? '$id-key',
   payload: payload,
 );
