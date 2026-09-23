@@ -55,7 +55,9 @@ final class RotationSchemeSyncApplier {
       entityId: envelope.entityId,
     );
     await _requireRoster(record.surahId);
-    await _writeScheme(record);
+    // Nothing further when this device already holds the same split under its
+    // own name: the rest of this method would write a second copy of it.
+    if (!await _writeScheme(record)) return;
     await _writeParts(record);
     await _settleWhichIsActive(record);
     await SyncVersionedRows(_database).stampAuthored(
@@ -95,12 +97,30 @@ final class RotationSchemeSyncApplier {
   /// carry the real id too, so the placeholder cannot simply be kept under its
   /// own name — nothing would find it.
   ///
-  /// Removing it is refused when something actually references it, and that
-  /// refusal is correct rather than inconvenient: a referenced row is no longer
-  /// a placeholder but a second *real* scheme for the same version, and quietly
-  /// dropping one of two real ones is exactly the loss this feature exists to
-  /// prevent.
-  Future<void> _clearColliding(RotationSchemeSyncRecord record) async {
+  /// Removing it is refused when something actually references it — with one
+  /// exception, which the owner's second phone found on 2026-09-23.
+  ///
+  /// **A referenced clash that describes the same split is the same scheme.**
+  /// His second phone had put surah 104 in rotation by itself, so it held
+  /// `surah-104:scheme:1`; the account held `v1:surah-104:scheme:1`, written by
+  /// an older build. Identical surah, identical version, identical single part
+  /// over all nine ayahs — two names for one split. The phone took the
+  /// account's copy (the clash was a placeholder then and was cleared), pushed
+  /// its own up, and pulled it back a page later, by which time the local row
+  /// carried seven hundred recitations and could not be removed. Refusing was
+  /// permanent: the cursor never moved, the same page came back forever, and
+  /// **both** of his phones would have stopped receiving anything.
+  ///
+  /// So when the two describe the same split, the arriving one is taken as
+  /// already held and nothing is written. Nothing is lost by that — the local
+  /// row *is* that split, and it is the one his recitations point at.
+  ///
+  /// A clash whose parts differ is still refused, and still rightly: that is
+  /// two genuinely different splits claiming one version number, and quietly
+  /// dropping either is the loss this feature exists to prevent.
+  ///
+  /// Returns whether the caller should go on writing the arriving record.
+  Future<bool> _clearColliding(RotationSchemeSyncRecord record) async {
     final clash =
         await (_database.select(_database.rotationSchemes)..where(
               (RotationSchemes row) =>
@@ -109,7 +129,7 @@ final class RotationSchemeSyncApplier {
                   row.id.equals(record.id).not(),
             ))
             .getSingleOrNull();
-    if (clash == null) return;
+    if (clash == null) return true;
 
     final recitations =
         await (_database.select(_database.recitationEvents)..where(
@@ -123,21 +143,65 @@ final class RotationSchemeSyncApplier {
             ))
             .get();
     if (recitations.isNotEmpty || adjustments.isNotEmpty) {
+      if (await _isTheSameSplit(clash, record)) return false;
       throw const SyncTransportException('remote-scheme-version-already-used');
     }
 
     await (_database.delete(
       _database.rotationSchemes,
     )..where((RotationSchemes row) => row.id.equals(clash.id))).go();
+    return true;
   }
 
-  Future<void> _writeScheme(RotationSchemeSyncRecord record) async {
+  /// Whether [clash] and [record] are one split under two names.
+  ///
+  /// Surah and version match by construction — that is how the clash was
+  /// found — so what remains is the shape: the surah's length when the split
+  /// was made, and which ayahs each part covers.
+  ///
+  /// Part **ids** are deliberately not compared. Two builds name the same
+  /// derived part differently, and that difference is the entire reason these
+  /// two rows exist at all; comparing the names would answer "are they spelled
+  /// alike", which nobody is asking.
+  ///
+  /// The baselines are not compared either. They are a starting score, the
+  /// rebuild recomputes them for every scheme after the first, and treating a
+  /// difference in them as a conflict would stall a pull forever over a number
+  /// that the next rotation rebuild overwrites anyway.
+  Future<bool> _isTheSameSplit(
+    RotationSchemeRow clash,
+    RotationSchemeSyncRecord record,
+  ) async {
+    if (clash.ayahCountSnapshot != record.ayahCountSnapshot) return false;
+    final local =
+        await (_database.select(_database.rotationParts)
+              ..where((RotationParts row) => row.schemeId.equals(clash.id))
+              ..orderBy(<OrderClauseGenerator<RotationParts>>[
+                (RotationParts row) => OrderingTerm(expression: row.ordinal),
+              ]))
+            .get();
+    if (local.length != record.parts.length) return false;
+    // `record.parts` is sorted by ordinal by its own constructor.
+    for (var index = 0; index < local.length; index += 1) {
+      final mine = local[index];
+      final theirs = record.parts[index];
+      if (mine.ordinal != theirs.ordinal ||
+          mine.startAyah != theirs.startAyah ||
+          mine.endAyah != theirs.endAyah) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Returns whether the arriving record still has to be written out.
+  Future<bool> _writeScheme(RotationSchemeSyncRecord record) async {
     final existing =
         await (_database.select(_database.rotationSchemes)
               ..where((RotationSchemes row) => row.id.equals(record.id)))
             .getSingleOrNull();
     if (existing == null) {
-      await _clearColliding(record);
+      if (!await _clearColliding(record)) return false;
       await _database
           .into(_database.rotationSchemes)
           .insert(
@@ -161,7 +225,7 @@ final class RotationSchemeSyncApplier {
               supersededJournalSequence: const Value<int?>(0),
             ),
           );
-      return;
+      return true;
     }
     await (_database.update(
       _database.rotationSchemes,
@@ -175,6 +239,7 @@ final class RotationSchemeSyncApplier {
         resetsRotationBaseline: Value<bool>(record.resetsRotationBaseline),
       ),
     );
+    return true;
   }
 
   Future<void> _writeParts(RotationSchemeSyncRecord record) async {

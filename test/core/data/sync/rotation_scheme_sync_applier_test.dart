@@ -312,4 +312,106 @@ void main() {
           'means choosing a different one',
     );
   });
+
+  group('one split under two names', () {
+    /// The default scheme of surah 112 as an **older** build named it, which is
+    /// how his account holds every one of his: `v1:` in front. The local row is
+    /// `surah-112:scheme:1`, the same split under this build's name.
+    RotationSchemeSyncRecord underTheOtherName({
+      int endAyah = 4,
+      int partCount = 1,
+    }) => RotationSchemeSyncRecord(
+      id: 'v1:surah-112:scheme:1',
+      surahId: 'surah-112',
+      version: 1,
+      ayahCountSnapshot: 4,
+      baselineScore: 0,
+      baselineTotalRecitations: 0,
+      isActive: true,
+      parts: <RotationSchemeSyncPart>[
+        RotationSchemeSyncPart(
+          id: 'v1:surah-112:scheme:1:part:1',
+          ordinal: 1,
+          startAyah: 1,
+          endAyah: endAyah,
+        ),
+        if (partCount > 1)
+          RotationSchemeSyncPart(
+            id: 'v1:surah-112:scheme:1:part:2',
+            ordinal: 2,
+            startAyah: endAyah + 1,
+            endAyah: 4,
+          ),
+      ],
+    );
+
+    Future<void> recite() => recitations.register(
+      SurahRecitationEvent(
+        id: 'event-held',
+        surahId: 'surah-112',
+        prayerContext: PrayerContext(prayerType: PrayerType.fajr),
+        createdAtUtc: DateTime.utc(2026, 9, 18, 3),
+        localDate: LocalDate(2026, 9, 18),
+        rakaatSpanCount: 1,
+      ),
+    );
+
+    test('an unreferenced local copy gives way to the account\'s', () async {
+      await applyIn(upsertOf(underTheOtherName()));
+
+      final active = await activeSchemes();
+      expect(active, hasLength(1));
+      expect(
+        active.single.id,
+        'v1:surah-112:scheme:1',
+        reason:
+            'the local row was a placeholder this device derived, and his '
+            'recitations name the account\'s id',
+      );
+    });
+
+    test('a referenced local copy is kept, and the arriving one is '
+        'recognised as itself', () async {
+      await recite();
+
+      await expectLater(
+        applyIn(upsertOf(underTheOtherName())),
+        completes,
+        reason:
+            'refusing here stalled the pull forever: the cursor never moved, '
+            'the same page came back, and both of his phones would have '
+            'stopped receiving anything at all',
+      );
+
+      final active = await activeSchemes();
+      expect(active, hasLength(1));
+      expect(
+        active.single.id,
+        'surah-112:scheme:1',
+        reason: 'the row his recitations point at is the one that stays',
+      );
+      expect(
+        await (database.select(database.rotationSchemes)..where(
+              (RotationSchemes row) => row.surahId.equals('surah-112'),
+            ))
+            .get(),
+        hasLength(1),
+        reason: 'and it is not joined by a second copy of itself',
+      );
+      await expectLater(surahs.getRotationSnapshot(), completes);
+    });
+
+    test('a genuinely different split under the same version is still '
+        'refused', () async {
+      await recite();
+
+      await expectLater(
+        () => applyIn(upsertOf(underTheOtherName(endAyah: 2, partCount: 2))),
+        refuses('remote-scheme-version-already-used'),
+        reason:
+            'two real splits claiming one version number is a conflict, and '
+            'quietly dropping either is the loss this feature prevents',
+      );
+    });
+  });
 }
