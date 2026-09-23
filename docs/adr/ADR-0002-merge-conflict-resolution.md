@@ -66,6 +66,10 @@ The server writes every accepted mutation to an audit log, including the ones
 that lose. A conflict resolved wrongly is then recoverable; a conflict resolved
 silently and destructively is not.
 
+*As of 2026-09-23 this is true of the real backend too, and was not before: the
+account held one row per record and rewrote it. It now holds one row per change
+— see the amendment.*
+
 **5. Counters are recomputed, never merged.**
 
 `rotationScore`, `totalRecitations` and the rotation projection are derived from
@@ -114,6 +118,26 @@ date is a record neither device ever held. Whole records win or lose.
 - The rules are testable without a backend, which is why the property tests run
   against `FakeSyncBackend`: it is the written-down form of what the server must
   do, and a real backend that disagrees with it is a bug in the backend.
+
+## Amendment, 2026-09-23 — the account holds a log, not a state table
+
+One row per record, rewritten on every edit, had a defect underneath it that
+only appeared once two devices were run over a server double as dumb as the
+real one. The pull asks for the rows after a cursor in the server's own time
+order; a rewritten row moves to the end of that order, and a device whose
+cursor **was** that row then has nothing after it. The one thing it can never
+be handed again is that row's own newer content.
+
+So a row is written once and never rewritten. Its id comes from the idempotency
+key, which names one change rather than one record, and the pull orders by
+`$createdAt`, which cannot move. Nothing was relying on the rewrite: a retry
+derives the same id and upserts identical content, the unique index on
+`(userId, idempotencyKey)` catches a replay the client has forgotten, and §1's
+winner is decided on the device.
+
+It also makes §4 true of the real backend for the first time. The cost is that
+the account grows with the history rather than with the number of records in
+it; at this owner's rate that is a few thousand rows a year against 977 today.
 
 ## Amendment, 2026-09-22 — the rules run on the device, because the server cannot
 

@@ -323,7 +323,46 @@ redo finished work, which this document says about itself elsewhere.*
    below for the exact recipe; do not re-run `/mcp` → Authenticate, which
    cannot work.
 
-## A third defect, found by the same method and deliberately left open (2026-09-22)
+## The third defect is closed: the account is a log again (2026-09-23)
+
+The stranded cursor below is fixed, and the fix is the one the entry below
+recommended. **The cloud schema did not change**, and the table was still
+empty, so it cost nothing to adopt — which is the cheapest this decision was
+ever going to be.
+
+- The row id is derived from the **idempotency key**, which names one change
+  rather than one record, so a row is written once and never rewritten.
+- The pull orders by **`$createdAt`** rather than `$updatedAt` — the immutable
+  one, so a moving row stays impossible rather than merely absent today.
+- Nothing was relying on the rewrite: a retry derives the same id and upserts
+  identical content, the unique index on `(userId, idempotencyKey)` catches a
+  replay this client has forgotten, and the winner is decided on the device.
+
+The convergence test that was skipped for this defect now passes. The account
+grows with the history rather than with the number of records — at this owner's
+rate, a few thousand rows a year against 977 today — and that growth is the
+audit trail ADR-0002 §4 asks for and did not have.
+
+**Three things found while doing it, none of them the thing being worked on:**
+
+1. **Raw NUL bytes in a source file.** The previous row-id derivation contained
+   two of them, written when the Edit tool swapped a `\u0000` escape for the
+   character itself. Harmless to the hash, a landmine everywhere else — and the
+   reason four attempts to edit that line failed with "string not found" while
+   the line was plainly there. Every `.dart` file in `lib`, `test` and `tool`
+   was scanned; it was the only one. **Worth scanning again after any session
+   that writes an escape sequence into source.**
+2. **A harness that ignored the date it was given.** `rename` in the two-device
+   test took an `at:` and dropped it, so two edits meant to be a day apart
+   landed in the same second. `FakeSyncBackend` hid it by breaking ties on
+   `deviceId` server-side, so the test passed for a reason it was not about.
+3. **A test that expired.** A backfill case compared against "the fixture's date
+   plus a day", which stopped being in the future when the calendar reached
+   2026-09-23. It reads the real clock now. Worth grepping for others of its
+   kind: a fixed fixture date is fine, a fixed date compared against `strftime`
+   is a countdown.
+
+## A third defect, found by the same method and closed the next day (2026-09-22)
 
 Running the two-device test over a **deliberately stupid** server double — one
 row per id, blind upsert, no opinion about anything — reproduced this:
