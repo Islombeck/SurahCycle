@@ -61,12 +61,16 @@ has the prayer session it points at, every surah its scheme, every prayer its
 routine — which is what the applier refuses to work without, and what was
 missing for a day.
 
-### The second phone, 2026-09-23 — everything but the sign-in
+### The second phone, 2026-09-23 — it ran for real, and it failed
 
 He connected an **Honor 50** (`A7QXVB1B05001411`, Android 13, 1080×2340). It
 already had SurahCycle from 2026-08-28, last updated 2026-09-03, **on schema
 v4**, carrying its own history: 2 mastered surahs, 4 learning plans, 34
 learning events, 0 recitations.
+
+**He signed in, the merge ran, and the phone received nothing.** What that
+exposed, and what was done about it, is the section below — read it before the
+happier numbers here, which came from a test harness rather than from a phone.
 
 **The v4 → v10 migration ran on a real old database and lost nothing.** Pulled
 before and after: 34 learning events, 4 plans, 2 surahs, 4 settings and 114
@@ -89,14 +93,73 @@ server double — `test/tool/real_two_device_merge_test.dart`:
 Nothing refused. The assertion that matters to him is the learning plans: a
 device receiving a history does not pay for it with what it already had.
 
-**What is left is the sign-in, and it is his.** The account is
-`achilov.uz@gmail.com` (Appwrite user `6aabe5f12539ee6ac2cd`). The Honor's
-Google chooser offers two other accounts — `mmrgiyasov@`, `smirasqarova@` —
-so reaching his needs "Использовать другой аккаунт" and his password. That was
-not attempted and must not be: the app was left on Settings with the browser
-tab closed. **His three taps: Настройки → Аккаунт → Войти через Google →
-Использовать другой аккаунт.** Everything after that has now been exercised
-end to end with his own data.
+Nothing refused **in the harness**, which hands the router every envelope at
+once. The phone does not, and that difference is the whole of the next section.
+
+### A second phone could not receive anything, 2026-09-23
+
+He signed in on the Honor himself. The Appwrite page said «You're now logged
+in» and the redirect back into the app never fired; closing the tab was handled
+correctly («Вход не завершился»), and a second attempt went straight through,
+because the Google session was by then established in the browser.
+
+The preview, read live from the account: **только на устройстве 43 · только в
+аккаунте 995 · есть в обоих 12**, backup taken first. He merged. The push went
+— 52 records of the phone's own history reached the account — and then:
+
+| after the merge | |
+|---|---|
+| 0 | of his records arrived |
+| 0 | rows in `sync_cursors` — the pull never committed a page |
+| — | `last_success_at_utc` still null |
+| «Синхронизация включена · Ждут отправки: 0 · Отклонено: 0» | what the screen said |
+
+**Two defects, both now fixed, both falsified before being fixed.**
+
+**1. One split under two names dead-ended the pull.** That phone had put surah
+104 in rotation by itself in August, so it held `surah-104:scheme:1`; the
+account held the same split as an older build named it, `v1:surah-104:scheme:1`
+— same surah, same version, same single part over all nine ayahs. The phone
+took the account's copy (the local one was an unreferenced placeholder and was
+cleared, which is what `_clearColliding` was already for), pushed its own up,
+and pulled it back a page later, by which time the local row carried seven
+hundred of his recitations and could not be removed. `RotationSchemeSyncApplier`
+refused, the cursor stayed, the same page came back forever. **His main phone
+would have stopped receiving anything too**, the moment it pulled that row.
+
+A clash that describes the same split is now taken as the record already held,
+and nothing is written. Parts are compared by ayah range, never by id — two
+builds naming the same derived part differently is the whole reason both rows
+exist. A clash whose parts genuinely differ is still refused.
+
+**2. A dead pull was indistinguishable from a healthy device.** Everything the
+account screen knew about failure came from the queue, and a pull leaves
+nothing there: the push succeeded, so the queue is empty, and the cursor simply
+stops moving. The cycle now records its own reason in `app_settings`
+(`sync.lastFailure.<owner>`) and clears it on the next cycle that works;
+`SyncStatus.resolve` already turned any reason into `retrying` and had just
+never been given this one.
+
+**Reproduced from his two real databases, not from fixtures.**
+`test/tool/real_pull_pagination_test.dart` drives the real `SyncCycleRunner`
+against a copy of the second phone, page by page, over a store that hands rows
+back in `$createdAt` order. Before the fix: `pushed 52, pages 11, failure
+remote-scheme-version-already-used`. After: `failure null`, and the phone holds
+718 recitations, 78 sessions, 27 surahs. The existing two-device test passed
+throughout — it applies every envelope in one heap, which no phone can do.
+
+**The test was then undone, at his request.** The 52 rows the second phone had
+pushed were deleted from the account by their `deviceId`, leaving the 1105 rows
+that are his; his main phone had not yet pulled any of them, and its own
+settings were checked untouched. The second phone was signed out, its app
+database restored to the exact pre-merge copy taken that afternoon (its own 4
+plans, 34 events, 2 surahs intact; zero activation, cursor, queue or sync
+settings left), and the backup the merge had taken was removed. The Appwrite
+account has exactly one session left, his main phone's, from 2026-09-17.
+
+**His main phone carries the fix**, installed and driven through one full cycle
+at 10:50 UTC: the push watermark advanced, no failure was recorded, and the
+queue stayed empty.
 
 ### He turned it on, and the row-id defect happened to him
 
@@ -169,9 +232,15 @@ those rows should have qualified.
    it, the recovery completed, and the account was checked row by type against
    his device** — see the 11:30 entry. ~~A second real device.~~ **Done too,
    on the Honor 50: real v4→v10 migration, real merge of both databases, his
-   history arriving without costing the second phone its own.** What is left is
-   one sign-in on that phone, which needs his Google password and is therefore
-   his to do — see "The second phone".
+   history arriving without costing the second phone its own.** ~~What is left
+   is one sign-in on that phone.~~ **He signed in, it merged for real against
+   the live account, and it received nothing** — two defects, both fixed, both
+   reproduced from his own databases. See "A second phone could not receive
+   anything". The test was then undone at his request: the second phone's 52
+   rows removed from the account, the phone signed out and restored. **A third
+   real device has still never run this**, and the pagination defect is exactly
+   why one is worth wanting: a harness that applies every envelope at once
+   cannot see it.
 2. **Clock skew is detected nowhere.** No longer blocked — `$createdAt` is the
    server-assigned receive time the notes said TablesDB does not expose, and
    the pull already orders by it. Not built because a warning nobody can act on
