@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -205,6 +207,77 @@ void main() {
       );
 
       expect((await masteredRow('surah-112')).alias, 'с аккаунта');
+    });
+  });
+
+  group('rows this app invents rather than receives', () {
+    Future<DateTime?> templateDate(AppDatabase target, String id) async {
+      final row = await target
+          .customSelect(
+            'SELECT updated_at_utc AS at FROM prayer_routine_templates '
+            'WHERE id = ?',
+            variables: <Variable<Object>>[Variable<String>(id)],
+          )
+          .getSingle();
+      final seconds = row.data['at'];
+      if (seconds is! int) return null;
+      return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
+    }
+
+    test('a seeded routine template carries no date', () async {
+      expect(
+        await templateDate(database, 'routine:nafl'),
+        equals(null),
+        reason:
+            'the insert trigger dated it `now`, and left that way a phone set '
+            "up this morning refuses the owner's real routine because its own "
+            'blank one looks newer',
+      );
+    });
+
+    test('a template the owner configured keeps its date', () async {
+      // Through a file, because the rule runs when the database is opened and
+      // the point is that re-opening cannot quietly erase an edit.
+      final directory = await Directory.systemTemp.createTemp('murajaah-seed');
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}${Platform.pathSeparator}app.sqlite');
+
+      final first = AppDatabase(NativeDatabase(file));
+      final template = await PrayerRoutineRepository(
+        first,
+      ).getTemplate(PrayerType.witr);
+      await PrayerRoutineRepository(first).replaceTemplate(
+        prayerType: PrayerType.witr,
+        expectedRevision: template.revision,
+        displayName: template.displayName,
+        enabled: true,
+        parts: <PrayerRoutinePartTemplate>[
+          PrayerRoutinePartTemplate(
+            id: 'witr-wajib',
+            stableKey: 'witr-wajib',
+            orderIndex: 0,
+            kind: PrayerRoutinePartKind.witr,
+            customLabel: 'Важиб',
+            rakaatCount: 3,
+            requiredSurahSlots: 3,
+          ),
+        ],
+      );
+      await first.close();
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      addTearDown(reopened.close);
+      // Forces `beforeOpen`, which is where the rule runs.
+      await reopened.customSelect('SELECT 1').get();
+
+      expect(
+        await templateDate(reopened, 'routine:witr'),
+        isA<DateTime>(),
+        reason:
+            'it has parts and a revision past the first, so it is his work '
+            'and not a placeholder — undating it would hand every later merge '
+            "to whichever device had not configured it",
+      );
     });
   });
 
