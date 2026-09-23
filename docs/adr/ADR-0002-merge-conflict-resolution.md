@@ -197,6 +197,23 @@ and matches what `FakeSyncBackend` already does on a complete tie.
 
 - **Clock skew is unhandled.** A server-assigned receive time, used only to
   detect an implausible client clock, is the obvious next step and is not built.
+  *It is no longer blocked, though, and the note that said TablesDB does not
+  expose one was wrong: `$createdAt` is exactly that, it is on every row, and
+  since 2026-09-23 the pull already orders by it. A row whose `updatedAtUtc` is
+  far from the `$createdAt` the server stamped on it was written by a device
+  whose clock is wrong, and the pull could say so without deciding anything
+  differently.*
+- **A withdrawal made offline can beat a newer restore.** A recitation is
+  append-only, so the router does not compare it, and the local row records
+  *when* it was withdrawn but not when it was brought back — restoring clears
+  the column. A device that withdraws while offline and pushes after another
+  device's later restore therefore wins, although its user acted first. The
+  restore itself travels correctly and is dated correctly (the repository
+  records it through `SyncRecorder`, which is the same precedent as the one
+  hard delete); it is only the *receiving* side that has nothing to compare
+  against. Closing it costs one column — `last_state_change_utc` on
+  `recitation_events`, schema v11 — and a schema migration here is a deliberate,
+  owner-visible event rather than a footnote.
 - ~~A hard-deleted row has no tombstone.~~ **Closed.** `SyncTombstones` records
   one inside the same transaction as the delete, for every account this device
   has activated. It is used exactly once — `LearningRepository.delete` — and is

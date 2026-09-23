@@ -7,10 +7,16 @@
 /// fails to apply leaves the cursor where it was and is fetched again, rather
 /// than being skipped and lost.
 ///
-/// **It never re-decides a conflict.** The server already chose the winner and
-/// this writes what arrived. A client that re-compared timestamps would be a
-/// second resolver, free to disagree with the first, and two devices doing that
-/// converge on nothing.
+/// **It does not decide conflicts; the router does.** That is a correction:
+/// this used to say the *server* had already chosen the winner, and the server
+/// chooses nothing — TablesDB upserts what it is handed. Since 2026-09-22 the
+/// rule runs on the device, once, in `SyncEnvelopeRouter`, so this still writes
+/// what it is given and there is still exactly one resolver.
+///
+/// A recitation is append-only, so the router does not compare it at all: two
+/// devices can produce different prayers, not two versions of the same one.
+/// What they *can* both touch is whether it stands, and that is the withdrawal
+/// rule below rather than a comparison of the record.
 library;
 
 import 'package:drift/drift.dart';

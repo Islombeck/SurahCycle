@@ -343,6 +343,24 @@ grows with the history rather than with the number of records — at this owner'
 rate, a few thousand rows a year against 977 today — and that growth is the
 audit trail ADR-0002 §4 asks for and did not have.
 
+**Two things checked and found already correct**, recorded because each looked
+like a defect until it was read properly:
+
+- **A restore does travel.** A living recitation is sent dated at its
+  *creation*, so a restore looked like it would be older than the withdrawal it
+  undoes — and worse, invisible to the scan, whose only dates for that row are
+  creation and deletion. `RecitationRepository.restoreRecitation` already
+  records an upsert through `SyncRecorder`, dated at the restore, which is the
+  same precedent as the one hard delete: where a scan structurally cannot see a
+  change, the write site says so.
+- **The recitation applier's doc comment was wrong**, not its behaviour. It
+  said the server had already chosen the winner. Corrected in place.
+
+**One narrow gap left open on purpose**, now in ADR-0002's "still open": a
+withdrawal made offline can beat a newer restore, because the local row records
+when it was withdrawn and not when it came back. Closing it costs a column and
+therefore a schema v11.
+
 **Three things found while doing it, none of them the thing being worked on:**
 
 1. **Raw NUL bytes in a source file.** The previous row-id derivation contained
