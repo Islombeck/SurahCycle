@@ -1,6 +1,45 @@
 # Murajaah AI handoff
 
-## Current state
+## Where the sprint stands — 2026-09-23 (read this first)
+
+The sprint is **Stage J**: an account the owner's history can be trusted to,
+plus the three defects he reported. Written as a list of what is finished and
+what is not, because "mostly done" is the state a handoff is worst at
+describing.
+
+**Done, and verified**
+
+- §6.0–§6.5: OAuth grant, TablesDB chosen, project provisioned, client wired,
+  durable owner-scoped outbox on schema v7, activation gate with a preview and
+  a backup taken first.
+- The backfill sends a real history in full — checked against **his own
+  database**, 977 entities, none refused, all applying to a fresh device.
+- The three defects he reported: Витр after Иша (**he confirmed**), Qada Витр
+  (**confirmed against his data**, and marking it verified through the real
+  screen on a copy), the hand-picked dead end (**he confirmed**).
+- The merge rules of ADR-0002 actually run, on the device, where the server
+  cannot. Two devices converge over a server double as dumb as the real one.
+- The account is a log: one row per change, never rewritten.
+- Every client assumption about the live project checked against it, read-only.
+
+**Not done, and each with its reason**
+
+1. **Nothing has run against the live project with a real account.** This needs
+   the owner to sign in on the phone and agree to a merge. It is the last
+   acceptance step and it is his, not a session's.
+2. **Clock skew is detected nowhere.** No longer blocked — `$createdAt` is the
+   server-assigned receive time the notes said TablesDB does not expose, and
+   the pull already orders by it. Not built because a warning nobody can act on
+   is worse than none, and his own clock is network-synced.
+3. **A withdrawal made offline can beat a newer restore.** One column and a
+   schema v11; a migration here is an owner-visible event. ADR-0002, "still
+   open".
+4. **`rotationState` stays in `SyncEntityType`.** Reconsidered on 2026-09-23 and
+   deliberately left: removing it from the client forces either a provisioning
+   declaration that disagrees with the live table or an enum change in the
+   cloud, and the behaviour is identical either way — a row of that type stalls
+   the pull whether the value exists or not. Pure tidiness with a cloud
+   coupling attached.
 
 ### Reconciled continuation — 2026-09-17 (read this before historical entries)
 
