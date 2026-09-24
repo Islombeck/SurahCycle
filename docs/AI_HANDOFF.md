@@ -183,6 +183,31 @@ keeping: it hands the router every envelope at once, so it can always place a
 prerequisite first. No phone can. **Every defect in this section was invisible
 to it.**
 
+**The order is measured, not assumed.** Counted against the live table on
+2026-09-24: of the 29 `rotationScheme` rows, **28 were created after the first
+`recitationEvent` row**, and of the 100 `prayerSession` rows, **all 100 were**.
+The reproduction models this by putting the three recovered types last, which
+is if anything the milder version of what is really there.
+
+**And the case the feature exists for now runs too.** His real database emptied
+of everything he did — keeping only what a first run puts on a phone, the
+catalogue (fetched by manifest, never synced) and the seeded routine templates
+— then the whole account applied page by page in that order:
+
+    a new phone restored: 718 recitations, 78 sessions, 27 surahs,
+    28 schemes, 1 plans
+
+Every count matches his own device, and the rotation projection is asserted as
+rebuilt: a restore that brought every record and left the screen empty would be
+a restore in name only.
+
+**The screen says it now.** Yesterday's visibility fix stopped short of the
+screen: the cycle recorded its reason and `SyncStatus.resolve` turned it into
+`retrying`, but the account screen folded every activated state into one
+branch, so a dead pull still read «Синхронизация включена · Ждут отправки: 0 ·
+Отклонено: 0». A card of its own (`account-sync-failing`) appears while the
+last exchange failed. The category stays unshown, as everywhere else there.
+
 **The test was then undone, at his request.** The 52 rows the second phone had
 pushed were deleted from the account by their `deviceId`, leaving the 1105 rows
 that are his; his main phone had not yet pulled any of them, and its own
@@ -194,10 +219,19 @@ account has exactly one session left, his main phone's, from 2026-09-17.
 
 **His main phone carries the first two fixes**, installed and driven through
 one full cycle at 10:50 UTC: the push watermark advanced, no failure was
-recorded, and the queue stayed empty. The carry-forward fix came afterwards and
-is **not on any phone yet** — it changes nothing for his, which already holds
-everything the account has and so never waits on a prerequisite, and everything
-for the next device that restores from the account.
+recorded, and the queue stayed empty. The carry-forward fix, the restore test
+and the screen card came afterwards and are **not on any phone yet** — they
+change nothing for his, which already holds everything the account has and so
+never waits on a prerequisite, and everything for the next device that restores
+from the account.
+
+**The one thing still unproven is a restore onto a phone.** Not because the
+code is unverified — it is, against his own data through the real cycle — but
+because the transport and the applying have only ever been proven separately:
+his second phone did fetch real pages from the live account before failing to
+apply them. Doing it for real costs another sign-in on a phone that is not his
+and another cleanup afterwards, so it is deliberately left as the last step
+rather than repeated.
 
 **What is still open** is now in ADR-0002 under "Still open", and one entry
 there is new and worth reading before the next device: a record this build
