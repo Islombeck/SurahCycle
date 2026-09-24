@@ -217,6 +217,18 @@ final class SyncCycleRunner implements SyncCycle {
       // cursor stayed where it was, so the same page is fetched again next
       // time rather than skipped.
       pullFailure = error.reason;
+    } on Object catch (error) {
+      // **Anything else, which used to escape the cycle entirely.** A row this
+      // build cannot read, a constraint the appliers did not expect, a plain
+      // bug: `runOnce` threw, whoever called it had no answer for that, and
+      // the device was left with its watermark advanced, its cursor unmoved
+      // and nothing written down. His phone spent 2026-09-23 and the night
+      // after it in exactly that state — pushing fine, receiving nothing,
+      // reporting success from the morning before.
+      //
+      // The type only, never the message: a message can quote a row, and a row
+      // is his. It is enough to tell a network apart from a defect.
+      pullFailure = 'pull-failed-${error.runtimeType}';
     }
 
     // Records still waiting when the account ran out of pages. Their

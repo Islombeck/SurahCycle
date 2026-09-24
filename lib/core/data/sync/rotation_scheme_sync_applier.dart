@@ -287,21 +287,44 @@ final class RotationSchemeSyncApplier {
     }
   }
 
+  /// Stands a scheme down by writing **its own activation point**, never zero.
+  ///
+  /// The table holds `superseded_journal_sequence IS NULL OR
+  /// superseded_journal_sequence >= activated_journal_sequence`, and zero
+  /// satisfies that only for a scheme this device inserted — an arriving one,
+  /// which is activated at zero because the sender's journal positions mean
+  /// nothing here. A scheme the *owner* created carries the real position it
+  /// was activated at, and standing it down with zero raised
+  /// `SqliteException(275)` out of the sync cycle, uncaught, on the one surah
+  /// he has re-split. That is what stopped his own phone receiving.
+  ///
+  /// The value itself is meaningless: every reader of this column tests it for
+  /// null and nothing else. What matters is that it is not null and not below
+  /// the row's own activation, and the row already carries a number that
+  /// satisfies both without reading anything else.
+  /// Every scheme of [surahId] except [exceptId] that is still in force.
+  Future<void> _standDownOthers(String surahId, String exceptId) =>
+      _database.customStatement(
+        'UPDATE rotation_schemes '
+        'SET superseded_journal_sequence = activated_journal_sequence '
+        'WHERE surah_id = ? AND id <> ? '
+        'AND superseded_journal_sequence IS NULL',
+        <Object?>[surahId, exceptId],
+      );
+
+  /// This one scheme, whoever else is in force.
+  Future<void> _standDownOne(String id) => _database.customStatement(
+    'UPDATE rotation_schemes '
+    'SET superseded_journal_sequence = activated_journal_sequence '
+    'WHERE id = ?',
+    <Object?>[id],
+  );
+
   Future<void> _settleWhichIsActive(RotationSchemeSyncRecord record) async {
     if (record.isActive) {
       // Stand the others down first: the unique index allows only one active
       // scheme per surah, so activating before superseding would collide.
-      await (_database.update(_database.rotationSchemes)..where(
-            (RotationSchemes row) =>
-                row.surahId.equals(record.surahId) &
-                row.id.equals(record.id).not() &
-                row.supersededJournalSequence.isNull(),
-          ))
-          .write(
-            const RotationSchemesCompanion(
-              supersededJournalSequence: Value<int?>(0),
-            ),
-          );
+      await _standDownOthers(record.surahId, record.id);
       await (_database.update(
         _database.rotationSchemes,
       )..where((RotationSchemes row) => row.id.equals(record.id))).write(
@@ -326,10 +349,6 @@ final class RotationSchemeSyncApplier {
             ))
             .get();
     if (others.isEmpty) return;
-    await (_database.update(
-      _database.rotationSchemes,
-    )..where((RotationSchemes row) => row.id.equals(record.id))).write(
-      const RotationSchemesCompanion(supersededJournalSequence: Value<int?>(0)),
-    );
+    await _standDownOne(record.id);
   }
 }

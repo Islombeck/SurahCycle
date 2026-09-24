@@ -136,10 +136,17 @@ final class MasteredSurahSyncApplier {
   }
 
   /// Creates `<surahId>:scheme:1` if the surah has no scheme at all.
+  ///
+  /// **Any, not the one.** A surah that has been re-split has a chain of them —
+  /// his Al-Baqara has two — and asking for a single row threw `StateError:
+  /// Too many elements` out of the whole sync cycle. It was not caught
+  /// anywhere, so his phone advanced its watermark, moved no cursor, recorded
+  /// nothing, and stopped receiving for a day and a night without a sign.
   Future<void> _ensureDefaultScheme(String surahId, int ayahCount) async {
     final any =
         await (_database.select(_database.rotationSchemes)
-              ..where((RotationSchemes row) => row.surahId.equals(surahId)))
+              ..where((RotationSchemes row) => row.surahId.equals(surahId))
+              ..limit(1))
             .getSingleOrNull();
     if (any != null) return;
 

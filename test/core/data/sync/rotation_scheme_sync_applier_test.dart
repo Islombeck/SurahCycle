@@ -313,6 +313,38 @@ void main() {
     );
   });
 
+  test('a scheme the owner activated can be stood down', () async {
+    // The local scheme carries the journal position it was really activated
+    // at; only an arriving one is activated at zero, because the sender's
+    // positions mean nothing here. The table holds
+    //   superseded_journal_sequence IS NULL OR >= activated_journal_sequence
+    // and this applier used to stand a scheme down by writing zero, which is
+    // below any real activation. `SqliteException(275)` came out of the sync
+    // cycle, was caught by nothing, and stopped his own phone receiving.
+    await database.customStatement(
+      'UPDATE rotation_schemes SET activated_journal_sequence = 49 '
+      "WHERE id = 'surah-112:scheme:1'",
+    );
+
+    await expectLater(applyIn(upsertOf(split())), completes);
+
+    final active = await activeSchemes();
+    expect(active, hasLength(1));
+    expect(active.single.id, 'surah-112:scheme:2');
+    final old =
+        await (database.select(database.rotationSchemes)..where(
+              (RotationSchemes row) => row.id.equals('surah-112:scheme:1'),
+            ))
+            .getSingle();
+    expect(
+      old.supersededJournalSequence,
+      greaterThanOrEqualTo(old.activatedJournalSequence),
+      reason:
+          'the number is never read except for null, but it has to be one the '
+          'table will accept',
+    );
+  });
+
   group('one split under two names', () {
     /// The default scheme of surah 112 as an **older** build named it, which is
     /// how his account holds every one of his: `v1:` in front. The local row is

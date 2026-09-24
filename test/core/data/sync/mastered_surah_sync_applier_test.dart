@@ -96,6 +96,36 @@ void main() {
     );
   });
 
+  test('a surah he has re-split still takes its roster entry', () async {
+    // His Al-Baqara carries two schemes — one superseded, one in force. Asking
+    // "does this surah have a scheme" with `getSingleOrNull` threw
+    // `StateError: Too many elements`, out of the applier, out of the cycle,
+    // caught by nothing. His own phone stopped receiving for a day over it and
+    // reported success from the morning before.
+    await surahs.addMastered('surah-112');
+    await database.customStatement(
+      'INSERT INTO rotation_schemes (id, surah_id, version, '
+      'ayah_count_snapshot, baseline_score, baseline_total_recitations, '
+      'resets_rotation_baseline, activated_journal_sequence, '
+      'superseded_journal_sequence) '
+      "VALUES ('surah-112:scheme:2', 'surah-112', 2, 4, 0, 0, 0, 7, 7)",
+    );
+
+    await expectLater(
+      applyIn(() => applier.apply(upsertOf(record(alias: 'Ихлас')))),
+      completes,
+    );
+    expect(
+      (await surahs.getRotationSnapshot()).surahById('surah-112').surah.alias,
+      'Ихлас',
+    );
+    expect(
+      await database.select(database.rotationSchemes).get(),
+      hasLength(2),
+      reason: 'and no third scheme is invented on top of the two he has',
+    );
+  });
+
   test('the cached statistics are left to the journal', () async {
     await applyIn(() => applier.apply(upsertOf(record())));
 

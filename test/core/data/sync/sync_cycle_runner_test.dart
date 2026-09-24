@@ -186,6 +186,31 @@ void main() {
       );
     });
 
+    test('and an exception nobody expected is written down too', () async {
+      await activate();
+      gateway.pullError = const FormatException('unreadable row');
+
+      final outcome = await runner.runOnce();
+
+      expect(
+        outcome.failureReason,
+        'pull-failed-FormatException',
+        reason:
+            'it used to escape runOnce entirely: watermark advanced, cursor '
+            'unmoved, nothing written down, and a device that had stopped '
+            'receiving with no sign of it anywhere',
+      );
+      expect(
+        (await store.transportSnapshot()).lastFailureReason,
+        'pull-failed-FormatException',
+      );
+      expect(
+        outcome.failureReason,
+        isNot(contains('unreadable row')),
+        reason: 'a message can quote a row, and a row is his',
+      );
+    });
+
     test('and the next cycle that works takes it back off', () async {
       await activate();
       await queue('theme');
@@ -701,6 +726,9 @@ final class _RecordingGateway implements SyncGateway {
   /// say. It leaves the queue empty and the cursor still, which is why it has
   /// to be reported from somewhere other than the queue.
   String? pullFailure;
+
+  /// Not a `SyncTransportException` — the shape that used to escape the cycle.
+  Object? pullError;
   bool rejectEverything = false;
 
   /// Neither accepts nor refuses: the queue comes back exactly as it went.
@@ -738,6 +766,7 @@ final class _RecordingGateway implements SyncGateway {
     order.add('pull');
     pulls.add(after);
     if (pullFailure != null) throw SyncTransportException(pullFailure!);
+    if (pullError != null) throw pullError!;
     if (pullPages.isEmpty) {
       return SyncPullPage(
         envelopes: const <SyncEnvelope>[],
