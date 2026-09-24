@@ -243,6 +243,60 @@ void main() {
     );
   });
 
+  testWidgets('an exchange that keeps failing is said out loud', (
+    tester,
+  ) async {
+    // What his second phone showed for an hour on 2026-09-23 while it received
+    // nothing: sync on, nothing queued, nothing refused. Every number true.
+    // The pull had been dead since its first page and no line said so.
+    await _pump(
+      tester,
+      account: _user,
+      transport: const SyncTransportSnapshot(
+        isActivated: true,
+        queuedCount: 0,
+        quarantinedCount: 0,
+        lastSuccessAtUtc: null,
+        lastFailureReason: 'remote-recitation-scheme-missing',
+        consecutiveFailureCount: 0,
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('account-sync-failing')),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('remote-recitation-scheme-missing'),
+      findsNothing,
+      reason:
+          'the category stays unshown here as everywhere else on this screen: '
+          'it can name a transport, and what he does about any of them is the '
+          'same',
+    );
+  });
+
+  testWidgets('a healthy exchange is not warned about', (tester) async {
+    await _pump(
+      tester,
+      account: _user,
+      transport: SyncTransportSnapshot(
+        isActivated: true,
+        queuedCount: 0,
+        quarantinedCount: 0,
+        lastSuccessAtUtc: DateTime.utc(2026, 9, 23, 10, 50),
+        lastFailureReason: null,
+        consecutiveFailureCount: 0,
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('account-sync-failing')),
+      findsNothing,
+      reason: 'a warning that fires on a working device is one nobody reads',
+    );
+  });
+
   testWidgets('a merge that left nothing behind shows no warning', (
     tester,
   ) async {

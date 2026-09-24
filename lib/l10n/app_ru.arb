@@ -445,4 +445,6 @@
   ,"accountSyncOnTitle": "Синхронизация включена"
   ,"accountSyncCounts": "Ждут отправки: {queued} · Отклонено: {refused}"
   ,"@accountSyncCounts": {"placeholders": {"queued": {"type": "int"}, "refused": {"type": "int"}}}
+  ,"accountSyncFailingTitle": "Последний обмен не завершился"
+  ,"accountSyncFailingBody": "Что-то не удалось отправить или получить. Приложение попробует снова — записи на этом устройстве в безопасности."
 }

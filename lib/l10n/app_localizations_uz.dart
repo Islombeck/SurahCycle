@@ -1381,4 +1381,11 @@ class AppLocalizationsUz extends AppLocalizations {
   String accountSyncCounts(int queued, int refused) {
     return 'Yuborilishi kutilmoqda: $queued · Rad etilgan: $refused';
   }
+
+  @override
+  String get accountSyncFailingTitle => 'Soʻnggi almashinuv tugamadi';
+
+  @override
+  String get accountSyncFailingBody =>
+      'Nimadir yuborilmadi yoki olinmadi. Ilova qayta urinib koʻradi — bu qurilmadagi yozuvlar xavfsiz.';
 }

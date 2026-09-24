@@ -2451,6 +2451,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Ждут отправки: {queued} · Отклонено: {refused}'**
   String accountSyncCounts(int queued, int refused);
+
+  /// No description provided for @accountSyncFailingTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Последний обмен не завершился'**
+  String get accountSyncFailingTitle;
+
+  /// No description provided for @accountSyncFailingBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что-то не удалось отправить или получить. Приложение попробует снова — записи на этом устройстве в безопасности.'**
+  String get accountSyncFailingBody;
 }
 
 class _AppLocalizationsDelegate

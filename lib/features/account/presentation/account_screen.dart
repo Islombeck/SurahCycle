@@ -139,6 +139,25 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
           ),
           icon: Icons.sync_outlined,
           extra: <Widget>[
+            // A card of its own, and for the same reason the one below it is:
+            // "Синхронизация включена · Ждут отправки: 0" is true of a device
+            // whose pull has been dead since its first page, and it is what
+            // his second phone showed for an hour on 2026-09-23 while it
+            // received nothing. Every number on that screen was correct.
+            //
+            // The category behind it stays unshown, as everywhere else here:
+            // it can name a transport, and what the owner does about any of
+            // them is the same. What he could not tell before is *that* there
+            // is anything to wait for.
+            if (status.health == SyncHealth.retrying) ...<Widget>[
+              const SizedBox(height: 12),
+              _StatusCard(
+                key: const ValueKey<String>('account-sync-failing'),
+                title: l10n.accountSyncFailingTitle,
+                body: l10n.accountSyncFailingBody,
+                icon: Icons.sync_problem_outlined,
+              ),
+            ],
             // Records the backfill could not express are not in the queue and
             // never will be, so no count on this screen mentions them. Said
             // out loud or not at all: silence here reads as "everything went".

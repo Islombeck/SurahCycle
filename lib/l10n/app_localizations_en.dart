@@ -1379,4 +1379,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String accountSyncCounts(int queued, int refused) {
     return 'Waiting to send: $queued · Refused: $refused';
   }
+
+  @override
+  String get accountSyncFailingTitle => 'The last exchange did not finish';
+
+  @override
+  String get accountSyncFailingBody =>
+      'Something could not be sent or received. The app will try again — what is on this device is safe.';
 }

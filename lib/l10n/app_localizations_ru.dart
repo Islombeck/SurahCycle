@@ -1382,4 +1382,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String accountSyncCounts(int queued, int refused) {
     return 'Ждут отправки: $queued · Отклонено: $refused';
   }
+
+  @override
+  String get accountSyncFailingTitle => 'Последний обмен не завершился';
+
+  @override
+  String get accountSyncFailingBody =>
+      'Что-то не удалось отправить или получить. Приложение попробует снова — записи на этом устройстве в безопасности.';
 }
