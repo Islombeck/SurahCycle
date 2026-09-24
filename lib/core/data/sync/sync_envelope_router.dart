@@ -78,20 +78,6 @@ final class SyncEnvelopeRouter {
   /// Whether anything applied since the last settle touched the rotation.
   bool _rotationIsStale = false;
 
-  /// The oldest incoming record this device out-ranked since the last ask.
-  ///
-  /// Kept so the account can be corrected rather than left holding a version
-  /// the owner has already moved past: re-scanning from this instant re-offers
-  /// the local copy that won. Null means every record that arrived was applied.
-  DateTime? _supersededRemoteAtUtc;
-
-  /// The oldest superseded instant, clearing it. See [_supersededRemoteAtUtc].
-  DateTime? takeSupersededRemoteAtUtc() {
-    final at = _supersededRemoteAtUtc;
-    _supersededRemoteAtUtc = null;
-    return at;
-  }
-
   final MasteredSurahSyncApplier _roster;
   final RotationSchemeSyncApplier _schemes;
   final PrayerSessionSyncApplier _sessions;
@@ -199,10 +185,10 @@ final class SyncEnvelopeRouter {
         incomingUpdatedAtUtc: envelope.updatedAtUtc,
         localUpdatedAtUtc: localAtUtc,
       )) {
-        final seen = _supersededRemoteAtUtc;
-        if (seen == null || envelope.updatedAtUtc.isBefore(seen)) {
-          _supersededRemoteAtUtc = envelope.updatedAtUtc;
-        }
+        // Dropped, and nothing is remembered about it. The account keeps the
+        // older row — it is a log, and a row is never rewritten — and every
+        // device that reads it makes this same comparison, so the stale one
+        // loses there too. See `SyncCycleRunner` for what used to be here.
         return;
       }
     }

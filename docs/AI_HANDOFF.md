@@ -306,15 +306,19 @@ started at 1970 and re-offered the entire database.
 device id, and the account is back to the 1557 rows that are his. The remaining
 817 never went — the phone's database was restored instead.
 
-Two fixes are defensible and the choice is the owner's, so neither is built:
+**The re-scan is gone** (he left the choice to me). Not narrowed — removed. Its
+premise — "a phone that joins tomorrow would take the stale copy as truth" —
+was written for the old design where the account held one rewritten row per
+record. The account is a log now and ADR-0002 §1 is decided per record on every
+device, so an older row further down the log misleads nobody.
 
-1. **Re-offer the records that won, by name.** The router knows which they are;
-   the scan takes a window because that is the only door the backfill has.
-2. **Drop the re-scan.** Its premise — "a phone that joins tomorrow would take
-   the stale copy as truth" — was written for the old design where the account
-   held one rewritten row per record. The account is a log now and every device
-   decides per record, so an older row further down it is already harmless. If
-   that reasoning holds, the mechanism is redundant rather than merely blunt.
+That was checked rather than argued: `two_device_sync_test` now joins a **third**
+phone after the older edit has deliberately been pushed last, and it still ends
+on the newer one — which it did **with** the mechanism and still does without.
+The cycle test that asserted the old behaviour was rewritten to assert the new
+one rather than deleted, and both it and the real-data restore test were
+watched failing against the mechanism put back: `masteredSurah:surah-112`
+pushed again, and **880 records left in the outbox** on his own database.
 
 **The Appwrite project paused itself for inactivity** while this was being
 cleaned up, which also means the app's sign-out could not delete its session on

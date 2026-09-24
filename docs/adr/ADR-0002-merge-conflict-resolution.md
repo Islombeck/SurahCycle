@@ -245,21 +245,23 @@ and matches what `FakeSyncBackend` already does on a complete tie.
   the phone this was found on had no recitations of its own — and closing it
   properly means remembering the absorption, which is a table and therefore a
   schema version.
-- **Re-offering a winning local copy costs the whole database when the loser is
-  undated.** Consequence 3 below re-scans from the *incoming* record's date. An
-  undated record carries the epoch, so the scan starts at 1970 and re-offers
-  everything — 919 records on his second phone, moments after it had received
-  them. Two ways out, and the second is the more honest question: re-offer the
-  records that won **by name**, which needs a door the backfill does not have;
-  or **drop the mechanism**, because its premise belongs to the design this
-  ADR replaced. When the account held one rewritten row per record, a stale row
-  *was* what a new device would read. The account is a log now and §1 is
-  decided per record on every device, so an older row further down the log is
-  already harmless. Nobody has checked that reasoning against a case where it
-  fails, which is why it is written here as a question and not as a change.
-- ~~A winning local copy is not pushed back.~~ **Closed the same day.** The
-  cycle re-scans from the instant it out-ranked and drains once more; see
-  consequence 3 of the amendment. It re-offers a handful of neighbouring
-  entities along with the one that won, because the scan takes a window and not
-  a name — they coalesce in the outbox and upsert identically on the server,
-  which is the cheap side of not adding a second way to enqueue.
+- ~~Re-offering a winning local copy costs the whole database when the loser is
+  undated.~~ **Closed by removing the mechanism, 2026-09-24.** It re-scanned
+  from the *incoming* record's date; an undated record carries the epoch, so on
+  his second phone the scan started at 1970 and re-offered the entire database
+  — 919 records, moments after it had received them.
+
+  Removing it rather than narrowing it, because its premise belonged to the
+  design this ADR replaced. When the account held one rewritten row per record,
+  a stale row *was* what a new device would read. The account is a log now and
+  §1 is decided per record on every device, so an older row further down the
+  log misleads nobody. That was not assumed: `two_device_sync_test` joins a
+  **third** phone after the older edit was deliberately pushed last, and it
+  still ends on the newer one — with the mechanism and without it.
+- ~~A winning local copy is not pushed back.~~ **Closed on 2026-09-22 by the
+  re-scan described above, and re-opened as "not a problem" on 2026-09-24 when
+  that re-scan was removed.** Consequence 3 of the amendment no longer
+  describes the code. A winning local copy is not pushed back, and does not
+  need to be: it is already in the account, because the cycle pushes before it
+  pulls and the device had queued its own edit before it ever saw the older
+  one.

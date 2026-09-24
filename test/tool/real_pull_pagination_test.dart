@@ -260,6 +260,17 @@ void main() {
       greaterThanOrEqualTo(await countIn(source, 'rotation_schemes')),
     );
 
+    expect(
+      await countIn(fresh, 'sync_outbox_entries'),
+      0,
+      reason:
+          'a phone that has just been handed an account must not turn round '
+          'and offer all of it back. His second phone queued 919 records the '
+          'moment it finished receiving them, because the re-scan that used to '
+          'run here took a window from the losing record\'s date and an undated '
+          'record dates from 1970',
+    );
+
     // The rotation is a projection, rebuilt rather than carried. A restore
     // that brought every record and left the screen empty would be a restore
     // in name only.

@@ -239,25 +239,22 @@ final class SyncCycleRunner implements SyncCycle {
       pullFailure = deferredReason ?? 'remote-prerequisite-never-arrived';
     }
 
-    // An account that handed this device an older copy is still holding it,
-    // and nothing else would ever correct it: this device keeps its own, its
-    // queue is empty, and a phone that joins tomorrow would take the stale one
-    // as truth. Re-scanning from the superseded instant re-offers the local
-    // record that won, and one extra drain sends it.
+    // **Nothing is re-offered to correct the account.** There used to be a
+    // re-scan here: when an incoming record lost to a local one, the cycle
+    // scanned again from the losing record's date and pushed whatever that
+    // window held, so the account would stop "holding a stale copy".
     //
-    // Exactly once, never a loop. The record it sends is at least as new as
-    // the one it replaces, so the next pull brings back a tie, and a tie is
-    // applied rather than superseded.
-    final superseded = _router.takeSupersededRemoteAtUtc();
-    final scan = _scan;
-    if (pullFailure == null && superseded != null && scan != null) {
-      await scan.enqueueChangedSince(
-        nowUtc: _nowUtc().toUtc(),
-        since: superseded,
-      );
-      await _engine.drain();
-    }
-
+    // It was written for an account that kept one row per record and rewrote
+    // it. This one is a log — a row is written once and never rewritten — and
+    // §1 of ADR-0002 is decided per record on every device, so an older row
+    // further down the log cannot mislead anyone who reads it. The two-device
+    // suite proves that directly: a third phone joining after the older edit
+    // was pushed last still ends on the newer one.
+    //
+    // And the window was not a detail. An undated record carries the epoch, so
+    // on his second phone the scan started at 1970 and re-offered the entire
+    // database — 919 records, moments after it had received them.
+    //
     // Recorded, or cleared, on every cycle that got this far. A pull that
     // stalls leaves nothing in the queue to explain itself — the queue is
     // empty and the cursor merely stops moving — so without this the account

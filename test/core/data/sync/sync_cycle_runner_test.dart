@@ -584,13 +584,13 @@ void main() {
   });
 
   test(
-    'an account holding an older copy is corrected, not left holding it',
+    'an account holding an older copy is left holding it, and nothing is sent',
     () async {
-      // The account hands this device a record the owner has already moved past.
-      // The device keeps its own — that is ADR-0002 — and the account goes on
-      // holding the stale one, which the next phone to join would take as truth.
-      // Nothing else would ever correct it: this device's queue is empty and its
-      // own row has not changed since it was last sent.
+      // The account hands this device a record the owner has already moved
+      // past. The device keeps its own — that is ADR-0002 — and the account
+      // goes on holding the stale row, which is safe: it is a log, rows are
+      // never rewritten, and every device that reads it makes this same
+      // comparison. What must *not* happen is this device trying to correct it.
       final surahs = SurahRepository(database);
       await surahs.upsertCatalog(<SurahDescriptor>[
         SurahDescriptor(
@@ -664,11 +664,17 @@ void main() {
         reason: 'the older copy must not have been applied at all',
       );
       expect(
-        gateway.pushes.last.map((one) => one.entityKey),
-        contains(stale.entityKey),
+        gateway.pushes.expand((page) => page).map((one) => one.entityKey),
+        isNot(contains(stale.entityKey)),
         reason:
-            'the account is still holding the version this device out-ranked, '
-            'and a phone joining tomorrow would take it as the truth',
+            'and nothing is offered back to correct the account. There used '
+            'to be a re-scan here, written for an account that kept one '
+            'rewritten row per record; this one is a log and every device '
+            'makes the same comparison, so the older row down the log misleads '
+            'nobody — `two_device_sync_test` proves that with a third phone. '
+            'The re-scan took a window rather than a name, and an undated '
+            'record starts that window at 1970: his second phone re-offered '
+            'its whole database, 919 records, moments after receiving them',
       );
     },
   );

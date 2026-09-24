@@ -329,6 +329,33 @@ void main() {
       );
     });
 
+    test('a phone that joins later is not misled by the stale row', () async {
+      // The question the "correct the account" re-scan exists to answer, asked
+      // directly. Alice's older edit was pushed last, so a blind upsert leaves
+      // it sitting at the end of the account's log. A third phone arrives with
+      // nothing and reads the whole thing.
+      await bothRenameOffline();
+
+      final carol = await _Device.create(
+        name: 'carol',
+        gateway: AppwriteSyncGateway(api: cloud, userId: userId),
+        userId: userId,
+        nowUtc: () => clock,
+      );
+      addTearDown(carol.close);
+      await carol.knowSurah('surah-a', 112);
+      await carol.activateAndSync();
+
+      expect(
+        await carol.aliasOf('surah-a'),
+        'Bob',
+        reason:
+            'the account is a log and §1 is decided per record on the device, '
+            'so an older row further down it is already harmless — reading it '
+            'last does not make it win',
+      );
+    });
+
     test('and the device that lost finds out', () async {
       await bothRenameOffline();
 
