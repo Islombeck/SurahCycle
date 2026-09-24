@@ -225,6 +225,57 @@ change nothing for his, which already holds everything the account has and so
 never waits on a prerequisite, and everything for the next device that restores
 from the account.
 
+### His own phone had stopped receiving, 2026-09-24
+
+Found by reading his device rather than by reasoning about it, the morning
+after the fixes above were installed. **Its pull cursor had not moved since
+2026-09-23 09:40 local** while the account had gained hundreds of rows behind
+it. The push kept working, so the queue was empty, and the screen was calm.
+
+**The cycle only caught `SyncTransportException`.** Anything else escaped
+`runOnce` entirely and left a device with its watermark advanced, its cursor
+unmoved and nothing written down — the shape of an outage that cannot be
+noticed. It now records the exception's *type* (never its message: a message
+can quote a row). Installing that alone printed the answer into his database:
+`pull-failed-DriftRemoteException`.
+
+Replaying his own 1036 records back onto a copy of his own device named both:
+
+| | |
+|---|---|
+| `StateError: Too many elements` | `_ensureDefaultScheme` asked "does this surah have a scheme" with `getSingleOrNull`, and Al-Baqara — the one surah he has re-split — has two |
+| `SqliteException(275)` | the applier stood a scheme down by writing zero into `superseded_journal_sequence`, which is below any scheme the owner really activated; it now writes the row's own activation point |
+
+After the fixes the same replay refuses nothing and breaks on nothing, and on
+his phone the cursor moved for the first time in a day, with a success recorded
+and no failure row.
+
+### The account was growing with use, not with history (2026-09-24)
+
+1473 rows for about a thousand records, and **about 28 more every time he
+opened the app**. Measured, not inferred: before a rotation rebuild all 27
+roster rows and 28 schemes carried one timestamp; after it, all of them carried
+the wall clock.
+
+Everything `rebuildFromJournal` writes is a projection, and the v10 touch
+triggers cannot tell a re-derivation from an edit — they stamp any update that
+leaves `updated_at_utc` alone. So every rebuild marked the whole roster as
+changed and the next scan queued all of it. A rebuild runs on every recitation
+and on every pulled page that touches the rotation.
+
+The rows it only re-derived now get their timestamps put back, and only the
+ones that actually moved — writing the same value would satisfy the trigger's
+guard and stamp it again. Verified on the live account: two consecutive cycles,
+**1557 rows before and 1557 after**.
+
+**Three two-device tests had been relying on the defect.** They date edits from
+a fabricated clock while the triggers write the wall clock, so the roster row
+was born newer than every rename the test made to it; the re-stamping kept the
+local copy artificially newest and hid it. The assertions were right and are
+unchanged; the fixture now uses one clock. Worth keeping in mind here: a green
+test can be green for the wrong reason, and removing a defect is how that
+surfaces.
+
 **The one thing still unproven is a restore onto a phone.** Not because the
 code is unverified — it is, against his own data through the real cycle — but
 because the transport and the applying have only ever been proven separately:
