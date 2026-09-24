@@ -184,6 +184,50 @@ void main() {
     );
   });
 
+  test('a device with nothing new to say says nothing', () async {
+    // The property that was missing, and it cost him an account that grew with
+    // use rather than with history: a rebuild re-dated every roster row, the
+    // next scan read that as a change, and each cycle pushed the lot again.
+    // Nothing failed and nothing was lost — the number of rows behind his
+    // account simply climbed every time he opened the app, about 28 a time,
+    // and only counting them on the live project showed it.
+    // **This one runs on the real clock**, and it has to. The touch triggers
+    // stamp rows with SQLite's `now`, which no fixture can move; the rest of
+    // this file dates its edits in a fabricated past, and a row stamped later
+    // than the device's own clock is newer than every watermark it will ever
+    // write, so the scan re-offers it forever. That is the fixture's skew, not
+    // the app's, and testing "sends nothing" through it would measure the
+    // wrong thing.
+    clock = DateTime.now().toUtc().subtract(const Duration(minutes: 5));
+
+    await alice.addSurah('surah-a', 112);
+    await alice.addSurah('surah-b', 108);
+    await alice.recite('r1', 'surah-a', at: tick());
+    await alice.recite('r2', 'surah-b', at: tick());
+    // Everything above is what he did before the account existed, and the
+    // first cycle sends all of it whatever its dates. What matters after that
+    // is that nothing he did **not** touch is offered again — so the setup is
+    // dated behind the watermark the first cycle will write, and anything
+    // found newer afterwards was written by the app itself.
+    await alice.dateSetupAt(clock.subtract(const Duration(minutes: 1)));
+    await alice.activateAndSync();
+
+    final afterTheFirst = cloud.auditLogOf(userId).length;
+    expect(afterTheFirst, greaterThan(0), reason: 'the history did go up');
+
+    await alice.sync();
+    await alice.sync();
+
+    expect(
+      cloud.auditLogOf(userId).length,
+      afterTheFirst,
+      reason:
+          'a cycle that changed nothing has nothing to send; every pull '
+          'rebuilds the rotation, and a rebuild that looks like an edit turns '
+          'each of them into another copy of his whole roster',
+    );
+  });
+
   test('a device kept local sends nothing and receives nothing', () async {
     await alice.addSurah('surah-a', 112);
     await alice.recite('r1', 'surah-a', at: tick());
@@ -517,6 +561,26 @@ final class _Device {
     await SyncVersionedRows(
       database,
     ).stampAuthored(table: 'mastered_surahs', key: surahId, authoredAtUtc: at);
+  }
+
+  /// Dates every row the touch triggers stamp, as if this device's setup had
+  /// happened at [at].
+  ///
+  /// The triggers use SQLite's `now` and no fixture can move that, so a test
+  /// running on a clock of its own has to say when its own setup happened —
+  /// otherwise every row is newer than every watermark the device will ever
+  /// write, and the scan re-offers all of it forever for reasons that have
+  /// nothing to do with the app.
+  Future<void> dateSetupAt(DateTime at) async {
+    final seconds = at.toUtc().millisecondsSinceEpoch ~/ 1000;
+    await database.customStatement(
+      'UPDATE mastered_surahs SET updated_at_utc = ?',
+      <Object?>[seconds],
+    );
+    await database.customStatement(
+      'UPDATE rotation_schemes SET updated_at_utc = ?',
+      <Object?>[seconds],
+    );
   }
 
   Future<String?> aliasOf(String surahId) async {
