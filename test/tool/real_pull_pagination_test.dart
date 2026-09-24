@@ -97,6 +97,33 @@ void main() {
               .getSingle())
           .read<int>('n');
 
+  /// Everything a first run puts on a phone, and nothing a user did.
+  ///
+  /// The catalogue is kept because it is not synced — it is fetched by
+  /// manifest, and the roster applier refuses a surah that is not in it,
+  /// saying so: "a device that has not finished setting itself up". The seeded
+  /// routine templates are kept for the same reason they exist. Children
+  /// before parents, because the foreign keys are real.
+  Future<void> emptyOfEverythingHeDid(AppDatabase device) async {
+    for (final table in <String>[
+      'recitation_event_parts',
+      'recitation_events',
+      'recall_attempts',
+      'rotation_adjustments',
+      'rotation_parts',
+      'rotation_schemes',
+      'mastered_surahs',
+      'prayer_session_parts',
+      'prayer_sessions',
+      'learning_events',
+      'learning_surahs',
+      'rotation_states',
+      'prayer_routine_part_templates',
+    ]) {
+      await device.customStatement('DELETE FROM $table');
+    }
+  }
+
   test('a real account arrives on a real second phone, page by page', () async {
     final source = openCopy(sourcePath!, 'source-a');
     final target = openCopy(targetPath!, 'target-a');
@@ -113,31 +140,36 @@ void main() {
     expect(await countIn(target, 'recitation_events'), greaterThan(0));
   }, skip: skipReason, timeout: const Timeout(Duration(minutes: 10)));
 
-  test('and in the order his account really holds them', () async {
-    final source = openCopy(sourcePath!, 'source-b');
-    final target = openCopy(targetPath!, 'target-b');
-
-    // His account is not in backfill order and cannot be. On 2026-09-22 a
-    // build addressed each row by the record's own id, so every id carrying a
-    // colon came back 400: **all** his prayer sessions, rotation schemes and
-    // routine templates were refused and sat in quarantine. They were
-    // recovered and pushed on 2026-09-23 — a day after the 842 recitations
-    // that point at them. `$createdAt` is the order the account hands rows
-    // back in, so the dependants now come first and always will.
+  /// His account is not in backfill order and cannot be put into it. On
+  /// 2026-09-22 a build addressed each row by the record's own id, so every id
+  /// carrying a colon came back 400: **all** his prayer sessions, rotation
+  /// schemes and routine templates were refused and sat in quarantine. They
+  /// were recovered and pushed on 2026-09-23 — a day after the 842 recitations
+  /// that point at them. `$createdAt` is the order the account hands rows back
+  /// in, so the dependants come first and always will.
+  List<SyncEnvelope> asTheAccountHoldsThem(List<SyncEnvelope> history) {
     const recoveredLater = <SyncEntityType>{
       SyncEntityType.prayerSession,
       SyncEntityType.rotationScheme,
       SyncEntityType.prayerRoutineTemplate,
     };
-    final history = await hisHistory(source);
-    final asTheAccountHoldsThem = <SyncEnvelope>[
+    return <SyncEnvelope>[
       for (final envelope in history)
         if (!recoveredLater.contains(envelope.entityType)) envelope,
       for (final envelope in history)
         if (recoveredLater.contains(envelope.entityType)) envelope,
     ];
+  }
 
-    final outcome = await runCycleOver(asTheAccountHoldsThem, target, 'b');
+  test('and in the order his account really holds them', () async {
+    final source = openCopy(sourcePath!, 'source-b');
+    final target = openCopy(targetPath!, 'target-b');
+
+    final outcome = await runCycleOver(
+      asTheAccountHoldsThem(await hisHistory(source)),
+      target,
+      'b',
+    );
 
     expect(
       outcome.failureReason,
@@ -163,6 +195,80 @@ void main() {
       await countIn(target, 'rotation_schemes'),
       greaterThanOrEqualTo(await countIn(source, 'rotation_schemes')),
     );
+  }, skip: skipReason, timeout: const Timeout(Duration(minutes: 10)));
+
+  test('a phone that has nothing of his gets all of it back', () async {
+    final source = openCopy(sourcePath!, 'source-c');
+    final fresh = openCopy(targetPath!, 'target-c');
+    await emptyOfEverythingHeDid(fresh);
+    expect(
+      await countIn(fresh, 'mastered_surahs'),
+      0,
+      reason: 'this is the phone he would be holding after losing one',
+    );
+    expect(
+      await countIn(fresh, 'surah_metadata'),
+      greaterThan(0),
+      reason: 'the catalogue is fetched, not synced, and a first run has it',
+    );
+
+    final outcome = await runCycleOver(
+      asTheAccountHoldsThem(await hisHistory(source)),
+      fresh,
+      'c',
+    );
+    expect(outcome.failureReason, isNull);
+
+    final alive = (await source.customSelect(
+      'SELECT count(*) AS n FROM recitation_events '
+      'WHERE deleted_at_utc IS NULL',
+    ).getSingle()).read<int>('n');
+    // ignore: avoid_print
+    print(
+      'a new phone restored: ${await countIn(fresh, 'recitation_events')} '
+      'recitations, ${await countIn(fresh, 'prayer_sessions')} sessions, '
+      '${await countIn(fresh, 'mastered_surahs')} surahs, '
+      '${await countIn(fresh, 'rotation_schemes')} schemes, '
+      '${await countIn(fresh, 'learning_surahs')} plans',
+    );
+
+    expect(
+      await countIn(fresh, 'recitation_events'),
+      alive,
+      reason:
+          'this is the promise the whole feature is: a phone he has never used '
+          'before, holding the year he actually prayed',
+    );
+    expect(
+      await countIn(fresh, 'prayer_sessions'),
+      await countIn(source, 'prayer_sessions'),
+    );
+    expect(
+      await countIn(fresh, 'mastered_surahs'),
+      await countIn(source, 'mastered_surahs'),
+    );
+    expect(
+      await countIn(fresh, 'learning_surahs'),
+      await countIn(source, 'learning_surahs'),
+    );
+    expect(
+      await countIn(fresh, 'prayer_routine_templates'),
+      await countIn(source, 'prayer_routine_templates'),
+    );
+    expect(
+      await countIn(fresh, 'rotation_schemes'),
+      greaterThanOrEqualTo(await countIn(source, 'rotation_schemes')),
+    );
+
+    // The rotation is a projection, rebuilt rather than carried. A restore
+    // that brought every record and left the screen empty would be a restore
+    // in name only.
+    expect(
+      await countIn(fresh, 'rotation_parts'),
+      greaterThan(0),
+      reason: 'the rotation has to be rebuilt from what arrived',
+    );
+    await expectLater(SurahRepository(fresh).getRotationSnapshot(), completes);
   }, skip: skipReason, timeout: const Timeout(Duration(minutes: 10)));
 }
 
