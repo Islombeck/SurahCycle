@@ -322,8 +322,28 @@ pushed again, and **880 records left in the outbox** on his own database.
 
 **The Appwrite project paused itself for inactivity** while this was being
 cleaned up, which also means the app's sign-out could not delete its session on
-the server. Restoring the project is one action in the console and it is the
-owner's; the second phone's server session has to be deleted after that.
+the server.
+
+> **Read this before debugging a sync that does nothing.** The project is on
+> tier-0 and pauses after roughly a day; it paused on 2026-09-24 at 07:56 UTC
+> even though the console had been opened the day before, so what counts looks
+> like API activity rather than a visit. `Restore project` is a console button
+> and needs the console fingerprint, which the API cannot supply — the
+> `projects_update_status` call answers `Invalid console fingerprint`. Every
+> request meanwhile returns 403 `project_paused`. **Check the project's status
+> first; an evening spent looking for a defect against a sleeping project is an
+> evening lost.** (Exact rule not confirmed with Appwrite, so it is written
+> here as an observation.)
+
+**Closed once the owner restored it, verified live on 2026-09-24:**
+
+- the second phone's server session deleted; one session left, his own, from
+  2026-09-17;
+- his phone ran a cycle — cursor moved, success recorded, no failure — and the
+  account went from 1557 rows to **1558**: one genuine change, where the old
+  re-scan would have sent his whole roster;
+- a second cycle straight after left it at **1558**. Nothing offered, nothing
+  refused.
 
 ~~The one thing still unproven is a restore onto a phone.~~ **Done** — see the
 entry above, which supersedes this paragraph.
