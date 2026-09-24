@@ -464,9 +464,24 @@ final class _Device {
       ]);
 
   /// And puts it in the rotation, which *is* user data.
+  ///
+  /// Dated from this test's clock, like every other act here. The touch
+  /// triggers stamp an insert with the **wall** clock, and this fixture runs in
+  /// a fabricated past, so without this the roster row is born newer than
+  /// every edit the test then makes to it — and the merge rule, correctly,
+  /// prefers the newer one. Three tests here passed for a year on the other
+  /// side of that: a defect in the rotation rebuild re-stamped every roster row
+  /// to the wall clock on every rebuild, which kept the local copy artificially
+  /// newest and made the renames look decisive. Fixing the rebuild on
+  /// 2026-09-24 took the crutch away and the fixture's two clocks showed.
   Future<void> addSurah(String id, int number) async {
     await knowSurah(id, number);
     await surahs.addMastered(id);
+    await SyncVersionedRows(database).stampAuthored(
+      table: 'mastered_surahs',
+      key: id,
+      authoredAtUtc: nowUtc(),
+    );
   }
 
   Future<void> recite(String id, String surahId, {required DateTime at}) =>

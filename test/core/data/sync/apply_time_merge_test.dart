@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:murajaah/core/data/data.dart';
+import 'package:murajaah/core/data/repositories/rotation_projection_store.dart';
 import 'package:murajaah/core/data/sync/sync_envelope_router.dart';
 import 'package:murajaah/core/domain/domain.dart';
 import 'package:murajaah/core/sync/sync.dart';
@@ -207,6 +208,62 @@ void main() {
       );
 
       expect((await masteredRow('surah-112')).alias, 'с аккаунта');
+    });
+  });
+
+  group('a rotation rebuild is a re-derivation, not an edit', () {
+    Future<DateTime?> schemeDate(String id) async {
+      final row = await database
+          .customSelect(
+            'SELECT updated_at_utc AS at FROM rotation_schemes WHERE id = ?',
+            variables: <Variable<Object>>[Variable<String>(id)],
+          )
+          .getSingle();
+      final seconds = row.data['at'];
+      if (seconds is! int) return null;
+      return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
+    }
+
+    test('it leaves both tables dated as it found them', () async {
+      // Everything the rebuild writes is a projection — cached counts, and
+      // baselines the journal owns and recomputes the same way on every
+      // device. The touch triggers cannot tell that apart, so a rebuild used
+      // to mark the whole roster as changed: the next scan queued all of it,
+      // and his account grew by about 28 rows every time he opened the app,
+      // with use rather than with history.
+      await seedSurah('surah-112');
+      await stampMasteredSurah('surah-112', older);
+      await database.customStatement(
+        'UPDATE rotation_schemes SET updated_at_utc = ? WHERE id = ?',
+        <Object?>[
+          older.millisecondsSinceEpoch ~/ 1000,
+          'surah-112:scheme:1',
+        ],
+      );
+
+      final store = RotationProjectionStore(database);
+      final state = await store.loadSnapshot();
+      await store.rebuildFromJournal(targetFloor: state.rotationTarget);
+
+      expect((await masteredRow('surah-112')).updatedAtUtc?.toUtc(), older);
+      expect(await schemeDate('surah-112:scheme:1'), older);
+    });
+
+    test('but a real edit is still dated when it happens', () async {
+      await seedSurah('surah-112');
+      await stampMasteredSurah('surah-112', older);
+
+      await (database.update(database.masteredSurahs)
+            ..where((MasteredSurahs row) => row.surahId.equals('surah-112')))
+          .write(const MasteredSurahsCompanion(alias: Value<String?>('мой')));
+
+      expect(
+        (await masteredRow('surah-112')).updatedAtUtc!.isAfter(older),
+        isTrue,
+        reason:
+            'the column still has to move for something the owner actually '
+            'changed, or nothing would ever be offered to the account again',
+      );
     });
   });
 

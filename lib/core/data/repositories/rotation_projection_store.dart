@@ -428,7 +428,66 @@ final class RotationProjectionStore {
         projectionVersion: const Value<int>(projectionVersion),
       ),
     );
+    await _restoreStampsOn(masteredRows, schemeRows);
     return loadSnapshot();
+  }
+
+  /// Puts back the `updated_at_utc` this rebuild found on the rows it only
+  /// re-derived.
+  ///
+  /// Everything written above is a projection — cached counts, and baselines
+  /// the journal owns and recomputes identically on every device. The v10
+  /// touch triggers cannot tell that apart: they stamp any update that leaves
+  /// the column alone, so a rebuild marked **his whole roster as changed**.
+  ///
+  /// The cost was not theoretical. A rebuild runs on every recitation and on
+  /// every pulled page that touches the rotation, so each one re-dated 27
+  /// roster rows and 28 schemes, the next scan queued all of them, and his
+  /// account gained about 28 rows every time he opened the app — 1473 rows for
+  /// roughly a thousand records, and climbing with use rather than with
+  /// history. Measured on his own database on 2026-09-24.
+  ///
+  /// Only rows whose stamp actually moved are written back. Writing the same
+  /// value would satisfy the trigger's `NEW.updated_at_utc IS OLD` guard and
+  /// stamp it to now all over again, which is the bug rather than the fix. The
+  /// comparison is `IS NOT` because a row this device never authored carries
+  /// null, and `<>` would quietly skip it.
+  Future<void> _restoreStampsOn(
+    List<MasteredSurahRow> mastered,
+    List<RotationSchemeRow> schemes,
+  ) async {
+    for (final row in mastered) {
+      await _restoreStamp(
+        table: 'mastered_surahs',
+        key: 'surah_id',
+        id: row.surahId,
+        atUtc: row.updatedAtUtc,
+      );
+    }
+    for (final row in schemes) {
+      await _restoreStamp(
+        table: 'rotation_schemes',
+        key: 'id',
+        id: row.id,
+        atUtc: row.updatedAtUtc,
+      );
+    }
+  }
+
+  Future<void> _restoreStamp({
+    required String table,
+    required String key,
+    required String id,
+    required DateTime? atUtc,
+  }) {
+    final seconds = atUtc == null
+        ? null
+        : atUtc.toUtc().millisecondsSinceEpoch ~/ 1000;
+    return database.customStatement(
+      'UPDATE $table SET updated_at_utc = ? '
+      'WHERE $key = ? AND updated_at_utc IS NOT ?',
+      <Object?>[seconds, id, seconds],
+    );
   }
 
   Future<RotationSchemeRow> _activeSchemeRow(String surahId) =>
