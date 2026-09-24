@@ -245,6 +245,18 @@ and matches what `FakeSyncBackend` already does on a complete tie.
   the phone this was found on had no recitations of its own — and closing it
   properly means remembering the absorption, which is a table and therefore a
   schema version.
+- **Re-offering a winning local copy costs the whole database when the loser is
+  undated.** Consequence 3 below re-scans from the *incoming* record's date. An
+  undated record carries the epoch, so the scan starts at 1970 and re-offers
+  everything — 919 records on his second phone, moments after it had received
+  them. Two ways out, and the second is the more honest question: re-offer the
+  records that won **by name**, which needs a door the backfill does not have;
+  or **drop the mechanism**, because its premise belongs to the design this
+  ADR replaced. When the account held one rewritten row per record, a stale row
+  *was* what a new device would read. The account is a log now and §1 is
+  decided per record on every device, so an older row further down the log is
+  already harmless. Nobody has checked that reasoning against a case where it
+  fails, which is why it is written here as a question and not as a change.
 - ~~A winning local copy is not pushed back.~~ **Closed the same day.** The
   cycle re-scans from the instant it out-ranked and drains once more; see
   consequence 3 of the amendment. It re-offers a handful of neighbouring

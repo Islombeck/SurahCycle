@@ -276,13 +276,53 @@ unchanged; the fixture now uses one clock. Worth keeping in mind here: a green
 test can be green for the wrong reason, and removing a defect is how that
 surfaces.
 
-**The one thing still unproven is a restore onto a phone.** Not because the
-code is unverified — it is, against his own data through the real cycle — but
-because the transport and the applying have only ever been proven separately:
-his second phone did fetch real pages from the live account before failing to
-apply them. Doing it for real costs another sign-in on a phone that is not his
-and another cleanup afterwards, so it is deliberately left as the last step
-rather than repeated.
+### It was proven on a phone, 2026-09-24 — and it exposed one more defect
+
+He signed in on the Honor 50 himself. Preview against the live account: **только
+на устройстве 43 · только в аккаунте 1024 · есть в обоих 12**, backup first. He
+merged.
+
+| on the second phone, from the live account | |
+|---|---|
+| 741 | recitations — his 847 less the 106 he withdrew |
+| 85 | prayer sessions |
+| 27 | mastered surahs · 28 rotation schemes |
+| **5** | learning plans: its own **4 kept**, plus his 1 |
+| **66** | learning events: its own 34, plus his 32 |
+
+Nothing refused, no failure recorded, and the screens render: the prayer
+routine with its surah slots, the mastered list with Al-Fatiha carrying its own
+rule. **This is the check the handoff has owed since Stage J began.**
+
+**And then the phone queued 919 records to send back.** Everything it had just
+received. The activation backfill is not the cause — it ran before the pull,
+with 43 records to offer. The cause is the *superseded re-scan*: when an
+incoming record loses to a local one, the router remembers **the incoming
+record's date** and the cycle re-scans from it. Several of his roster records
+are undated (epoch), the second phone's own surahs beat them, so the re-scan
+started at 1970 and re-offered the entire database.
+
+102 rows reached the account before the queue was stopped; they were deleted by
+device id, and the account is back to the 1557 rows that are his. The remaining
+817 never went — the phone's database was restored instead.
+
+Two fixes are defensible and the choice is the owner's, so neither is built:
+
+1. **Re-offer the records that won, by name.** The router knows which they are;
+   the scan takes a window because that is the only door the backfill has.
+2. **Drop the re-scan.** Its premise — "a phone that joins tomorrow would take
+   the stale copy as truth" — was written for the old design where the account
+   held one rewritten row per record. The account is a log now and every device
+   decides per record, so an older row further down it is already harmless. If
+   that reasoning holds, the mechanism is redundant rather than merely blunt.
+
+**The Appwrite project paused itself for inactivity** while this was being
+cleaned up, which also means the app's sign-out could not delete its session on
+the server. Restoring the project is one action in the console and it is the
+owner's; the second phone's server session has to be deleted after that.
+
+~~The one thing still unproven is a restore onto a phone.~~ **Done** — see the
+entry above, which supersedes this paragraph.
 
 **What is still open** is now in ADR-0002 under "Still open", and one entry
 there is new and worth reading before the next device: a record this build
