@@ -599,9 +599,15 @@ final class DriftSyncBackfill implements SyncBackfill {
                     deletedAtUtc: deletedAt,
                   );
           },
+          // The state stamp is in here for the **restores**. Without it the
+          // pair above collapses back to the creation time the moment a
+          // withdrawal is undone, so the change that brings a prayer back
+          // looks as old as the prayer itself and never crosses the watermark:
+          // the withdrawal travels and the thing that reverses it does not.
           changedAtUtc: _latest(<DateTime?>[
             entry.event.createdAtUtc,
             entry.deletedAtUtc,
+            entry.stateChangedAtUtc,
           ]),
         );
       }

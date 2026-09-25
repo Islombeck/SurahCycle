@@ -80,6 +80,7 @@ final class RecitationHistoryEntry {
     this.coveredParts = const <SurahRotationPart>[],
     this.isWholeSurah = false,
     this.deletedAtUtc,
+    this.stateChangedAtUtc,
   });
 
   final SurahRecitationEvent event;
@@ -94,6 +95,17 @@ final class RecitationHistoryEntry {
   /// here and can be put back. Only a history asked for it with
   /// `includeDeleted` ever sees one.
   final DateTime? deletedAtUtc;
+
+  /// When the standing of this entry last changed — withdrawn, or put back.
+  ///
+  /// Null for anything written before v11 added the column, which is honest:
+  /// nobody knows when a record from last year last changed hands.
+  ///
+  /// It exists here because a restore is invisible without it. Clearing the
+  /// withdrawal puts [deletedAtUtc] back to null, so "created, or withdrawn"
+  /// collapses to the creation time and the change looks months old to
+  /// anything asking what is new.
+  final DateTime? stateChangedAtUtc;
 
   bool get isDeleted => deletedAtUtc != null;
 }
@@ -572,9 +584,12 @@ final class RecitationRepository {
     }
     final query = database.select(database.recitationEvents);
     if (changedSince != null) {
-      // Written **or** withdrawn at or after this moment. Both columns matter:
-      // a withdrawal is an edit to a row whose creation time has not moved, so
-      // asking only about `created_at_utc` would miss every deletion.
+      // Written, withdrawn, **or put back** at or after this moment. All three
+      // columns matter: a withdrawal is an edit to a row whose creation time
+      // has not moved, so asking only about `created_at_utc` would miss every
+      // deletion — and a restore clears `deleted_at_utc` again, so asking only
+      // about those two would miss every restore, which is how a prayer
+      // brought back on one device stayed gone on the others.
       //
       // Added for the sync scan, which runs on every app resume. Reading the
       // whole journal and discarding most of it in Dart worked and did not
@@ -583,7 +598,8 @@ final class RecitationRepository {
       query.where(
         (RecitationEvents row) =>
             row.createdAtUtc.isBiggerOrEqualValue(changedSince) |
-            row.deletedAtUtc.isBiggerOrEqualValue(changedSince),
+            row.deletedAtUtc.isBiggerOrEqualValue(changedSince) |
+            row.stateChangedAtUtc.isBiggerOrEqualValue(changedSince),
       );
     }
     if (!includeDeleted) {
@@ -952,6 +968,7 @@ final class RecitationRepository {
                   .where((part) => part.schemeId == row.rotationSchemeId)
                   .length,
           deletedAtUtc: row.deletedAtUtc?.toUtc(),
+          stateChangedAtUtc: row.stateChangedAtUtc?.toUtc(),
         ),
     ];
   }

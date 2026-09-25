@@ -162,6 +162,51 @@ void main() {
     );
   });
 
+  test('a restored recitation is offered again, not left behind', () async {
+    // Found on an emulator, not here, which is why it is written down here.
+    //
+    // The scan dates a recitation by the latest of "when it happened" and
+    // "when it was withdrawn". A **restore** clears the withdrawal, so that
+    // pair collapses back to the creation time — months old on a real device —
+    // and the record falls behind the push watermark. The withdrawal reaches
+    // the account and the change that undoes it never does, so one device
+    // shows the prayer and every other one does not, forever.
+    //
+    // v11 has the answer already: `state_changed_at_utc` is exactly "when the
+    // standing of this record last changed", and it moves on a restore. The
+    // applier was taught to compare it; the sender has to be taught to notice
+    // it, or only half the rule exists.
+    await addSurah('surah-a', 112);
+    await recite('brought-back', 'surah-a');
+    final withdrawnAt = now.add(const Duration(minutes: 5));
+    await recitations.deleteRecitation('brought-back', deletedAtUtc: withdrawnAt);
+    final restoredAt = now.add(const Duration(minutes: 9));
+    await recitations.restoreRecitation(
+      'brought-back',
+      restoredAtUtc: restoredAt,
+    );
+
+    // A watermark between the withdrawal and the restore: the withdrawal has
+    // already been sent, and the restore is the only thing left to say.
+    final report = await backfill.enqueueChangedSince(
+      nowUtc: restoredAt,
+      since: now.add(const Duration(minutes: 7)),
+    );
+
+    expect(
+      report.enqueuedByType[SyncEntityType.recitationEvent],
+      1,
+      reason: 'the restore is a change, and the account has not heard it yet',
+    );
+    final queued = await queuedOfType(SyncEntityType.recitationEvent);
+    expect(queued.single.entityId, 'brought-back');
+    expect(
+      queued.single.isTombstone,
+      isFalse,
+      reason: 'it stands again, so what travels is the record, not a deletion',
+    );
+  });
+
   test('the envelope is dated when the thing happened, not now', () async {
     await addSurah('surah-a', 112);
     final longAgo = DateTime.utc(2024, 3, 1, 5);
