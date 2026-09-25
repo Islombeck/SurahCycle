@@ -11,10 +11,15 @@ import 'package:murajaah/core/sync/sync.dart';
 /// anything that cannot be written has to stay on the server rather than be
 /// dropped on the floor.
 ///
-/// The applier never re-decides a conflict. The server already chose the
-/// winner; a client that compared timestamps again would be a second resolver,
-/// free to disagree with the first, and two devices doing that converge on
-/// nothing.
+/// The applier never re-decides the *record*: a recitation is append-only, so
+/// two devices produce different prayers rather than two versions of one, and
+/// what arrives is written as sent.
+///
+/// Whether the prayer **stands** is the one thing both devices can touch, and
+/// that is decided here — by the state stamp, the same comparison the local
+/// withdrawal and restore paths use. It has to be: the account's log is ordered
+/// by when a change reached it, not by when it was made, so arrival order would
+/// let a withdrawal made offline on Monday undo a restore made on Tuesday.
 void main() {
   late AppDatabase database;
   late SurahRepository surahs;
@@ -71,15 +76,18 @@ void main() {
     coveredPartIds: <String>['$surahId:scheme:1:part:1'],
   );
 
-  SyncEnvelope upsertOf(SurahRecitationEvent source, {int minute = 0}) =>
-      RecitationSyncPayload.upsert(
-        source,
-        envelopeId: 'envelope-${source.id}-$minute',
-        deviceId: 'other-device',
-        idempotencyKey: 'key-${source.id}-$minute',
-        schemaVersion: 10,
-        updatedAtUtc: DateTime.utc(2026, 9, 16, 16, minute),
-      );
+  SyncEnvelope upsertOf(
+    SurahRecitationEvent source, {
+    int hour = 16,
+    int minute = 0,
+  }) => RecitationSyncPayload.upsert(
+    source,
+    envelopeId: 'envelope-${source.id}-$hour-$minute',
+    deviceId: 'other-device',
+    idempotencyKey: 'key-${source.id}-$hour-$minute',
+    schemaVersion: 10,
+    updatedAtUtc: DateTime.utc(2026, 9, 16, hour, minute),
+  );
 
   Future<void> applyIn(SyncEnvelope envelope) =>
       database.transaction(() => applier.apply(envelope));
@@ -234,7 +242,32 @@ void main() {
       );
     });
 
-    test('an upsert after it revives the recitation', () async {
+    test('a later upsert revives the recitation', () async {
+      await applyIn(upsertOf(event()));
+      await applyIn(
+        RecitationSyncPayload.tombstone(
+          entityId: 'incoming-1',
+          envelopeId: 'envelope-gone',
+          deviceId: 'other-device',
+          idempotencyKey: 'key-gone',
+          schemaVersion: 10,
+          originalCreatedAtUtc: DateTime.utc(2026, 9, 16, 15, 30),
+          deletedAtUtc: DateTime.utc(2026, 9, 16, 18),
+        ),
+      );
+
+      await applyIn(upsertOf(event(), hour: 18, minute: 30));
+
+      expect(
+        await recitations.getHistory(),
+        hasLength(1),
+        reason:
+            'this is what a restore on the other device looks like from here, '
+            'and it was made after the withdrawal it undoes',
+      );
+    });
+
+    test('an earlier upsert does not revive the recitation', () async {
       await applyIn(upsertOf(event()));
       await applyIn(
         RecitationSyncPayload.tombstone(
@@ -252,10 +285,16 @@ void main() {
 
       expect(
         await recitations.getHistory(),
-        hasLength(1),
+        isEmpty,
         reason:
-            'this is what a restore on the other device looks like from here, '
-            'and the server already decided it beat the tombstone',
+            'an edit made before the withdrawal reached the account after it, '
+            'and arriving last is not the same as being the newer decision',
+      );
+      final withDeleted = await recitations.getHistory(includeDeleted: true);
+      expect(
+        withDeleted.single.deletedAtUtc,
+        DateTime.utc(2026, 9, 16, 18),
+        reason: 'the record is still updated; only its standing is not',
       );
     });
   });

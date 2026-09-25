@@ -423,7 +423,14 @@ final class RecitationRepository {
       await (database.update(
         database.recitationEvents,
       )..where((RecitationEvents row) => row.id.equals(eventId))).write(
-        RecitationEventsCompanion(deletedAtUtc: Value<DateTime?>(deletedAtUtc)),
+        RecitationEventsCompanion(
+          deletedAtUtc: Value<DateTime?>(deletedAtUtc),
+          // The same version the applier compares against when the account
+          // speaks. Written here too, or a withdrawal made on this phone would
+          // have no date another device could weigh a restore against — see
+          // `RecitationStateVersion`.
+          stateChangedAtUtc: Value<DateTime?>(deletedAtUtc),
+        ),
       );
       if (existing.prayerSessionPartId case final prayerSessionPartId?) {
         await _reconcileRecitationCompletion(prayerSessionPartId);
@@ -477,7 +484,10 @@ final class RecitationRepository {
       await (database.update(
         database.recitationEvents,
       )..where((RecitationEvents row) => row.id.equals(eventId))).write(
-        const RecitationEventsCompanion(deletedAtUtc: Value<DateTime?>(null)),
+        RecitationEventsCompanion(
+          deletedAtUtc: const Value<DateTime?>(null),
+          stateChangedAtUtc: Value<DateTime?>(restoredAtUtc),
+        ),
       );
       if (existing.prayerSessionPartId case final prayerSessionPartId?) {
         // The same reconciliation the deletion ran. It derives the slot's state

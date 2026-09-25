@@ -17,6 +17,12 @@
 /// devices can produce different prayers, not two versions of the same one.
 /// What they *can* both touch is whether it stands, and that is the withdrawal
 /// rule below rather than a comparison of the record.
+///
+/// That one comparison is `RecitationStateVersion`, over the state stamp v11
+/// added, and it is the same rule the local withdrawal and restore paths write
+/// with. Arrival order cannot serve here: the account's log is ordered by when
+/// a change reached it, so a withdrawal made offline on Monday arrives after a
+/// restore made on Tuesday and would undo it.
 library;
 
 import 'package:drift/drift.dart';
@@ -26,6 +32,9 @@ import '../../sync/recitation_sync_payload.dart';
 import '../../sync/sync.dart';
 import '../database/app_database.dart';
 import '../repositories/rotation_projection_store.dart';
+import 'recitation_state_version.dart';
+import 'sync_entity_aliases.dart';
+import 'sync_withdrawal_marks.dart';
 
 final class RecitationSyncApplier {
   RecitationSyncApplier(this._database, {this.rebuildsProjection = true})
@@ -65,15 +74,32 @@ final class RecitationSyncApplier {
     if (existing == null) {
       // A deletion for something this device never had. Nothing to withdraw,
       // and inventing a row so it can be marked deleted would put a prayer in
-      // the journal that never happened here.
+      // the journal that never happened here — but it is remembered, so a copy
+      // of that record arriving out of order cannot bring the prayer back.
+      await SyncWithdrawalMarks.record(_database, envelope: envelope);
       return;
     }
-    if (existing.deletedAtUtc != null) return;
+    if (!RecitationStateVersion.incomingWins(
+      incomingAtUtc: envelope.updatedAtUtc,
+      localAtUtc: existing.stateChangedAtUtc,
+      incomingWithdraws: true,
+    )) {
+      // He brought this prayer back after the withdrawal that is arriving now.
+      // Obeying it would undo the newer decision, which is the defect ADR-0002
+      // carried as "a withdrawal made offline can beat a newer restore".
+      return;
+    }
+    if (existing.deletedAtUtc != null) {
+      // Already withdrawn here; only the version moves, so nothing rebuilds.
+      await _stampStateVersion(envelope.entityId, envelope.updatedAtUtc);
+      return;
+    }
     await (_database.update(
       _database.recitationEvents,
     )..where((RecitationEvents row) => row.id.equals(envelope.entityId))).write(
       RecitationEventsCompanion(
         deletedAtUtc: Value<DateTime?>(envelope.updatedAtUtc),
+        stateChangedAtUtc: Value<DateTime?>(envelope.updatedAtUtc),
       ),
     );
     // A withdrawal lowers the surah's standing exactly as writing it raised it,
@@ -88,25 +114,79 @@ final class RecitationSyncApplier {
       envelope.payload,
       entityId: envelope.entityId,
     );
-    final schemeId = event.coverage?.rotationSchemeId;
-    if (schemeId == null) {
+    final sentSchemeId = event.coverage?.rotationSchemeId;
+    if (sentSchemeId == null) {
       // The local table requires one, so a recitation without coverage cannot
       // be stored at all. Refusing keeps it on the server to be fetched again
       // rather than dropping a prayer.
       throw const SyncTransportException('remote-recitation-has-no-coverage');
     }
+    // The sending device names the ids *it* knows. Where this one recognised
+    // an arriving scheme as the split it already held under another name, the
+    // two sets of ids differ and every record naming the arriving ones would
+    // otherwise be refused for a scheme that does not exist here.
+    final aliases = SyncAliasMap(_database);
+    final schemeId = await aliases.resolve(
+      sentSchemeId,
+      SyncAliasKind.rotationScheme,
+    );
+    final coveredPartIds = await aliases.resolveAll(
+      event.coveredPartIds,
+      SyncAliasKind.rotationPart,
+    );
     await _requirePrerequisites(event.surahId, schemeId);
     await _requirePrayerSession(event);
 
     final existing = await _rowOf(event.id);
     if (existing == null) {
-      await _insert(event, schemeId);
+      await _insert(event, schemeId, envelope.updatedAtUtc);
+      await _applyAnyWithdrawalMark(event.id, envelope.updatedAtUtc);
     } else {
-      await _update(event, existing);
+      await _update(event, existing, envelope.updatedAtUtc);
     }
-    await _replaceCoverage(event, schemeId);
+    await _replaceCoverage(event, schemeId, coveredPartIds);
     await _rebuild();
   }
+
+  /// Withdraws a record that arrived after the withdrawal that removed it.
+  ///
+  /// The account's log is ordered by when each change reached it, not by when
+  /// it happened, and a record recovered from quarantine reaches it late. So a
+  /// prayer can arrive *after* its own withdrawal. The mark left by that
+  /// withdrawal is applied here, and only if it is the newer of the two.
+  Future<void> _applyAnyWithdrawalMark(
+    String entityId,
+    DateTime arrivedAtUtc,
+  ) async {
+    final entityKey = '${SyncEntityType.recitationEvent.name}:$entityId';
+    final withdrawnAt = await SyncWithdrawalMarks.withdrawnAt(
+      _database,
+      entityKey: entityKey,
+    );
+    if (withdrawnAt != null &&
+        RecitationStateVersion.incomingWins(
+          incomingAtUtc: withdrawnAt,
+          localAtUtc: arrivedAtUtc,
+          incomingWithdraws: true,
+        )) {
+      await (_database.update(
+        _database.recitationEvents,
+      )..where((RecitationEvents row) => row.id.equals(entityId))).write(
+        RecitationEventsCompanion(
+          deletedAtUtc: Value<DateTime?>(withdrawnAt),
+          stateChangedAtUtc: Value<DateTime?>(withdrawnAt),
+        ),
+      );
+    }
+    await SyncWithdrawalMarks.clear(_database, entityKey: entityKey);
+  }
+
+  Future<void> _stampStateVersion(String id, DateTime atUtc) =>
+      (_database.update(
+        _database.recitationEvents,
+      )..where((RecitationEvents row) => row.id.equals(id))).write(
+        RecitationEventsCompanion(stateChangedAtUtc: Value<DateTime?>(atUtc)),
+      );
 
   /// Rebuilt from the journal rather than adjusted by hand, for the same reason
   /// a restore rebuilds: a second implementation of the rotation rules is free
@@ -179,7 +259,11 @@ final class RecitationSyncApplier {
     }
   }
 
-  Future<void> _insert(SurahRecitationEvent event, String schemeId) async {
+  Future<void> _insert(
+    SurahRecitationEvent event,
+    String schemeId,
+    DateTime stateChangedAtUtc,
+  ) async {
     // A journal sequence is this device's own ordering and is never carried
     // across: two devices number their journals independently, and importing a
     // number would collide with one already used here.
@@ -209,6 +293,7 @@ final class RecitationSyncApplier {
             qadaFulfilledLocalDate: Value<String?>(
               event.qadaFulfilledLocalDate?.toString(),
             ),
+            stateChangedAtUtc: Value<DateTime?>(stateChangedAtUtc),
           ),
         );
   }
@@ -216,7 +301,17 @@ final class RecitationSyncApplier {
   Future<void> _update(
     SurahRecitationEvent event,
     RecitationEventRow existing,
+    DateTime incomingAtUtc,
   ) async {
+    // An upsert that arrives for a row withdrawn here is a restore made on
+    // another device — but only if it is the newer of the two decisions. The
+    // fields below are the same record either way and are written regardless;
+    // whether the prayer *stands* is the one thing that has to be settled.
+    final revives = RecitationStateVersion.incomingWins(
+      incomingAtUtc: incomingAtUtc,
+      localAtUtc: existing.stateChangedAtUtc,
+      incomingWithdraws: false,
+    );
     await (_database.update(
       _database.recitationEvents,
     )..where((RecitationEvents row) => row.id.equals(event.id))).write(
@@ -233,10 +328,12 @@ final class RecitationSyncApplier {
         qadaFulfilledLocalDate: Value<String?>(
           event.qadaFulfilledLocalDate?.toString(),
         ),
-        // An upsert that arrives for a row deleted here revives it. That is
-        // what a restore on another device *is*, and the server already
-        // decided this envelope beat the tombstone.
-        deletedAtUtc: const Value<DateTime?>(null),
+        deletedAtUtc: revives
+            ? const Value<DateTime?>(null)
+            : const Value<DateTime?>.absent(),
+        stateChangedAtUtc: revives
+            ? Value<DateTime?>(incomingAtUtc)
+            : const Value<DateTime?>.absent(),
       ),
     );
   }
@@ -244,11 +341,12 @@ final class RecitationSyncApplier {
   Future<void> _replaceCoverage(
     SurahRecitationEvent event,
     String schemeId,
+    List<String> coveredPartIds,
   ) async {
     await (_database.delete(
       _database.recitationEventParts,
     )..where((RecitationEventParts row) => row.eventId.equals(event.id))).go();
-    for (final partId in event.coveredPartIds) {
+    for (final partId in coveredPartIds) {
       await _database
           .into(_database.recitationEventParts)
           .insert(
