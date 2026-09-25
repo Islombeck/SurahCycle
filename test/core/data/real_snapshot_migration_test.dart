@@ -187,6 +187,6 @@ _Counts _countsOf(String path) {
     }
     return _Counts(version as int, rows);
   } finally {
-    database.dispose();
+    database.close();
   }
 }
