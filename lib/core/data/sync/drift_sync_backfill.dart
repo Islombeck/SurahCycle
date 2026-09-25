@@ -587,7 +587,23 @@ final class DriftSyncBackfill implements SyncBackfill {
                     deviceId: deviceId,
                     idempotencyKey: _newId(),
                     schemaVersion: schemaVersion,
-                    updatedAtUtc: entry.event.createdAtUtc,
+                    // When the standing was decided, which for almost every
+                    // record is simply when the prayer was said — the stamp is
+                    // null until something withdraws or restores it, and none
+                    // is invented for the records that predate v11.
+                    //
+                    // It matters for exactly one case, and that case is the
+                    // whole reason the stamp exists: a **restored** prayer
+                    // dated by its creation time can never beat the withdrawal
+                    // it undoes, because the applier weighs this field against
+                    // the state stamp and the withdrawal is always later. The
+                    // record would travel and change nothing.
+                    updatedAtUtc:
+                        _latest(<DateTime?>[
+                          entry.event.createdAtUtc,
+                          entry.stateChangedAtUtc,
+                        ]) ??
+                        entry.event.createdAtUtc,
                   )
                 : RecitationSyncPayload.tombstone(
                     entityId: entry.event.id,

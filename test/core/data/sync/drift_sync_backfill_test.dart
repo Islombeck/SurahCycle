@@ -205,6 +205,15 @@ void main() {
       isFalse,
       reason: 'it stands again, so what travels is the record, not a deletion',
     );
+    expect(
+      queued.single.updatedAtUtc,
+      restoredAt,
+      reason:
+          'dated when the standing was decided, not when the prayer was said. '
+          'A restore dated by the creation time can never beat the withdrawal '
+          'it undoes: the applier weighs exactly this field against the state '
+          'stamp, and the withdrawal is always the later of the two.',
+    );
   });
 
   test('the envelope is dated when the thing happened, not now', () async {
