@@ -1,5 +1,74 @@
 # Murajaah AI handoff
 
+## Acting on the audit — checkpoint before source changes (2026-09-24)
+
+Mandatory read done: all 2841 lines of this file, AGENTS.md, CLAUDE.md, the
+audit, ADR-0002. HEAD `7903099` matches the audit's baseline; the only changes
+since are the audit document and its handoff entry, both preserved.
+
+**The 85/84 session question is answered, and the audit was right that the
+counts alone proved nothing.** The snapshots it could not find are in this
+session's scratchpad, and comparing **ids** rather than counts settles it: the
+Honor's 85 are the main phone's 84 **plus** `routine-session:2026-09-24:dhuhr:
+ordinary`, and nothing is in the 84 that is missing from the 85. That row was
+created *locally on each device* — `started_at_utc` 07:44:29 on the Honor, the
+minute of the merge, and 10:04:15 on the main phone, the minute of a later
+cycle — with no recitations either side. Each device opens the current prayer's
+session itself, under a deterministic date-based id. **No loss, and never a
+transfer.**
+
+**Emulator: still absent.** The SDK has `cmdline-tools`, `platform-tools`,
+`platforms`, `build-tools`, `ndk`, `cmake` — no `emulator/`, no
+`system-images/`, and no `~/.android/avd`. Installing them is attempted below.
+
+**Design settled before writing any of it**, because the audit asked for
+precision, tie handling, owner scope and the treatment of unknown historical
+times to be specified first:
+
+- **Durable inbox — owner-scoped**, like the outbox and the cursor. Written in
+  the same transaction that advances the cursor, so the cursor may finally
+  advance past a record this build cannot place: nothing is dropped, because
+  the record is durably held. Retried every cycle in dependency order.
+- **Alias map — not owner-scoped, deliberately.** It records that two
+  identifiers name the same split *on this device*; the local domain tables it
+  points into are a single dataset, not one per account, so scoping it by owner
+  would invent a distinction the rows it describes do not have.
+- **State version — whole seconds**, matching the v10 touch triggers and
+  `SyncMergeDecision`, on `recitation_events`. **Null means unknown** and is
+  never invented for historical rows: a known incoming time beats an unknown
+  local one, which is the same direction `SyncMergeDecision` already takes for
+  a null local timestamp. **On an exact tie the withdrawal wins**, which is
+  ADR-0002's existing reasoning — withdrawn is recoverable, a resurrection is
+  indistinguishable from the owner recording the prayer again.
+- **A tombstone for a record this device never had is not deferred.** The
+  backfill sends a withdrawn recitation **as the withdrawal alone**, never as
+  the record plus a deletion, so 106 of his would sit unresolvable forever. It
+  is retained as a mark instead, so a later upsert dated at or before it cannot
+  resurrect the prayer.
+
+## Independent audit continuation — 2026-09-24
+
+Owner linked the prior ChatGPT conversation and asked to verify and continue.
+Audit checkpoint completed before implementation or cloud changes. HEAD
+7903099b22fa1b5fe227b6f862a89f51bab0415f and the reported APK hash/size match.
+Initial tracked tree and whitespace check clean; owner untracked files untouched.
+59 relevant existing sync tests passed on synthetic databases. Full suite,
+analyzer and physical-device checks were not repeated.
+
+The report supports four complete acceptance items, one partial and three
+incomplete. 85 sessions on Honor and 84 on the main phone are not a before/after
+pair; matching historical snapshots were not found in the searched workspace.
+All three remaining sync defects are supported by source inspection. Correct
+conflict direction: an OLD offline withdrawal can defeat a NEWER restore.
+See docs/STAGE_J_INDEPENDENT_AUDIT_2026-09-24.md for evidence and emulator plan.
+
+No source code, cloud, phones, personal databases or backups changed. Historical
+sections of this handoff still need the mandatory full read before source edits.
+Next: complete that read, isolated failing reproductions, durable inbox/alias/
+state-version repair with reviewed migration, then two-emulator acceptance on a
+separate test account. Inspected SDK has no emulator or system images; default
+AVD directory absent. Stage J remains open.
+
 ## Where the sprint stands — 2026-09-23 (read this first)
 
 The sprint is **Stage J**: an account the owner's history can be trusted to,
