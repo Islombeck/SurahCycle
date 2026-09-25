@@ -22,6 +22,7 @@ import '../../sync/rotation_scheme_sync_payload.dart';
 import '../../sync/sync.dart';
 import '../database/app_database.dart';
 import '../repositories/rotation_projection_store.dart';
+import 'sync_entity_aliases.dart';
 import 'sync_versioned_rows.dart';
 
 final class RotationSchemeSyncApplier {
@@ -143,7 +144,10 @@ final class RotationSchemeSyncApplier {
             ))
             .get();
     if (recitations.isNotEmpty || adjustments.isNotEmpty) {
-      if (await _isTheSameSplit(clash, record)) return false;
+      if (await _isTheSameSplit(clash, record)) {
+        await _rememberAbsorption(clash, record);
+        return false;
+      }
       throw const SyncTransportException('remote-scheme-version-already-used');
     }
 
@@ -151,6 +155,46 @@ final class RotationSchemeSyncApplier {
       _database.rotationSchemes,
     )..where((RotationSchemes row) => row.id.equals(clash.id))).go();
     return true;
+  }
+
+  /// Writes down that the arriving scheme and its parts are this device's.
+  ///
+  /// Keeping the local row is only half the answer. The other device goes on
+  /// naming the ids it knows — a recitation's coverage carries the scheme id
+  /// **and** each part id — and without this every such record is refused for
+  /// a scheme that does not exist here, one at a time, forever.
+  ///
+  /// The parts are paired **by ordinal**, which is sound precisely because
+  /// [_isTheSameSplit] has just established that both sides carry the same
+  /// ordinals over the same ayah ranges. Pairing them by id would be pairing
+  /// the thing that differs.
+  Future<void> _rememberAbsorption(
+    RotationSchemeRow clash,
+    RotationSchemeSyncRecord record,
+  ) async {
+    final aliases = SyncAliasMap(_database);
+    final now = DateTime.now().toUtc();
+    await aliases.remember(
+      aliasId: record.id,
+      canonicalId: clash.id,
+      kind: SyncAliasKind.rotationScheme,
+      recordedAtUtc: now,
+    );
+    final local =
+        await (_database.select(_database.rotationParts)
+              ..where((RotationParts row) => row.schemeId.equals(clash.id))
+              ..orderBy(<OrderClauseGenerator<RotationParts>>[
+                (RotationParts row) => OrderingTerm(expression: row.ordinal),
+              ]))
+            .get();
+    for (var index = 0; index < local.length; index += 1) {
+      await aliases.remember(
+        aliasId: record.parts[index].id,
+        canonicalId: local[index].id,
+        kind: SyncAliasKind.rotationPart,
+        recordedAtUtc: now,
+      );
+    }
   }
 
   /// Whether [clash] and [record] are one split under two names.
