@@ -175,13 +175,17 @@ final class SyncCycleRunner implements SyncCycle {
 
     var pages = 0;
     String? pullFailure;
-    // Records whose prerequisite was not in their own page, carried into the
-    // next one. The account hands pages back in the order rows reached it, and
-    // that order is **not** dependency order: his 842 recitations were written
-    // a day before the rotation schemes they point at, because those schemes
-    // were refused by an older build and only recovered afterwards. Sorting a
-    // page cannot fix what is not in the page; carrying it forward can.
-    final deferred = <SyncEnvelope>[];
+    // Records whose prerequisite was not in their own page. The account hands
+    // pages back in the order rows reached it, and that order is **not**
+    // dependency order: his 842 recitations were written a day before the
+    // rotation schemes they point at, because those schemes were refused by an
+    // older build and only recovered afterwards. Sorting a page cannot fix what
+    // is not in the page.
+    //
+    // Since v11 they are **durable**, so this list is a working copy of a table
+    // rather than the only record of them: a restart keeps them, and the cursor
+    // no longer has to wait behind one that can never be placed.
+    var deferred = await _store.pendingInbox();
     String? deferredReason;
     try {
       await _engine.pull(
@@ -193,6 +197,7 @@ final class SyncCycleRunner implements SyncCycle {
           // remote changes. The router sorts first — the carried-over records
           // ahead of the new ones at the same rank, which is the order they
           // arrived in — so a page that is self-contained applies in one go.
+          final carried = <String>{for (final one in deferred) one.id};
           final residue = await _store.applyPulledPage(
             _router.ordered(
               SyncPullPage(
@@ -205,10 +210,9 @@ final class SyncCycleRunner implements SyncCycle {
             // One rotation rebuild for the page rather than one per record.
             afterAll: _router.settleProjection,
             nowUtc: _nowUtc().toUtc(),
+            retrying: carried,
           );
-          deferred
-            ..clear()
-            ..addAll(residue.deferred);
+          deferred = residue.deferred;
           deferredReason = residue.reason;
         },
       );
@@ -232,9 +236,10 @@ final class SyncCycleRunner implements SyncCycle {
     }
 
     // Records still waiting when the account ran out of pages. Their
-    // prerequisite is not coming in this cycle, so this is a real failure and
-    // says so — the cursor is already back at the last page that left nothing
-    // behind, and the next cycle starts again from there.
+    // prerequisite did not come in this cycle, so this is a real failure and
+    // says so on the account screen. It no longer holds the cursor: they are in
+    // the inbox, they are counted, and the next cycle retries them ahead of
+    // whatever arrives next.
     if (pullFailure == null && deferred.isNotEmpty) {
       pullFailure = deferredReason ?? 'remote-prerequisite-never-arrived';
     }

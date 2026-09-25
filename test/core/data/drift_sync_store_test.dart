@@ -170,11 +170,63 @@ void main() {
       );
       expect(
         await store.pullCursor(),
-        SyncCursor.beginning,
+        const SyncCursor('page-1'),
         reason:
-            'the cursor moves only when nothing was left behind, so the '
-            'waiting record is fetched again rather than skipped',
+            'since v11 the record that could not be placed is durably in the '
+            'inbox, so there is nothing for the cursor to protect. Holding it '
+            'back was the old answer and it meant a record this build can '
+            'never place pinned the cursor for good, with every later cycle '
+            're-reading the whole account from that point',
       );
+      expect(
+        await store.unresolvedInboxCount(),
+        1,
+        reason: 'and it is kept and counted rather than skipped',
+      );
+      expect(
+        (await store.pendingInbox()).single.entityId,
+        'not-yet',
+        reason: 'the next cycle retries it before whatever arrives next',
+      );
+    });
+
+    test('a record that is placed on a retry leaves the inbox', () async {
+      var accept = false;
+      Future<void> applyWhenAccepting(SyncEnvelope envelope) async {
+        if (!accept) {
+          throw const SyncTransportException('remote-prerequisite-missing');
+        }
+        await writeSetting(envelope.entityId);
+      }
+
+      final page = pageOf('page-1', <SyncEnvelope>[
+        envelopeOf(entityId: 'not-yet'),
+      ]);
+      await store.applyPulledPage(
+        page,
+        apply: applyWhenAccepting,
+        nowUtc: at(1),
+      );
+      expect(await store.unresolvedInboxCount(), 1);
+
+      accept = true;
+      final again = await store.pendingInbox();
+      final residue = await store.applyPulledPage(
+        pageOf('page-2', again),
+        apply: applyWhenAccepting,
+        nowUtc: at(2),
+        retrying: <String>{for (final one in again) one.id},
+      );
+
+      expect(residue.deferred, isEmpty);
+      expect(
+        await store.unresolvedInboxCount(),
+        0,
+        reason:
+            'an inbox that only ever grows would be a queue nobody empties, '
+            'and the count on the account screen would stop meaning anything',
+      );
+      expect(await settingCount(), 1);
     });
 
     test('two owners keep separate cursors', () async {

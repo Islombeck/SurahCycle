@@ -351,7 +351,7 @@ void main() {
       );
     });
 
-    test('holds the cursor back while it waits', () async {
+    test('is kept while it waits, and the cursor still moves', () async {
       await activate();
       gateway.pullPages = <SyncPullPage>[
         SyncPullPage(
@@ -374,9 +374,56 @@ void main() {
       expect(await hasHisSplit(), isFalse);
       expect(
         await store.pullCursor(),
-        SyncCursor.beginning,
-        reason: 'the page is fetched again next cycle, never skipped',
+        const SyncCursor('page-1'),
+        reason:
+            'the record is held in the inbox, so the cursor no longer has to '
+            'stand still for it — a page it can never place would otherwise '
+            'stop everything behind it forever',
       );
+      expect(
+        await store.unresolvedInboxCount(),
+        1,
+        reason: 'held, not skipped: the cursor may move only because of this',
+      );
+    });
+
+    test('survives a restart and lands when its prerequisite comes', () async {
+      await activate();
+      gateway.pullPages = <SyncPullPage>[
+        SyncPullPage(
+          envelopes: <SyncEnvelope>[schemeEnvelope()],
+          cursor: const SyncCursor('page-1'),
+          hasMore: false,
+        ),
+      ];
+      await runner.runOnce();
+
+      // A second runner over the same database is what a restart looks like
+      // from here: nothing is carried in memory between the two.
+      final afterRestart = SyncCycleRunner(
+        database: database,
+        store: store,
+        gateway: gateway,
+        nowUtc: () => now,
+      );
+      gateway.pullPages = <SyncPullPage>[
+        SyncPullPage(
+          envelopes: <SyncEnvelope>[rosterEnvelope()],
+          cursor: const SyncCursor('page-2'),
+          hasMore: false,
+        ),
+      ];
+
+      final outcome = await afterRestart.runOnce();
+
+      expect(outcome.failureReason, isNull);
+      expect(
+        await hasHisSplit(),
+        isTrue,
+        reason: 'the record the first cycle could not place was not lost',
+      );
+      expect(await store.unresolvedInboxCount(), 0);
+      expect(await store.pullCursor(), const SyncCursor('page-2'));
     });
 
     test('what could be placed is kept, even when something cannot', () async {

@@ -141,11 +141,17 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
   /// come first and always will. Every page his second phone fetched died on
   /// the first recitation, the cursor never moved, and it received nothing.
   ///
-  /// So what could not be placed is returned, for the caller to carry into the
-  /// next page — and **the cursor moves only when nothing was left behind.**
-  /// Records that did apply stay applied either way: re-applying them after an
-  /// interrupted pull is idempotent, and the alternative, holding a whole
-  /// account in memory until its last page, is not something a phone can do.
+  /// **Since v11 what could not be placed is written down, and the cursor
+  /// moves anyway.** Carrying refusals in memory and holding the cursar behind
+  /// them was the previous answer, and it had two faults the audit of
+  /// 2026-09-24 named: a restart lost them, and a record this build can never
+  /// place — a type from a newer client, a prayer naming a scheme this device
+  /// absorbed — pinned the cursor for good, so every later cycle re-read the
+  /// whole account from that point and re-applied all of it.
+  ///
+  /// The inbox row and the cursor are written in **one** transaction, which is
+  /// what makes moving the cursor safe: nothing is skipped, because the record
+  /// is still here. It is retried every cycle and counted until it applies.
   ///
   /// Anything that is *not* a [SyncTransportException] still aborts the page
   /// and commits nothing: a record this build cannot read is not a record
@@ -155,6 +161,7 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
     required Future<void> Function(SyncEnvelope envelope) apply,
     required DateTime nowUtc,
     Future<void> Function()? afterAll,
+    Set<String> retrying = const <String>{},
   }) {
     if (!nowUtc.isUtc) {
       throw ArgumentError.value(nowUtc, 'nowUtc', 'Must be UTC.');
@@ -169,9 +176,13 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
           // else is the difference between setting a record aside and
           // corrupting the ones around it.
           await _database.transaction(() => apply(envelope));
+          if (retrying.contains(envelope.id)) {
+            await _forgetInbox(envelope.id);
+          }
         } on SyncTransportException catch (error) {
           deferred.add(envelope);
           reason ??= error.reason;
+          await _rememberInbox(envelope, error.reason, nowUtc);
         }
       }
       // Whatever the page as a whole implies — rebuilding a projection, say —
@@ -179,19 +190,96 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
       // rebuild after the commit could be interrupted and leave a cursor that
       // says the page arrived and a projection that does not reflect it.
       await afterAll?.call();
-      if (deferred.isEmpty) {
-        await _database
-            .into(_database.syncCursors)
-            .insertOnConflictUpdate(
-              SyncCursorsCompanion.insert(
-                ownerKey: owner.value,
-                pullCursor: page.cursor.value,
-                updatedAtUtc: nowUtc,
-              ),
-            );
-      }
+      await _database
+          .into(_database.syncCursors)
+          .insertOnConflictUpdate(
+            SyncCursorsCompanion.insert(
+              ownerKey: owner.value,
+              pullCursor: page.cursor.value,
+              updatedAtUtc: nowUtc,
+            ),
+          );
       return (deferred: deferred, reason: reason);
     });
+  }
+
+  /// The incoming records this owner is still waiting to place, oldest first.
+  ///
+  /// Only `pending` ones. A `withdrawn` mark is not a problem to be retried —
+  /// see `SyncWithdrawalMarks` — and counting it as one would tell a device
+  /// that had just restored an account it had a hundred unresolved records.
+  Future<List<SyncEnvelope>> pendingInbox({int limit = 200}) async {
+    final rows =
+        await (_database.select(_database.syncInboxEntries)
+              ..where(
+                (SyncInboxEntries row) =>
+                    row.ownerKey.equals(owner.value) &
+                    row.status.equals('pending'),
+              )
+              ..orderBy(<OrderClauseGenerator<SyncInboxEntries>>[
+                (SyncInboxEntries row) =>
+                    OrderingTerm(expression: row.receivedAtUs),
+              ])
+              ..limit(limit))
+            .get();
+    return <SyncEnvelope>[
+      for (final row in rows)
+        SyncEnvelope.fromJson(
+          jsonDecode(row.envelopeJson) as Map<String, Object?>,
+        ),
+    ];
+  }
+
+  /// How many incoming records this owner cannot place yet.
+  Future<int> unresolvedInboxCount() async =>
+      (await _database
+              .customSelect(
+                'SELECT count(*) AS n FROM sync_inbox_entries '
+                "WHERE owner_key = ? AND status = 'pending'",
+                variables: <Variable<Object>>[Variable<String>(owner.value)],
+              )
+              .getSingle())
+          .read<int>('n');
+
+  Future<void> _rememberInbox(
+    SyncEnvelope envelope,
+    String reason,
+    DateTime nowUtc,
+  ) async {
+    final existing =
+        await (_database.select(_database.syncInboxEntries)..where(
+              (SyncInboxEntries row) =>
+                  row.ownerKey.equals(owner.value) &
+                  row.envelopeId.equals(envelope.id),
+            ))
+            .getSingleOrNull();
+    await _database
+        .into(_database.syncInboxEntries)
+        .insertOnConflictUpdate(
+          SyncInboxEntriesCompanion.insert(
+            ownerKey: owner.value,
+            envelopeId: envelope.id,
+            entityKey: envelope.entityKey,
+            status: 'pending',
+            // The moment it first arrived, kept across retries so the retry
+            // order stays the order the account handed them over in.
+            receivedAtUs:
+                existing?.receivedAtUs ?? nowUtc.microsecondsSinceEpoch,
+            envelopeUpdatedAtUs: envelope.updatedAtUtc.microsecondsSinceEpoch,
+            attemptCount: Value<int>((existing?.attemptCount ?? 0) + 1),
+            lastFailureReason: Value<String?>(reason),
+            envelopeJson: jsonEncode(envelope.toJson()),
+          ),
+        );
+  }
+
+  Future<void> _forgetInbox(String envelopeId) async {
+    await (_database.delete(_database.syncInboxEntries)..where(
+          (SyncInboxEntries row) =>
+              row.ownerKey.equals(owner.value) &
+              row.envelopeId.equals(envelopeId),
+        ))
+        .go();
   }
 
   Future<SyncActivationRecord?> activation() async {
@@ -462,6 +550,9 @@ final class DriftSyncStore implements SyncAwareLocalStore, SyncActivationStore {
   @override
   Future<void> forgetOwner() => _database.transaction(() async {
     await outbox.clear();
+    await (_database.delete(
+      _database.syncInboxEntries,
+    )..where((row) => row.ownerKey.equals(owner.value))).go();
     await (_database.delete(
       _database.syncCursors,
     )..where((row) => row.ownerKey.equals(owner.value))).go();
