@@ -14,6 +14,9 @@ what ran, and the two things that stop the rest of it — named precisely, becau
 | AVD A — `murajaah_a` | created, pixel_6 profile |
 | AVD B — `murajaah_b` | created, pixel_6 profile |
 | Two isolated user datasets | yes: separate AVDs, separate `userdata-qemu.img` |
+| Test Appwrite project | created and provisioned — see blocker 2 |
+| Test account | created, one tap to sign in on a build that carries the defines |
+| Acceptance APK | built from the defines file, pointed at the test project |
 
 Both AVDs are throwaway. `avdmanager delete avd -n murajaah_a` removes one; they
 are in `%USERPROFILE%\.android\avd` and touch nothing else.
@@ -41,7 +44,71 @@ behind. `-accel off` with the GPU left on exits with code 5 before that point.
 So the driver is not an optimisation here. It is the difference between an
 emulator and no emulator.
 
-## Blocker 2 — no test identity
+## Blocker 2 — resolved, 2026-09-25, without registering an identity
+
+The owner chose the route that needs no Google account. A **separate Appwrite
+project** now exists for acceptance runs and holds nothing of his:
+
+| | |
+| --- | --- |
+| Project id | `surahcycle-acceptance` |
+| Name | SurahCycle Acceptance (test only) |
+| Region | `fra`, same endpoint as production |
+| Database / table | `surahcycle` / `sync_log` — 10 columns, 3 indexes, row security on |
+| Test user | `acceptance-tester`, `acceptance@surahcycle.test` |
+
+The table was created from `tool/appwrite_provisioning.dart`'s own emitted plan,
+not typed by hand, and planning again against the result prints "Nothing to do:
+the project already matches the declaration" — so the test project is the
+declared shape, and any drift between it and production is visible rather than
+guessed.
+
+The app reaches it because `APPWRITE_PROJECT_ID` and `APPWRITE_ENDPOINT` were
+already compile-time values; no code changed for that. What did change is a
+password sign-in behind `DebugPasswordSignIn`, refused outside a debug build —
+see that commit for why it exists and what keeps it off the product surface.
+
+**The password is not in this repository and will not be.** It lives in the
+session scratchpad and in the build's compiled defines. Deleting the project
+disposes of the account and everything in it in one action, which is the
+intended end of the acceptance run.
+
+**Checked before the emulator, not after.** A full round trip was run against
+the test project over plain HTTPS, so a typo or a disabled auth method would be
+found here rather than halfway through an acceptance run: the credentials the
+APK was built with create a session, that session writes a row into `sync_log`
+with per-row permissions, the owner reads it back, and the delete removes it.
+The table was left empty — `total: 0`.
+
+**What this still does not cover:** §6.6 item 2, the real OAuth sign-in. It
+cannot — it is a different path. That item is closed by the owner's own phones.
+
+## Comparing the two devices
+
+`tool/compare_databases.dart` compares two databases **by identifier** and then
+by field, which is what item 3 asks for and what the audit said the 85/84 claim
+lacked. It reads; it opens both files read-only.
+
+It has already earned itself on the real pair from 2026-09-24 —
+`honor_merged.sqlite` against `jelly_final2.sqlite`:
+
+| Table | Honor \| main | What differs |
+| --- | --- | --- |
+| `rotation_schemes` | 28 \| 28 | same ids, same fields |
+| `rotation_parts` | 31 \| 31 | same ids, same fields |
+| `mastered_surahs` | 27 \| 27 | same ids, same fields |
+| `rotation_adjustments` | 1 \| 1 | same ids, same fields |
+| `recall_attempts` | 4 \| 4 | same ids, same fields |
+| `recitation_events` | 741 \| 847 | 106 only on the main phone — **exactly** its 106 withdrawn rows; the Honor holds none |
+| `prayer_sessions` | 85 \| 84 | one only on the Honor: the session it opened for itself |
+| `learning_surahs` | 5 \| 1 | four only on the Honor: the plans it already had |
+| `learning_events` | 66 \| 32 | 34 only on the Honor: those plans' events |
+| `app_settings` | 10 \| 13 | three only on the main phone, all device-local |
+
+Nothing appears on the Honor that the main phone is missing, except what the
+Honor made itself. The recitation gap is entirely rows that do not show.
+
+## Blocker 2, as it stood before that
 
 The app signs in with Google or Yandex OAuth and nothing else
 (`appwrite_account_api.dart` maps exactly those two; there is no email/password
@@ -57,6 +124,10 @@ brief and rightly: step 6 deletes cloud history.
 **The smallest unblock:** a throwaway Google account — any address he is willing
 to burn — signed in once on emulator A. Nothing else about it matters; it never
 needs to receive mail.
+
+That was the ask. He answered it differently and better: build the test account
+inside Appwrite instead, which is what the section above records. This paragraph
+stays because the reasoning is still the reason the other route was taken.
 
 ## What can run once only blocker 1 is gone
 

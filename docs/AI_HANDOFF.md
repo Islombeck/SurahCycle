@@ -52,6 +52,29 @@ installed anywhere** — the brief forbids putting a new build on his phones, an
 the emulator will not start. It exists to prove Gradle still assembles with v11
 and as the file the acceptance run will use.
 
+**The acceptance harness is now built, and one blocker is gone.** The owner
+chose to avoid registering a Google identity, so a **separate Appwrite project**
+`surahcycle-acceptance` holds the test account instead — provisioned from
+`tool/appwrite_provisioning.dart`'s own emitted plan, verified by planning again
+against the result, and round-tripped over HTTPS before any emulator exists:
+sign in, write a row with per-row permissions, read it back as the owner,
+delete. Left empty. Password nowhere in this repository.
+
+An acceptance APK is built against it, 230,360,207 bytes, SHA-256
+`8C00DB748C59916D7147182A182E428C25760E74E196DD6D739E90FC960D94C3`. The sign-in
+it uses is `DebugPasswordSignIn`, refused outside a debug build.
+
+**The 85/84 question is now answered by id, not by argument.**
+`tool/compare_databases.dart` over `honor_merged` and `jelly_final2`: rotation
+schemes, parts, roster, adjustments and recall attempts are identical id for id
+and field for field; the 106 recitations the Honor lacks are **exactly** the 106
+the main phone had withdrawn; the one extra prayer session is the Honor's own.
+See `STAGE_J_EMULATOR_ACCEPTANCE.md` for the table.
+
+**Still blocked:** the hypervisor driver. Elevation is cancelled instantly from
+this process twice over, so the emulator cannot start and §6.6 items 3–6 and 8
+remain unrun. One command from the owner in an admin shell is the whole of it.
+
 **Stage J is not closed, and green tests are not the reason it would be.** The
 acceptance sequence has not run. See `STAGE_J_EMULATOR_ACCEPTANCE.md`: the
 emulator and both AVDs are ready, and two things stop the rest — an unelevated
