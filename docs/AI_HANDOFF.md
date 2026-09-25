@@ -1,5 +1,56 @@
 # Murajaah AI handoff
 
+## The three audit defects are repaired — 2026-09-25 (read this first)
+
+Seven commits, `9bc8820` through `52afa5e`, on top of the audit's baseline
+`7903099`. Tracked tree clean; the owner's untracked files — `.codex/`, the
+photo, `Скринсейверы до v6/` — untouched.
+
+**What was wrong, and what it is now.**
+
+1. **The pull had no durable memory.** A record whose prerequisite had not
+   arrived lived in a local variable and held the cursor still. Closing the app
+   lost it, and a record this build can *never* place froze the cursor for good,
+   stopping everything behind it. It goes into `sync_inbox_entries` now, in the
+   same transaction that advances the cursor, and is retried at the head of the
+   next page. A cycle that ends with something waiting still reports a failure.
+2. **An absorbed scheme lost its name.** When an arriving split turned out to be
+   one this device already held under another id, the arriving id was forgotten
+   and every recitation naming it was refused forever. `sync_entity_aliases`
+   remembers it, parts paired by ordinal, and the recitation applier resolves
+   through it.
+3. **Standing was decided by arrival order.** The account's log is ordered by
+   when a change reached it, so a withdrawal made offline on Monday arrived
+   after a restore made on Tuesday and undid it. Both paths now compare
+   `state_changed_at_utc` through `RecitationStateVersion` — whole seconds, null
+   loses, and on an exact tie the withdrawal wins.
+
+**Verification, all of it fresh.** Full `flutter test`: **1304 passed, 10
+skipped, 0 failed**. `flutter analyze`: no issues. The migration suite is ten
+green paths v1..v9 → v11 plus the refusal of a newer file. The audit's three
+defects have their own file, `stage_j_audit_defects_test.dart`, written and
+watched failing against the build of 2026-09-24 — four red, one green control —
+before any of it was repaired.
+
+Three existing tests encoded the old contracts and were **rewritten, not
+deleted**: the cursor test now asserts the cursor moves and the inbox holds, and
+the applier's "an upsert after a withdrawal revives it" is two tests, because
+its fixture dated the restore *before* the withdrawal it was meant to beat.
+
+**Real databases, not only seeded ones.** `real_snapshot_migration_test.dart` is
+skipped unless `MURAJAAH_SNAPSHOT_DIR` points at a directory of snapshots. Run
+over 52 copies of real phone databases — one at v4, one at v8, three at v9, 47
+at v10, the largest with 847 recitations and 85 prayer sessions — every table he
+wrote himself kept exactly its row count, nothing dangled, both new tables came
+out empty, and not one state stamp was invented.
+
+**Stage J is not closed, and green tests are not the reason it would be.** The
+acceptance sequence has not run. See `STAGE_J_EMULATOR_ACCEPTANCE.md`: the
+emulator and both AVDs are ready, and two things stop the rest — an unelevated
+machine with no hypervisor driver (one approval), and the fact that the app
+signs in with Google or Yandex only, so "a separate test account" needs an
+identity that is not his.
+
 ## Acting on the audit — checkpoint before source changes (2026-09-24)
 
 Mandatory read done: all 2841 lines of this file, AGENTS.md, CLAUDE.md, the
