@@ -10,7 +10,7 @@ import '../../generated_migrations/schema.dart';
 
 void main() {
   test(
-    'v1 to v10 preserves every legacy table and backfills v5 semantics',
+    'v1 to v11 preserves every legacy table and backfills v5 semantics',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(1);
@@ -21,19 +21,19 @@ void main() {
       final migrationDatabase = AppDatabase(schema.newConnection());
       await verifier.migrateAndValidate(
         migrationDatabase,
-        10,
+        11,
         // Runtime-only performance indexes are intentionally absent from the
         // generated Drift schema. Old tables are checked explicitly below.
         options: const ValidationOptions(),
       );
 
-      expect(migrationDatabase.schemaVersion, 10);
+      expect(migrationDatabase.schemaVersion, 11);
       expect(
         await migrationDatabase
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        10,
+        11,
       );
       expect(
         await migrationDatabase.customSelect('PRAGMA foreign_key_check').get(),
@@ -521,7 +521,7 @@ void main() {
   );
 
   test(
-    'v2 to v10 preserves four-part state and accepts a fifth part',
+    'v2 to v11 preserves four-part state and accepts a fifth part',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(2);
@@ -536,17 +536,17 @@ void main() {
       });
       await verifier.migrateAndValidate(
         database,
-        10,
+        11,
         options: const ValidationOptions(),
       );
 
-      expect(database.schemaVersion, 10);
+      expect(database.schemaVersion, 11);
       expect(
         await database
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        10,
+        11,
       );
       expect(
         await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -954,7 +954,7 @@ void main() {
     },
   );
 
-  test('v3 to v10 preserves all data and backfills generic learning', () async {
+  test('v3 to v11 preserves all data and backfills generic learning', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(3);
     final raw = schema.rawDatabase;
@@ -968,18 +968,18 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      10,
+      11,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 10);
+    expect(database.schemaVersion, 11);
     await _expectEmptySyncTransport(database);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      10,
+      11,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1273,7 +1273,7 @@ void main() {
     expect(await database.select(database.rotationSchemes).get(), hasLength(1));
   });
 
-  test('v4 to v10 preserves all legacy rows and relationships', () async {
+  test('v4 to v11 preserves all legacy rows and relationships', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(4);
     final raw = schema.rawDatabase;
@@ -1287,18 +1287,18 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      10,
+      11,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 10);
+    expect(database.schemaVersion, 11);
     await _expectEmptySyncTransport(database);
     expect(
       await database
           .customSelect('PRAGMA user_version')
           .map((row) => row.read<int>('user_version'))
           .getSingle(),
-      10,
+      11,
     );
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1555,7 +1555,7 @@ void main() {
   });
 
   test(
-    'v5 to v10 keeps the routine scaffold and adds the recall journal',
+    'v5 to v11 keeps the routine scaffold and adds the recall journal',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(5);
@@ -1570,18 +1570,18 @@ void main() {
       });
       await verifier.migrateAndValidate(
         database,
-        10,
+        11,
         options: const ValidationOptions(),
       );
 
-      expect(database.schemaVersion, 10);
+      expect(database.schemaVersion, 11);
       await _expectEmptySyncTransport(database);
       expect(
         await database
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        10,
+        11,
       );
       expect(
         await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1765,7 +1765,7 @@ void main() {
   );
 
   test(
-    'v6 to v10 adds the sync transport and touches nothing the user owns',
+    'v6 to v11 adds the sync transport and touches nothing the user owns',
     () async {
       final verifier = SchemaVerifier(GeneratedHelper());
       final schema = await verifier.schemaAt(6);
@@ -1780,17 +1780,17 @@ void main() {
       });
       await verifier.migrateAndValidate(
         database,
-        10,
+        11,
         options: const ValidationOptions(),
       );
 
-      expect(database.schemaVersion, 10);
+      expect(database.schemaVersion, 11);
       expect(
         await database
             .customSelect('PRAGMA user_version')
             .map((row) => row.read<int>('user_version'))
             .getSingle(),
-        10,
+        11,
       );
       expect(
         await database.customSelect('PRAGMA foreign_key_check').get(),
@@ -1888,7 +1888,7 @@ void main() {
     },
   );
 
-  test('v7 to v10 keeps the sync transport and the journal intact', () async {
+  test('v7 to v11 keeps the sync transport and the journal intact', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(7);
     final raw = schema.rawDatabase;
@@ -1902,11 +1902,11 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      10,
+      11,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 10);
+    expect(database.schemaVersion, 11);
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
       isEmpty,
@@ -1977,7 +1977,7 @@ void main() {
     );
   });
 
-  test('v8 to v10 adds the make-up day and invents none', () async {
+  test('v8 to v11 adds the make-up day and invents none', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(8);
     final raw = schema.rawDatabase;
@@ -1991,11 +1991,11 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      10,
+      11,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 10);
+    expect(database.schemaVersion, 11);
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
       isEmpty,
@@ -2053,7 +2053,7 @@ void main() {
     );
   });
 
-  test('v9 to v10 dates six tables and backfills none of them', () async {
+  test('v9 to v11 dates six tables and backfills none of them', () async {
     final verifier = SchemaVerifier(GeneratedHelper());
     final schema = await verifier.schemaAt(9);
     final raw = schema.rawDatabase;
@@ -2067,11 +2067,11 @@ void main() {
     });
     await verifier.migrateAndValidate(
       database,
-      10,
+      11,
       options: const ValidationOptions(),
     );
 
-    expect(database.schemaVersion, 10);
+    expect(database.schemaVersion, 11);
     expect(
       await database.customSelect('PRAGMA foreign_key_check').get(),
       isEmpty,
@@ -2142,16 +2142,16 @@ void main() {
   test(
     'a database from a newer app version is refused, not downgraded',
     () async {
-      final directory = await Directory.systemTemp.createTemp('murajaah-v10-');
+      final directory = await Directory.systemTemp.createTemp('murajaah-v11-');
       addTearDown(() => directory.delete(recursive: true));
       final file = File('${directory.path}/murajaah.sqlite');
 
       final created = AppDatabase(NativeDatabase(file));
-      await created.customStatement('PRAGMA user_version = 11');
+      await created.customStatement('PRAGMA user_version = 12');
       await created.close();
 
       // Opening someone else's future schema must fail loudly. Silently running
-      // v10 code against a v11 file would corrupt data we cannot recover.
+      // v11 code against a v12 file would corrupt data we cannot recover.
       final reopened = AppDatabase(NativeDatabase(file));
       addTearDown(reopened.close);
       await expectLater(
@@ -2168,6 +2168,11 @@ Future<void> _expectEmptySyncTransport(AppDatabase database) async {
   expect(await database.select(database.syncOutboxEntries).get(), isEmpty);
   expect(await database.select(database.syncCursors).get(), isEmpty);
   expect(await database.select(database.syncActivations).get(), isEmpty);
+  // v11 added the other direction. An upgrade path must arrive with the inbox
+  // and the alias map present and empty too — an inbox row invented by a
+  // migration would be a record the account never sent.
+  expect(await database.select(database.syncInboxEntries).get(), isEmpty);
+  expect(await database.select(database.syncEntityAliases).get(), isEmpty);
 }
 
 DateTime _utc(int minute) => DateTime.utc(2026, 8, 24, 10, minute);

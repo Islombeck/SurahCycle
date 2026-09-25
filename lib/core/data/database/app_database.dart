@@ -376,6 +376,22 @@ class RecitationEvents extends Table {
   TextColumn get qadaFulfilledLocalDate => text().nullable()();
   DateTimeColumn get deletedAtUtc => dateTime().nullable()();
 
+  /// When this recitation was last withdrawn **or brought back** (v11).
+  ///
+  /// `deleted_at_utc` records only one half of that: restoring clears it, so
+  /// after a restore the row remembers nothing about when the decision was
+  /// made. Two devices then had no way to order a withdrawal against a restore,
+  /// and an old withdrawal arriving late undid a newer restore — ADR-0002 had
+  /// this open as "a withdrawal made offline can beat a newer restore".
+  ///
+  /// **Null means unknown**, which is every row written before v11, and it is
+  /// deliberately not back-filled: `created_at_utc` is when the prayer was
+  /// recited, not when its state last changed, and `deleted_at_utc` is absent
+  /// for exactly the rows this column exists for. A known incoming time beats
+  /// an unknown local one — the same direction `SyncMergeDecision` already
+  /// takes for a null local timestamp.
+  DateTimeColumn get stateChangedAtUtc => dateTime().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
 
@@ -729,6 +745,105 @@ class SyncActivations extends Table {
   ];
 }
 
+/// Incoming records this device has received and could not apply yet.
+///
+/// The mirror of the outbox, and it exists for the same reason: a refusal has
+/// to be durable or nothing can move past it. Before v11 the cycle held these
+/// in memory and the cursor waited for them, so a single record this build
+/// cannot place — a type a newer client wrote, a prayer whose scheme this
+/// device absorbed — made every later cycle re-read the account from that
+/// point, forever, and a restart lost the refusals entirely.
+///
+/// Owner-scoped, like the queue and the cursor: what one account's log says is
+/// not a statement about another's.
+@DataClassName('SyncInboxEntryRow')
+class SyncInboxEntries extends Table {
+  @override
+  String get tableName => 'sync_inbox_entries';
+
+  TextColumn get ownerKey => text()();
+  TextColumn get envelopeId => text()();
+
+  /// `entityType:entityId`, as the outbox spells it.
+  TextColumn get entityKey => text()();
+
+  /// `pending` — could not be applied; retried every cycle and counted as
+  /// unresolved.
+  ///
+  /// `withdrawn` — a withdrawal for a record this device has never had. It is
+  /// **not** a problem and is not retried: the backfill sends a withdrawn
+  /// recitation as the withdrawal alone, never as the record plus a deletion,
+  /// so for a device restoring an account there is nothing for it to attach to
+  /// and never will be. It is kept so that a copy of that record arriving
+  /// later — recovered from quarantine, say, and therefore out of order —
+  /// cannot bring a prayer back that the owner withdrew.
+  TextColumn get status => text()();
+
+  /// Microseconds since epoch, UTC, for the same reason the outbox uses them:
+  /// retry order must not depend on two records landing in the same second.
+  IntColumn get receivedAtUs => integer()();
+  IntColumn get envelopeUpdatedAtUs => integer()();
+  IntColumn get attemptCount => integer().withDefault(const Constant<int>(0))();
+  TextColumn get lastFailureReason => text().nullable()();
+  TextColumn get envelopeJson => text()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{ownerKey, envelopeId};
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK (length(owner_key) > 0)',
+    'CHECK (length(envelope_id) > 0)',
+    'CHECK (length(entity_key) > 0)',
+    "CHECK (status IN ('pending', 'withdrawn'))",
+    'CHECK (attempt_count >= 0)',
+    'CHECK (last_failure_reason IS NULL OR length(last_failure_reason) > 0)',
+    'CHECK (length(envelope_json) > 0)',
+  ];
+}
+
+/// One identifier that means another on this device.
+///
+/// When an arriving rotation scheme turns out to be the split this device
+/// already holds under a different name — his Al-Humazah was
+/// `v1:surah-104:scheme:1` in the account and `surah-104:scheme:1` here — the
+/// arriving id has to keep meaning something, because every record the other
+/// device sends names it. Before v11 the absorption was silent and those
+/// records could never be placed.
+///
+/// **Not owner-scoped, deliberately.** It records that two identifiers name the
+/// same row *here*, and the rows it points at are one dataset rather than one
+/// per account. Scoping it by owner would invent a distinction the data it
+/// describes does not have.
+@DataClassName('SyncEntityAliasRow')
+class SyncEntityAliases extends Table {
+  @override
+  String get tableName => 'sync_entity_aliases';
+
+  /// The identifier as another device knows it.
+  TextColumn get aliasId => text()();
+
+  /// The identifier this device stores it under.
+  TextColumn get canonicalId => text()();
+
+  /// `rotationScheme` or `rotationPart`. Kept apart because a scheme and its
+  /// parts are resolved in different places and confusing the two would point
+  /// coverage at a scheme.
+  TextColumn get kind => text()();
+  DateTimeColumn get recordedAtUtc => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{aliasId};
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK (length(alias_id) > 0)',
+    'CHECK (length(canonical_id) > 0)',
+    'CHECK (alias_id <> canonical_id)',
+    "CHECK (kind IN ('rotationScheme', 'rotationPart'))",
+  ];
+}
+
 @DriftDatabase(
   tables: <Type>[
     SurahMetadata,
@@ -750,6 +865,8 @@ class SyncActivations extends Table {
     SyncOutboxEntries,
     SyncCursors,
     SyncActivations,
+    SyncInboxEntries,
+    SyncEntityAliases,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -757,7 +874,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'murajaah_user'));
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   /// The six tables that gained `updated_at_utc` in v10, and whose primary key
   /// the touch triggers address a row by. See [kUpdatedAtUtcDoc].
@@ -785,7 +902,7 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
       if (from == to) return;
-      if (from < 1 || from > 9 || to != 10) {
+      if (from < 1 || from > 10 || to != 11) {
         throw StateError('Unsupported database migration from $from to $to.');
       }
       if (from < 2) {
@@ -815,6 +932,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 10) {
         await _migrateVersionNineToTen(migrator);
       }
+      if (from < 11) {
+        await _migrateVersionTenToEleven(migrator);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -823,10 +943,72 @@ class AppDatabase extends _$AppDatabase {
       await _createVersionSixIndexes();
       await _createVersionSevenIndexes();
       await _createVersionTenTouchTriggers();
+      await _createVersionElevenIndexes();
       await _ensureRotationSingleton();
       await _ensureEmptyRoutineTemplates();
     },
   );
+
+  /// The durable inbox, the alias map and the recitation state version.
+  ///
+  /// Three additions, one migration, because they are one repair: the pull had
+  /// no durable memory. What it could not place it held in RAM, what it
+  /// absorbed it forgot the name of, and what it withdrew it recorded nowhere.
+  ///
+  /// `addColumn` for the recitation column and a guard before it, for the
+  /// reason [_migrateVersionNineToTen] gives: a chained migration from v1
+  /// rebuilds `recitation_events` from the *current* definition, which already
+  /// carries the column, and adding it twice fails.
+  ///
+  /// **Nothing is back-filled.** A state version invented for a historical row
+  /// would be a date the owner never gave, and the whole point of the column is
+  /// to order real decisions against each other.
+  Future<void> _migrateVersionTenToEleven(Migrator migrator) async {
+    final columns = await customSelect(
+      'PRAGMA table_info(recitation_events)',
+    ).get();
+    final alreadyPresent = columns.any(
+      (row) => row.read<String>('name') == 'state_changed_at_utc',
+    );
+    if (!alreadyPresent) {
+      await migrator.addColumn(
+        recitationEvents,
+        recitationEvents.stateChangedAtUtc,
+      );
+    }
+    for (final table in <TableInfo<Table, Object?>>[
+      syncInboxEntries,
+      syncEntityAliases,
+    ]) {
+      final existing = await customSelect(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+        variables: <Variable<Object>>[Variable<String>(table.actualTableName)],
+      ).get();
+      if (existing.isEmpty) await migrator.createTable(table);
+    }
+    await _createVersionElevenIndexes();
+    final violations = await customSelect('PRAGMA foreign_key_check').get();
+    if (violations.isNotEmpty) {
+      throw StateError(
+        'Foreign-key violations after v10 to v11 migration: '
+        '${violations.length}.',
+      );
+    }
+  }
+
+  /// The inbox is read two ways and both are hot paths on a first sync: every
+  /// cycle asks for this owner's pending entries, and every arriving recitation
+  /// asks whether this owner withdrew it before the record ever got here.
+  Future<void> _createVersionElevenIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_sync_inbox_owner_status '
+      'ON sync_inbox_entries (owner_key, status, received_at_us)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_sync_inbox_owner_entity '
+      'ON sync_inbox_entries (owner_key, entity_key)',
+    );
+  }
 
   /// Records when each of the six previously undatable rows last changed.
   ///
@@ -1059,6 +1241,11 @@ class AppDatabase extends _$AppDatabase {
           recitationEvents,
           newColumns: <GeneratedColumn<Object>>[
             recitationEvents.qadaFulfilledLocalDate,
+            // v11. The rule this file states three times over: every rebuild
+            // lists every column added after it, because the rebuild produces
+            // the *current* definition and Drift would otherwise copy this one
+            // out of a table that does not have it yet.
+            recitationEvents.stateChangedAtUtc,
           ],
         ),
       );
@@ -1109,6 +1296,7 @@ class AppDatabase extends _$AppDatabase {
           newColumns: <GeneratedColumn<Object>>[
             recitationEvents.qadaOriginIsUnknown,
             recitationEvents.qadaFulfilledLocalDate,
+            recitationEvents.stateChangedAtUtc,
           ],
         ),
       );
@@ -1249,6 +1437,7 @@ class AppDatabase extends _$AppDatabase {
             recitationEvents.slotIndex,
             recitationEvents.qadaOriginIsUnknown,
             recitationEvents.qadaFulfilledLocalDate,
+            recitationEvents.stateChangedAtUtc,
           ],
         ),
       );
