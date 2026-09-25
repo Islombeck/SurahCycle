@@ -93,6 +93,26 @@ final class LiveAppwriteAccountApi implements AppwriteAccountApi {
   }
 
   @override
+  Future<void> createEmailPasswordSession({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await _account.createEmailPasswordSession(
+        email: email,
+        password: password,
+      );
+    } on AppwriteException catch (error) {
+      // The code and nothing else. A provider message here would carry the
+      // address that was typed, and this file's whole contract is that a
+      // reason is a category, never the user's own data.
+      throw SyncAccountException('password-sign-in-failed-${error.code ?? 0}');
+    } on Object {
+      throw const SyncAccountException('account-unreachable');
+    }
+  }
+
+  @override
   Future<void> deleteCurrentSession() async {
     try {
       await _account.deleteSession(sessionId: 'current');

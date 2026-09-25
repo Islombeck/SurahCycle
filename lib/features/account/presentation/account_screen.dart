@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -119,6 +120,19 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
               icon: const Icon(Icons.login),
               label: Text(l10n.accountSignInWithYandex),
             ),
+            // Absent from every build the owner will ever run: a release build
+            // drops it on kDebugMode, and a debug build without the two defines
+            // drops it on `configured`. Deliberately unlocalised — it is a
+            // harness control, not product copy.
+            if (kDebugMode && AcceptanceCredentials.configured) ...<Widget>[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                key: const ValueKey<String>('account-sign-in-acceptance'),
+                onPressed: _busy ? null : _signInForAcceptance,
+                icon: const Icon(Icons.science_outlined),
+                label: const Text('Sign in as the acceptance test account'),
+              ),
+            ],
           ],
         ),
         SyncHealth.notActivated => _signedIn(
@@ -538,6 +552,25 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
     }
     await _run(
       () => gateway.signIn(provider),
+      context.l10n.accountSignInFailed,
+    );
+  }
+
+  /// One tap, because the acceptance run drives this over ADB.
+  ///
+  /// The capability is asked for rather than cast to: a gateway that cannot do
+  /// this simply does not offer it, and the button is already behind the same
+  /// two conditions.
+  Future<void> _signInForAcceptance() async {
+    final gateway = ref.read(accountGatewayProvider);
+    if (gateway is! DebugPasswordSignIn) {
+      return;
+    }
+    await _run(
+      () => (gateway as DebugPasswordSignIn).signInWithPassword(
+        email: AcceptanceCredentials.email,
+        password: AcceptanceCredentials.password,
+      ),
       context.l10n.accountSignInFailed,
     );
   }

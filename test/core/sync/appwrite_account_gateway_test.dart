@@ -24,6 +24,14 @@ final class _FakeAccountApi implements AppwriteAccountApi {
   final String? userIdAfterOAuth;
 
   final List<String> oauthCalls = <String>[];
+
+  /// The emails a password sign-in was attempted with. The password itself is
+  /// deliberately not kept — here of all places.
+  final List<String> passwordSignIns = <String>[];
+
+  /// The id reported afterwards; null means no session was created.
+  String? userIdAfterPassword = 'user-from-password';
+
   int signOutCalls = 0;
 
   @override
@@ -47,6 +55,15 @@ final class _FakeAccountApi implements AppwriteAccountApi {
   }
 
   @override
+  Future<void> createEmailPasswordSession({
+    required String email,
+    required String password,
+  }) async {
+    passwordSignIns.add(email);
+    userId = userIdAfterPassword;
+  }
+
+  @override
   Future<void> deleteCurrentSession() async {
     signOutCalls++;
     userId = null;
@@ -54,7 +71,94 @@ final class _FakeAccountApi implements AppwriteAccountApi {
   }
 }
 
+/// An [AccountGateway] that only knows OAuth, which is what every
+/// implementation was before the acceptance path existed and what any future
+/// one will be unless it deliberately says otherwise.
+final class _OAuthOnlyGateway implements AccountGateway {
+  @override
+  Future<SyncAccount?> currentAccount() async => null;
+
+  @override
+  Future<SyncAccount> signIn(SyncAuthProvider provider) async =>
+      SyncAccount(userId: 'u', linkedProviders: const <SyncAuthProvider>{});
+
+  @override
+  Future<SyncAccount> linkIdentity(SyncAuthProvider provider) async =>
+      SyncAccount(userId: 'u', linkedProviders: const <SyncAuthProvider>{});
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<Map<String, Object?>> exportCloudData() async =>
+      const <String, Object?>{};
+
+  @override
+  Future<void> deleteCloudAccount() async {}
+}
+
 void main() {
+  /// The acceptance-only password path.
+  ///
+  /// One thing here cannot be tested from inside the harness: the release-build
+  /// refusal. `kDebugMode` is a compile-time constant and it is true under
+  /// `flutter test`, so the guard's other branch is unreachable from here. What
+  /// is checked is that the path exists, that it reports an absent session
+  /// honestly, and that the capability is genuinely separate from the product
+  /// port — which is the part a later edit could quietly undo.
+  group('signing in with a password, for acceptance runs', () {
+    test('is a capability asked for, not part of the port', () {
+      final AccountGateway appwrite = AppwriteAccountGateway(_FakeAccountApi());
+      final AccountGateway other = _OAuthOnlyGateway();
+
+      expect(appwrite, isA<DebugPasswordSignIn>());
+      expect(
+        other,
+        isNot(isA<DebugPasswordSignIn>()),
+        reason:
+            'an AccountGateway does not gain a password path by being one — '
+            'which is what keeps this off the product surface',
+      );
+    });
+
+    test('creates the session and reports the account', () async {
+      final api = _FakeAccountApi();
+      final gateway = AppwriteAccountGateway(api);
+
+      final account = await gateway.signInWithPassword(
+        email: 'tester@example.test',
+        password: 'not-a-real-password',
+      );
+
+      expect(account.userId, 'user-from-password');
+      expect(api.passwordSignIns, <String>['tester@example.test']);
+      expect(
+        api.oauthCalls,
+        isEmpty,
+        reason: 'it must not quietly fall back to a browser flow',
+      );
+    });
+
+    test('refuses when no session came of it', () async {
+      final api = _FakeAccountApi()..userIdAfterPassword = null;
+      final gateway = AppwriteAccountGateway(api);
+
+      await expectLater(
+        () => gateway.signInWithPassword(
+          email: 'tester@example.test',
+          password: 'not-a-real-password',
+        ),
+        throwsA(
+          isA<SyncAccountException>().having(
+            (error) => error.reason,
+            'reason',
+            'no-session-after-sign-in',
+          ),
+        ),
+      );
+    });
+  });
+
   group('currentAccount', () {
     test('is null when no session exists', () async {
       final gateway = AppwriteAccountGateway(_FakeAccountApi());

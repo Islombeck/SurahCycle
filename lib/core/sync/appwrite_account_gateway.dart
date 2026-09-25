@@ -8,6 +8,8 @@
 /// one failure this architecture is built to prevent.
 library;
 
+import 'package:flutter/foundation.dart';
+
 import 'sync_ports.dart';
 
 /// The slice of Appwrite's `Account` service this gateway needs.
@@ -30,8 +32,43 @@ abstract interface class AppwriteAccountApi {
   /// Opens the provider's browser flow and completes the session.
   Future<void> createOAuth2Session(String providerName);
 
+  /// Signs in with an email and a password. **Acceptance runs only.**
+  ///
+  /// See [DebugPasswordSignIn] for why this exists at all; the adapter merely
+  /// performs it, and the refusal that keeps it out of a release build is one
+  /// layer up, where it can be read next to the reason for it.
+  Future<void> createEmailPasswordSession({
+    required String email,
+    required String password,
+  });
+
   /// Ends the current session only. Other devices stay signed in.
   Future<void> deleteCurrentSession();
+}
+
+/// Signing in with a password, which the product deliberately does not offer.
+///
+/// The app authenticates with Google or Yandex and nothing else. That is the
+/// right product decision and it is not changed here — but it means a test
+/// account is a *Google account*, and the acceptance sequence needs two devices
+/// on one account that is not the owner's. Registering an identity in his name
+/// to satisfy a test is worse than this.
+///
+/// So: a password sign-in that exists for acceptance runs against a **separate
+/// Appwrite project** with no real data in it, kept off the [AccountGateway]
+/// port so nothing in the product can reach it by accident, and **refused
+/// outside a debug build** rather than merely hidden from the screen.
+///
+/// It does not make the OAuth flow any less tested. It cannot: it is a
+/// different path, and §6.6 item 2 is closed by the owner's own phones, not by
+/// this.
+abstract interface class DebugPasswordSignIn {
+  /// Throws [SyncAccountException] `password-sign-in-is-debug-only` in a
+  /// release build, before contacting anything.
+  Future<SyncAccount> signInWithPassword({
+    required String email,
+    required String password,
+  });
 }
 
 /// Raised when the account could not be reached or understood.
@@ -49,7 +86,8 @@ final class SyncAccountException implements Exception {
   String toString() => 'SyncAccountException($reason)';
 }
 
-final class AppwriteAccountGateway implements AccountGateway {
+final class AppwriteAccountGateway
+    implements AccountGateway, DebugPasswordSignIn {
   const AppwriteAccountGateway(this._api);
 
   final AppwriteAccountApi _api;
@@ -91,6 +129,25 @@ final class AppwriteAccountGateway implements AccountGateway {
       // The browser flow returned without leaving a session behind. Treating
       // this as success would put the account screen into a signed-in state
       // that every later call contradicts.
+      throw const SyncAccountException('no-session-after-sign-in');
+    }
+    return _accountFor(userId);
+  }
+
+  @override
+  Future<SyncAccount> signInWithPassword({
+    required String email,
+    required String password,
+  }) async {
+    if (!kDebugMode) {
+      // Refused here rather than hidden in the widget tree. A screen that does
+      // not draw a button is one edit away from drawing it; this is the layer
+      // that has to say no.
+      throw const SyncAccountException('password-sign-in-is-debug-only');
+    }
+    await _api.createEmailPasswordSession(email: email, password: password);
+    final userId = await _api.currentUserId();
+    if (userId == null) {
       throw const SyncAccountException('no-session-after-sign-in');
     }
     return _accountFor(userId);

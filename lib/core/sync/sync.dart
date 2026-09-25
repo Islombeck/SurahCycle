@@ -19,6 +19,7 @@
 /// than rediscovered. Import it directly where the SDK is already owned.
 library;
 
+export 'acceptance_credentials.dart';
 export 'appwrite_account_gateway.dart';
 export 'appwrite_config.dart';
 export 'appwrite_sync_gateway.dart';
