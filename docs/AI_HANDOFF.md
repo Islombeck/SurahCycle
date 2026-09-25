@@ -44,6 +44,14 @@ at v10, the largest with 847 recitations and 85 prayer sessions — every table 
 wrote himself kept exactly its row count, nothing dangled, both new tables came
 out empty, and not one state stamp was invented.
 
+**Build, 2026-09-25.** `flutter build apk --debug --no-pub` from `M:\` →
+`BUILD SUCCESSFUL`, `M:\build\app\outputs\flutter-apk\app-debug.apk`,
+230,359,523 bytes, SHA-256
+`0A69EFB0ED20EE4F9C2FC5E5A3CD63F100561989EAC1A4F7C994BB38CFAB9FFC`. **Not
+installed anywhere** — the brief forbids putting a new build on his phones, and
+the emulator will not start. It exists to prove Gradle still assembles with v11
+and as the file the acceptance run will use.
+
 **Stage J is not closed, and green tests are not the reason it would be.** The
 acceptance sequence has not run. See `STAGE_J_EMULATOR_ACCEPTANCE.md`: the
 emulator and both AVDs are ready, and two things stop the rest — an unelevated
