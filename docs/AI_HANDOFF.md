@@ -33,10 +33,32 @@ carries `contextLocalDate` now, and Home registers against it. The Witr that
 follows keeps the same night; a **manual** context keeps a null date on purpose,
 because choosing a prayer by hand says what, not when.
 
-**Not yet on his phones.** Both fixes are committed and green — 1313 tests,
-analyzer clean — and nothing has been installed anywhere. The acceptance
-emulators from 2026-09-25 are not running; re-running the two-device sequence
-against these fixes is the obvious next check.
+**Defect 1 is verified on two devices, not only in tests.** Two emulators, the
+test account, the acceptance build
+`1D263A1A9F191851500493B79EA97158D801642CD8D45940278AD04C21F1A72D`. A Fajr
+Fard part with two slots was added through Settings the way a person would;
+both devices signed in and opened Fajr, so each held its own copy of the same
+session with the part still open — his situation exactly. A filled both slots
+and synced; B pulled.
+
+B's part came out **DONE with two slotted recitations**, its inbox empty and
+no duplicate part (the part id is derived from the session and the template
+part, so the two devices agree on it). Home on B reads "Prayer routine
+complete", the Fard part carries its tick and "Surah slots: 2/2". That is the
+screen that used to say 2/2 with no tick.
+
+Defect 2 is covered by tests only: reproducing it on a device needs a
+confirmed location, a real schedule and a clock pushed past midnight, and the
+resolver test plus the midnight Witr test pin the same seam.
+
+**Still not on his phones.** Nothing has been installed on either of them.
+
+**Operational note.** The `M:` drive is a `subst` alias for the Cyrillic
+project path and does not survive a reboot. Without it the Gradle build runs
+from the Cyrillic path and fails with `Cannot invoke "java.io.File.exists()"
+because "parent" is null`, which says nothing about the real cause. Recreate
+it with `subst M: D:\MurajaahWorkspace` — the ASCII junction, so nothing has
+to pass Cyrillic through `cmd`.
 
 ## The three audit defects are repaired — 2026-09-25 (read this first)
 
