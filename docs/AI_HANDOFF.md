@@ -51,7 +51,28 @@ Defect 2 is covered by tests only: reproducing it on a device needs a
 confirmed location, a real schedule and a clock pushed past midnight, and the
 resolver test plus the midnight Witr test pin the same seam.
 
-**Still not on his phones.** Nothing has been installed on either of them.
+**Prepared for his phone, not installed.** Everything up to the install is
+done and recorded, 2026-09-28:
+
+- **Backup first**, before anything else: `jelly_backup_before_v11_20260928-
+  120750.sqlite`, 2,084,864 bytes, SHA-256 `12A54BEA0C07E6BF19E09001B393A1CB
+  B947519A786D839C0D0AA0CA0A7A8EB0`, `user_version` 10. `PRAGMA
+  integrity_check` → `ok`, journal mode `delete` and no `-wal`/`-shm` beside
+  it, so the copy is consistent rather than merely the right size.
+- **Contents recorded, not just the size:** 948 recitations, 950 coverage
+  rows, 111 prayer sessions, 189 session parts, 28 schemes, 31 scheme parts,
+  27 mastered surahs, 1 learning plan, 32 learning events, 4 recall attempts,
+  1 adjustment, 13 settings.
+- **The v10→v11 migration was run on a copy of that exact database** and
+  passed: every table he filled himself kept its row count, nothing dangled,
+  the two new tables came out empty and no state stamp was invented.
+- **Build:** `EAC88C3B45A77FD4B1D0C3093F23F4E9ABD7D9C0BD67826D5C8736014760
+  A233`, 230,356,450 bytes. Checked before going near his phone: the
+  acceptance project id, the test email and the test password are **absent**
+  from its Dart kernel; only his own project id is in it.
+- **The install itself was refused by the harness**, which classified
+  `adb install -r` to a physical device as a production deploy. Nothing was
+  installed and nothing on the phone was touched.
 
 **Operational note.** The `M:` drive is a `subst` alias for the Cyrillic
 project path and does not survive a reboot. Without it the Gradle build runs
