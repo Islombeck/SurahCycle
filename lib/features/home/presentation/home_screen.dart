@@ -127,11 +127,17 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
     final localDate = ref.watch(localDateProvider).today();
     final pendingRegistrationDate = ref.watch(pendingRegistrationDateProvider);
+    // The prayer day, which between midnight and Fajr is **yesterday**: the
+    // Isha being marked at 00:32 began the evening before, and the resolver
+    // says so. Filing it on the new calendar day left the night that was
+    // ending unrecorded and the day that had not begun already prayed, so it
+    // could not be marked that evening.
+    final prayerLocalDate = prayerResolution?.contextLocalDate ?? localDate;
     // The day a mark will actually belong to. While a past day is chosen, the
     // plan on screen has to be that day's — otherwise the user reads today's
     // filled and unfilled slots while filling yesterday's, which is a trap
     // rather than a feature.
-    final registrationLocalDate = pendingRegistrationDate ?? localDate;
+    final registrationLocalDate = pendingRegistrationDate ?? prayerLocalDate;
     final resolvedPrayerContext = prayerResolution?.context;
     final AsyncValue<PrayerRoutineSessionSnapshot?>? currentRoutine =
         resolvedPrayerContext == null
@@ -407,14 +413,25 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     return <MasteredSurah>[for (final id in order) ?byId[id]];
   }
 
+  /// The prayer day in force right now, which between midnight and Fajr is
+  /// the day that is ending rather than the one on the clock.
+  LocalDate _currentPrayerLocalDate() =>
+      _settledAsyncValue(
+        ref.read(homePrayerContextResolutionProvider),
+      )?.contextLocalDate ??
+      ref.read(localDateProvider).today();
+
   /// The past day chosen in the calendar, if one is in force right now.
   ///
-  /// Today is never returned as "pending": a record for today is the ordinary
-  /// case and must not take the historical path.
+  /// The current prayer day is never returned as "pending": a record for it is
+  /// the ordinary case and must not take the historical path. Compared against
+  /// the *prayer* day rather than the calendar one, so that after midnight
+  /// choosing the night that is ending still counts as ordinary — and choosing
+  /// the new day is still an explicit instruction and is honoured.
   LocalDate? _pendingRegistrationDate() {
     final pending = ref.read(pendingRegistrationDateProvider);
     if (pending == null) return null;
-    return pending == ref.read(localDateProvider).today() ? null : pending;
+    return pending == _currentPrayerLocalDate() ? null : pending;
   }
 
   /// What the prayer picker should open on: whatever is actually in effect.
@@ -448,8 +465,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
   _RegistrationContextToken _captureRegistrationContext() =>
       _RegistrationContextToken(
         generation: _registrationGeneration,
-        localDate:
-            _pendingRegistrationDate() ?? ref.read(localDateProvider).today(),
+        localDate: _pendingRegistrationDate() ?? _currentPrayerLocalDate(),
       );
 
   bool _isRegistrationContextCurrent(_RegistrationContextToken token) =>

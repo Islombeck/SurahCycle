@@ -1208,6 +1208,10 @@ PrayerContextResolution applyIshaToWitrTransition(
   return PrayerContextResolution(
     status: base.status,
     context: PrayerContext(prayerType: PrayerType.witr),
+    // The same night as the Иша it follows. Dropping it here sent the Витр
+    // prayed at 01:08 to the new calendar day while the Иша at 00:29 that it
+    // follows stayed on the old one — one night split across two days.
+    contextLocalDate: base.contextLocalDate,
   );
 }
 
@@ -1223,7 +1227,12 @@ final homePrayerContextResolutionProvider =
       final base = ref.watch(prayerContextResolutionProvider);
       final resolution = base.valueOrNull;
       if (resolution?.context?.prayerType != PrayerType.isha) return base;
-      final localDate = ref.watch(localDateProvider).today();
+      // The Isha whose routine decides this is the one being prayed, and
+      // after midnight that is the previous day's. Asking the wall clock
+      // looked up an Isha he had not started, found it unfinished, and left
+      // the transition to Witr never offered.
+      final localDate =
+          resolution!.contextLocalDate ?? ref.watch(localDateProvider).today();
       final ishaRoutine = ref
           .watch(
             currentPrayerRoutineProvider((
@@ -1237,7 +1246,7 @@ final homePrayerContextResolutionProvider =
           .valueOrNull;
       return AsyncData<PrayerContextResolution>(
         applyIshaToWitrTransition(
-          resolution!,
+          resolution,
           ishaRoutine: ishaRoutine,
           witrTemplate: witrTemplate,
         ),

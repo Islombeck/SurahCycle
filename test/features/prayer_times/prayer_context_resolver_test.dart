@@ -164,6 +164,59 @@ void main() {
       expect(wrongDate.context, isNull);
     });
 
+    test('the Isha before Fajr belongs to the day it began on', () {
+      // Reported by the owner from ordinary use: "if I mark Isha after 00:00
+      // it marks it for yesterday and for today, and then I cannot mark
+      // today's in the evening."
+      //
+      // His own database shows it plainly. On 2026-09-21 at 00:32 local he
+      // marked Isha; the record was stored with `local_date 2026-09-21`, in
+      // `routine-session:2026-09-21:isha:ordinary`, and there is no Isha
+      // session for the 20th at all. So the night of the 20th reads as missed
+      // and the 21st reads as prayed — hours before he prayed it.
+      //
+      // This resolver already knows the answer: before Fajr the current
+      // prayer is the **previous** day's Isha, which is why it takes the
+      // start time from the previous day's schedule. It just never said which
+      // day, so every caller asked the wall clock instead.
+      final resolver = PrayerContextResolver(
+        FixedPrayerTimeProvider(_utcForTashkent(2026, 8, 25, 0, 32, 0)),
+      );
+
+      final justAfterMidnight = resolver.resolve(
+        mode: PrayerContextSelectionMode.automatic,
+        automaticSchedule: testPrayerDay(25),
+        automaticScheduleIsReliable: true,
+        previousDaySchedule: testPrayerDay(24),
+        previousDayScheduleIsReliable: true,
+      );
+
+      expect(justAfterMidnight.context?.prayerType, PrayerType.isha);
+      expect(
+        justAfterMidnight.contextLocalDate,
+        LocalDate(2026, 8, 24),
+        reason:
+            'the prayer began the evening before; recording it on the new '
+            'calendar day loses the night that is ending and spends the day '
+            'that has not started',
+      );
+    });
+
+    test('every other prayer belongs to the day it is prayed on', () {
+      final resolver = PrayerContextResolver(
+        FixedPrayerTimeProvider(_utcForTashkent(2026, 8, 25, 13, 0, 0)),
+      );
+
+      final afternoon = resolver.resolve(
+        mode: PrayerContextSelectionMode.automatic,
+        automaticSchedule: testPrayerDay(25),
+        automaticScheduleIsReliable: true,
+      );
+
+      expect(afternoon.context?.prayerType, PrayerType.dhuhr);
+      expect(afternoon.contextLocalDate, LocalDate(2026, 8, 25));
+    });
+
     test('after Isha exposes next Fajr only from a reliable adjacent day', () {
       final resolver = PrayerContextResolver(
         FixedPrayerTimeProvider(_utcForTashkent(2026, 8, 25, 21, 0, 0)),

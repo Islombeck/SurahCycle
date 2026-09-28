@@ -294,11 +294,17 @@ void main() {
       // Read off his device rather than assumed: the Иша parts of 2026-09-21
       // were completed at 00:29 local and Витр at 01:08. He marks after local
       // midnight, when the prayer he is in belongs to the previous day's
-      // schedule while the date everything is keyed on has already rolled over.
+      // schedule.
+      //
+      // The seeded day used to be the 26th, because that is where his device
+      // had actually filed it — and that was the defect, not the contract. A
+      // prayer marked at 00:29 belongs to the night that is ending, so the
+      // completed Иша this transition reads is the **25th's**. The assertion
+      // below is unchanged: crossing midnight must still reach Витр.
       _sizePhone(tester);
       await fixture.seedOwnersRoutines();
       await fixture.addSurah('surah-a', 112);
-      await fixture.completeIsha(localDate: LocalDate(2026, 8, 26));
+      await fixture.completeIsha(localDate: LocalDate(2026, 8, 25));
 
       await fixture.pumpWithRealSchedule(
         tester,
@@ -323,6 +329,57 @@ void main() {
             ?.prayerType,
         PrayerType.witr,
         reason: 'crossing midnight does not undo a finished Иша',
+      );
+
+      await _disposeWidgetTree(tester);
+    });
+
+    testWidgets('a mark after midnight lands on the night that is ending', (
+      tester,
+    ) async {
+      // His report, in his words: "if I mark Isha after 00:00 it marks it for
+      // yesterday and for today, and then I cannot mark today's in the
+      // evening."
+      //
+      // His database showed what that meant. At 00:32 local on 2026-09-21 the
+      // record was filed with `local_date 2026-09-21`, and the 20th has no
+      // Isha session at all: the night he had just prayed read as missed, and
+      // the day he had not started read as done — so that evening there was
+      // nothing left to mark.
+      // Asserted on the resolution Home registers against, which is the seam
+      // that decides the day. Driving the tap as well would add the routine
+      // sheet's own mechanics to a test about a date.
+      _sizePhone(tester);
+      await fixture.seedOwnersRoutines();
+      await fixture.addSurah('surah-a', 112);
+      await fixture.completeIsha(localDate: LocalDate(2026, 8, 25));
+
+      await fixture.pumpWithRealSchedule(
+        tester,
+        // 00:29 Tashkent on the 26th; the night he is in began at 20:32 on
+        // the 25th and lasts until Fajr.
+        nowUtc: DateTime.utc(2026, 8, 25, 19, 29),
+        scheduleDay: 26,
+      );
+
+      final resolution = _containerOf(
+        tester,
+      ).read(homePrayerContextResolutionProvider).valueOrNull;
+
+      expect(
+        resolution?.contextLocalDate,
+        LocalDate(2026, 8, 25),
+        reason:
+            'the night began on the 25th, so that is the day a mark belongs '
+            'to — filing it on the 26th spends a day he has not prayed yet, '
+            'and that is why the evening had nothing left to mark',
+      );
+      expect(
+        resolution?.context?.prayerType,
+        PrayerType.witr,
+        reason:
+            'and the Витр that follows stays on the same night rather than '
+            'splitting one evening across two days',
       );
 
       await _disposeWidgetTree(tester);
