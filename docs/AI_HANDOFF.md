@@ -1,5 +1,43 @@
 # Murajaah AI handoff
 
+## Two defects he found by using the app — 2026-09-28 (read this first)
+
+Both reported from ordinary use, both reproduced from his own database before
+anything was changed, both fixed with a test watched failing first.
+
+**1. A prayer received from the other phone never finished the prayer.**
+"2 of 2, but no tick; the calendar says the day is partly done; and after Isha
+it does not move on to Witr. Not always." One cause under all three: recording
+a recitation here reconciled the session part and stamped `completed_at_utc`;
+**applying one that arrived from the account did not**. The tick reads that
+field, the calendar reads that field, and `applyIshaToWitrTransition` asks
+whether the Isha routine is complete — the same field. "Not always" is the
+sync: the mark has to have come from the other device. The reconciliation now
+lives in `PrayerSessionCompletion` and both paths call it.
+
+His data rules out the other candidate: across 142 parts with slots there is
+not one recitation attached to a part without a slot index, so a miscount was
+never the explanation.
+
+**2. A prayer marked after midnight was filed a day forward.**
+"If I mark Isha after 00:00 it marks it for yesterday and for today, and then
+I cannot mark today's in the evening." On 2026-09-21 at 00:32 local the record
+went to `local_date 2026-09-21`, and **there is no Isha session for the 20th at
+all** — the night he had prayed read as missed, the day he had not started read
+as done. He has done this on at least six nights this month.
+
+The resolver already knew: before Fajr the current prayer is the previous day's
+Isha, which is why it takes the start time from that day's schedule. It never
+said *which day*, so every caller asked the wall clock. `PrayerContextResolution`
+carries `contextLocalDate` now, and Home registers against it. The Witr that
+follows keeps the same night; a **manual** context keeps a null date on purpose,
+because choosing a prayer by hand says what, not when.
+
+**Not yet on his phones.** Both fixes are committed and green — 1313 tests,
+analyzer clean — and nothing has been installed anywhere. The acceptance
+emulators from 2026-09-25 are not running; re-running the two-device sequence
+against these fixes is the obvious next check.
+
 ## The three audit defects are repaired — 2026-09-25 (read this first)
 
 Seven commits, `9bc8820` through `52afa5e`, on top of the audit's baseline
