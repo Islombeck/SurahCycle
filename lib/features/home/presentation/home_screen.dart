@@ -462,17 +462,28 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  /// The day a mark made right now belongs to: the past day he chose, or the
+  /// current prayer day.
+  ///
+  /// Captured into the token **and** compared against it, from this one
+  /// method. They were two expressions for a while and they disagreed after
+  /// midnight — the capture took the prayer day, the comparison took the wall
+  /// clock — so between midnight and Fajr every mark was abandoned as "the
+  /// context changed" without recording anything. Found by marking on a
+  /// device with the clock at 00:32, not by reading the code.
+  LocalDate _registrationLocalDate() =>
+      _pendingRegistrationDate() ?? _currentPrayerLocalDate();
+
   _RegistrationContextToken _captureRegistrationContext() =>
       _RegistrationContextToken(
         generation: _registrationGeneration,
-        localDate: _pendingRegistrationDate() ?? _currentPrayerLocalDate(),
+        localDate: _registrationLocalDate(),
       );
 
   bool _isRegistrationContextCurrent(_RegistrationContextToken token) =>
       mounted &&
       token.generation == _registrationGeneration &&
-      token.localDate ==
-          (_pendingRegistrationDate() ?? ref.read(localDateProvider).today());
+      token.localDate == _registrationLocalDate();
 
   void _requireRegistrationContext(_RegistrationContextToken token) {
     if (!_isRegistrationContextCurrent(token)) {
@@ -651,7 +662,12 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     final repository = ref.read(prayerRoutineRepositoryProvider);
     final ishaRoutine = await repository.ensureCurrentSession(
       context: context,
-      localDate: ref.read(localDateProvider).today(),
+      // The prayer day, not the calendar one. This call **creates** the
+      // session it reads, so after midnight the wall clock opened an Иша on
+      // the day that had not started — which is what he saw as "it marks it
+      // for yesterday and for today" — and then found it empty, so the move
+      // to Витр never happened and the mark went to an Иша of the wrong day.
+      localDate: _registrationLocalDate(),
       startedAtUtc: ref.read(timeProviderProvider).nowUtc(),
     );
     return applyIshaToWitrTransition(

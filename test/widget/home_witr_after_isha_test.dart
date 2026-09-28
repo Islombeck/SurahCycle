@@ -346,9 +346,12 @@ void main() {
       // Isha session at all: the night he had just prayed read as missed, and
       // the day he had not started read as done — so that evening there was
       // nothing left to mark.
-      // Asserted on the resolution Home registers against, which is the seam
-      // that decides the day. Driving the tap as well would add the routine
-      // sheet's own mechanics to a test about a date.
+      // The tap is driven too, and that matters: an earlier version of this
+      // test asserted only on the resolution, and the mark it did not make
+      // was hiding a second defect. Capture took the prayer day, the
+      // freshness check took the wall clock, and after midnight every mark
+      // was abandoned as "the context changed" — silently, recording
+      // nothing. A test that stops at the resolution cannot see that.
       _sizePhone(tester);
       await fixture.seedOwnersRoutines();
       await fixture.addSurah('surah-a', 112);
@@ -365,7 +368,6 @@ void main() {
       final resolution = _containerOf(
         tester,
       ).read(homePrayerContextResolutionProvider).valueOrNull;
-
       expect(
         resolution?.contextLocalDate,
         LocalDate(2026, 8, 25),
@@ -381,6 +383,21 @@ void main() {
             'and the Витр that follows stays on the same night rather than '
             'splitting one evening across two days',
       );
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('mark-surah-surah-a')),
+      );
+      await _pumpFrames(tester, 60);
+
+      final history = await fixture.recitations.getHistory();
+      expect(
+        history,
+        hasLength(1),
+        reason:
+            'the mark has to actually happen — abandoning it as "the context '
+            'changed" is the silent failure this test exists to catch',
+      );
+      expect(history.single.event.localDate, LocalDate(2026, 8, 25));
 
       await _disposeWidgetTree(tester);
     });
