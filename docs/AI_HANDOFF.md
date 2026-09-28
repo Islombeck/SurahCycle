@@ -177,9 +177,19 @@ added. That is a real piece of work about test mechanics, not a bug hunt, and
 it was left rather than half-done. The comment on `_sizePhone` now says the
 width is deliberate and what it cannot see.
 
-Next concrete step for this thread: a separate layout smoke test that pumps the
-dense cards — settings, routine editor, account — at 411 logical pixels and
-lets an overflow fail it, without touching the behavioural suites.
+**Done:** `test/widget/layout_at_phone_width_test.dart` (`cf3978e`). Six cases —
+each of the five tabs walked to the bottom, plus the settings cards opened —
+all at 411×914, the Jelly Max's real geometry. It asserts almost nothing by
+hand: a `RenderFlex` that overflows reports a `FlutterError` while it paints and
+fails whichever case was running, so the walk *is* the assertion. Falsified with
+`isExpanded` taken back out: "A RenderFlex overflowed by 411 pixels on the
+right".
+
+The fourteen behavioural files keep their wide canvas, and now there is one
+narrow suite that will catch what they cannot. Widening its coverage — the
+learning plan editor, the coverage sheet, the calendar's day detail, each of
+which opens as a sheet rather than sitting in a tab — is the obvious next
+increment.
 
 **Operational note.** The `M:` drive is a `subst` alias for the Cyrillic
 project path and does not survive a reboot. Without it the Gradle build runs
