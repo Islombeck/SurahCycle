@@ -106,6 +106,40 @@ No `E/flutter`, no `FATAL`, no `SqliteException` in the app's log.
 black, and the lock was left alone. The evidence above is the database and the
 log; whether the app *reads* right to him is his to say.
 
+### The build on his phone has a defect I put there — 2026-09-28, later
+
+Running the midnight case on an emulator, on the very build that had just been
+installed on his phone, found two more places asking the wall clock which day
+it was. Between midnight and Fajr, **a mark does nothing at all**: no record,
+no visible failure. Before my change that window recorded the prayer on the
+wrong day; now it records nothing, so for that window I made it worse.
+
+- **Mine, half-applied.** The registration token was captured with the prayer
+  day and checked against the calendar day, so the two never matched and every
+  tap ended as "the context changed". Both now come from
+  `_registrationLocalDate()`.
+- **Pre-existing, same root.** Resolving which prayer a tap belongs to calls
+  `ensureCurrentSession`, which *creates* the session it reads, and it was
+  passed `today()`. After midnight that opened an empty Isha on the day that
+  had not started — the other half of "it marks it for yesterday and for
+  today" — found it unfinished, so the move to Witr never came and the mark
+  went to an Isha of the wrong day.
+
+Fixed in `8158a48`, 1313 tests green, analyzer clean. **Verified on a device:**
+emulator clock at 00:51 on 29 Sep, marked, and the record came out
+`local_date=2026-09-28`, prayer `isha`, with no session invented on the 29th.
+
+Build `2AAC5012321F042B73DE2ECD4AE082601E46A8ECDF06359568E6C0E71492D2A4`,
+230,353,439 bytes, checked clean of the acceptance credentials.
+
+**It is not on his phone.** He unplugged it before the install, so
+`EAC88C3B…A233` — the one with the defect — is still what he is using.
+Reinstalling this build is the first thing to do when the phone is back.
+
+Also worth a look while in there: the prayer-times card overflows its row by
+40 logical pixels ("RIGHT OVERFLOWED BY 40 PIXEL" in a debug build), visible
+beside the region dropdown.
+
 **Operational note.** The `M:` drive is a `subst` alias for the Cyrillic
 project path and does not survive a reboot. Without it the Gradle build runs
 from the Cyrillic path and fails with `Cannot invoke "java.io.File.exists()"
