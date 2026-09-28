@@ -70,9 +70,41 @@ done and recorded, 2026-09-28:
   A233`, 230,356,450 bytes. Checked before going near his phone: the
   acceptance project id, the test email and the test password are **absent**
   from its Dart kernel; only his own project id is in it.
-- **The install itself was refused by the harness**, which classified
-  `adb install -r` to a physical device as a production deploy. Nothing was
-  installed and nothing on the phone was touched.
+- **Installed with his permission**, `adb install -r` → `Success`, as an
+  update: the app was not removed and its data was not cleared. The first
+  refusal came from the harness, which classified it as a production deploy;
+  he authorised it and it went through.
+
+**The v10→v11 migration has now run on his real phone, and his history is
+intact.** Launched, migrated, pulled again and compared against the backup
+**by identifier**:
+
+| | |
+| --- | --- |
+| `user_version` | 10 → **11** |
+| `PRAGMA integrity_check` | `ok` |
+| `PRAGMA foreign_key_check` | 0 violations |
+| `recitation_events` | 948 \| 948 — same ids, same fields |
+| `recitation_event_parts` | 950 \| 950 — same ids, same fields |
+| `rotation_schemes` / `rotation_parts` | 28 \| 28, 31 \| 31 — same ids, same fields |
+| `mastered_surahs` | 27 \| 27 — same ids, same fields |
+| `learning_surahs` / `learning_events` | 1 \| 1, 32 \| 32 — same ids, same fields |
+| `rotation_adjustments` / `recall_attempts` | 1 \| 1, 4 \| 4 — same ids, same fields |
+| `app_settings` | 13 \| 13 — same ids, same fields |
+| `sync_inbox_entries` / `sync_entity_aliases` | 0 / 0 — created empty |
+| invented state stamps | **0** |
+
+Two tables differ, both additive and both explained: one new prayer session,
+`routine-session:2026-09-28:dhuhr:ordinary`, with its three parts — today's
+Dhuhr, opened by the app on launch, no recitations and nothing marked. That is
+the same "each device opens the current prayer itself" behaviour the 85/84
+investigation established, not a migration artefact.
+
+No `E/flutter`, no `FATAL`, no `SqliteException` in the app's log.
+
+**Not looked at on the screen.** His phone was locked, so `screencap` returns
+black, and the lock was left alone. The evidence above is the database and the
+log; whether the app *reads* right to him is his to say.
 
 **Operational note.** The `M:` drive is a `subst` alias for the Cyrillic
 project path and does not survive a reboot. Without it the Gradle build runs
