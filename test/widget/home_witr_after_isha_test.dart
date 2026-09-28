@@ -404,6 +404,12 @@ void main() {
   });
 }
 
+// Deliberately a ratio of 1, which is **wider than his phone**: 1080 logical
+// pixels rather than 411. These tests are about which prayer a mark belongs
+// to, and the extra room keeps the whole screen built so they do not have to
+// scroll to find it. It does mean they can say nothing about layout — see the
+// note in `AI_HANDOFF.md` about the region selector, which overflowed on his
+// screen for as long as every test here had two and a half screens of width.
 void _sizePhone(WidgetTester tester) {
   tester.view.physicalSize = const Size(1080, 2400);
   tester.view.devicePixelRatio = 1;

@@ -149,9 +149,37 @@ The binary was checked on the phone itself rather than assumed:
 `sha256sum` of `base.apk` reads `2aac5012…92d2a4`, which is the build that was
 meant to go on. No `E/flutter`, no `FATAL`, no `SqliteException` in its log.
 
-Also worth a look while in there: the prayer-times card overflows its row by
-40 logical pixels ("RIGHT OVERFLOWED BY 40 PIXEL" in a debug build), visible
-beside the region dropdown.
+### The region selector, and why no test saw it — 2026-09-28
+
+The prayer-times card overflowed its row beside the region dropdown, visible
+to him as a yellow-and-black stripe. `DropdownButtonFormField` takes the width
+of its **widest** item unless told otherwise, and the widest region is «Nukus
+shahri — Qoraqalpog'iston Resp.». Fixed with `isExpanded` on both dropdowns in
+the card (`23552a7`), falsified first: taking it back out reports "A RenderFlex
+overflowed by 351 pixels on the right".
+
+**The reason it survived is worth more than the fix.** The card was pumped at a
+device pixel ratio of 1 — his phone's 1080 pixels, but 1080 *logical* pixels
+across, two and a half times wider than any phone. A card that overflows by 40
+pixels on the device has all the room it needs on a canvas that wide. Its
+helper now uses 2.625, which is his real 411 logical pixels.
+
+**And it is not one file.** Fourteen widget and route test files pump
+`Size(1080, 2400)` at a ratio of 1. Every layout defect that only appears at
+phone width is invisible to all of them. Two files do use realistic widths
+(`history_screen_test` at 360, `recommendation_rank_badge_test` at 280).
+
+Converting the rest is **not** done, and the experiment says why: with
+`home_witr_after_isha_test` switched to 2.625 the failures were not overflows
+but `Bad state: No element` — at 914 logical pixels of height the widgets those
+tests look for are off-screen and never built, so each one would need scrolling
+added. That is a real piece of work about test mechanics, not a bug hunt, and
+it was left rather than half-done. The comment on `_sizePhone` now says the
+width is deliberate and what it cannot see.
+
+Next concrete step for this thread: a separate layout smoke test that pumps the
+dense cards — settings, routine editor, account — at 411 logical pixels and
+lets an overflow fail it, without touching the behavioural suites.
 
 **Operational note.** The `M:` drive is a `subst` alias for the Cyrillic
 project path and does not survive a reboot. Without it the Gradle build runs
