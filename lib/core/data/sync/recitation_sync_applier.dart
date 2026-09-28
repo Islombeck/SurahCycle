@@ -31,6 +31,7 @@ import '../../domain/domain.dart';
 import '../../sync/recitation_sync_payload.dart';
 import '../../sync/sync.dart';
 import '../database/app_database.dart';
+import '../repositories/prayer_session_completion.dart';
 import '../repositories/rotation_projection_store.dart';
 import 'recitation_state_version.dart';
 import 'sync_entity_aliases.dart';
@@ -102,6 +103,9 @@ final class RecitationSyncApplier {
         stateChangedAtUtc: Value<DateTime?>(envelope.updatedAtUtc),
       ),
     );
+    // The prayer it filled is open again, exactly as a withdrawal made here
+    // would leave it. Without this the tick survives the prayer it counted.
+    await _settlePrayerPart(existing.prayerSessionPartId);
     // A withdrawal lowers the surah's standing exactly as writing it raised it,
     // and this did not rebuild. The score stayed where the recitation had put
     // it until something unrelated happened to rebuild, so a recitation undone
@@ -145,7 +149,25 @@ final class RecitationSyncApplier {
       await _update(event, existing, envelope.updatedAtUtc);
     }
     await _replaceCoverage(event, schemeId, coveredPartIds);
+    // Both the part it now fills and the one it used to, because an edit can
+    // move a recitation between them and leave the old one counted full.
+    await _settlePrayerPart(event.prayerSessionPartId);
+    if (existing?.prayerSessionPartId != event.prayerSessionPartId) {
+      await _settlePrayerPart(existing?.prayerSessionPartId);
+    }
     await _rebuild();
+  }
+
+  /// Recomputes whether the prayer this recitation belongs to is finished.
+  ///
+  /// The whole reason this call exists: recording a prayer on *this* phone
+  /// always did it, and applying one that arrived from another never did. So
+  /// a slot filled from the account left the part open — 2 of 2 on Home with
+  /// no tick, a day the calendar called partly done, and an Isha that never
+  /// moved on to Witr, because all three read the same field.
+  Future<void> _settlePrayerPart(String? partId) async {
+    if (partId == null) return;
+    await PrayerSessionCompletion.reconcile(_database, partId);
   }
 
   /// Withdraws a record that arrived after the withdrawal that removed it.

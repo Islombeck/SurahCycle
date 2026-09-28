@@ -299,6 +299,117 @@ void main() {
     });
   });
 
+  group('the prayer it belongs to', () {
+    // Reported by the owner from ordinary use, on two phones signed into one
+    // account: "some prayers, after every slot is marked, go back to unmarked
+    // — 2 of 2, but no tick, and the calendar calls the day partly done. And
+    // after Isha it does not move on to Witr."
+    //
+    // One cause under all three. Recording a recitation locally reconciles the
+    // session part it filled and stamps `completed_at_utc`; **applying one
+    // that arrived from the other phone never did**. So the slot is filled —
+    // Home counts the recitations and says 2 of 2 — while the part it belongs
+    // to is still open. The tick reads the part. The calendar reads the part.
+    // And the Isha→Witr transition asks whether the Isha routine is complete,
+    // which is the same field, so it never fires either.
+    const sessionId = 'session-isha';
+    const partId = 'session-isha:fard';
+
+    Future<void> openIshaSession({int slots = 2}) async {
+      await PrayerRepository(database).saveSession(
+        PrayerSession(
+          id: sessionId,
+          context: PrayerContext(prayerType: PrayerType.isha),
+          startedAtUtc: DateTime.utc(2026, 9, 16, 15),
+        ),
+        localDate: LocalDate(2026, 9, 16),
+      );
+      await database
+          .into(database.prayerSessionParts)
+          .insert(
+            PrayerSessionPartsCompanion.insert(
+              id: partId,
+              prayerSessionId: sessionId,
+              stableKey: 'fard',
+              orderIndex: 0,
+              label: 'Fard',
+              kind: PrayerRoutinePartKind.fard.name,
+              rakaatCount: 4,
+              requiredSurahSlots: slots,
+              allowsFollowingImam: true,
+            ),
+          );
+    }
+
+    Future<DateTime?> completedAt() async =>
+        (await (database.select(database.prayerSessionParts)
+                  ..where((PrayerSessionParts row) => row.id.equals(partId)))
+                .getSingle())
+            .completedAtUtc;
+
+    SurahRecitationEvent inSlot(int slot, {required String id}) =>
+        SurahRecitationEvent(
+          id: id,
+          surahId: 'surah-112',
+          prayerContext: PrayerContext(prayerType: PrayerType.isha),
+          createdAtUtc: DateTime.utc(2026, 9, 16, 15, 30 + slot),
+          localDate: LocalDate(2026, 9, 16),
+          rakaatSpanCount: 2,
+          prayerSessionId: sessionId,
+          prayerSessionPartId: partId,
+          slotIndex: slot,
+          rotationSchemeId: 'surah-112:scheme:1',
+          coveredPartIds: const <String>['surah-112:scheme:1:part:1'],
+        );
+
+    test('is completed when the last slot arrives from elsewhere', () async {
+      await openIshaSession();
+
+      await applyIn(upsertOf(inSlot(0, id: 'slot-0'), minute: 10));
+      expect(
+        await completedAt(),
+        isNull,
+        reason: 'one of two is not a finished prayer',
+      );
+
+      await applyIn(upsertOf(inSlot(1, id: 'slot-1'), minute: 20));
+
+      expect(
+        await completedAt(),
+        isNotNull,
+        reason:
+            'both slots are filled, so the prayer is done — and the tick, the '
+            'calendar and the move to Witr all read this one field',
+      );
+    });
+
+    test('is reopened when a withdrawal empties a slot', () async {
+      await openIshaSession(slots: 1);
+      await applyIn(upsertOf(inSlot(0, id: 'slot-0'), minute: 10));
+      expect(await completedAt(), isNotNull);
+
+      await applyIn(
+        RecitationSyncPayload.tombstone(
+          entityId: 'slot-0',
+          envelopeId: 'envelope-gone',
+          deviceId: 'other-device',
+          idempotencyKey: 'key-gone',
+          schemaVersion: 10,
+          originalCreatedAtUtc: DateTime.utc(2026, 9, 16, 15, 30),
+          deletedAtUtc: DateTime.utc(2026, 9, 16, 18),
+        ),
+      );
+
+      expect(
+        await completedAt(),
+        isNull,
+        reason:
+            'the recitation that finished it is gone, so the prayer is open '
+            'again — the same reconciliation a local withdrawal runs',
+      );
+    });
+  });
+
   group('what cannot be written stays on the server', () {
     test('a recitation whose surah is not here is refused', () async {
       // surah-108 is in the catalog but was never mastered, so no roster entry

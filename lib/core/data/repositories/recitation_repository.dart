@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../../domain/domain.dart';
 import '../database/app_database.dart';
 import '../sync/sync_recorder.dart';
+import 'prayer_session_completion.dart';
 import 'rotation_projection_store.dart';
 
 final class RecitationUndoToken {
@@ -1226,55 +1227,13 @@ final class RecitationRepository {
     return templatePart != null;
   }
 
-  Future<void> _reconcileRecitationCompletion(String partId) async {
-    final part =
-        await (database.select(database.prayerSessionParts)
-              ..where((PrayerSessionParts row) => row.id.equals(partId)))
-            .getSingleOrNull();
-    if (part == null || part.requiredSurahSlots == 0) return;
-    if (part.completionMode == PrayerPartCompletionMode.followedImam.name &&
-        part.completedAtUtc != null) {
-      return;
-    }
-
-    final activeSlotEvents =
-        await (database.select(database.recitationEvents)..where(
-              (RecitationEvents row) =>
-                  row.prayerSessionPartId.equals(partId) &
-                  row.slotIndex.isNotNull() &
-                  row.deletedAtUtc.isNull(),
-            ))
-            .get();
-    if (activeSlotEvents.length < part.requiredSurahSlots) {
-      if (part.completionMode == PrayerPartCompletionMode.recitations.name &&
-          part.completedAtUtc != null) {
-        await (database.update(
-          database.prayerSessionParts,
-        )..where((PrayerSessionParts row) => row.id.equals(partId))).write(
-          const PrayerSessionPartsCompanion(
-            completedAtUtc: Value<DateTime?>(null),
-          ),
-        );
-      }
-      return;
-    }
-
-    final completedAtUtc = activeSlotEvents
-        .map((RecitationEventRow row) => row.createdAtUtc.toUtc())
-        .reduce(
-          (DateTime left, DateTime right) => left.isAfter(right) ? left : right,
-        );
-    await (database.update(
-      database.prayerSessionParts,
-    )..where((PrayerSessionParts row) => row.id.equals(partId))).write(
-      PrayerSessionPartsCompanion(
-        completionMode: Value<String>(
-          PrayerPartCompletionMode.recitations.name,
-        ),
-        completedAtUtc: Value<DateTime?>(completedAtUtc),
-      ),
-    );
-  }
+  /// Delegates to [PrayerSessionCompletion], which the sync applier also uses.
+  ///
+  /// It used to live here, and that was the defect: the phone that *received*
+  /// a recitation had no way to reach it, so a slot filled from the account
+  /// never finished the prayer it belonged to.
+  Future<void> _reconcileRecitationCompletion(String partId) =>
+      PrayerSessionCompletion.reconcile(database, partId);
 }
 
 SurahRecitationEvent _atDatabasePrecision(SurahRecitationEvent event) {
