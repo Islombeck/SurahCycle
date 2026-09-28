@@ -115,8 +115,18 @@ Future<void> _pumpCard(
   required PrayerTimeSettingsController controller,
   required DevicePrayerLocationService location,
 }) async {
-  tester.view.physicalSize = const Size(1080, 2400);
-  tester.view.devicePixelRatio = 1;
+  // **His phone's real width**, 411 logical pixels: 1080 physical at 2.625.
+  // It used to be pumped at a ratio of 1 — the same pixels but 1080 logical
+  // across, two and a half times wider than any phone — and a card that
+  // overflows its row by 40 pixels on the device has all the room it needs
+  // there. That is why every test here passed while the region selector was
+  // visibly broken on his screen.
+  //
+  // The height is deliberately generous and is *not* his phone's: the region
+  // menu holds 209 entries, and a test that taps one of them needs it built.
+  // Only the width is under test here, and only the width was wrong.
+  tester.view.physicalSize = const Size(1080, 6300);
+  tester.view.devicePixelRatio = 2.625;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
   await tester.pumpWidget(

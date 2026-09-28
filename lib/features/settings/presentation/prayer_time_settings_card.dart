@@ -77,6 +77,11 @@ final class _PrayerTimeSettingsCardState
               UzbekistanPrayerLocations.bySlug(selectedSlug ?? '') == null
               ? null
               : selectedSlug,
+          // Without this the button takes the width of its **widest** item —
+          // «Nukus shahri — Qoraqalpog'iston Resp.» — and on a phone that is
+          // 40 logical pixels past the edge of the card. The ellipsis on the
+          // items below never helps, because nothing was constraining them.
+          isExpanded: true,
           decoration: InputDecoration(
             labelText: context.l10n.selectPrayerRegion,
           ),
@@ -187,6 +192,9 @@ final class _PrayerTimeSettingsCardState
           DropdownButtonFormField<PrayerCalculationMethod>(
             key: const ValueKey<String>('prayer-calculation-method'),
             initialValue: settings.calculationSettings.method,
+            // Same reason as the region selector above, and the method names
+            // are longer still.
+            isExpanded: true,
             decoration: InputDecoration(
               labelText: context.l10n.calculationMethod,
             ),
@@ -194,7 +202,7 @@ final class _PrayerTimeSettingsCardState
               for (final method in PrayerCalculationMethod.values)
                 DropdownMenuItem<PrayerCalculationMethod>(
                   value: method,
-                  child: Text(_methodLabel(method)),
+                  child: Text(_methodLabel(method), overflow: TextOverflow.ellipsis),
                 ),
             ],
             onChanged: _busy
