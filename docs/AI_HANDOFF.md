@@ -132,9 +132,22 @@ emulator clock at 00:51 on 29 Sep, marked, and the record came out
 Build `2AAC5012321F042B73DE2ECD4AE082601E46A8ECDF06359568E6C0E71492D2A4`,
 230,353,439 bytes, checked clean of the acceptance credentials.
 
-**It is not on his phone.** He unplugged it before the install, so
-`EAC88C3B…A233` — the one with the defect — is still what he is using.
-Reinstalling this build is the first thing to do when the phone is back.
+**Now on his phone.** He reconnected and it was installed the same way as
+before: fresh backup first — `jelly_backup_20260928-152809.sqlite`, 2,084,864
+bytes, SHA-256 `936A9A158DDBFA6DEF052D625022C3C20BBAAB32BCBDFD80322338685
+71AA6E3`, `integrity_check` ok, already v11 — contents counted, then
+`adb install -r` → `Success`.
+
+Afterwards: `user_version` 11, `integrity_check` ok, 0 foreign-key violations,
+and the id comparison against that backup came back **"Identical on every
+compared table"** — 948 recitations, 950 coverage rows, 112 sessions, 192
+parts, 28 schemes, 31 scheme parts, 27 surahs, the plan and its 32 events, the
+adjustment, 4 recall attempts, 13 settings, all with the same ids and the same
+fields. Not one row changed; the install was code only.
+
+The binary was checked on the phone itself rather than assumed:
+`sha256sum` of `base.apk` reads `2aac5012…92d2a4`, which is the build that was
+meant to go on. No `E/flutter`, no `FATAL`, no `SqliteException` in its log.
 
 Also worth a look while in there: the prayer-times card overflows its row by
 40 logical pixels ("RIGHT OVERFLOWED BY 40 PIXEL" in a debug build), visible
