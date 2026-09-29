@@ -958,6 +958,18 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
         )
       : _settledValue(automaticPrayerResolution);
   final localDate = ref.watch(localDateProvider).today();
+  // The day the prayer belongs to, which after midnight is the one that is
+  // ending. It is separate from `localDate` above, which stays the calendar
+  // day because that is what the widget *displays*.
+  //
+  // This matters because `currentPrayerRoutineProvider` does not only read a
+  // session, it opens one. Asking it for the wall-clock day after midnight
+  // created an empty Isha — and, through the transition below, an empty Witr
+  // — on a day that had not started, and the calendar then showed a prayer
+  // begun and unfinished that he had never touched. Found on his phone:
+  // `isha 0/2` and `witr 0/1` sitting on 2026-09-29 at five in the afternoon.
+  final prayerLocalDate =
+      rawWidgetPrayerResolution?.contextLocalDate ?? localDate;
   final rawContext = rawWidgetPrayerResolution?.context;
   final witrTemplateForTransition = rawContext?.prayerType == PrayerType.isha
       ? ref.watch(prayerRoutineTemplateProvider(PrayerType.witr)).valueOrNull
@@ -967,7 +979,7 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
             .watch(
               currentPrayerRoutineProvider((
                 context: rawContext!,
-                localDate: localDate,
+                localDate: prayerLocalDate,
               )),
             )
             .valueOrNull
@@ -985,7 +997,7 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
       : ref.watch(
           currentPrayerRoutineProvider((
             context: widgetPrayerContext,
-            localDate: localDate,
+            localDate: prayerLocalDate,
           )),
         );
   if (routineState?.isLoading ?? false) return;
