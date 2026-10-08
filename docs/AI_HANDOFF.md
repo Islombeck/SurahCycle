@@ -119,7 +119,19 @@ reason the sync classifier is one: an `Account` needs a client, a platform
 channel and a binding, and this decision should not need any of them to be
 examined.
 
-1328 passed, 11 skipped, 0 failed; analyzer clean.
+1328 passed, 11 skipped, 0 failed; analyzer clean. Commit `041818f`.
+
+**On his phone the same evening.** Build
+`BC89AC7C40F809E1BD7ED679CC0719881420540DEE367D7588826A4C7F42DD77`,
+230,359,553 bytes, kernel checked clean of the acceptance credentials. Backup
+`jelly_backup_20261008b.sqlite`, 2,084,864 bytes, SHA-256
+`75CF9868E77A6BA136A1A7D78A906785B289FBAD2089B279B42BF1E7079DDFAB`.
+`adb install -r` → `Success`; the id comparison after launch reads **"Identical
+on every compared table"**; `sha256sum` on the phone reads `bc89ac7c…42dd77`.
+
+**The new card has not been seen on his screen.** The phone went to sleep
+before it could be opened and was left alone rather than woken repeatedly. It
+is covered by the widget test above, which was watched failing.
 
 ## Two defects he found by using the app — 2026-09-28
 
