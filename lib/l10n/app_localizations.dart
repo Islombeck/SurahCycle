@@ -2356,6 +2356,18 @@ abstract class AppLocalizations {
   /// **'Возможно, нет сети. Это не значит, что вас разлогинили.'**
   String get accountUnknownBody;
 
+  /// No description provided for @accountPausedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проект приостановлен'**
+  String get accountPausedTitle;
+
+  /// No description provided for @accountPausedBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер отвечает, но проект приостановлен за неактивность и отклоняет все запросы — вход в том числе. Его нужно восстановить в консоли Appwrite. Ничего не потеряно: изменения ждут в очереди на телефоне и уйдут сами.'**
+  String get accountPausedBody;
+
   /// No description provided for @accountRetry.
   ///
   /// In ru, this message translates to:

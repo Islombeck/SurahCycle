@@ -41,6 +41,19 @@ final class LiveAppwriteSyncApi implements AppwriteSyncApi {
   static const int _notFound = 404;
   static const int _conflict = 409;
 
+  /// Appwrite Cloud pauses a project that has gone unused, and then answers
+  /// every request to it with 403 and this type.
+  ///
+  /// Read by **type**, because the code it arrives with is also the code for an
+  /// ordinary refusal — and the two need opposite words. His phone held 38
+  /// entries stuck since 2026-10-01, every one filed as `sync-unauthorized`,
+  /// whose whole meaning is "sign in again"; signing in could not have helped,
+  /// because that is a request to the same paused project.
+  static const String _projectPausedType = 'project_paused';
+
+  static bool _isProjectPaused(AppwriteException error) =>
+      error.type == _projectPausedType;
+
   @override
   Future<AppwriteSyncWriteOutcome> upsertRow({
     required String rowId,
@@ -68,6 +81,12 @@ final class LiveAppwriteSyncApi implements AppwriteSyncApi {
     if (error is! AppwriteException) {
       // Offline, DNS, TLS. Unknown, so the entry stays queued.
       throw const SyncTransportException('sync-unreachable');
+    }
+    // Before the codes, because this one arrives as a 403 and means something
+    // else entirely. Retryable, exactly like a missing table: the project comes
+    // back and every queued change succeeds the moment it does.
+    if (_isProjectPaused(error)) {
+      throw const SyncTransportException('sync-project-paused');
     }
     switch (error.code) {
       // The unique index on (userId, idempotencyKey) refused a key the account
@@ -139,6 +158,9 @@ final class LiveAppwriteSyncApi implements AppwriteSyncApi {
   static Never classifyReadFailure(Object error) {
     if (error is! AppwriteException) {
       throw const SyncTransportException('sync-unreachable');
+    }
+    if (_isProjectPaused(error)) {
+      throw const SyncTransportException('sync-project-paused');
     }
     switch (error.code) {
       case _notFound:

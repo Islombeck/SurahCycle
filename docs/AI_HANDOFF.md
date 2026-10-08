@@ -76,12 +76,50 @@ enqueued on 2026-10-01 between 13:53 and 15:30 UTC (18:53–20:30 Tashkent),
 attempt counts 1..6: 27 mastered surahs, 8 recitations, 3 prayer sessions. The
 pull cursor is set for `user:6aabe5f12539ee6ac2cd`, so a pull did once succeed.
 
-Nothing is lost — the outbox is durable and `sync-unauthorized` is retryable,
-not quarantined — but **his device has not pushed anything since 1 October**,
-and his marks since then are local only. The queue drains itself once the
-account is authorised again, which means him signing in in Settings; a password
-is not something to ask for or to type. Worth telling him rather than fixing
-behind him. Not investigated further than the table above.
+Nothing is lost — the outbox is durable and the failure is retryable, not
+quarantined — but **his device has not pushed anything since 1 October**, and
+his marks since then are local only.
+
+### The reason, and two defects it uncovered — 2026-10-08, later
+
+He answered: «Нет кнопки — Войти заново, только „Повторить"». His account
+screen was showing «Не удалось связаться с аккаунтом · Возможно, нет сети» with
+one button that could not help.
+
+**The network was fine.** From his phone, `fra.cloud.appwrite.io` answers in
+110 ms. The real cause came from the console: his Appwrite project is **paused
+for inactivity**, and a paused project answers *every* request with 403
+`project_paused` — including the ones that establish a session. One fact
+explains all of it: the push stopped on 1 October, the account cannot be read,
+and signing in again would have failed in exactly the same way.
+
+**Restoring it needs one approval.** `projects_update_status` → `active` was
+refused by the permission layer here. Until then the console does it in a tap,
+and nothing on the device has to change.
+
+Two defects of ours, both falsified first — five red, each saying what was on
+his screen — and fixed:
+
+1. **403 `project_paused` was filed as `sync-unauthorized`**, whose documented
+   meaning is "resolved by signing in again". It is not, and the 38 entries
+   carry that wrong word today. It is now `sync-project-paused`, still
+   retryable for the same reason a missing table is: the project comes back and
+   every queued change succeeds the moment it does. Read by **type**, never by
+   the code, because 403 is also how a project refuses a request it understands.
+2. **The account screen blamed the network for every failure it could not
+   name.** A paused project now has its own card and its own words, and every
+   other unknown failure shows the adapter's category underneath «Не удалось
+   связаться» — the way a misconfigured build already shows its reason. The
+   category is printed only when it looks like one (`^[a-z0-9-]+$`), because
+   the reasons that break that promise are the ones quoting the user's own
+   address. That one line would have found this in a minute instead of an hour.
+
+`LiveAppwriteAccountApi.isProjectPaused` is a pure predicate for the same
+reason the sync classifier is one: an `Account` needs a client, a platform
+channel and a binding, and this decision should not need any of them to be
+examined.
+
+1328 passed, 11 skipped, 0 failed; analyzer clean.
 
 ## Two defects he found by using the app — 2026-09-28
 

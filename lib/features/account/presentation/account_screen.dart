@@ -52,28 +52,70 @@ final class _AccountScreenState extends ConsumerState<AccountScreen> {
               child: CircularProgressIndicator(),
             ),
           ),
-          AsyncError<SyncStatus>() => _unreachable(l10n),
+          AsyncError<SyncStatus>(:final error) => _unreachable(l10n, error),
           _ => _forStatus(l10n, status.requireValue),
         },
       ),
     );
   }
 
-  Widget _unreachable(AppLocalizations l10n) => _Body(
-    children: <Widget>[
-      _StatusCard(
-        title: l10n.accountUnknownTitle,
-        body: l10n.accountUnknownBody,
-        icon: Icons.cloud_off_outlined,
-      ),
-      const SizedBox(height: 12),
-      OutlinedButton(
-        key: const ValueKey<String>('account-retry'),
-        onPressed: _busy ? null : () => ref.invalidate(currentAccountProvider),
-        child: Text(l10n.accountRetry),
-      ),
-    ],
+  /// Not knowing, with whatever the failure was willing to say.
+  ///
+  /// A paused project gets its own words rather than the offline ones. It is
+  /// the case where every sentence on the old card was false — the server was
+  /// answering, the user had not been signed out, and the retry it offered was
+  /// the only control on screen — and the one where the owner can actually act,
+  /// because restoring the project is a thing he does.
+  ///
+  /// Everything else keeps "could not reach" and gains the category underneath
+  /// it, the way a misconfigured build already shows its reason. The same guard
+  /// as everywhere else on this screen decides whether it may be shown: the
+  /// adapters promise a category and never a provider message, and a reason
+  /// that does not look like one is withheld rather than trusted, because the
+  /// messages that break that promise are the ones quoting the user's own
+  /// address.
+  Widget _unreachable(AppLocalizations l10n, Object? error) {
+    final reason = error is SyncAccountException ? error.reason : null;
+    if (reason == _pausedProjectReason) {
+      return _Body(
+        children: <Widget>[
+          _StatusCard(
+            key: const ValueKey<String>('account-project-paused'),
+            title: l10n.accountPausedTitle,
+            body: l10n.accountPausedBody,
+            icon: Icons.pause_circle_outline,
+          ),
+          const SizedBox(height: 12),
+          _retryButton(l10n),
+        ],
+      );
+    }
+    return _Body(
+      children: <Widget>[
+        _StatusCard(
+          title: l10n.accountUnknownTitle,
+          body: l10n.accountUnknownBody,
+          icon: Icons.cloud_off_outlined,
+          detail: reason != null && _isCategory.hasMatch(reason)
+              ? reason
+              : null,
+        ),
+        const SizedBox(height: 12),
+        _retryButton(l10n),
+      ],
+    );
+  }
+
+  Widget _retryButton(AppLocalizations l10n) => OutlinedButton(
+    key: const ValueKey<String>('account-retry'),
+    onPressed: _busy ? null : () => ref.invalidate(currentAccountProvider),
+    child: Text(l10n.accountRetry),
   );
+
+  static const String _pausedProjectReason = 'account-project-paused';
+
+  /// What the adapters promise every reason looks like.
+  static final RegExp _isCategory = RegExp(r'^[a-z0-9-]+$');
 
   Widget _forStatus(AppLocalizations l10n, SyncStatus status) =>
       switch (status.health) {

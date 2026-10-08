@@ -43,12 +43,35 @@ final class LiveAppwriteAccountApi implements AppwriteAccountApi {
   /// not answered, and must not be flattened into "signed out".
   static const int _unauthorized = 401;
 
+  /// Appwrite Cloud pauses a project that has gone unused and then answers
+  /// **every** request to it with 403 and this type.
+  static const String _projectPausedType = 'project_paused';
+
+  /// A paused project, told apart from an ordinary refusal.
+  ///
+  /// Pure, and public for the test, for the same reason the sync adapter's
+  /// classifier is: constructing an `Account` needs a client, a platform
+  /// channel and a binding, and this decision should not need any of them to
+  /// be examined.
+  ///
+  /// The **type**, not the code: 403 is also how a project refuses a request it
+  /// understands perfectly well. Read off his phone on 2026-10-08, where the
+  /// screen said "you may be offline" while the device could ping the endpoint
+  /// in 110 ms — and where signing in again, the one thing the app suggested,
+  /// could not have worked, because signing in is a request to the same paused
+  /// project.
+  static bool isProjectPaused(Object error) =>
+      error is AppwriteException && error.type == _projectPausedType;
+
   @override
   Future<String?> currentUserId() async {
     try {
       final user = await _account.get();
       return user.$id;
     } on AppwriteException catch (error) {
+      if (isProjectPaused(error)) {
+        throw const SyncAccountException('account-project-paused');
+      }
       if (error.code == _unauthorized) {
         return null;
       }
@@ -67,6 +90,9 @@ final class LiveAppwriteAccountApi implements AppwriteAccountApi {
         for (final identity in identities.identities) identity.provider,
       ];
     } on AppwriteException catch (error) {
+      if (isProjectPaused(error)) {
+        throw const SyncAccountException('account-project-paused');
+      }
       if (error.code == _unauthorized) {
         return const <String>[];
       }
@@ -82,6 +108,12 @@ final class LiveAppwriteAccountApi implements AppwriteAccountApi {
     try {
       await _account.createOAuth2Session(provider: provider);
     } on AppwriteException catch (error) {
+      if (isProjectPaused(error)) {
+        // Worth saying plainly here most of all: this is the call the screen
+        // offers as the way out of every other failure, and against a paused
+        // project it cannot work either.
+        throw const SyncAccountException('account-project-paused');
+      }
       // A provider that is registered with Google/Yandex but still switched
       // off in the Appwrite Console fails here, and it is worth its own
       // category: it is a configuration gap, not the user's mistake.
@@ -103,6 +135,9 @@ final class LiveAppwriteAccountApi implements AppwriteAccountApi {
         password: password,
       );
     } on AppwriteException catch (error) {
+      if (isProjectPaused(error)) {
+        throw const SyncAccountException('account-project-paused');
+      }
       // The code and nothing else. A provider message here would carry the
       // address that was typed, and this file's whole contract is that a
       // reason is a category, never the user's own data.
@@ -117,6 +152,9 @@ final class LiveAppwriteAccountApi implements AppwriteAccountApi {
     try {
       await _account.deleteSession(sessionId: 'current');
     } on AppwriteException catch (error) {
+      if (isProjectPaused(error)) {
+        throw const SyncAccountException('account-project-paused');
+      }
       if (error.code == _unauthorized) {
         // Already signed out. Signing out twice is not a failure.
         return;

@@ -417,6 +417,8 @@
   ,"accountMisconfiguredBody": "Bu yigʻma muammosi, aloqangiz emas."
   ,"accountUnknownTitle": "Hisobga ulanib boʻlmadi"
   ,"accountUnknownBody": "Internet yoʻq boʻlishi mumkin. Bu chiqib ketdingiz degani emas."
+  ,"accountPausedTitle": "Loyiha toʻxtatib qoʻyilgan"
+  ,"accountPausedBody": "Server javob bermoqda, lekin loyiha faolsizlik tufayli toʻxtatib qoʻyilgan va barcha soʻrovlarni, shu jumladan kirishni ham, rad etadi. Uni Appwrite konsolida tiklash kerak. Hech narsa yoʻqolmaydi: oʻzgarishlar telefondagi navbatda turibdi va oʻzi yuboriladi."
   ,"accountRetry": "Qayta urinish"
   ,"accountSignInFailed": "Kirish yakunlanmadi"
   ,"accountSignOutFailed": "Chiqib boʻlmadi"

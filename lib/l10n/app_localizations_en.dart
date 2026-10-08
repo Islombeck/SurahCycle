@@ -1319,6 +1319,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'You may be offline. This does not mean you were signed out.';
 
   @override
+  String get accountPausedTitle => 'The project is paused';
+
+  @override
+  String get accountPausedBody =>
+      'The server is answering, but the project has been paused for inactivity and refuses every request, signing in included. It has to be restored in the Appwrite console. Nothing is lost: your changes are waiting in the queue on this phone and will go on their own.';
+
+  @override
   String get accountRetry => 'Try again';
 
   @override

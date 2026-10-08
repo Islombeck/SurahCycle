@@ -463,6 +463,62 @@ void main() {
     // must not put that on a snackbar.
     expect(find.textContaining('example.com'), findsNothing);
   });
+
+  group('when the account cannot be read, the screen says why', () {
+    testWidgets('a paused project is named rather than blamed on the network', (
+      tester,
+    ) async {
+      // His phone on 2026-10-08, and the message he sent: «нет кнопки — войти
+      // заново, только Повторить». The project had been paused for inactivity
+      // and was answering 403 `project_paused`; the screen said «Возможно, нет
+      // сети» while the phone could ping the endpoint in 110 ms, and offered
+      // the one button that could not help. Nothing on it was true and there
+      // was no way forward.
+      await _pump(
+        tester,
+        accountError: const SyncAccountException('account-project-paused'),
+      );
+
+      expect(find.text(l10n.accountPausedTitle), findsOneWidget);
+      expect(
+        find.text(l10n.accountUnknownTitle),
+        findsNothing,
+        reason: 'the server answered, so "could not reach" is simply false',
+      );
+      expect(
+        find.byKey(const ValueKey<String>('account-retry')),
+        findsOneWidget,
+        reason: 'the project comes back, and then this is the way back in',
+      );
+    });
+
+    testWidgets('an unknown failure shows its category', (tester) async {
+      // What would have found the paused project in a minute instead of an
+      // hour. The category is the adapter's own vocabulary, never a provider
+      // message — the test below holds that line.
+      await _pump(
+        tester,
+        accountError: const SyncAccountException('account-read-failed-403'),
+      );
+
+      expect(find.text(l10n.accountUnknownTitle), findsOneWidget);
+      expect(find.textContaining('account-read-failed-403'), findsOneWidget);
+    });
+
+    testWidgets('a reason carrying anything but a category is withheld', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        accountError: const SyncAccountException(
+          'oauth-failed-401-secret@example.com',
+        ),
+      );
+
+      expect(find.text(l10n.accountUnknownTitle), findsOneWidget);
+      expect(find.textContaining('example.com'), findsNothing);
+    });
+  });
 }
 
 final AppwriteConfig _absent = AppwriteConfig.resolve(

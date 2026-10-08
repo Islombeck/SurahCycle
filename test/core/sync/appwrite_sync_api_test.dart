@@ -73,6 +73,23 @@ void main() {
       }
     });
 
+    test('a paused project is not an authorization problem', () {
+      // Read off his phone on 2026-10-08: 38 entries stuck since 1 October,
+      // every one `sync-unauthorized` — which says "sign in again", and
+      // signing in could not have helped. Appwrite Cloud pauses a project for
+      // inactivity and then answers **every** request with 403
+      // `project_paused`, including the ones that establish a session.
+      //
+      // Retryable, like a missing table and for the same reason: the project
+      // comes back and every queued change succeeds the moment it does.
+      expect(
+        () => LiveAppwriteSyncApi.classifyWriteFailure(
+          AppwriteException('paused', 403, 'project_paused'),
+        ),
+        transportReason('sync-project-paused'),
+      );
+    });
+
     test('an unrecognised code is retried, not assumed permanent', () {
       expect(
         () => LiveAppwriteSyncApi.classifyWriteFailure(
@@ -108,6 +125,15 @@ void main() {
           AppwriteException('denied', 401),
         ),
         transportReason('sync-unauthorized'),
+      );
+    });
+
+    test('a paused project is told apart here too', () {
+      expect(
+        () => LiveAppwriteSyncApi.classifyReadFailure(
+          AppwriteException('paused', 403, 'project_paused'),
+        ),
+        transportReason('sync-project-paused'),
       );
     });
 

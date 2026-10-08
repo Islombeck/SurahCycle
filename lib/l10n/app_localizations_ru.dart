@@ -1323,6 +1323,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'Возможно, нет сети. Это не значит, что вас разлогинили.';
 
   @override
+  String get accountPausedTitle => 'Проект приостановлен';
+
+  @override
+  String get accountPausedBody =>
+      'Сервер отвечает, но проект приостановлен за неактивность и отклоняет все запросы — вход в том числе. Его нужно восстановить в консоли Appwrite. Ничего не потеряно: изменения ждут в очереди на телефоне и уйдут сами.';
+
+  @override
   String get accountRetry => 'Повторить';
 
   @override

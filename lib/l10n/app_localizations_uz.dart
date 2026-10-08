@@ -1321,6 +1321,13 @@ class AppLocalizationsUz extends AppLocalizations {
       'Internet yoʻq boʻlishi mumkin. Bu chiqib ketdingiz degani emas.';
 
   @override
+  String get accountPausedTitle => 'Loyiha toʻxtatib qoʻyilgan';
+
+  @override
+  String get accountPausedBody =>
+      'Server javob bermoqda, lekin loyiha faolsizlik tufayli toʻxtatib qoʻyilgan va barcha soʻrovlarni, shu jumladan kirishni ham, rad etadi. Uni Appwrite konsolida tiklash kerak. Hech narsa yoʻqolmaydi: oʻzgarishlar telefondagi navbatda turibdi va oʻzi yuboriladi.';
+
+  @override
   String get accountRetry => 'Qayta urinish';
 
   @override
