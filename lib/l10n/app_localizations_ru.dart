@@ -97,7 +97,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get doneForCycle => 'Выполнено';
 
   @override
-  String get recitedInCurrentPart => 'Прочитано в этой части';
+  String get recitedInThisPrayer => 'Прочитано в этом намазе';
 
   @override
   String get notificationsTitle => 'Уведомления';

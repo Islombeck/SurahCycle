@@ -778,24 +778,31 @@ final contextualRecommendationInputsProvider =
       );
     });
 
-/// Surahs already recited in this exact occurrence today.
+/// Surahs already recited in this prayer today — in any of its parts.
 ///
-/// A batch position uses this to render as completed instead of being
-/// removed, which is what keeps the block a stable size. Scoped to the
-/// current routine part when there is one, and to the whole prayer otherwise,
-/// so the slotless flow behaves the same way.
+/// A batch position uses this to render as completed instead of being removed,
+/// which is what keeps the block a stable size.
+///
+/// It used to narrow to the routine part that is **current**, and that is the
+/// report «2 из 2-х есть, но он как бы не выполненный»: filling the Fard moves
+/// the routine on to the Sunnah, and in the same frame every tick the Fard had
+/// just earned went out. The data was right; the list said the marks had not
+/// counted.
+///
+/// The prayer is the scope, and only the prayer. Narrower is wrong for the
+/// reason above; wider — carrying the ticks into the next prayer — would make
+/// them mean nothing. What a part still owes is a different question, asked by
+/// [contextualRecommendationInputsProvider] through
+/// `alreadyFilledInCurrentPartSurahIds`, which stays scoped to the part so a
+/// recommendation never offers the same surah twice inside one part.
 final recitedInCurrentOccurrenceProvider =
     Provider.family<Set<String>, PrayerRoutineSessionKey>((ref, key) {
       final history = ref.watch(recitationHistoryProvider).valueOrNull;
       if (history == null) return const <String>{};
-      final routine = ref.watch(currentPrayerRoutineProvider(key)).valueOrNull;
-      final currentPartId = routine?.currentPart?.part.id;
       return <String>{
         for (final entry in history)
           if (entry.event.localDate == key.localDate &&
-              entry.event.prayerContext == key.context &&
-              (currentPartId == null ||
-                  entry.event.prayerSessionPartId == currentPartId))
+              entry.event.prayerContext == key.context)
             entry.event.surahId,
       };
     });

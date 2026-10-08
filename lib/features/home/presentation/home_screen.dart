@@ -2331,7 +2331,7 @@ final class _RotationContent extends StatelessWidget {
                   isEnabled: markingEnabled,
                   recommendationRank: positions[active[index].id],
                   occurrence: occurrences[active[index].id] ?? 1,
-                  isRecitedInCurrentPart: completedSurahIds.contains(
+                  isRecitedInThisPrayer: completedSurahIds.contains(
                     active[index].id,
                   ),
                   onMarkRequested: () => onMarkRequested(active[index]),
@@ -2356,7 +2356,7 @@ final class _SurahRotationTile extends StatelessWidget {
     required this.isBusy,
     required this.isEnabled,
     required this.recommendationRank,
-    required this.isRecitedInCurrentPart,
+    required this.isRecitedInThisPrayer,
     required this.onMarkRequested,
     required this.onAdvancedMarkRequested,
     this.occurrence = 1,
@@ -2367,7 +2367,11 @@ final class _SurahRotationTile extends StatelessWidget {
   final bool isBusy;
   final bool isEnabled;
   final int? recommendationRank;
-  final bool isRecitedInCurrentPart;
+  /// Recited for the prayer this screen is showing — in any of its parts.
+  ///
+  /// Scoped to the part that is current, it went out the moment a part filled
+  /// up and the routine moved on, which read as the mark not having counted.
+  final bool isRecitedInThisPrayer;
 
   /// Second appearance in the current recommendation cycle, shown honestly as
   /// `2×`. It never doubles a recitation event or affects statistics.
@@ -2415,7 +2419,7 @@ final class _SurahRotationTile extends StatelessWidget {
           if (recommendationRank != null) ...<Widget>[
             RecommendationRankBadge(
               rank: recommendationRank! + 1,
-              isCompleted: isRecitedInCurrentPart,
+              isCompleted: isRecitedInThisPrayer,
             ),
             if (occurrence > 1) ...<Widget>[
               const SizedBox(width: 4),
@@ -2433,13 +2437,13 @@ final class _SurahRotationTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (isRecitedInCurrentPart) ...<Widget>[
+          if (isRecitedInThisPrayer) ...<Widget>[
             const SizedBox(width: 6),
             Tooltip(
-              message: context.l10n.recitedInCurrentPart,
+              message: context.l10n.recitedInThisPrayer,
               child: Icon(
                 Icons.check_circle,
-                key: ValueKey<String>('recited-in-current-part-${surah.id}'),
+                key: ValueKey<String>('recited-in-this-prayer-${surah.id}'),
                 size: 16,
                 color: Theme.of(context).colorScheme.primary,
               ),

@@ -268,11 +268,11 @@ abstract class AppLocalizations {
   /// **'Выполнено'**
   String get doneForCycle;
 
-  /// No description provided for @recitedInCurrentPart.
+  /// No description provided for @recitedInThisPrayer.
   ///
   /// In ru, this message translates to:
-  /// **'Прочитано в этой части'**
-  String get recitedInCurrentPart;
+  /// **'Прочитано в этом намазе'**
+  String get recitedInThisPrayer;
 
   /// No description provided for @notificationsTitle.
   ///

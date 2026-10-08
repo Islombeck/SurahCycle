@@ -402,6 +402,108 @@ void main() {
       await _disposeWidgetTree(tester);
     });
   });
+
+  group('what the green tick on the rotation list means', () {
+    testWidgets('a mark stays shown when the prayer moves to the next part', (
+      tester,
+    ) async {
+      // His report: «вчера после отметки 2 из 2-х есть, но он как бы не
+      // выполненный». His database was correct — the part was full and
+      // complete. What he was reading was the list: the tick next to a surah
+      // was scoped to the part that is **current**, so filling the Fard moved
+      // the routine to the Sunnah and silently cleared both ticks the Fard had
+      // just earned. Two green indicators of different meanings sat side by
+      // side, and the one that disappeared read as "not counted".
+      //
+      // The tick is about this prayer, not about this part. It stays until the
+      // prayer is over.
+      _sizePhone(tester);
+      await fixture.seedOwnersRoutines();
+      await fixture.addSurah('surah-a', 112);
+      await fixture.addSurah('surah-b', 108);
+
+      await fixture.pumpWithRealSchedule(tester);
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('mark-surah-surah-a')),
+      );
+      await _pumpFrames(tester, 60);
+
+      expect(
+        find.byKey(const ValueKey<String>('recited-in-this-prayer-surah-a')),
+        findsOneWidget,
+        reason: 'the Fard has two slots, so one mark leaves it current',
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('mark-surah-surah-b')),
+      );
+      await _pumpFrames(tester, 60);
+
+      expect(
+        (await fixture.recitations.getHistory(prayerType: PrayerType.isha)),
+        hasLength(2),
+        reason: 'both marks are recorded against Иша',
+      );
+      expect(
+        _containerOf(tester)
+            .read(
+              currentPrayerRoutineProvider((
+                context: PrayerContext(prayerType: PrayerType.isha),
+                localDate: LocalDate(2026, 8, 25),
+              )),
+            )
+            .valueOrNull
+            ?.currentPart
+            ?.part
+            .stableKey,
+        'sunnah',
+        reason:
+            'the second mark fills the Fard, so the prayer has moved on — '
+            'which is exactly when the ticks used to go out',
+      );
+      expect(
+        find.byKey(const ValueKey<String>('recited-in-this-prayer-surah-a')),
+        findsOneWidget,
+        reason: 'it was recited in this prayer and the prayer is not over',
+      );
+      expect(
+        find.byKey(const ValueKey<String>('recited-in-this-prayer-surah-b')),
+        findsOneWidget,
+      );
+
+      await _disposeWidgetTree(tester);
+    });
+
+    testWidgets('a mark for another prayer is not shown', (tester) async {
+      // The scope widened from the part to the prayer, and no further: a surah
+      // recited for Иша must not come up ticked once the context is Витр, or
+      // the tick would stop meaning anything at all.
+      _sizePhone(tester);
+      await fixture.seedOwnersRoutines();
+      await fixture.addSurah('surah-a', 112);
+      await fixture.addSurah('surah-b', 108);
+      await fixture.fillIshaFard(<String>['surah-a', 'surah-b']);
+      await fixture.completeIsha();
+
+      await fixture.pumpWithRealSchedule(tester);
+
+      expect(
+        _containerOf(tester)
+            .read(homePrayerContextResolutionProvider)
+            .valueOrNull
+            ?.context
+            ?.prayerType,
+        PrayerType.witr,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('recited-in-this-prayer-surah-a')),
+        findsNothing,
+      );
+
+      await _disposeWidgetTree(tester);
+    });
+  });
 }
 
 // Deliberately a ratio of 1, which is **wider than his phone**: 1080 logical

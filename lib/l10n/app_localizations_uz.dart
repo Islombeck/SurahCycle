@@ -97,7 +97,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get doneForCycle => 'Bajarildi';
 
   @override
-  String get recitedInCurrentPart => 'Ushbu qismda o\'qildi';
+  String get recitedInThisPrayer => 'Ushbu namozda o\'qildi';
 
   @override
   String get notificationsTitle => 'Bildirishnomalar';

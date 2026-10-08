@@ -1,6 +1,52 @@
 # Murajaah AI handoff
 
-## Two defects he found by using the app — 2026-09-28 (read this first)
+## The green tick was scoped to the part, not the prayer — 2026-10-08 (read this first)
+
+His report was «вчера после отметки 2 из 2-х есть, но он как бы не
+выполненный», and then, a day later, «сейчас всё на месте и в календаре, и
+если открыть именно тот день — это было только вчера после отметки». That
+second message is what moved the investigation: his database was pulled and
+found **correct**, so the defect was in what the list said, not in what was
+stored.
+
+Two green indicators of different meanings sit on one row of the rotation
+list. The large circle in the leading button is the rotation debt for the
+cycle — `_RemainingIndicator`. The small `Icons.check_circle` beside the name
+meant "recited in the part that is **current**". Filling the Fard's last slot
+completes it and moves the routine on to the Sunnah, and in that same frame
+every tick the Fard had just earned went out. Nothing was lost and nothing was
+wrong in the data; the screen simply stopped acknowledging the marks that had
+finished the part.
+
+The scope is now the prayer. `recitedInCurrentOccurrenceProvider`
+(`lib/app/app_providers.dart`) no longer narrows by `currentPart`, and the flag
+it feeds is `isRecitedInThisPrayer` with the key
+`recited-in-this-prayer-<surahId>` and the string `recitedInThisPrayer`
+(«Прочитано в этом намазе», `Recited in this prayer`, `Ushbu namozda o'qildi`).
+Wider than the prayer would make the tick meaningless, so the second new test
+pins that too: a surah recited for Isha comes up **unticked** once the context
+is Witr.
+
+**What a part still owes is a separate question and keeps its own scope.**
+`contextualRecommendationInputsProvider` passes
+`alreadyFilledInCurrentPartSurahIds`, still filtered to the current part, so a
+recommendation never offers the same surah twice inside one part. Widening that
+one would be a different and real defect.
+
+Falsified first. `test/widget/home_witr_after_isha_test.dart` gained the group
+«what the green tick on the rotation list means»; against the old provider the
+first assertion passed, the routine really had moved to the Sunnah, and the
+tick was gone — `Found 0 widgets with key [<'recited-in-this-prayer-surah-a'>]`.
+Nothing outside `lib/` had ever referenced the old key, which is why this could
+ship: the badge's scope was never tested.
+
+Full `flutter test`: **1321 passed, 11 skipped, 0 failed**. `flutter analyze`:
+no issues.
+
+Both `8f1b4e4` (no empty Isha/Witr session on a day that has not started) and
+this change are **not yet on his phone**.
+
+## Two defects he found by using the app — 2026-09-28
 
 Both reported from ordinary use, both reproduced from his own database before
 anything was changed, both fixed with a test watched failing first.

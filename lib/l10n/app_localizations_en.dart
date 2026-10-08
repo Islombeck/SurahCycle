@@ -97,7 +97,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get doneForCycle => 'Complete';
 
   @override
-  String get recitedInCurrentPart => 'Recited in this part';
+  String get recitedInThisPrayer => 'Recited in this prayer';
 
   @override
   String get notificationsTitle => 'Notifications';

@@ -29,7 +29,7 @@
   "surahMarked": "Surah marked",
   "undo": "Undo",
   "doneForCycle": "Complete",
-  "recitedInCurrentPart": "Recited in this part",
+  "recitedInThisPrayer": "Recited in this prayer",
   "notificationsTitle": "Notifications",
   "learningNotificationTitle": "Quiet Learning reminder",
   "learningNotificationSubtitle": "A silent notification showing what to review next. Off by default.",
