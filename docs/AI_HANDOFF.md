@@ -133,6 +133,36 @@ on every compared table"**; `sha256sum` on the phone reads `bc89ac7c…42dd77`.
 before it could be opened and was left alone rather than woken repeatedly. It
 is covered by the widget test above, which was watched failing.
 
+### He restored the project, and the queue drained — 2026-10-08, evening
+
+Confirmed from both ends rather than from one.
+
+The console answers again, so the project is active. On the phone, three
+cycles — a cold start and two resumes — took the queue **193 → 93 → 0**. The
+pull cursor moved with it, so a full exchange completed, not only a push.
+
+**The middle number is worth keeping.** The first cycle stopped on
+`sync-push-failed-429`: Appwrite Cloud rate-limits, the drain treats a failure
+as a reason to stop the round rather than to quarantine anything, and the next
+cycle simply carried on. That is the right behaviour and it is now observed
+rather than assumed — but it means a large queue needs several resumes to
+leave, with nothing on screen explaining the pause.
+
+From the account's side: 243 rows carry today's stamp, and the newest
+`recitationEvent` row is one of the stuck ones, stamped
+`2026-10-01T15:30:53Z` — one of the 38, delivered. Every `recitationEvent` row
+on the account comes from this one device, so nothing here involves the Honor.
+
+**One number is unexplained and is not being presented as fine.** The account
+holds 1244 `recitationEvent` rows; the phone holds 1202 (1090 of them not
+withdrawn). No tombstone rows exist for that type — a withdrawal travels as an
+upsert — so the 42 are not deletions. Row ids on the account come in two forms,
+early ones keyed by the entity id and later ones by a hash, which would make a
+duplicate log row per entity the obvious candidate; the one entity checked by
+hand had a single row, so that is a hypothesis and nothing more. Settling it
+means diffing 1244 account entity ids against the local table, which has not
+been done.
+
 ## Two defects he found by using the app — 2026-09-28
 
 Both reported from ordinary use, both reproduced from his own database before
