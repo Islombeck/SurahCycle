@@ -41,10 +41,47 @@ Nothing outside `lib/` had ever referenced the old key, which is why this could
 ship: the badge's scope was never tested.
 
 Full `flutter test`: **1321 passed, 11 skipped, 0 failed**. `flutter analyze`:
-no issues.
+no issues. Commit `ef85e13`.
 
-Both `8f1b4e4` (no empty Isha/Witr session on a day that has not started) and
-this change are **not yet on his phone**.
+### On his phone, with `8f1b4e4` — 2026-10-08
+
+Build `2AE7C356101111BE3C7A11384446B868C84548E18BAF3DF652DF1C75609345DE`,
+230,355,990 bytes, carrying both this change and `8f1b4e4` (no empty Isha/Witr
+session opened on a day that has not started). Checked before going near the
+phone: the acceptance project id, its test user and its email are **absent**
+from the Dart kernel; only his own project id and endpoint are in it.
+
+Backup first — `jelly_backup_20261008.sqlite`, 2,084,864 bytes, SHA-256
+`876999207451DF368AFB08980F12DA27BAF23A8BBE1722E463351CA56A4BB3E3`, no
+`-wal`/`-shm` beside it, `integrity_check` ok, 0 foreign-key violations,
+already v11. Contents: 1,200 recitations, 1,202 coverage rows, 173 prayer
+sessions, 304 session parts, 28 schemes, 31 scheme parts, 27 mastered surahs,
+the plan and its 32 events, 2 adjustments, 4 recall attempts, 14 settings.
+
+`adb install -r` → `Success`, as an update. Afterwards the id comparison
+against that backup reads **"Identical on every compared table"** — not one row
+changed, the install was code only. `sha256sum` of `base.apk` **on the phone**
+reads `2ae7c356…9345de`, the build that was meant to go on. No `E/flutter`, no
+`FATAL`, no `SqliteException` in its log; a screenshot shows Home up on Аср ·
+Фард.
+
+**Not observed on his screen.** Seeing the tick survive a part change means
+making a real mark in his own history, and that is his to make, not mine. It is
+covered by the falsified test above and by the build being on the phone.
+
+### Found while checking the install: 38 unsent changes — 2026-10-08
+
+His outbox holds **38 pending entries, every one `sync-unauthorized`**, all
+enqueued on 2026-10-01 between 13:53 and 15:30 UTC (18:53–20:30 Tashkent),
+attempt counts 1..6: 27 mastered surahs, 8 recitations, 3 prayer sessions. The
+pull cursor is set for `user:6aabe5f12539ee6ac2cd`, so a pull did once succeed.
+
+Nothing is lost — the outbox is durable and `sync-unauthorized` is retryable,
+not quarantined — but **his device has not pushed anything since 1 October**,
+and his marks since then are local only. The queue drains itself once the
+account is authorised again, which means him signing in in Settings; a password
+is not something to ask for or to type. Worth telling him rather than fixing
+behind him. Not investigated further than the table above.
 
 ## Two defects he found by using the app — 2026-09-28
 
