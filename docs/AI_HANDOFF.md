@@ -51,7 +51,32 @@ New documents, all three meant to be kept up to date rather than read once:
   environment, and the ordered roadmap including the horizontal prayer widget,
   the current-prayer widget and the Scheduler.
 
-1329 passed, 11 skipped; analyzer 0/0/0.
+**And a second defect of the same family, seen on his screen rather than
+deduced:** the theme selector read «Как в систем/е», «Светла/я», «Тёмна/я». A
+`SegmentedButton` divides the row between its segments, so three of them on a
+phone get about 89 logical pixels of text each — six Cyrillic characters —
+against thirteen in «Как в системе». Two more on the prayer-times card did the
+same. All three are stacked now.
+
+The interesting part is why no test saw it: **a wrap overflows nothing**, and
+every case in the narrow-layout suite asserted by overflow. The suite now also
+asks, at every step of the same walk, whether a paragraph was given less width
+than one line of it needs — and it runs in **Russian**, where before it ran in
+English and the labels were "System", "Light", "Dark". It counts what it
+measured, so a renamed widget turns the sweep red instead of quietly into a
+no-op. Falsified by putting one row back: six cases red.
+
+**On his phone.** Build
+`CF7720933CE57F71C30EE997D9E1F39620674A35205FFF812FF6CBD8A357F93A`,
+230,365,140 bytes, kernel clean of the acceptance credentials. Backup
+`jelly_backup_20261009.sqlite`, 2,084,864 bytes, SHA-256
+`AF00A53A6C50D35C2F650378907620478FC32F0940EB6B472EEDA6BF50E800A9`.
+`adb install -r` → `Success`; the id comparison after launch reads **"Identical
+on every compared table"** (1,217 recitations now — he has been using it);
+`sha256sum` on the phone reads `cf772093…57f93a`. No `E/flutter`, no `FATAL`,
+no `SqliteException`.
+
+1333 passed, 11 skipped; analyzer 0/0/0.
 
 ## The green tick was scoped to the part, not the prayer — 2026-10-08
 
