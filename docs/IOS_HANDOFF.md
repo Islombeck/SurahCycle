@@ -254,6 +254,17 @@ Whoever decides it should decide it for both platforms at once.
 Append here. Newest first, one entry per checkpoint, each saying what was
 verified and how.
 
+- **2026-10-09, evening** — Android's launcher icon is now the brand mark
+  (`brand/surahcycle_logo.svg`, the one on the sign-in consent screens).
+  **iOS still ships the Flutter placeholder** in
+  `ios/Runner/Assets.xcassets/AppIcon.appiconset`. For a port: iOS wants an
+  opaque, square 1024 image with no rounded corners — `brand/surahcycle_1024.png`
+  has transparent rounded corners and would show black ones, so render the
+  SVG's plate as a full square instead. Also from this session, worth
+  knowing for any SwiftUI widget: the snapshot's `regionLabel`,
+  `providerLabel` and `dateLabel` are now in the widget's language
+  («Моё местоположение», «9 октября»), decided in Dart. Nothing under `ios/`
+  changed; nothing run on Apple hardware.
 - **2026-10-09, later** — Android gained a second prayer widget, the
   horizontal strip, and both prayer widgets now book a redraw at each window
   boundary. §4.1 updated with what a WidgetKit port takes from it (timeline

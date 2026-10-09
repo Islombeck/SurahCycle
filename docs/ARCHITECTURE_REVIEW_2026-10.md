@@ -245,8 +245,19 @@ for any entity, silent `catch {}` blocks, `print` debugging, dead providers.
    imam and the busy sets; it reads providers through an injected `read`
    and has 16 tests of its own. `home_screen.dart` is 2,325 lines now —
    the presentational widgets and sheets (step 5) are what is left in it.
-2. Move the `prayer_times` providers out of `app_providers.dart`, barrel left
-   in place, as the pattern for the rest.
+2. ~~Move the `prayer_times` providers out of `app_providers.dart`~~ — **done
+   2026-10-09.** `lib/app/core_providers.dart` holds the database, HTTP,
+   clock, uuid, the settings repository and the stored-prayer repository
+   (the prayer-time settings read it) plus the `LocalDateProvider` classes.
+   `features/prayer_times/application/prayer_time_providers.dart` holds the
+   twelve schedule providers and the settings controller — and
+   `localDateProvider`, because the app's "today" is the prayer region's
+   date and depends on its settings, so it cannot sit in the core without
+   the core importing a feature. `app_providers.dart` re-exports both; no
+   import changed; `test/app/provider_layout_test.dart` keeps it that way.
+   **Not moved yet:** the prayer-*context* group (selected prayer, override,
+   context resolution, Home's resolution) — it depends on the routine and
+   recitation providers, which have to leave first.
 3. Decide §3 for both platforms; it blocks three roadmap items.
 4. Move the remaining provider groups, one feature per commit.
 5. Split the Home widgets and sheets into files.

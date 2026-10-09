@@ -1,5 +1,33 @@
 # Murajaah AI handoff
 
+## Icon, and item 3 — 2026-10-09, evening (read this first)
+
+**Launcher icon** (`28b311c`). He chose the mark already used on the sign-in
+consent screens, `brand/surahcycle_logo.svg`. Adaptive icon: gradient
+background, ring + rub el hizb foreground carried over path for path and
+scaled so the ring is 64dp across (inside the 66dp safe circle), monochrome
+layer for Android 13 themed icons; legacy PNGs downscaled from
+`surahcycle_1024.png`. `launcher_icon_test` was red on all three counts
+first. **Installed** on the Jelly Max with item 2's controller (build
+`2FB51F82…851CC8`, `sha256sum` on the phone matches, backup
+`jelly_backup_20261009g.sqlite` equal to the phone's file, id comparison
+after launch identical, integrity ok). **The icon has not been seen on his
+screen yet** — the phone was locked.
+
+A build failed once, and it was me: I opened the previous APK as a zip to
+inspect it while Gradle was copying the new one over it ("file is used by
+another process"). **Inspect a copy, after the build has finished.**
+
+**Item 3, the prayer-time providers** (this commit). `core_providers.dart` +
+`features/prayer_times/application/prayer_time_providers.dart`, re-exported
+by `app_providers.dart` (2,017 → 1,794 lines); no import changed anywhere.
+`localDateProvider` went to the feature, not the core: "today" is the
+prayer region's date and reads the prayer-time settings. The prayer-context
+group stays for now (needs routines and recitations to move first).
+`provider_layout_test` holds the layout and was red first; its first draft
+matched a doc comment instead of an import and was narrowed to `import`
+directives. 1370 passed / 11 skipped, analyzer 0.
+
 ## Item 2 done — the Home registration controller (2026-10-09, 15:55)
 
 He said to take it next. The mark pipeline's logic — registration token and

@@ -144,7 +144,11 @@ tests. No behaviour change; the suite must pass untouched.
 Do this first. It is the prerequisite that makes everything below testable
 without pumping a whole screen.
 
-### 2. Move the prayer-time providers out of the global registry
+### 2. ~~Move the prayer-time providers out of the global registry~~ — **done, 2026-10-09**
+
+See ARCHITECTURE_REVIEW §5 step 2 for exactly what moved and what did not
+(the prayer-context group stays until the routine and recitation providers
+move). Original brief:
 
 `app_providers.dart` is 2,017 lines and ~95 providers from every feature.
 Create `lib/app/core_providers.dart` for the genuinely global ones (database,
@@ -214,9 +218,11 @@ not moved and stays as a record of that day; moving is manual only; and the
 scheduler **may notify** («Да, можно присылать уведомление») — opt-in and
 silent like everything else here, on its own channel and its own switch.
 
-### 7. Launcher icon from `brand/surahcycle_logo.svg`
+### 7. ~~Launcher icon from `brand/surahcycle_logo.svg`~~ — **done, 2026-10-09**
 
-Mipmaps and the adaptive icon. Small, long overdue.
+He chose the mark already used on the sign-in consent screens. Adaptive
+icon with a monochrome layer, plus legacy PNGs; `28b311c`. iOS still has the
+Flutter placeholder — see `IOS_HANDOFF.md`.
 
 ### 8. Widen the narrow-layout suite
 
