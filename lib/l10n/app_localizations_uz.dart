@@ -1395,4 +1395,10 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get accountSyncFailingBody =>
       'Nimadir yuborilmadi yoki olinmadi. Ilova qayta urinib koʻradi — bu qurilmadagi yozuvlar xavfsiz.';
+
+  @override
+  String get prayerLocationDevice => 'Mening joylashuvim';
+
+  @override
+  String get prayerSourceLocalCalculation => 'Mahalliy hisoblash';
 }

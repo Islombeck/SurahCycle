@@ -1980,8 +1980,8 @@ final class _PrayerContextCard extends StatelessWidget {
           '${timing.nextPrayerAt}',
         ),
       if (schedule case final loaded?)
-        '${loaded.loadResult.schedule.provenance.source.displayName} · '
-            '${loaded.loadResult.schedule.location.displayName}',
+        '${loaded.loadResult.schedule.provenance.source.label(context.l10n)} · '
+            '${loaded.loadResult.schedule.location.label(context.l10n)}',
     ];
     return Card(
       child: Column(
@@ -2367,6 +2367,7 @@ final class _SurahRotationTile extends StatelessWidget {
   final bool isBusy;
   final bool isEnabled;
   final int? recommendationRank;
+
   /// Recited for the prayer this screen is showing — in any of its parts.
   ///
   /// Scoped to the part that is current, it went out the moment a part filled

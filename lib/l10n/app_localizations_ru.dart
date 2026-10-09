@@ -1396,4 +1396,10 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get accountSyncFailingBody =>
       'Что-то не удалось отправить или получить. Приложение попробует снова — записи на этом устройстве в безопасности.';
+
+  @override
+  String get prayerLocationDevice => 'Моё местоположение';
+
+  @override
+  String get prayerSourceLocalCalculation => 'Локальный расчёт';
 }

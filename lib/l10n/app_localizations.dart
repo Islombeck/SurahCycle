@@ -2475,6 +2475,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Что-то не удалось отправить или получить. Приложение попробует снова — записи на этом устройстве в безопасности.'**
   String get accountSyncFailingBody;
+
+  /// Region label when prayer times come from the phone's own coordinates rather than a chosen region. Shown on Home, in Settings and on the prayer widgets.
+  ///
+  /// In ru, this message translates to:
+  /// **'Моё местоположение'**
+  String get prayerLocationDevice;
+
+  /// Name of the calculated prayer-time source, as opposed to a published schedule.
+  ///
+  /// In ru, this message translates to:
+  /// **'Локальный расчёт'**
+  String get prayerSourceLocalCalculation;
 }
 
 class _AppLocalizationsDelegate

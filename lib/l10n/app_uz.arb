@@ -443,4 +443,6 @@
   ,"@accountSyncCounts": {"placeholders": {"queued": {"type": "int"}, "refused": {"type": "int"}}}
   ,"accountSyncFailingTitle": "Soʻnggi almashinuv tugamadi"
   ,"accountSyncFailingBody": "Nimadir yuborilmadi yoki olinmadi. Ilova qayta urinib koʻradi — bu qurilmadagi yozuvlar xavfsiz."
+  ,"prayerLocationDevice": "Mening joylashuvim"
+  ,"prayerSourceLocalCalculation": "Mahalliy hisoblash"
 }

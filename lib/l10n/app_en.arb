@@ -443,4 +443,6 @@
   ,"@accountSyncCounts": {"placeholders": {"queued": {"type": "int"}, "refused": {"type": "int"}}}
   ,"accountSyncFailingTitle": "The last exchange did not finish"
   ,"accountSyncFailingBody": "Something could not be sent or received. The app will try again — what is on this device is safe."
+  ,"prayerLocationDevice": "My location"
+  ,"prayerSourceLocalCalculation": "Local calculation"
 }

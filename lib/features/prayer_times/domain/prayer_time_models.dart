@@ -131,12 +131,22 @@ final class PrayerLocation {
     required this.coordinates,
   });
 
+  /// Slug prefix of a location made from the phone's own coordinates, as
+  /// opposed to a region picked from a provider's list.
+  static const String deviceCoordinatesSlugPrefix = 'user-';
+
   final String providerSlug;
   final String displayName;
   final String timeZoneId;
   final int utcOffsetMinutes;
   final String? parentProviderSlug;
   final PrayerCoordinates? coordinates;
+
+  /// True for the phone's own coordinates. Their stored [displayName] is a
+  /// fixed English placeholder, so a screen must name them itself, in its own
+  /// language; a region's name is the provider's and is shown as it is.
+  bool get isDeviceCoordinates =>
+      providerSlug.startsWith(deviceCoordinatesSlugPrefix);
 
   PrayerLocation copyWith({
     String? providerSlug,

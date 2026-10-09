@@ -1393,4 +1393,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get accountSyncFailingBody =>
       'Something could not be sent or received. The app will try again — what is on this device is safe.';
+
+  @override
+  String get prayerLocationDevice => 'My location';
+
+  @override
+  String get prayerSourceLocalCalculation => 'Local calculation';
 }

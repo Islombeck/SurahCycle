@@ -32,7 +32,7 @@ final class _PrayerTimeSettingsCardState
             ? null
             : Text(
                 settings.valueOrNull!.locationConfirmed
-                    ? settings.valueOrNull!.location.displayName
+                    ? settings.valueOrNull!.location.label(context.l10n)
                     : context.l10n.selectPrayerRegion,
               ),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -209,7 +209,10 @@ final class _PrayerTimeSettingsCardState
               for (final method in PrayerCalculationMethod.values)
                 DropdownMenuItem<PrayerCalculationMethod>(
                   value: method,
-                  child: Text(_methodLabel(method), overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    _methodLabel(method),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
             ],
             onChanged: _busy
@@ -506,8 +509,9 @@ final class _ScheduleDetails extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               '${context.l10n.prayerSource}: '
-              '${provenance.source.displayName}\n'
-              '${context.l10n.prayerRegion}: ${schedule.location.displayName}\n'
+              '${provenance.source.label(context.l10n)}\n'
+              '${context.l10n.prayerRegion}: '
+              '${schedule.location.label(context.l10n)}\n'
               '${context.l10n.prayerUpdated}: '
               '${provenance.fetchedAtUtc.toIso8601String()}',
               style: Theme.of(context).textTheme.bodySmall,

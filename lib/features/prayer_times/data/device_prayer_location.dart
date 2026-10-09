@@ -99,7 +99,9 @@ final class GeolocatorDevicePrayerLocationService
     final slugLatitude = latitude.toStringAsFixed(4).replaceAll('-', 'm');
     final slugLongitude = longitude.toStringAsFixed(4).replaceAll('-', 'm');
     return PrayerLocation(
-      providerSlug: 'user-$slugLatitude-$slugLongitude',
+      providerSlug:
+          '${PrayerLocation.deviceCoordinatesSlugPrefix}'
+          '$slugLatitude-$slugLongitude',
       displayName: 'My location',
       timeZoneId: UzbekistanPrayerLocations.timeZoneId,
       utcOffsetMinutes: UzbekistanPrayerLocations.utcOffsetMinutes,

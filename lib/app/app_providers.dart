@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -21,6 +22,7 @@ import '../features/quran/quran.dart';
 import '../features/settings/application/prayer_routine_editor.dart';
 import '../l10n/app_localizations.dart';
 import 'localization_extensions.dart';
+import 'prayer_widget_projection_assembly.dart';
 import 'widget_localization.dart';
 
 abstract interface class LocalDateProvider
@@ -1065,7 +1067,7 @@ final widgetSyncLifecycleProvider = Provider.family<void, String>((
         recommendationBatch: recommendationBatch,
         prayerTodaySchedule: prayerTodaySchedule,
         prayerScheduleResolution: settledScheduleResolution,
-        prayerLocationDisplayName: settings?.location.displayName,
+        prayerLocation: settings?.location,
         learningNotificationEnabled: learningNotificationEnabled,
       );
 });
@@ -1865,7 +1867,7 @@ final class _AppWidgetSyncDriver {
     RecommendationBatch? recommendationBatch,
     PrayerTodaySchedule? prayerTodaySchedule,
     PrayerContextResolution? prayerScheduleResolution,
-    String? prayerLocationDisplayName,
+    PrayerLocation? prayerLocation,
     bool learningNotificationEnabled = false,
   }) {
     final revision = ++_revision;
@@ -1887,7 +1889,7 @@ final class _AppWidgetSyncDriver {
             recommendationBatch: recommendationBatch,
             prayerTodaySchedule: prayerTodaySchedule,
             prayerScheduleResolution: prayerScheduleResolution,
-            prayerLocationDisplayName: prayerLocationDisplayName,
+            prayerLocation: prayerLocation,
           )
           .then((snapshot) async {
             if (revision != _revision || coordinator.isDisposed) return;
@@ -1940,12 +1942,15 @@ final class _AppWidgetSyncDriver {
     RecommendationBatch? recommendationBatch,
     PrayerTodaySchedule? prayerTodaySchedule,
     PrayerContextResolution? prayerScheduleResolution,
-    String? prayerLocationDisplayName,
+    PrayerLocation? prayerLocation,
   }) async {
     final localeCode = const <String>{'ru', 'en', 'uz'}.contains(languageCode)
         ? languageCode
         : 'ru';
     final l10n = lookupAppLocalizations(Locale(localeCode));
+    // The widget's date line is formatted here, possibly before any screen
+    // has asked Flutter's localizations to load the same symbols. Idempotent.
+    await initializeDateFormatting(localeCode);
     final widgetLocalization = WidgetLocalization.forLanguageCode(localeCode);
     final prayerContext = prayerResolution?.context;
     final prayerPart = prayerContext == null
@@ -2045,82 +2050,12 @@ final class _AppWidgetSyncDriver {
       learning: WidgetProjectionBuilder(
         widgetLocalization.projectionLabels,
       ).buildLearning(learningCandidate),
-      prayer: _buildPrayerProjection(
+      prayer: assemblePrayerWidgetProjection(
         l10n: l10n,
-        localDate: localDate,
+        localeCode: localeCode,
         todaySchedule: prayerTodaySchedule,
-        scheduleResolution: prayerScheduleResolution,
-        locationDisplayName: prayerLocationDisplayName,
+        location: prayerLocation,
       ),
-    );
-  }
-
-  PrayerWidgetProjection _buildPrayerProjection({
-    required AppLocalizations l10n,
-    required LocalDate localDate,
-    required PrayerTodaySchedule? todaySchedule,
-    required PrayerContextResolution? scheduleResolution,
-    required String? locationDisplayName,
-  }) {
-    const factory = PrayerWidgetProjectionFactory();
-    if (todaySchedule == null || locationDisplayName == null) {
-      return factory.unavailable(l10n.prayerScheduleUnavailable);
-    }
-    final times = todaySchedule.day.times;
-    final boundaries = <PrayerWidgetBoundary>[
-      PrayerWidgetBoundary(
-        label: PrayerType.fajr.label(l10n),
-        hour: times.fajr.effective.hour,
-        minute: times.fajr.effective.minute,
-        prayerType: PrayerType.fajr,
-      ),
-      PrayerWidgetBoundary(
-        label: l10n.sunrise,
-        hour: times.sunrise.effective.hour,
-        minute: times.sunrise.effective.minute,
-      ),
-      PrayerWidgetBoundary(
-        label: PrayerType.dhuhr.label(l10n),
-        hour: times.dhuhr.effective.hour,
-        minute: times.dhuhr.effective.minute,
-        prayerType: PrayerType.dhuhr,
-      ),
-      PrayerWidgetBoundary(
-        label: PrayerType.asr.label(l10n),
-        hour: times.asr.effective.hour,
-        minute: times.asr.effective.minute,
-        prayerType: PrayerType.asr,
-      ),
-      PrayerWidgetBoundary(
-        label: PrayerType.maghrib.label(l10n),
-        hour: times.maghrib.effective.hour,
-        minute: times.maghrib.effective.minute,
-        prayerType: PrayerType.maghrib,
-      ),
-      PrayerWidgetBoundary(
-        label: PrayerType.isha.label(l10n),
-        hour: times.isha.effective.hour,
-        minute: times.isha.effective.minute,
-        prayerType: PrayerType.isha,
-      ),
-    ];
-    final isStale = !todaySchedule.loadResult.isReliableForAutomaticContext;
-    final day = todaySchedule.day;
-    return factory.available(
-      dateLabel: localDate.toString(),
-      regionLabel: locationDisplayName,
-      providerLabel: day.provenance.source.displayName,
-      boundaries: boundaries,
-      // Midnight where he is, as a real instant. Everything the widget needs
-      // to answer "which prayer is this, now" is derived from it, which is
-      // what lets the launcher stay right between two runs of the app.
-      localMidnightUtc: DateTime.utc(
-        day.date.year,
-        day.date.month,
-        day.date.day,
-      ).subtract(Duration(minutes: day.utcOffsetMinutes)),
-      isStale: isStale,
-      staleLabel: isStale ? l10n.prayerScheduleStale : null,
     );
   }
 

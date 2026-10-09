@@ -449,4 +449,8 @@
   ,"@accountSyncCounts": {"placeholders": {"queued": {"type": "int"}, "refused": {"type": "int"}}}
   ,"accountSyncFailingTitle": "Последний обмен не завершился"
   ,"accountSyncFailingBody": "Что-то не удалось отправить или получить. Приложение попробует снова — записи на этом устройстве в безопасности."
+  ,"prayerLocationDevice": "Моё местоположение"
+  ,"@prayerLocationDevice": {"description": "Region label when prayer times come from the phone's own coordinates rather than a chosen region. Shown on Home, in Settings and on the prayer widgets."}
+  ,"prayerSourceLocalCalculation": "Локальный расчёт"
+  ,"@prayerSourceLocalCalculation": {"description": "Name of the calculated prayer-time source, as opposed to a published schedule."}
 }
