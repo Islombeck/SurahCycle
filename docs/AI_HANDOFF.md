@@ -1,6 +1,59 @@
 # Murajaah AI handoff
 
-## The green tick was scoped to the part, not the prayer — 2026-10-08 (read this first)
+## Architecture and clean-code pass, and three new documents — 2026-10-09 (read this first)
+
+He asked whether the architecture is right, for a clean-code pass, for an iOS
+document kept the way this one is, and for a prompt to continue by.
+
+**The architecture holds, and it is not where the problems are.** Measured
+rather than asserted, at `66e79b7`: the domain layer has no Flutter, Drift or
+Riverpod import; `lib/core` never imports a feature; no screen touches the
+database; cross-feature imports number fourteen and all go through barrels.
+Turning on `strict-casts`, `strict-raw-types` and `strict-inference` across
+44k lines found **nothing** — the discipline was already there and the
+analyzer, still the untouched `flutter create` scaffold, was not enforcing it.
+It is enforced now, along with a curated lint set, and two of those lints paid
+for themselves immediately in `prayer_schedule_cache.dart`.
+
+**The debt is two files, not the structure.** `home_screen.dart` is 2,567
+lines and one `State` with 76 methods, and it is where every defect of the last
+two weeks lived — a change to the mark pipeline and a change to a badge look
+equally local in a file nobody can hold in one reading. `app_providers.dart` is
+2,017 lines and ~95 providers belonging to every feature, so the composition
+root knows all their internals. Both have a target shape and an order of work
+in `docs/ARCHITECTURE_REVIEW_2026-10.md`; neither was started, deliberately,
+rather than begun and left half-done at the end of a long session.
+
+**A real bug came out of the review.** Nothing ever woke the prayer widget's
+receiver — the snapshot has carried a prayer projection since schema 6 and the
+drain nudged the rotation and learning receivers only — and
+`prayer_widget_info.xml` sets `updatePeriodMillis="0"`, so Android had no
+schedule either. The widget kept the frame the launcher drew when it was
+created. That is his "виджет выделяет только Аср", and it was Asr because that
+is when it was last built. Fixed in `4af7451`, falsified first. **It fixes the
+case where the app runs and nothing more**: `isCurrent` is a flag inside the
+snapshot, so a phone not opened since Dhuhr still shows a stale highlight, and
+iOS will meet the same thing in a WidgetKit timeline. Three options are written
+up; none is chosen, because it is a schema decision and his to make.
+
+New documents, all three meant to be kept up to date rather than read once:
+
+- `docs/ARCHITECTURE_REVIEW_2026-10.md` — the measurements, the two files, the
+  freshness problem, and the order of work.
+- `docs/IOS_HANDOFF.md` — the iOS counterpart of this file, to be filled in
+  every session that touches anything a port would care about. Its headline:
+  the Dart side is platform-safe by construction, every platform branch guards
+  on Android and catches `MissingPluginException`, so a first iOS run should
+  reach Home with real data — but **OAuth sign-in cannot return to the app**,
+  because `Info.plist` has no `CFBundleURLTypes`, and background audio is
+  declared on Android only.
+- `docs/CONTINUATION_PROMPT.md` — the standing brief: the rules, the
+  environment, and the ordered roadmap including the horizontal prayer widget,
+  the current-prayer widget and the Scheduler.
+
+1329 passed, 11 skipped; analyzer 0/0/0.
+
+## The green tick was scoped to the part, not the prayer — 2026-10-08
 
 His report was «вчера после отметки 2 из 2-х есть, но он как бы не
 выполненный», and then, a day later, «сейчас всё на месте и в календаре, и
