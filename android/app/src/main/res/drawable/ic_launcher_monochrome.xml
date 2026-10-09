@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The themed-icon layer (Android 13+): the same mark in one colour, which
+     the system tints. Only alpha counts here, so the hub is a hole in the
+     star rather than a darker disc — the star's outline is the union of the
+     two squares, the circle cut out by the even-odd rule. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group
+        android:pivotX="256"
+        android:pivotY="256"
+        android:scaleX="0.712"
+        android:scaleY="0.712">
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M195.433,69.593 A196,196 0 0,1 316.567,69.593 M344.982,81.363 A196,196 0 0,1 430.637,167.018 M442.407,195.433 A196,196 0 0,1 442.407,316.567 M430.637,344.982 A196,196 0 0,1 344.982,430.637 M316.567,442.407 A196,196 0 0,1 195.433,442.407 M167.018,430.637 A196,196 0 0,1 81.363,344.982 M69.593,316.567 A196,196 0 0,1 69.593,195.433 M81.363,167.018 A196,196 0 0,1 167.018,81.363"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="butt"
+            android:strokeWidth="34" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M256,152 L286.461,182.461 L329.539,182.461 L329.539,225.539 L360,256 L329.539,286.461 L329.539,329.539 L286.461,329.539 L256,360 L225.539,329.539 L182.461,329.539 L182.461,286.461 L152,256 L182.461,225.539 L182.461,182.461 L225.539,182.461 Z M226,256 A30,30 0 1,0 286,256 A30,30 0 1,0 226,256 Z" />
+    </group>
+</vector>

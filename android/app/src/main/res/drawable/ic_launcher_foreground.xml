@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The mark of brand/surahcycle_logo.svg, path for path: the rotation ring
+     of eight segments, two of them amber (due for revision), and the rub el
+     hizb with its hub.
+
+     The viewport is the SVG's own 512 units; the group shrinks it so the
+     ring's outer edge (radius 213) lands at a 64dp diameter on the 108dp
+     canvas — inside the 66dp circle no launcher mask ever cuts. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group
+        android:pivotX="256"
+        android:pivotY="256"
+        android:scaleX="0.712"
+        android:scaleY="0.712">
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M195.433,69.593 A196,196 0 0,1 316.567,69.593"
+            android:strokeColor="#F2B450"
+            android:strokeLineCap="butt"
+            android:strokeWidth="34" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M344.982,81.363 A196,196 0 0,1 430.637,167.018"
+            android:strokeColor="#F2B450"
+            android:strokeLineCap="butt"
+            android:strokeWidth="34" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M442.407,195.433 A196,196 0 0,1 442.407,316.567"
+            android:strokeColor="#74BCA3"
+            android:strokeLineCap="butt"
+            android:strokeWidth="34" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M430.637,344.982 A196,196 0 0,1 344.982,430.637"
+            android:strokeColor="#74BCA3"
+            android:strokeLineCap="butt"
+            android:strokeWidth="34" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M316.567,442.407 A196,196 0 0,1 195.433,442.407"
+            android:strokeColor="#74BCA3"
+            android:strokeLineCap="butt"
+            android:strokeWidth="34" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M167.018,430.637 A196,196 0 0,1 81.363,344.982"
+            android:strokeColor="#74BCA3"
+            android:strokeLineCap="butt"
+            android:strokeWidth="34" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M69.593,316.567 A196,196 0 0,1 69.593,195.433"
+            android:strokeColor="#74BCA3"
+            android:strokeLineCap="butt"
+            android:strokeWidth="34" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M81.363,167.018 A196,196 0 0,1 167.018,81.363"
+            android:strokeColor="#74BCA3"
+            android:strokeLineCap="butt"
+            android:strokeWidth="34" />
+        <path
+            android:fillColor="#F7F2E8"
+            android:pathData="M329.539,329.539 L182.461,329.539 L182.461,182.461 L329.539,182.461 Z" />
+        <path
+            android:fillColor="#F7F2E8"
+            android:pathData="M256,360 L152,256 L256,152 L360,256 Z" />
+        <path
+            android:fillColor="#205E4B"
+            android:pathData="M226,256 A30,30 0 1,0 286,256 A30,30 0 1,0 226,256 Z" />
+    </group>
+</vector>
