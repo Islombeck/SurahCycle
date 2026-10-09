@@ -150,6 +150,12 @@ class PrayerWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
         Text(prayer.regionLabel ?: "", style = TextStyle(fontSize = 11.sp), maxLines = 1)
     }
 
+    // Glance renders at most ten children per Row or Column and drops the rest
+    // without a word (LayoutSelection: "container cannot have more than 10
+    // elements"). Six rows emitted straight into the widget's root column, with
+    // the title and spacers around them, came to eleven and twelve — and what
+    // fell off the end was the region line, in both of these sizes, since the
+    // day this widget shipped. The rows live in a column of their own.
     @Composable
     private fun MediumBody(
         context: Context,
@@ -158,23 +164,30 @@ class PrayerWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
         nextIndex: Int?,
     ) {
         Spacer(GlanceModifier.height(4.dp))
-        prayer.entries.forEachIndexed { index, entry ->
-            if (entry.isBoundaryOnly) return@forEachIndexed
-            PrayerRow(entry, secondary = false, index, currentIndex, nextIndex)
-        }
-        val sunriseIndex = prayer.entries.indexOfFirst { it.isBoundaryOnly }
-        if (sunriseIndex >= 0) {
-            Spacer(GlanceModifier.height(2.dp))
-            PrayerRow(
-                prayer.entries[sunriseIndex],
-                secondary = true,
-                sunriseIndex,
-                currentIndex,
-                nextIndex,
-            )
+        PrayerRows {
+            prayer.entries.forEachIndexed { index, entry ->
+                if (entry.isBoundaryOnly) return@forEachIndexed
+                PrayerRow(entry, secondary = false, index, currentIndex, nextIndex)
+            }
+            val sunriseIndex = prayer.entries.indexOfFirst { it.isBoundaryOnly }
+            if (sunriseIndex >= 0) {
+                Spacer(GlanceModifier.height(2.dp))
+                PrayerRow(
+                    prayer.entries[sunriseIndex],
+                    secondary = true,
+                    sunriseIndex,
+                    currentIndex,
+                    nextIndex,
+                )
+            }
         }
         Spacer(GlanceModifier.height(4.dp))
         Text(prayer.regionLabel ?: "", style = TextStyle(fontSize = 11.sp), maxLines = 1)
+    }
+
+    @Composable
+    private fun PrayerRows(content: @Composable () -> Unit) {
+        Column(modifier = GlanceModifier.fillMaxWidth()) { content() }
     }
 
     @Composable
@@ -191,8 +204,10 @@ class PrayerWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
             maxLines = 1,
         )
         Spacer(GlanceModifier.height(4.dp))
-        prayer.entries.forEachIndexed { index, entry ->
-            PrayerRow(entry, entry.isBoundaryOnly, index, currentIndex, nextIndex)
+        PrayerRows {
+            prayer.entries.forEachIndexed { index, entry ->
+                PrayerRow(entry, entry.isBoundaryOnly, index, currentIndex, nextIndex)
+            }
         }
         Spacer(GlanceModifier.height(6.dp))
         Text(

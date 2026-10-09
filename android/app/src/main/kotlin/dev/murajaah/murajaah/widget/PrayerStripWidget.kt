@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
+import android.view.View
 import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -142,67 +143,58 @@ class PrayerStripWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error)
 
     @Composable
     private fun Header(context: Context, prayer: NativePrayerProjection, nowUtcMs: Long) {
-        Row(
+        AndroidRemoteViews(
+            header(context, prayer, nowUtcMs),
             modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 2.dp),
-            verticalAlignment = Alignment.Vertical.CenterVertically,
-        ) {
-            val boundaryAt = prayer.nextBoundaryAt(nowUtcMs)
-            val boundaryIndex = prayer.nextBoundaryIndexAt(nowUtcMs)
-            when {
-                prayer.isStale ->
-                    HeaderText(prayer.staleLabel ?: context.getString(R.string.prayer_widget_stale))
-                boundaryAt != null && boundaryIndex != null ->
-                    AndroidRemoteViews(
-                        countdown(
-                            context,
-                            label = prayer.entries[boundaryIndex].label,
-                            remainingMs = boundaryAt - nowUtcMs,
-                        )
-                    )
-                // After Isha begins the next boundary is tomorrow's Fajr, which
-                // this snapshot does not carry; the date says which day it is.
-                else -> HeaderText(prayer.dateLabel ?: "")
-            }
-            Text(
-                prayer.regionLabel ?: "",
-                modifier = GlanceModifier.defaultWeight(),
-                style =
-                    TextStyle(
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ColorProvider(INK),
-                        textAlign = TextAlign.End,
-                    ),
-                maxLines = 1,
-            )
-        }
-    }
-
-    @Composable
-    private fun HeaderText(text: String) {
-        Text(
-            text,
-            style = TextStyle(fontSize = 12.sp, color = ColorProvider(MUTED)),
-            maxLines = 1,
         )
     }
 
     /**
-     * A platform `Chronometer` counting down, because it is the only text a
-     * widget can show that changes by itself every second. It does not stop
-     * at zero; [PrayerWidgetRefresh] is what replaces it with the next one.
+     * The top line as one platform layout (`prayer_strip_header.xml`).
+     *
+     * The first version put a Glance `Text` beside the countdown and the
+     * region never appeared on his phone. The countdown has to be a platform
+     * `Chronometer` — the only widget text that changes by itself — and the
+     * region has to ellipsize, which Glance text cannot; one layout owns both
+     * and leaves nothing to how Glance sizes a foreign view in a row.
+     *
+     * The `Chronometer` does not stop at zero; [PrayerWidgetRefresh] is what
+     * replaces this line at the boundary.
      */
-    private fun countdown(context: Context, label: String, remainingMs: Long): RemoteViews =
-        RemoteViews(context.packageName, R.layout.prayer_strip_countdown).apply {
-            setChronometer(
-                R.id.prayer_strip_countdown,
-                SystemClock.elapsedRealtime() + remainingMs,
-                // The label is the app's own text; a stray % in it must not be
-                // read as a format directive by the Chronometer.
-                context.getString(R.string.prayer_strip_countdown, label.replace("%", "%%")),
-                true,
-            )
-            setChronometerCountDown(R.id.prayer_strip_countdown, true)
+    private fun header(context: Context, prayer: NativePrayerProjection, nowUtcMs: Long): RemoteViews =
+        RemoteViews(context.packageName, R.layout.prayer_strip_header).apply {
+            setTextViewText(R.id.prayer_strip_region, prayer.regionLabel ?: "")
+            val boundaryAt = prayer.nextBoundaryAt(nowUtcMs)
+            val boundaryIndex = prayer.nextBoundaryIndexAt(nowUtcMs)
+            if (!prayer.isStale && boundaryAt != null && boundaryIndex != null) {
+                setChronometer(
+                    R.id.prayer_strip_countdown,
+                    SystemClock.elapsedRealtime() + (boundaryAt - nowUtcMs),
+                    // The label is the app's own text; a stray % in it must not
+                    // be read as a format directive by the Chronometer.
+                    context.getString(
+                        R.string.prayer_strip_countdown,
+                        prayer.entries[boundaryIndex].label.replace("%", "%%"),
+                    ),
+                    true,
+                )
+                setChronometerCountDown(R.id.prayer_strip_countdown, true)
+                setViewVisibility(R.id.prayer_strip_countdown, View.VISIBLE)
+                setViewVisibility(R.id.prayer_strip_lead, View.GONE)
+            } else {
+                val lead =
+                    if (prayer.isStale) {
+                        prayer.staleLabel ?: context.getString(R.string.prayer_widget_stale)
+                    } else {
+                        // After Isha begins the next boundary is tomorrow's
+                        // Fajr, which this snapshot does not carry; the date
+                        // says which day these times are for.
+                        prayer.dateLabel ?: ""
+                    }
+                setTextViewText(R.id.prayer_strip_lead, lead)
+                setViewVisibility(R.id.prayer_strip_lead, View.VISIBLE)
+                setViewVisibility(R.id.prayer_strip_countdown, View.GONE)
+            }
         }
 
     @Composable

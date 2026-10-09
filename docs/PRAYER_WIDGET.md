@@ -81,6 +81,19 @@ forgiving than the writer renders states the app considers impossible.
 | Slim | 240×40dp | six names over six times |
 | Headed | 240×50dp | plus a line above: countdown (or stale warning, or the date after Isha) and the region |
 
+The top line is one platform layout (`prayer_strip_header.xml`): a
+`Chronometer` or a plain text on the left, the region on the right with an
+ellipsis. The first version put a Glance `Text` beside the `Chronometer` and
+the region never appeared on his phone; one layout owning both leaves nothing
+to how Glance sizes a foreign view in a row, and Glance text cannot ellipsize
+anyway.
+
+**Glance renders at most ten children per `Row`/`Column` and silently drops
+the rest.** The vertical widget's medium and large sizes emitted their six
+rows straight into the root column and came to eleven and twelve; the region
+line was what fell off, from the day it shipped. The rows now live in a
+column of their own. Keep any new container under ten.
+
 From 320dp wide the times grow from 13sp to 15sp. 240dp is the narrowest at
 which "12:10" still fits its column. A stale schedule in the slim size shows
 only the warning: six confident times under no warning is worse than the

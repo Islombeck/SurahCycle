@@ -181,6 +181,18 @@ void main() {
       expect(manifest, contains('android:name=".widget.PrayerWidgetReceiver"'));
       expect(manifest, contains('@xml/prayer_widget_info'));
       expect(info, contains('android:resizeMode="horizontal|vertical"'));
+      // Glance drops every child past the tenth without a word, and with six
+      // rows emitted straight into the root column the region line was the
+      // one that fell off — in the medium and the large size, from the start.
+      // The rows go in a column of their own in both.
+      expect(
+        _between(prayer, 'private fun MediumBody', 'private fun PrayerRows'),
+        contains('PrayerRows {'),
+      );
+      expect(
+        _between(prayer, 'private fun LargeBody', 'private fun PrayerRow('),
+        contains('PrayerRows {'),
+      );
     },
   );
 
@@ -195,8 +207,8 @@ void main() {
       final info = _read(
         'android/app/src/main/res/xml/prayer_strip_widget_info.xml',
       );
-      final countdown = _read(
-        'android/app/src/main/res/layout/prayer_strip_countdown.xml',
+      final header = _read(
+        'android/app/src/main/res/layout/prayer_strip_header.xml',
       );
 
       expect(strip, isNot(contains('.core.')));
@@ -220,8 +232,13 @@ void main() {
       expect(info, contains('android:targetCellHeight="1"'));
       expect(info, contains('android:minHeight="40dp"'));
       expect(info, contains('android:resizeMode="horizontal|vertical"'));
-      expect(countdown, contains('<Chronometer'));
-      expect(countdown, contains('android:id="@+id/prayer_strip_countdown"'));
+      expect(header, contains('<Chronometer'));
+      expect(header, contains('android:id="@+id/prayer_strip_countdown"'));
+      // The region is the line's elastic part, and it shortens itself rather
+      // than pushing the countdown out: district names run long.
+      expect(header, contains('android:id="@+id/prayer_strip_region"'));
+      expect(header, contains('android:ellipsize="end"'));
+      expect(header, contains('android:layout_weight="1"'));
     },
   );
 

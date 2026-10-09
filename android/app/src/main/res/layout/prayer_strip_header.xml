@@ -1,12 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The strip's countdown. A platform Chronometer because it is the only
-     widget text that changes by itself; PrayerStripWidget sets its base and
-     count-down mode, PrayerWidgetRefresh replaces it at each boundary. -->
-<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/prayer_strip_countdown"
-    android:layout_width="wrap_content"
+<!-- The strip's top line: what comes next on the left, the region on the
+     right. One platform layout rather than Glance pieces, for two reasons:
+     the countdown has to be a Chronometer (the only widget text that changes
+     by itself), and the region has to ellipsize — a district name can be
+     "Nukus shahri — Qoraqalpog'iston Resp.", and Glance text cannot shorten
+     itself. Exactly one of countdown / lead is visible; PrayerStripWidget
+     decides which, PrayerWidgetRefresh replaces the line at each boundary. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:singleLine="true"
-    android:textColor="#22303B"
-    android:textSize="12sp"
-    android:textStyle="bold" />
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <Chronometer
+        android:id="@+id/prayer_strip_countdown"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:singleLine="true"
+        android:textColor="#22303B"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/prayer_strip_lead"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:singleLine="true"
+        android:textColor="#5A6873"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/prayer_strip_region"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:gravity="end"
+        android:singleLine="true"
+        android:textColor="#22303B"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+</LinearLayout>
