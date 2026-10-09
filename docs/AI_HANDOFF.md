@@ -77,8 +77,13 @@ phone's file; id comparison after install **identical on every compared
 table**, integrity ok, 0 FK violations. `dumpsys alarm`: two redraws booked,
 one per prayer receiver, both `RTC` at 16:07:00, `window=+10m`.
 
-**Not yet seen:** the pill actually moving to Аср at 16:07, which is the
-alarm's whole point.
+**The boundary redraw fired, seen in `dumpsys alarm` at 16:09:36:** both
+prayer receivers' alarms were delivered ~16:08:03 — a minute after the 16:07
+boundary, inside the ten-minute window, "2 alarms, 0 wakeups" with the phone
+locked and dozing — and each had already booked its next redraw for
+**17:51:00**, Maghrib. That is `onUpdate` running at the boundary against
+the new window. **Not seen with my own eyes:** the pill on Аср, because the
+phone was locked; the alarm history is the evidence, not a screenshot.
 
 ## The horizontal prayer strip — 2026-10-09, afternoon
 
