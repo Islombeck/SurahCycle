@@ -1,6 +1,25 @@
 # Murajaah AI handoff
 
-## Icon, and item 3 — 2026-10-09, evening (read this first)
+## Item 6 done; the Scheduler designed, waiting for him — 2026-10-09, evening (read this first)
+
+**Narrow-layout suite** (`35ef2af`): moved to his phone's real 360×760, and
+now opens the coverage sheet, the learning plan editor and the calendar day
+details, and walks every tab at iPad width. It found one defect on its first
+run — the plan editor's segmented control broke «Классически» (110 points
+given, 155 needed) — which exists **only at 360**: at the old 411 it fitted.
+Stacked. 1378 passed / 11 skipped.
+
+**Scheduler**: `docs/SCHEDULER.md` — model (two tables, v12; daily days not
+materialised; timeline a projection), notifications inexact and silent,
+sync deferred, order of work. **Not started in code**: two questions are
+his — where it lives (icon on Home vs a sixth tab) and whether prayer
+durations start empty or with numbers he gives.
+
+Phone: build `2FB51F82…` (icon + Home controller) is installed; item 3 and
+item 6 are not installed yet (code-only and one layout fix); the icon has
+not been seen on his screen.
+
+## Icon, and item 3 — 2026-10-09, evening
 
 **Launcher icon** (`28b311c`). He chose the mark already used on the sign-in
 consent screens, `brand/surahcycle_logo.svg`. Adaptive icon: gradient

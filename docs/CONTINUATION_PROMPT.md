@@ -198,6 +198,9 @@ The stuck behaviour was real and is now fixed in full.
 
 ### 6. Scheduler
 
+**Designed 2026-10-09 in `docs/SCHEDULER.md`; waiting on his two answers
+there (where it lives; starting durations) before schema v12 is written.**
+
 The largest piece, and new. Sketch of the contract, to be agreed before coding:
 
 - The day is divided by the real prayer schedule into intervals.
@@ -224,7 +227,10 @@ He chose the mark already used on the sign-in consent screens. Adaptive
 icon with a monochrome layer, plus legacy PNGs; `28b311c`. iOS still has the
 Flutter placeholder — see `IOS_HANDOFF.md`.
 
-### 8. Widen the narrow-layout suite
+### 8. ~~Widen the narrow-layout suite~~ — **done, 2026-10-09** (`35ef2af`)
+
+360×760, the three sheets/details, iPad width; found and fixed the plan
+editor's broken word. Original brief:
 
 **Correction, 2026-10-09:** his Jelly Max is **360×760 dp** (`wm size`
 720×1520, `wm density` 320), not 411×914 — the suite has been testing a phone
