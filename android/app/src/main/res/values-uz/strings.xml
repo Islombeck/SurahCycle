@@ -19,6 +19,11 @@
     <string name="prayer_widget_between">Namozlar oralig‘ida</string>
     <string name="prayer_widget_next_at">Keyingi: %1$s, %2$s</string>
     <string name="prayer_widget_preview_sample">Peshin · 12:30</string>
+    <string name="prayer_strip_widget_name">SurahCycle namoz vaqtlari — qator</string>
+    <string name="prayer_strip_widget_description">Oltita vaqt bir qatorda va keyingisigacha qolgan vaqt</string>
+    <string name="prayer_strip_countdown">%1$sgacha %%s</string>
+    <string name="prayer_strip_preview_header">Peshingacha 21:11 · Toshkent</string>
+    <string name="prayer_strip_preview_times">04:57  06:18  12:10  15:33  17:57  19:08</string>
     <string name="widget_open_murajaah">SurahCycleʼni oching</string>
     <string name="widget_open_app">Ilovani ochish</string>
     <string name="widget_recommendation_rank">&#9733; %1$d</string>

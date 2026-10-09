@@ -47,6 +47,38 @@ internal data class NativePrayerProjection(
     /** When the answer above stops being true, or null past the last window. */
     fun windowEndsAt(nowUtcMs: Long): Long? =
         windows.firstOrNull { it.contains(nowUtcMs) }?.endUtcMs
+
+    /**
+     * The next instant at which another row becomes current — what a
+     * countdown counts to — or null when this snapshot does not carry it.
+     *
+     * The start of the next window, not [windowEndsAt]. The two agree all
+     * day except after Isha begins: the snapshot covers one calendar day, so
+     * Isha's window ends at midnight, and a countdown to midnight counts to
+     * nothing — Isha goes on. The real next boundary is tomorrow's Fajr,
+     * which a snapshot of today does not have: null, and the strip says
+     * nothing rather than guess.
+     */
+    fun nextBoundaryAt(nowUtcMs: Long): Long? = nextBoundaryWindow(nowUtcMs)?.startUtcMs
+
+    /**
+     * The row whose time is [nextBoundaryAt]. A window that names no prayer
+     * begins at the boundary-only row — Sunrise, the end of Fajr's time —
+     * because that is how Dart builds the day; it is read here, not decided.
+     */
+    fun nextBoundaryIndexAt(nowUtcMs: Long): Int? {
+        val window = nextBoundaryWindow(nowUtcMs) ?: return null
+        if (window.entryIndex >= 0) return window.entryIndex
+        return entries.indexOfFirst { it.isBoundaryOnly }.takeIf { it >= 0 }
+    }
+
+    // Windows are contiguous (the parser requires it), so the window after
+    // the one holding the clock begins exactly where the current one ends.
+    private fun nextBoundaryWindow(nowUtcMs: Long): NativePrayerWindow? {
+        val containing = windows.indexOfFirst { it.contains(nowUtcMs) }
+        if (containing < 0) return null
+        return windows.getOrNull(containing + 1)
+    }
 }
 
 internal data class NativePrayerEntry(

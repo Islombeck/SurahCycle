@@ -19,6 +19,12 @@
     <string name="prayer_widget_between">Between prayers</string>
     <string name="prayer_widget_next_at">Next: %1$s at %2$s</string>
     <string name="prayer_widget_preview_sample">Dhuhr · 12:30</string>
+    <string name="prayer_strip_widget_name">SurahCycle prayer times — strip</string>
+    <string name="prayer_strip_widget_description">All six times in one row, with a countdown to the next</string>
+    <!-- %1$s is the boundary's name; %%s becomes the Chronometer's own %s. -->
+    <string name="prayer_strip_countdown">%1$s in %%s</string>
+    <string name="prayer_strip_preview_header">Dhuhr in 21:11 · Tashkent</string>
+    <string name="prayer_strip_preview_times">04:57  06:18  12:10  15:33  17:57  19:08</string>
     <string name="widget_open_murajaah">Open SurahCycle</string>
     <string name="widget_open_app">Open app</string>
     <string name="widget_recommendation_rank">&#9733; %1$d</string>

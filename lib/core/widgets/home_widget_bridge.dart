@@ -20,6 +20,8 @@ final class HomeWidgetBridge implements WidgetSnapshotBridge {
       'dev.murajaah.murajaah.widget.LearningWidgetReceiver';
   static const String prayerReceiver =
       'dev.murajaah.murajaah.widget.PrayerWidgetReceiver';
+  static const String prayerStripReceiver =
+      'dev.murajaah.murajaah.widget.PrayerStripWidgetReceiver';
 
   @override
   Future<String?> loadSnapshotJson() =>
@@ -68,9 +70,17 @@ final class HomeWidgetBridge implements WidgetSnapshotBridge {
     await HomeWidget.updateWidget(qualifiedAndroidName: learningReceiver);
   }
 
+  /// Both launcher surfaces of the prayer projection — the vertical list and
+  /// the horizontal strip. They render the same data, so the coordinator asks
+  /// for "the prayer widget" once and this is the one place that knows there
+  /// are two; the vertical one was left out of this nudge once and sat on Asr
+  /// for days.
   @override
   Future<void> updatePrayerWidget() async {
-    await HomeWidget.updateWidget(qualifiedAndroidName: prayerReceiver);
+    await Future.wait<void>(<Future<void>>[
+      HomeWidget.updateWidget(qualifiedAndroidName: prayerReceiver),
+      HomeWidget.updateWidget(qualifiedAndroidName: prayerStripReceiver),
+    ]);
   }
 
   Future<WidgetDeepLink?> initiallyLaunchedFromWidget() async =>

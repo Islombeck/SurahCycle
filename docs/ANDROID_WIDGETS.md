@@ -2,7 +2,7 @@
 
 ## Status
 
-Murajaah ships three native Android home-screen widgets:
+Murajaah ships four native Android home-screen widgets:
 
 - **Rotation** — a scrollable due-only list. Up to eight ranked
   recommendations appear first, followed by other due rows and an
@@ -12,8 +12,17 @@ Murajaah ships three native Android home-screen widgets:
   according to the same three display settings as the app.
 - **Prayer Times** — today's six daily boundaries (Fajr, Sunrise, Dhuhr, Asr,
   Maghrib, Isha) with the current and next boundary visually distinct,
-  size-responsive across compact/medium/large. See
-  [PRAYER_WIDGET.md](PRAYER_WIDGET.md) for its contract in full.
+  size-responsive across compact/medium/large.
+- **Prayer Times — strip** (2026-10-09) — the same projection as one
+  launcher row: six names over six times, the current prayer on a pill, a
+  live countdown and the region above. See
+  [PRAYER_WIDGET.md](PRAYER_WIDGET.md) for both prayer widgets in full.
+
+**Snapshot schema is 7 since 2026-10-09.** The sections below still describe
+schema 6 for the rotation and learning parts, which did not change; the
+prayer part no longer carries `isCurrent`/`isNext` flags but the day as
+windows of real time, and the launcher compares its own clock with them —
+PRAYER_WIDGET.md has the current shape.
 
 Rotation has a direct mark control. The circular control marks in a headless
 Dart callback without opening the app; the row text still opens the appropriate
@@ -193,13 +202,16 @@ Exact-once semantics, stale validation and the no-network execution path are
 specified in
 [INTERACTIVE_ANDROID_WIDGET.md](INTERACTIVE_ANDROID_WIDGET.md).
 
-All three provider receivers are exported only for `APPWIDGET_UPDATE`.
+All four provider receivers are exported only for `APPWIDGET_UPDATE`. The
+two prayer receivers also book their own inexact, non-waking redraw at each
+window boundary (`PrayerWidgetRefresh`); no exact-alarm permission is
+declared.
 The background receiver is supplied by home_widget. No browsable custom-scheme
 intent filter exposes MainActivity.
 
 ## Composition fallback
 
-All three widgets override Glance `onCompositionError`, log the widget type,
+All four widgets override Glance `onCompositionError`, log the widget type,
 appWidgetId and throwable under `MurajaahWidget`, and render the local
 `widget_error.xml` fallback. The fallback opens Murajaah but does not
 mutate data.

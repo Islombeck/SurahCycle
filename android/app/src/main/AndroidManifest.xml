@@ -74,6 +74,17 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/prayer_widget_info" />
         </receiver>
+        <receiver
+            android:name=".widget.PrayerStripWidgetReceiver"
+            android:exported="true"
+            android:label="@string/prayer_strip_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/prayer_strip_widget_info" />
+        </receiver>
         <!-- Optional screensaver. Only starts when the user explicitly picks
              it under Settings > Display > Screen saver; nothing here enables
              or schedules it, and it never covers the lock screen. -->

@@ -1,5 +1,6 @@
 package dev.murajaah.murajaah.widget
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.Composable
@@ -250,4 +251,18 @@ class PrayerWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
 
 class PrayerWidgetReceiver : HomeWidgetGlanceWidgetReceiver<PrayerWidget>() {
     override val glanceAppWidget = PrayerWidget()
+
+    override fun onUpdate(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray,
+    ) {
+        super.onUpdate(context, appWidgetManager, appWidgetIds)
+        PrayerWidgetRefresh.reschedule(context, PrayerWidgetReceiver::class.java)
+    }
+
+    override fun onDisabled(context: Context) {
+        PrayerWidgetRefresh.cancel(context, PrayerWidgetReceiver::class.java)
+        super.onDisabled(context)
+    }
 }

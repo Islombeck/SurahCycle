@@ -53,4 +53,8 @@ flutter {
 dependencies {
     // Glance 1.1.1 is the current stable line compatible with compileSdk 36.
     implementation("androidx.glance:glance-appwidget:1.1.1")
+
+    // Plain JVM tests for the widget's pure arithmetic — which window a
+    // clock reading falls in, what a countdown counts to. Nothing Android.
+    testImplementation("junit:junit:4.13.2")
 }

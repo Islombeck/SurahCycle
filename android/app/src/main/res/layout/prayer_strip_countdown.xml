@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The strip's countdown. A platform Chronometer because it is the only
+     widget text that changes by itself; PrayerStripWidget sets its base and
+     count-down mode, PrayerWidgetRefresh replaces it at each boundary. -->
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/prayer_strip_countdown"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:singleLine="true"
+    android:textColor="#22303B"
+    android:textSize="12sp"
+    android:textStyle="bold" />

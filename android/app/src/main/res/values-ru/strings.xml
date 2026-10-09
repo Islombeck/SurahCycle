@@ -19,6 +19,11 @@
     <string name="prayer_widget_between">Между намазами</string>
     <string name="prayer_widget_next_at">Далее: %1$s в %2$s</string>
     <string name="prayer_widget_preview_sample">Зухр · 12:30</string>
+    <string name="prayer_strip_widget_name">Время намаза SurahCycle — строка</string>
+    <string name="prayer_strip_widget_description">Все шесть времён в одну строку и отсчёт до следующего</string>
+    <string name="prayer_strip_countdown">%1$s через %%s</string>
+    <string name="prayer_strip_preview_header">Зухр через 21:11 · Ташкент</string>
+    <string name="prayer_strip_preview_times">04:57  06:18  12:10  15:33  17:57  19:08</string>
     <string name="widget_open_murajaah">Откройте SurahCycle</string>
     <string name="widget_open_app">Открыть приложение</string>
     <string name="widget_recommendation_rank">&#9733; %1$d</string>

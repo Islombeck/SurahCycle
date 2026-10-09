@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The horizontal strip: one launcher row, four cells wide by default.
+
+    240dp is the narrowest six times in a row stay legible at 13sp; below it
+    "12:10" no longer fits its column. 40dp is one row.
+
+    `updatePeriodMillis` is the same 30-minute floor as the vertical prayer
+    widget and for the same reason, now only as a backstop: each update also
+    books an inexact alarm at the end of the current window
+    (PrayerWidgetRefresh), because the countdown runs past zero otherwise.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/prayer_strip_widget_description"
+    android:initialLayout="@layout/widget_loading"
+    android:minHeight="40dp"
+    android:minResizeHeight="40dp"
+    android:minResizeWidth="240dp"
+    android:minWidth="240dp"
+    android:previewLayout="@layout/prayer_strip_widget_preview"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellHeight="1"
+    android:targetCellWidth="4"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />

@@ -143,7 +143,9 @@ void main() {
     );
     expect(
       snapshot,
-      contains('require(entryIndex < 0 || !entries[entryIndex].isBoundaryOnly)'),
+      contains(
+        'require(entryIndex < 0 || !entries[entryIndex].isBoundaryOnly)',
+      ),
     );
     expect(snapshot, contains('require(end > start)'));
     expect(
@@ -179,6 +181,92 @@ void main() {
       expect(manifest, contains('android:name=".widget.PrayerWidgetReceiver"'));
       expect(manifest, contains('@xml/prayer_widget_info'));
       expect(info, contains('android:resizeMode="horizontal|vertical"'));
+    },
+  );
+
+  test(
+    'the prayer strip is a second read-only surface of the same projection',
+    () {
+      final strip = _read(
+        'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
+        'PrayerStripWidget.kt',
+      );
+      final manifest = _read('android/app/src/main/AndroidManifest.xml');
+      final info = _read(
+        'android/app/src/main/res/xml/prayer_strip_widget_info.xml',
+      );
+      final countdown = _read(
+        'android/app/src/main/res/layout/prayer_strip_countdown.xml',
+      );
+
+      expect(strip, isNot(contains('.core.')));
+      expect(strip, isNot(contains('RecitationRepository')));
+      expect(strip, isNot(contains('ActionCallback')));
+      expect(strip, isNot(contains('actionRunCallback')));
+      expect(strip, contains('SizeMode.Responsive'));
+      expect(strip, contains('Uri.parse("murajaah://app/home")'));
+      expect(strip, contains('.clickable(homeAction)'));
+      // It compares the clock with Dart's windows and decides nothing else:
+      // the pill is currentIndexAt, the countdown is nextBoundaryAt.
+      expect(strip, contains('prayer.currentIndexAt(nowUtcMs)'));
+      expect(strip, contains('prayer.nextBoundaryAt(nowUtcMs)'));
+      expect(strip, contains('setChronometerCountDown('));
+      expect(
+        manifest,
+        contains('android:name=".widget.PrayerStripWidgetReceiver"'),
+      );
+      expect(manifest, contains('@xml/prayer_strip_widget_info'));
+      // One launcher row, like the reference on his home screen.
+      expect(info, contains('android:targetCellHeight="1"'));
+      expect(info, contains('android:minHeight="40dp"'));
+      expect(info, contains('android:resizeMode="horizontal|vertical"'));
+      expect(countdown, contains('<Chronometer'));
+      expect(countdown, contains('android:id="@+id/prayer_strip_countdown"'));
+    },
+  );
+
+  test(
+    'both prayer surfaces book a boundary redraw, and never an exact alarm',
+    () {
+      final refresh = _read(
+        'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
+        'PrayerWidgetRefresh.kt',
+      );
+      final prayer = _read(
+        'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
+        'PrayerWidget.kt',
+      );
+      final strip = _read(
+        'android/app/src/main/kotlin/dev/murajaah/murajaah/widget/'
+        'PrayerStripWidget.kt',
+      );
+      final manifest = _read('android/app/src/main/AndroidManifest.xml');
+
+      expect(
+        prayer,
+        contains(
+          'PrayerWidgetRefresh.reschedule(context, '
+          'PrayerWidgetReceiver::class.java)',
+        ),
+      );
+      expect(
+        strip,
+        contains(
+          'PrayerWidgetRefresh.reschedule(context, '
+          'PrayerStripWidgetReceiver::class.java)',
+        ),
+      );
+      expect(prayer, contains('PrayerWidgetRefresh.cancel('));
+      expect(strip, contains('PrayerWidgetRefresh.cancel('));
+      // Inexact and non-waking, so no permission and no battery question.
+      expect(refresh, contains('alarms.setWindow(AlarmManager.RTC, '));
+      expect(refresh, isNot(contains('RTC_WAKEUP')));
+      expect(refresh, isNot(contains('setExact')));
+      expect(refresh, isNot(contains('setAlarmClock')));
+      expect(manifest, isNot(contains('SCHEDULE_EXACT_ALARM')));
+      expect(manifest, isNot(contains('USE_EXACT_ALARM')));
+      // The redraw instant is the end of the window, not a verdict.
+      expect(refresh, contains('?.windowEndsAt(nowUtcMs)'));
     },
   );
 
