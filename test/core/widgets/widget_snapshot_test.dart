@@ -61,8 +61,10 @@ void main() {
     for (final source in <String>[
       '{',
       '[]',
-      '{"schemaVersion":6}',
-      '{"schemaVersion":"6"}',
+      // The current version with nothing else: the version is understood and
+      // the body is not, which is malformed rather than unsupported.
+      '{"schemaVersion":7}',
+      '{"schemaVersion":"7"}',
     ]) {
       expect(
         (codec.decode(source) as WidgetSnapshotRejected).error,
@@ -72,7 +74,10 @@ void main() {
   });
 
   test('unknown and previous schema versions are rejected safely in Dart', () {
-    for (final version in <int>[2, 3, 4, 5, 99]) {
+    // 6 joins the list: it carried a frozen "this prayer is current" flag,
+    // and a reader that accepted it would be accepting the stale answer this
+    // schema exists to remove.
+    for (final version in <int>[2, 3, 4, 5, 6, 99]) {
       final result = codec.decode('{"schemaVersion":$version}');
 
       expect(result, isA<WidgetSnapshotRejected>());

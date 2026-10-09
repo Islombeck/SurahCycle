@@ -58,7 +58,9 @@ final class WidgetSnapshot {
     required this.prayer,
   });
 
-  static const int schemaVersion = 6;
+  /// 7: the prayer projection carries windows of real time instead of a
+  /// frozen "this one is current" flag. See [PrayerWidgetWindow].
+  static const int schemaVersion = 7;
 
   final DateTime generatedAtUtc;
   final int snapshotRevision;
@@ -735,30 +737,26 @@ const int prayerWidgetEntryCount = 6;
 
 /// One row of the six daily boundaries the Prayer Times widget shows.
 ///
-/// [isBoundaryOnly] is true only for Sunrise: it is never [isCurrent] or
-/// [isNext] because it is a boundary, not a [PrayerType].
+/// [isBoundaryOnly] is true only for Sunrise, which is a boundary rather than
+/// a prayer and can therefore never be the current one.
+///
+/// **A row no longer carries a verdict.** It used to say `isCurrent` and
+/// `isNext`, decided in Dart at the moment the snapshot was written — and a
+/// snapshot is written when the app runs, not when a prayer begins, so the
+/// launcher kept whichever answer was true hours ago. Which row is current is
+/// now a question about the clock, answered against [PrayerWidgetWindow].
 final class PrayerWidgetTimeEntry {
   factory PrayerWidgetTimeEntry({
     required String label,
     required String timeLabel,
     bool isBoundaryOnly = false,
-    bool isCurrent = false,
-    bool isNext = false,
   }) {
     _requireText(label, 'label', maxLength: 64);
     _requireText(timeLabel, 'timeLabel', maxLength: 16);
-    if (isBoundaryOnly && (isCurrent || isNext)) {
-      throw ArgumentError('A boundary-only entry cannot be current or next.');
-    }
-    if (isCurrent && isNext) {
-      throw ArgumentError('An entry cannot be both current and next.');
-    }
     return PrayerWidgetTimeEntry._(
       label: label,
       timeLabel: timeLabel,
       isBoundaryOnly: isBoundaryOnly,
-      isCurrent: isCurrent,
-      isNext: isNext,
     );
   }
 
@@ -766,22 +764,16 @@ final class PrayerWidgetTimeEntry {
     required this.label,
     required this.timeLabel,
     required this.isBoundaryOnly,
-    required this.isCurrent,
-    required this.isNext,
   });
 
   final String label;
   final String timeLabel;
   final bool isBoundaryOnly;
-  final bool isCurrent;
-  final bool isNext;
 
   Map<String, Object?> toJson() => <String, Object?>{
     'label': label,
     'timeLabel': timeLabel,
     'isBoundaryOnly': isBoundaryOnly,
-    'isCurrent': isCurrent,
-    'isNext': isNext,
   };
 
   static PrayerWidgetTimeEntry _fromJson(Map<String, Object?> json) =>
@@ -789,8 +781,6 @@ final class PrayerWidgetTimeEntry {
         label: _string(json, 'label'),
         timeLabel: _string(json, 'timeLabel'),
         isBoundaryOnly: _boolean(json, 'isBoundaryOnly'),
-        isCurrent: _boolean(json, 'isCurrent'),
-        isNext: _boolean(json, 'isNext'),
       );
 
   @override
@@ -799,20 +789,91 @@ final class PrayerWidgetTimeEntry {
       other is PrayerWidgetTimeEntry &&
           label == other.label &&
           timeLabel == other.timeLabel &&
-          isBoundaryOnly == other.isBoundaryOnly &&
-          isCurrent == other.isCurrent &&
-          isNext == other.isNext;
+          isBoundaryOnly == other.isBoundaryOnly;
 
   @override
-  int get hashCode =>
-      Object.hash(label, timeLabel, isBoundaryOnly, isCurrent, isNext);
+  int get hashCode => Object.hash(label, timeLabel, isBoundaryOnly);
+}
+
+/// A stretch of real time, and which row is current throughout it.
+///
+/// This is how a widget stays right without the app running, and it is
+/// deliberately the smallest thing that can be: **two instants and an index**.
+/// The platform compares a clock against them. It performs no arithmetic on
+/// prayer times, knows nothing about Sunrise being a boundary rather than a
+/// prayer, and never has to work out that the hours before Fajr belong to last
+/// night's Isha — Dart decides all of that once, here, where the resolver
+/// lives, and ships the conclusion as intervals.
+///
+/// [entryIndex] is -1 for a stretch with no current prayer at all, which is
+/// the gap between Sunrise and Dhuhr.
+final class PrayerWidgetWindow {
+  factory PrayerWidgetWindow({
+    required int startUtcMs,
+    required int endUtcMs,
+    required int entryIndex,
+  }) {
+    if (endUtcMs <= startUtcMs) {
+      throw ArgumentError.value(endUtcMs, 'endUtcMs', 'Must be after the start.');
+    }
+    if (entryIndex < -1 || entryIndex >= prayerWidgetEntryCount) {
+      throw ArgumentError.value(entryIndex, 'entryIndex', 'Out of range.');
+    }
+    return PrayerWidgetWindow._(
+      startUtcMs: startUtcMs,
+      endUtcMs: endUtcMs,
+      entryIndex: entryIndex,
+    );
+  }
+
+  const PrayerWidgetWindow._({
+    required this.startUtcMs,
+    required this.endUtcMs,
+    required this.entryIndex,
+  });
+
+  final int startUtcMs;
+  final int endUtcMs;
+  final int entryIndex;
+
+  bool get hasPrayer => entryIndex >= 0;
+
+  bool contains(int instantUtcMs) =>
+      instantUtcMs >= startUtcMs && instantUtcMs < endUtcMs;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'startUtcMs': startUtcMs,
+    'endUtcMs': endUtcMs,
+    'entryIndex': entryIndex,
+  };
+
+  static PrayerWidgetWindow _fromJson(Map<String, Object?> json) =>
+      PrayerWidgetWindow(
+        startUtcMs: _integer(json, 'startUtcMs'),
+        endUtcMs: _integer(json, 'endUtcMs'),
+        entryIndex: _integer(json, 'entryIndex'),
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PrayerWidgetWindow &&
+          startUtcMs == other.startUtcMs &&
+          endUtcMs == other.endUtcMs &&
+          entryIndex == other.entryIndex;
+
+  @override
+  int get hashCode => Object.hash(startUtcMs, endUtcMs, entryIndex);
 }
 
 /// Display-ready projection for the Android Prayer Times widget.
 ///
-/// Dart resolves current/next and freshness exactly once; Kotlin only picks
-/// which fields a given widget size shows. There is no second resolver on
-/// the native side.
+/// Dart resolves the schedule, the labels and the freshness exactly once.
+/// What it no longer resolves is *when you are looking*: the windows carry
+/// the real instants and the platform reads its own clock against them. That
+/// is still not a second resolver — the native side performs a comparison,
+/// never a judgement, and every religious decision is already baked into the
+/// intervals it is given.
 final class PrayerWidgetProjection {
   factory PrayerWidgetProjection.unavailable({required String messageLabel}) {
     _requireText(messageLabel, 'messageLabel', maxLength: 256);
@@ -823,8 +884,7 @@ final class PrayerWidgetProjection {
       regionLabel: null,
       providerLabel: null,
       entries: const <PrayerWidgetTimeEntry>[],
-      currentLabel: null,
-      nextLabel: null,
+      windows: const <PrayerWidgetWindow>[],
       isStale: false,
       staleLabel: null,
     );
@@ -835,8 +895,7 @@ final class PrayerWidgetProjection {
     required String regionLabel,
     required String providerLabel,
     required Iterable<PrayerWidgetTimeEntry> entries,
-    String? currentLabel,
-    String? nextLabel,
+    required Iterable<PrayerWidgetWindow> windows,
     bool isStale = false,
     String? staleLabel,
   }) {
@@ -851,11 +910,23 @@ final class PrayerWidgetProjection {
         'Must contain exactly $prayerWidgetEntryCount boundaries.',
       );
     }
-    if (currentLabel != null) {
-      _requireText(currentLabel, 'currentLabel', maxLength: 128);
+    final schedule = List<PrayerWidgetWindow>.unmodifiable(windows);
+    if (schedule.isEmpty) {
+      throw ArgumentError.value(schedule, 'windows', 'Must not be empty.');
     }
-    if (nextLabel != null) {
-      _requireText(nextLabel, 'nextLabel', maxLength: 128);
+    for (var index = 0; index < schedule.length; index += 1) {
+      final window = schedule[index];
+      if (window.hasPrayer && result[window.entryIndex].isBoundaryOnly) {
+        throw ArgumentError(
+          'A boundary-only entry can never be the current prayer.',
+        );
+      }
+      // Contiguous and in order, so exactly one window holds any instant in
+      // the covered range. Gaps and overlaps would each make "which prayer is
+      // this" ambiguous on the far side, where there is nobody to ask.
+      if (index > 0 && schedule[index - 1].endUtcMs != window.startUtcMs) {
+        throw ArgumentError('Windows must be contiguous and ordered.');
+      }
     }
     if (isStale) {
       if (staleLabel == null) {
@@ -865,10 +936,6 @@ final class PrayerWidgetProjection {
     } else if (staleLabel != null) {
       throw ArgumentError('staleLabel must be null when not stale.');
     }
-    if (result.where((entry) => entry.isCurrent).length > 1 ||
-        result.where((entry) => entry.isNext).length > 1) {
-      throw ArgumentError('At most one entry can be current, one next.');
-    }
     return PrayerWidgetProjection._(
       isAvailable: true,
       messageLabel: null,
@@ -876,8 +943,7 @@ final class PrayerWidgetProjection {
       regionLabel: regionLabel,
       providerLabel: providerLabel,
       entries: result,
-      currentLabel: currentLabel,
-      nextLabel: nextLabel,
+      windows: schedule,
       isStale: isStale,
       staleLabel: staleLabel,
     );
@@ -890,8 +956,7 @@ final class PrayerWidgetProjection {
     required this.regionLabel,
     required this.providerLabel,
     required this.entries,
-    required this.currentLabel,
-    required this.nextLabel,
+    required this.windows,
     required this.isStale,
     required this.staleLabel,
   });
@@ -902,10 +967,43 @@ final class PrayerWidgetProjection {
   final String? regionLabel;
   final String? providerLabel;
   final List<PrayerWidgetTimeEntry> entries;
-  final String? currentLabel;
-  final String? nextLabel;
+  final List<PrayerWidgetWindow> windows;
   final bool isStale;
   final String? staleLabel;
+
+  /// The row that is current at [instantUtcMs], or null outside every window.
+  ///
+  /// Null is a real answer and the useful one: a snapshot written yesterday
+  /// covers yesterday, so it says "I do not know" instead of confidently
+  /// highlighting the prayer that was current when it was written. That
+  /// confident wrong answer is the defect this whole shape exists to remove.
+  int? currentEntryIndexAt(int instantUtcMs) {
+    for (final window in windows) {
+      if (window.contains(instantUtcMs)) {
+        return window.hasPrayer ? window.entryIndex : null;
+      }
+    }
+    return null;
+  }
+
+  /// The row whose prayer begins next after [instantUtcMs], or null when the
+  /// windows do not reach that far.
+  int? nextEntryIndexAt(int instantUtcMs) {
+    for (final window in windows) {
+      if (window.startUtcMs > instantUtcMs && window.hasPrayer) {
+        return window.entryIndex;
+      }
+    }
+    return null;
+  }
+
+  /// When the answer above stops being true, or null past the last window.
+  int? windowEndsAt(int instantUtcMs) {
+    for (final window in windows) {
+      if (window.contains(instantUtcMs)) return window.endUtcMs;
+    }
+    return null;
+  }
 
   /// A stale/unsafe schedule must never let the Rotation Widget auto-mark
   /// against a boundary that might already be wrong.
@@ -918,8 +1016,7 @@ final class PrayerWidgetProjection {
     if (regionLabel != null) 'regionLabel': regionLabel,
     if (providerLabel != null) 'providerLabel': providerLabel,
     'entries': entries.map((entry) => entry.toJson()).toList(growable: false),
-    if (currentLabel != null) 'currentLabel': currentLabel,
-    if (nextLabel != null) 'nextLabel': nextLabel,
+    'windows': windows.map((window) => window.toJson()).toList(growable: false),
     'isStale': isStale,
     if (staleLabel != null) 'staleLabel': staleLabel,
   };
@@ -939,8 +1036,9 @@ final class PrayerWidgetProjection {
         json,
         'entries',
       ).map((entry) => PrayerWidgetTimeEntry._fromJson(_asMap(entry, 'entry'))),
-      currentLabel: _nullableString(json, 'currentLabel'),
-      nextLabel: _nullableString(json, 'nextLabel'),
+      windows: _list(json, 'windows').map(
+        (window) => PrayerWidgetWindow._fromJson(_asMap(window, 'window')),
+      ),
       isStale: _boolean(json, 'isStale'),
       staleLabel: _nullableString(json, 'staleLabel'),
     );
@@ -956,8 +1054,7 @@ final class PrayerWidgetProjection {
           regionLabel == other.regionLabel &&
           providerLabel == other.providerLabel &&
           _listEquals(entries, other.entries) &&
-          currentLabel == other.currentLabel &&
-          nextLabel == other.nextLabel &&
+          _listEquals(windows, other.windows) &&
           isStale == other.isStale &&
           staleLabel == other.staleLabel;
 
@@ -969,8 +1066,7 @@ final class PrayerWidgetProjection {
     regionLabel,
     providerLabel,
     Object.hashAll(entries),
-    currentLabel,
-    nextLabel,
+    Object.hashAll(windows),
     isStale,
     staleLabel,
   );

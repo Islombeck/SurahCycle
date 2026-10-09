@@ -2,6 +2,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:murajaah/core/domain/domain.dart';
 import 'package:murajaah/core/widgets/widgets.dart';
 
+/// Tashkent, UTC+5, on 2026-09-04. Midnight there is 19:00 UTC the day before.
+final DateTime _localMidnightUtc = DateTime.utc(2026, 9, 3, 19);
+
+DateTime _localTime(int hour, int minute) =>
+    _localMidnightUtc.add(Duration(hours: hour, minutes: minute));
+
+int _atLocal(int hour, int minute) =>
+    _localTime(hour, minute).millisecondsSinceEpoch;
+
 void main() {
   group('PrayerWidgetProjection validation', () {
     test('unavailable requires a non-empty message', () {
@@ -15,6 +24,7 @@ void main() {
       expect(projection.isAvailable, isFalse);
       expect(projection.messageLabel, 'Open the app');
       expect(projection.entries, isEmpty);
+      expect(projection.windows, isEmpty);
       expect(projection.allowsRotationAutoMark, isFalse);
     });
 
@@ -27,56 +37,85 @@ void main() {
           entries: <PrayerWidgetTimeEntry>[
             PrayerWidgetTimeEntry(label: 'Fajr', timeLabel: '05:00'),
           ],
+          windows: _windows(),
         ),
         throwsArgumentError,
       );
     });
 
-    test('at most one entry can be current, at most one next', () {
+    test('a window may never point at Sunrise', () {
+      // Sunrise is a boundary, not a prayer. Before, the entry itself refused
+      // to be marked current; now the refusal has to live where the choice is
+      // made, or the platform would faithfully highlight it.
       expect(
         () => PrayerWidgetProjection.available(
           dateLabel: '2026-09-04',
           regionLabel: 'Tashkent',
           providerLabel: 'Namoz-vaqti.uz',
-          entries:
-              _sixEntries(currentIndex: 0, nextIndex: 2).map((entry) {
-                  return entry.isCurrent
-                      ? PrayerWidgetTimeEntry(
-                          label: entry.label,
-                          timeLabel: entry.timeLabel,
-                          isCurrent: true,
-                        )
-                      : entry;
-                }).toList()
-                ..[1] = PrayerWidgetTimeEntry(
-                  label: _sixEntries()[1].label,
-                  timeLabel: _sixEntries()[1].timeLabel,
-                  isCurrent: true,
-                ),
+          entries: _sixEntries(),
+          windows: <PrayerWidgetWindow>[
+            PrayerWidgetWindow(
+              startUtcMs: _atLocal(0, 0),
+              endUtcMs: _atLocal(24, 0),
+              entryIndex: 1,
+            ),
+          ],
         ),
         throwsArgumentError,
       );
     });
 
-    test('a boundary-only entry cannot be current or next', () {
+    test('windows must be contiguous and in order', () {
+      // A gap or an overlap makes "which prayer is this" ambiguous on the far
+      // side, where there is nobody to ask.
+      for (final second in <PrayerWidgetWindow>[
+        // Gap.
+        PrayerWidgetWindow(
+          startUtcMs: _atLocal(13, 0),
+          endUtcMs: _atLocal(24, 0),
+          entryIndex: 2,
+        ),
+        // Overlap.
+        PrayerWidgetWindow(
+          startUtcMs: _atLocal(11, 0),
+          endUtcMs: _atLocal(24, 0),
+          entryIndex: 2,
+        ),
+      ]) {
+        expect(
+          () => PrayerWidgetProjection.available(
+            dateLabel: '2026-09-04',
+            regionLabel: 'Tashkent',
+            providerLabel: 'Namoz-vaqti.uz',
+            entries: _sixEntries(),
+            windows: <PrayerWidgetWindow>[
+              PrayerWidgetWindow(
+                startUtcMs: _atLocal(0, 0),
+                endUtcMs: _atLocal(12, 0),
+                entryIndex: 0,
+              ),
+              second,
+            ],
+          ),
+          throwsArgumentError,
+        );
+      }
+    });
+
+    test('a window must end after it starts, and name a real row', () {
       expect(
-        () => PrayerWidgetTimeEntry(
-          label: 'Sunrise',
-          timeLabel: '06:12',
-          isBoundaryOnly: true,
-          isCurrent: true,
+        () => PrayerWidgetWindow(
+          startUtcMs: _atLocal(12, 0),
+          endUtcMs: _atLocal(12, 0),
+          entryIndex: 0,
         ),
         throwsArgumentError,
       );
-    });
-
-    test('an entry cannot be both current and next', () {
       expect(
-        () => PrayerWidgetTimeEntry(
-          label: 'Dhuhr',
-          timeLabel: '12:30',
-          isCurrent: true,
-          isNext: true,
+        () => PrayerWidgetWindow(
+          startUtcMs: _atLocal(0, 0),
+          endUtcMs: _atLocal(1, 0),
+          entryIndex: prayerWidgetEntryCount,
         ),
         throwsArgumentError,
       );
@@ -89,6 +128,7 @@ void main() {
           regionLabel: 'Tashkent',
           providerLabel: 'Namoz-vaqti.uz',
           entries: _sixEntries(),
+          windows: _windows(),
           isStale: true,
         ),
         throwsArgumentError,
@@ -99,6 +139,7 @@ void main() {
           regionLabel: 'Tashkent',
           providerLabel: 'Namoz-vaqti.uz',
           entries: _sixEntries(),
+          windows: _windows(),
           staleLabel: 'Needs refresh',
         ),
         throwsArgumentError,
@@ -111,6 +152,7 @@ void main() {
         regionLabel: 'Tashkent',
         providerLabel: 'Namoz-vaqti.uz',
         entries: _sixEntries(),
+        windows: _windows(),
         isStale: true,
         staleLabel: 'Needs refresh',
       );
@@ -119,6 +161,7 @@ void main() {
         regionLabel: 'Tashkent',
         providerLabel: 'Namoz-vaqti.uz',
         entries: _sixEntries(),
+        windows: _windows(),
       );
 
       expect(stale.allowsRotationAutoMark, isFalse);
@@ -127,53 +170,8 @@ void main() {
   });
 
   group('PrayerWidgetProjectionFactory', () {
-    const factory = PrayerWidgetProjectionFactory();
-
-    test('formats times and flags exactly the current/next boundary', () {
-      final boundaries = <PrayerWidgetBoundary>[
-        const PrayerWidgetBoundary(
-          label: 'Fajr',
-          hour: 5,
-          minute: 3,
-          prayerType: PrayerType.fajr,
-        ),
-        const PrayerWidgetBoundary(label: 'Sunrise', hour: 6, minute: 45),
-        const PrayerWidgetBoundary(
-          label: 'Dhuhr',
-          hour: 12,
-          minute: 30,
-          prayerType: PrayerType.dhuhr,
-        ),
-        const PrayerWidgetBoundary(
-          label: 'Asr',
-          hour: 15,
-          minute: 42,
-          prayerType: PrayerType.asr,
-        ),
-        const PrayerWidgetBoundary(
-          label: 'Maghrib',
-          hour: 18,
-          minute: 9,
-          prayerType: PrayerType.maghrib,
-        ),
-        const PrayerWidgetBoundary(
-          label: 'Isha',
-          hour: 19,
-          minute: 40,
-          prayerType: PrayerType.isha,
-        ),
-      ];
-
-      final projection = factory.available(
-        dateLabel: '2026-09-04',
-        regionLabel: 'Tashkent',
-        providerLabel: 'Namoz-vaqti.uz',
-        boundaries: boundaries,
-        currentPrayerType: PrayerType.dhuhr,
-        nextPrayerType: PrayerType.asr,
-        currentLabel: 'Dhuhr',
-        nextLabel: 'Asr',
-      );
+    test('formats the six times and divides the day into seven stretches', () {
+      final projection = _projection();
 
       expect(projection.isAvailable, isTrue);
       expect(projection.entries, hasLength(prayerWidgetEntryCount));
@@ -186,33 +184,65 @@ void main() {
         '19:40',
       ]);
       expect(
-        projection.entries.where((entry) => entry.isCurrent).single.label,
-        'Dhuhr',
-      );
-      expect(
-        projection.entries.where((entry) => entry.isNext).single.label,
-        'Asr',
-      );
-      expect(
         projection.entries
             .firstWhere((entry) => entry.label == 'Sunrise')
             .isBoundaryOnly,
         isTrue,
       );
-      expect(projection.currentLabel, 'Dhuhr');
-      expect(projection.nextLabel, 'Asr');
+      expect(
+        projection.windows.map((window) => window.entryIndex),
+        <int>[5, 0, -1, 2, 3, 4, 5],
+        reason:
+            'the night before Fajr belongs to the Isha row, Sunrise to no '
+            'prayer at all, and the evening after Isha back to Isha',
+      );
+      expect(projection.windows.first.startUtcMs, _atLocal(0, 0));
+      expect(projection.windows.last.endUtcMs, _atLocal(24, 0));
+    });
+  });
+
+  group('which prayer is it, now', () {
+    test('the row is chosen by the clock, not by when this was written', () {
+      final projection = _projection();
+
+      expect(projection.currentEntryIndexAt(_atLocal(16, 0)), 3);
+      expect(projection.currentEntryIndexAt(_atLocal(5, 4)), 0);
+      expect(projection.currentEntryIndexAt(_atLocal(19, 41)), 5);
     });
 
-    test('no current/next prayer type leaves every entry unhighlighted', () {
-      final projection = factory.available(
-        dateLabel: '2026-09-04',
-        regionLabel: 'Tashkent',
-        providerLabel: 'Namoz-vaqti.uz',
-        boundaries: _boundaries(),
-      );
+    test('the hours before Fajr belong to the night that is ending', () {
+      // 02:00 is Isha, and that has been the resolver's answer all along. The
+      // widget could not say it before, because the answer it carried was
+      // frozen at whatever the app last saw.
+      expect(_projection().currentEntryIndexAt(_atLocal(2, 0)), 5);
+    });
 
-      expect(projection.entries.any((entry) => entry.isCurrent), isFalse);
-      expect(projection.entries.any((entry) => entry.isNext), isFalse);
+    test('between Sunrise and Dhuhr there is no current prayer', () {
+      expect(_projection().currentEntryIndexAt(_atLocal(7, 0)), isNull);
+      expect(
+        _projection().nextEntryIndexAt(_atLocal(7, 0)),
+        2,
+        reason: 'Dhuhr is still what comes next',
+      );
+    });
+
+    test('a snapshot from another day says it does not know', () {
+      // **The defect, in one assertion.** The widget used to keep the row it
+      // was given: his phone showed Asr highlighted because Asr was current
+      // when the launcher last built it, hours or days earlier. Outside its
+      // own day the honest answer is null, and the widget renders the
+      // fallback instead of a confident wrong one.
+      final projection = _projection();
+
+      expect(projection.currentEntryIndexAt(_atLocal(-5, 0)), isNull);
+      expect(projection.currentEntryIndexAt(_atLocal(30, 0)), isNull);
+      expect(projection.nextEntryIndexAt(_atLocal(30, 0)), isNull);
+    });
+
+    test('it says when its own answer expires', () {
+      // What a scheduled redraw is set against.
+      expect(_projection().windowEndsAt(_atLocal(16, 0)), _atLocal(18, 9));
+      expect(_projection().windowEndsAt(_atLocal(30, 0)), isNull);
     });
   });
 
@@ -223,14 +253,7 @@ void main() {
       locale: 'ru',
       rotation: RotationWidgetProjection(items: const <RotationWidgetItem>[]),
       learning: const LearningWidgetProjection.empty(),
-      prayer: PrayerWidgetProjection.available(
-        dateLabel: '2026-09-04',
-        regionLabel: 'Tashkent',
-        providerLabel: 'Namoz-vaqti.uz',
-        entries: _sixEntries(currentIndex: 2, nextIndex: 3),
-        currentLabel: 'Dhuhr',
-        nextLabel: 'Asr',
-      ),
+      prayer: _projection(),
     );
 
     final decoded = codec.decode(codec.encode(snapshot));
@@ -238,10 +261,20 @@ void main() {
     expect(decoded, isA<WidgetSnapshotDecoded>());
     final result = (decoded as WidgetSnapshotDecoded).snapshot;
     expect(result.prayer, snapshot.prayer);
+    expect(result.prayer.windows, hasLength(7));
   });
 }
 
-List<PrayerWidgetTimeEntry> _sixEntries({int? currentIndex, int? nextIndex}) {
+PrayerWidgetProjection _projection() =>
+    const PrayerWidgetProjectionFactory().available(
+      dateLabel: '2026-09-04',
+      regionLabel: 'Tashkent',
+      providerLabel: 'Namoz-vaqti.uz',
+      boundaries: _boundaries(),
+      localMidnightUtc: _localMidnightUtc,
+    );
+
+List<PrayerWidgetTimeEntry> _sixEntries() {
   const labels = <String>['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
   const times = <String>['05:03', '06:45', '12:30', '15:42', '18:09', '19:40'];
   return <PrayerWidgetTimeEntry>[
@@ -250,11 +283,11 @@ List<PrayerWidgetTimeEntry> _sixEntries({int? currentIndex, int? nextIndex}) {
         label: labels[index],
         timeLabel: times[index],
         isBoundaryOnly: index == 1,
-        isCurrent: index == currentIndex,
-        isNext: index == nextIndex,
       ),
   ];
 }
+
+List<PrayerWidgetWindow> _windows() => _projection().windows;
 
 List<PrayerWidgetBoundary> _boundaries() => const <PrayerWidgetBoundary>[
   PrayerWidgetBoundary(

@@ -2080,17 +2080,20 @@ final class _AppWidgetSyncDriver {
       ),
     ];
     final isStale = !todaySchedule.loadResult.isReliableForAutomaticContext;
-    final currentPrayerType = scheduleResolution?.context?.prayerType;
-    final nextPrayerType = scheduleResolution?.nextPrayerType;
+    final day = todaySchedule.day;
     return factory.available(
       dateLabel: localDate.toString(),
       regionLabel: locationDisplayName,
-      providerLabel: todaySchedule.day.provenance.source.displayName,
+      providerLabel: day.provenance.source.displayName,
       boundaries: boundaries,
-      currentPrayerType: currentPrayerType,
-      nextPrayerType: nextPrayerType,
-      currentLabel: currentPrayerType?.label(l10n),
-      nextLabel: nextPrayerType?.label(l10n),
+      // Midnight where he is, as a real instant. Everything the widget needs
+      // to answer "which prayer is this, now" is derived from it, which is
+      // what lets the launcher stay right between two runs of the app.
+      localMidnightUtc: DateTime.utc(
+        day.date.year,
+        day.date.month,
+        day.date.day,
+      ).subtract(Duration(minutes: day.utcOffsetMinutes)),
       isStale: isStale,
       staleLabel: isStale ? l10n.prayerScheduleStale : null,
     );

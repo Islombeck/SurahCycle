@@ -19,19 +19,51 @@ internal data class NativePrayerProjection(
     val regionLabel: String?,
     val providerLabel: String?,
     val entries: List<NativePrayerEntry>,
-    val currentLabel: String?,
-    val nextLabel: String?,
+    val windows: List<NativePrayerWindow>,
     val isStale: Boolean,
     val staleLabel: String?,
-)
+) {
+    /**
+     * Which row is current at [nowUtcMs], or null when nothing is.
+     *
+     * A comparison, not a judgement. Every decision that needed knowing
+     * something about prayer — that Sunrise is a boundary and not a prayer,
+     * that the hours before Fajr belong to last night's Isha — was made in
+     * Dart and arrives here already expressed as intervals.
+     *
+     * Null outside every window, and that is the point: a snapshot written
+     * yesterday covers yesterday. It used to carry "Asr is current" and the
+     * launcher kept showing exactly that, for days.
+     */
+    fun currentIndexAt(nowUtcMs: Long): Int? =
+        windows.firstOrNull { it.contains(nowUtcMs) }?.entryIndex?.takeIf { it >= 0 }
+
+    /** The row whose prayer starts next, or null past the last window. */
+    fun nextIndexAt(nowUtcMs: Long): Int? =
+        windows
+            .firstOrNull { it.startUtcMs > nowUtcMs && it.entryIndex >= 0 }
+            ?.entryIndex
+
+    /** When the answer above stops being true, or null past the last window. */
+    fun windowEndsAt(nowUtcMs: Long): Long? =
+        windows.firstOrNull { it.contains(nowUtcMs) }?.endUtcMs
+}
 
 internal data class NativePrayerEntry(
     val label: String,
     val timeLabel: String,
     val isBoundaryOnly: Boolean,
-    val isCurrent: Boolean,
-    val isNext: Boolean,
 )
+
+/** A stretch of real time and the row that is current throughout it. */
+internal data class NativePrayerWindow(
+    val startUtcMs: Long,
+    val endUtcMs: Long,
+    val entryIndex: Int,
+) {
+    fun contains(instantUtcMs: Long): Boolean =
+        instantUtcMs >= startUtcMs && instantUtcMs < endUtcMs
+}
 
 private val EMPTY_PRAYER_PROJECTION =
     NativePrayerProjection(
@@ -41,8 +73,7 @@ private val EMPTY_PRAYER_PROJECTION =
         regionLabel = null,
         providerLabel = null,
         entries = emptyList(),
-        currentLabel = null,
-        nextLabel = null,
+        windows = emptyList(),
         isStale = false,
         staleLabel = null,
     )
@@ -131,8 +162,9 @@ internal object NativeWidgetSnapshotParser {
     private const val LEGACY_SCHEMA_VERSION = 2
     private const val PREVIOUS_SCHEMA_VERSION = 3
     private const val INTERACTIVE_SCHEMA_VERSION = 4
-    private const val PRAYER_SCHEMA_VERSION = 6
-    private const val SCHEMA_VERSION = 6
+    private const val PRAYER_SCHEMA_VERSION = 7
+    private const val SCHEMA_VERSION = 7
+    private const val PRAYER_WINDOW_COUNT_MAX = 8
     private const val MAX_ROTATION_ITEMS = 64
     private const val MAX_TEXT_LINES = 3
     private const val PRAYER_ENTRY_COUNT = 6
@@ -144,6 +176,11 @@ internal object NativeWidgetSnapshotParser {
         return runCatching {
             val root = JSONObject(raw)
             val schemaVersion = root.getInt("schemaVersion")
+            // 6 is deliberately gone. It carried a frozen "this prayer is
+            // current" flag, and accepting it would be accepting the stale
+            // answer schema 7 exists to remove — the launcher would keep
+            // highlighting whichever prayer was current when the app last ran.
+            // A rejected snapshot renders the safe fallback, which is honest.
             require(
                     schemaVersion == LEGACY_SCHEMA_VERSION ||
                     schemaVersion == PREVIOUS_SCHEMA_VERSION ||
@@ -180,8 +217,12 @@ internal object NativeWidgetSnapshotParser {
     private fun parsePrayer(json: JSONObject): NativePrayerProjection {
         val isAvailable = json.getBoolean("isAvailable")
         if (!isAvailable) {
-            requireOnlyKeys(json, setOf("isAvailable", "messageLabel", "entries", "isStale"))
+            requireOnlyKeys(
+                json,
+                setOf("isAvailable", "messageLabel", "entries", "windows", "isStale"),
+            )
             require(json.getJSONArray("entries").length() == 0)
+            require(json.getJSONArray("windows").length() == 0)
             require(!json.getBoolean("isStale"))
             return NativePrayerProjection(
                 isAvailable = false,
@@ -190,8 +231,7 @@ internal object NativeWidgetSnapshotParser {
                 regionLabel = null,
                 providerLabel = null,
                 entries = emptyList(),
-                currentLabel = null,
-                nextLabel = null,
+                windows = emptyList(),
                 isStale = false,
                 staleLabel = null,
             )
@@ -204,40 +244,43 @@ internal object NativeWidgetSnapshotParser {
                 "regionLabel",
                 "providerLabel",
                 "entries",
-                "currentLabel",
-                "nextLabel",
+                "windows",
                 "isStale",
                 "staleLabel",
             ),
         )
         val entriesJson = json.getJSONArray("entries")
         require(entriesJson.length() == PRAYER_ENTRY_COUNT)
-        var currentCount = 0
-        var nextCount = 0
         val entries = ArrayList<NativePrayerEntry>(entriesJson.length())
         for (index in 0 until entriesJson.length()) {
             val entry = entriesJson.getJSONObject(index)
-            requireOnlyKeys(
-                entry,
-                setOf("label", "timeLabel", "isBoundaryOnly", "isCurrent", "isNext"),
-            )
-            val isBoundaryOnly = entry.getBoolean("isBoundaryOnly")
-            val isCurrent = entry.getBoolean("isCurrent")
-            val isNext = entry.getBoolean("isNext")
-            require(!(isBoundaryOnly && (isCurrent || isNext)))
-            require(!(isCurrent && isNext))
-            if (isCurrent) currentCount += 1
-            if (isNext) nextCount += 1
+            requireOnlyKeys(entry, setOf("label", "timeLabel", "isBoundaryOnly"))
             entries +=
                 NativePrayerEntry(
                     label = requireText(entry.getString("label"), 64),
                     timeLabel = requireText(entry.getString("timeLabel"), 16),
-                    isBoundaryOnly = isBoundaryOnly,
-                    isCurrent = isCurrent,
-                    isNext = isNext,
+                    isBoundaryOnly = entry.getBoolean("isBoundaryOnly"),
                 )
         }
-        require(currentCount <= 1 && nextCount <= 1)
+        // The same invariants Dart enforces when it builds them, checked again
+        // rather than trusted: ordered, contiguous, never naming Sunrise. A
+        // decoder more forgiving than the writer is how a widget comes to
+        // render a state the app considers impossible.
+        val windowsJson = json.getJSONArray("windows")
+        require(windowsJson.length() in 1..PRAYER_WINDOW_COUNT_MAX)
+        val windows = ArrayList<NativePrayerWindow>(windowsJson.length())
+        for (index in 0 until windowsJson.length()) {
+            val window = windowsJson.getJSONObject(index)
+            requireOnlyKeys(window, setOf("startUtcMs", "endUtcMs", "entryIndex"))
+            val start = window.getLong("startUtcMs")
+            val end = window.getLong("endUtcMs")
+            val entryIndex = window.getInt("entryIndex")
+            require(end > start)
+            require(entryIndex >= -1 && entryIndex < PRAYER_ENTRY_COUNT)
+            require(entryIndex < 0 || !entries[entryIndex].isBoundaryOnly)
+            require(index == 0 || windows[index - 1].endUtcMs == start)
+            windows += NativePrayerWindow(start, end, entryIndex)
+        }
         val isStale = json.getBoolean("isStale")
         return NativePrayerProjection(
             isAvailable = true,
@@ -246,8 +289,7 @@ internal object NativeWidgetSnapshotParser {
             regionLabel = requireText(json.getString("regionLabel"), 256),
             providerLabel = requireText(json.getString("providerLabel"), 256),
             entries = entries,
-            currentLabel = json.optionalString("currentLabel")?.let { requireText(it, 128) },
-            nextLabel = json.optionalString("nextLabel")?.let { requireText(it, 128) },
+            windows = windows,
             isStale = isStale,
             staleLabel =
                 if (isStale) {

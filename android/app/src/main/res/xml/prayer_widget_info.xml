@@ -1,4 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    `updatePeriodMillis` is 30 minutes here and zero for the other two
+    widgets, and the difference is the point.
+
+    Rotation and Learning change when the owner does something, and the app
+    pushes them a new snapshot when he does. This one changes because time
+    passed: the snapshot carries the day's windows, the widget compares them
+    against its own clock, and nothing wakes it to do the comparing again.
+    Left at zero it redrew only when the launcher happened to rebuild it,
+    which is how it came to sit on Asr for days.
+
+    Thirty minutes is Android's floor for this; shorter values are silently
+    clamped. It bounds the lag rather than removing it, and it needs no
+    permission, no alarm and no background process, which an exact wake-up at
+    each boundary would. If half an hour of lag turns out to matter, an exact
+    alarm is the next step — see docs/ARCHITECTURE_REVIEW_2026-10.md.
+-->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/prayer_widget_description"
     android:initialLayout="@layout/widget_loading"
@@ -10,5 +27,5 @@
     android:resizeMode="horizontal|vertical"
     android:targetCellHeight="2"
     android:targetCellWidth="3"
-    android:updatePeriodMillis="0"
+    android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen" />

@@ -104,34 +104,44 @@ class PrayerWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                     maxLines = 2,
                 )
             }
+            // Read once per composition, and the only clock reading there is.
+            // Which row is current follows from it and the windows; nothing
+            // here decides anything about prayer.
+            val nowUtcMs = System.currentTimeMillis()
+            val currentIndex = prayer.currentIndexAt(nowUtcMs)
+            val nextIndex = prayer.nextIndexAt(nowUtcMs)
             when {
-                size.width < MEDIUM_SIZE.width -> CompactBody(context, prayer)
-                size.height < LARGE_SIZE.height -> MediumBody(context, prayer)
-                else -> LargeBody(context, prayer)
+                size.width < MEDIUM_SIZE.width ->
+                    CompactBody(context, prayer, currentIndex, nextIndex)
+                size.height < LARGE_SIZE.height ->
+                    MediumBody(context, prayer, currentIndex, nextIndex)
+                else -> LargeBody(context, prayer, currentIndex, nextIndex)
             }
         }
     }
 
     @Composable
-    private fun CompactBody(context: Context, prayer: NativePrayerProjection) {
+    private fun CompactBody(
+        context: Context,
+        prayer: NativePrayerProjection,
+        currentIndex: Int?,
+        nextIndex: Int?,
+    ) {
         Spacer(GlanceModifier.height(4.dp))
         Text(
-            prayer.currentLabel ?: context.getString(R.string.prayer_widget_between),
+            currentIndex?.let { prayer.entries[it].label }
+                ?: context.getString(R.string.prayer_widget_between),
             style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold),
             maxLines = 1,
         )
-        prayer.nextLabel?.let { nextLabel ->
-            val nextEntry = prayer.entries.firstOrNull { it.isNext }
+        nextIndex?.let { index ->
+            val next = prayer.entries[index]
             Text(
-                if (nextEntry != null) {
-                    context.getString(
-                        R.string.prayer_widget_next_at,
-                        nextLabel,
-                        nextEntry.timeLabel,
-                    )
-                } else {
-                    nextLabel
-                },
+                context.getString(
+                    R.string.prayer_widget_next_at,
+                    next.label,
+                    next.timeLabel,
+                ),
                 style = TextStyle(fontSize = 12.sp),
                 maxLines = 1,
             )
@@ -140,23 +150,39 @@ class PrayerWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
     }
 
     @Composable
-    private fun MediumBody(context: Context, prayer: NativePrayerProjection) {
+    private fun MediumBody(
+        context: Context,
+        prayer: NativePrayerProjection,
+        currentIndex: Int?,
+        nextIndex: Int?,
+    ) {
         Spacer(GlanceModifier.height(4.dp))
-        for (entry in prayer.entries) {
-            if (entry.isBoundaryOnly) continue
-            PrayerRow(entry, secondary = false)
+        prayer.entries.forEachIndexed { index, entry ->
+            if (entry.isBoundaryOnly) return@forEachIndexed
+            PrayerRow(entry, secondary = false, index, currentIndex, nextIndex)
         }
-        val sunrise = prayer.entries.firstOrNull { it.isBoundaryOnly }
-        if (sunrise != null) {
+        val sunriseIndex = prayer.entries.indexOfFirst { it.isBoundaryOnly }
+        if (sunriseIndex >= 0) {
             Spacer(GlanceModifier.height(2.dp))
-            PrayerRow(sunrise, secondary = true)
+            PrayerRow(
+                prayer.entries[sunriseIndex],
+                secondary = true,
+                sunriseIndex,
+                currentIndex,
+                nextIndex,
+            )
         }
         Spacer(GlanceModifier.height(4.dp))
         Text(prayer.regionLabel ?: "", style = TextStyle(fontSize = 11.sp), maxLines = 1)
     }
 
     @Composable
-    private fun LargeBody(context: Context, prayer: NativePrayerProjection) {
+    private fun LargeBody(
+        context: Context,
+        prayer: NativePrayerProjection,
+        currentIndex: Int?,
+        nextIndex: Int?,
+    ) {
         Spacer(GlanceModifier.height(4.dp))
         Text(
             prayer.dateLabel ?: "",
@@ -164,8 +190,8 @@ class PrayerWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
             maxLines = 1,
         )
         Spacer(GlanceModifier.height(4.dp))
-        for (entry in prayer.entries) {
-            PrayerRow(entry, secondary = entry.isBoundaryOnly)
+        prayer.entries.forEachIndexed { index, entry ->
+            PrayerRow(entry, entry.isBoundaryOnly, index, currentIndex, nextIndex)
         }
         Spacer(GlanceModifier.height(6.dp))
         Text(
@@ -177,13 +203,19 @@ class PrayerWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
     }
 
     @Composable
-    private fun PrayerRow(entry: NativePrayerEntry, secondary: Boolean) {
+    private fun PrayerRow(
+        entry: NativePrayerEntry,
+        secondary: Boolean,
+        index: Int,
+        currentIndex: Int?,
+        nextIndex: Int?,
+    ) {
+        val isCurrent = index == currentIndex
+        val isNext = index == nextIndex
         Row(
             modifier =
                 GlanceModifier.fillMaxWidth()
-                    .background(
-                        if (entry.isCurrent) Color(0xFFDCE7EF) else Color.Transparent
-                    )
+                    .background(if (isCurrent) Color(0xFFDCE7EF) else Color.Transparent)
                     .cornerRadius(10.dp)
                     .padding(horizontal = 6.dp, vertical = 3.dp),
             verticalAlignment = Alignment.Vertical.CenterVertically,
@@ -194,8 +226,7 @@ class PrayerWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                 style =
                     TextStyle(
                         fontSize = if (secondary) 12.sp else 14.sp,
-                        fontWeight =
-                            if (entry.isCurrent) FontWeight.Bold else FontWeight.Normal,
+                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
                     ),
                 maxLines = 1,
             )
@@ -205,7 +236,7 @@ class PrayerWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                     TextStyle(
                         fontSize = if (secondary) 12.sp else 14.sp,
                         fontWeight =
-                            if (entry.isCurrent || entry.isNext) {
+                            if (isCurrent || isNext) {
                                 FontWeight.Bold
                             } else {
                                 FontWeight.Normal

@@ -95,8 +95,8 @@ void main() {
       snapshot,
       contains('private const val INTERACTIVE_SCHEMA_VERSION = 4'),
     );
-    expect(snapshot, contains('private const val SCHEMA_VERSION = 6'));
-    expect(snapshot, contains('private const val PRAYER_SCHEMA_VERSION = 6'));
+    expect(snapshot, contains('private const val SCHEMA_VERSION = 7'));
+    expect(snapshot, contains('private const val PRAYER_SCHEMA_VERSION = 7'));
     expect(
       snapshot,
       contains('internal const val LEGACY_ACTION_SCHEMA_VERSION = 1'),
@@ -132,12 +132,27 @@ void main() {
       snapshot,
       contains('require(entriesJson.length() == PRAYER_ENTRY_COUNT)'),
     );
+    // Schema 7: the row no longer carries a verdict, so there is no
+    // "at most one current" to check. What replaced it is the window list,
+    // and these are the invariants that make a comparison on the far side
+    // safe — ordered, contiguous, in range, and never naming Sunrise.
+    expect(snapshot, contains('require(index == 0 || windows[index - 1]'));
     expect(
       snapshot,
-      contains('require(!(isBoundaryOnly && (isCurrent || isNext)))'),
+      contains('require(entryIndex >= -1 && entryIndex < PRAYER_ENTRY_COUNT)'),
     );
-    expect(snapshot, contains('require(!(isCurrent && isNext))'));
-    expect(snapshot, contains('require(currentCount <= 1 && nextCount <= 1)'));
+    expect(
+      snapshot,
+      contains('require(entryIndex < 0 || !entries[entryIndex].isBoundaryOnly)'),
+    );
+    expect(snapshot, contains('require(end > start)'));
+    expect(
+      snapshot,
+      isNot(contains('isCurrent')),
+      reason:
+          'a frozen verdict is what made the widget sit on Asr for days; it '
+          'must not come back on the native side either',
+    );
     expect(
       snapshot,
       contains('require(!json.has("staleLabel") || json.isNull("staleLabel"))'),
