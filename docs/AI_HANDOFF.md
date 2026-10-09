@@ -1,6 +1,58 @@
 # Murajaah AI handoff
 
-## The horizontal prayer strip — 2026-10-09, afternoon (read this first)
+## The strip on his screen, and what it showed — 2026-10-09, 15:13 (read this first)
+
+He placed the strip (6×1, full width, under the vertical widget on page two)
+and answered the Scheduler's last question: **notifications are allowed**
+(opt-in and silent, as always). Seen on his screen at 15:12:58: «Аср через
+54:02» — exactly the time to 16:07 — Зухр on the pill, Аср's time bold.
+
+Three defects showed up on that one screen, all now fixed in code:
+
+1. **The region line was missing from both prayer widgets.** Vertical: Glance
+   draws at most ten children per container and drops the rest silently;
+   the medium/large bodies had eleven/twelve, the region was the casualty,
+   since the widget shipped. Strip: a Glance `Text` beside the
+   `Chronometer` was never drawn; the whole top line is now one platform
+   layout with an ellipsized region. `uiautomator dump` cannot be used on
+   that page any more — the ticking countdown means the UI is never idle.
+2. **"My location", "Local calculation", "2026-10-09"** in the snapshot, and
+   "Local calculation · My location" on Home: stored English names printed
+   as-is. Now `PrayerLocation.label` / `PrayerTimeSource.label` and
+   `DateFormat.MMMMd` in the widget's locale. Nothing stored changed.
+
+**A commit mistake, recorded rather than rewritten.** `220e571` contains only
+a file rename: the `git add` meant to stage the widget fix named a path that
+`git mv` had already moved, failed, and the commit ran anyway. At `220e571`
+and `cbada30` the Android build does not compile and the native contract test
+is red; `b3fbe34` carries the content. **Commit only when `git add`
+succeeded** — `git add ...; if ($?) { git commit ... }`.
+
+Commits `220e571`, `cbada30`, `b3fbe34`; 1347 passed / 11 skipped, analyzer
+0, Kotlin compile + 8 JVM tests green.
+
+3. **Then the six times vanished** from the strip once its top line was one
+   platform layout. Same cause on the other axis: Glance's container for a
+   foreign `RemoteViews` fills any dimension it is not given — the first
+   time it ate the row's width, this time the widget's height. The header
+   now has an explicit width and height (one 12sp line at the phone's font
+   scale; his is **0.85**). `8fab1a6`.
+
+**Seen on his phone, Jelly Max, 15:36:16:** «Аср через 30:44» (correct to the
+second for 16:07), «Моё местоположение» on the right, six times below, Зухр on
+the pill, Аср bold; the vertical widget now ends with «Моё местоположение».
+Build `47EAE44DC92D7041068E479887F79B53AEF7E29CF3CAA0BEC6636FA116C68D1D`,
+230,540,246 bytes, `sha256sum` on the phone matches; kernel clean (only his
+project id stands alone; `nweiz@google.com` is a doc example in
+`package:http`). Backups `jelly_backup_20261009d/e.sqlite`, each equal to the
+phone's file; id comparison after install **identical on every compared
+table**, integrity ok, 0 FK violations. `dumpsys alarm`: two redraws booked,
+one per prayer receiver, both `RTC` at 16:07:00, `window=+10m`.
+
+**Not yet seen:** the pill actually moving to Аср at 16:07, which is the
+alarm's whole point.
+
+## The horizontal prayer strip — 2026-10-09, afternoon
 
 Session started from the 9 October brief. Reconciled: HEAD `85c44b2`, tree
 clean apart from his untracked files; `D:\MurajaahWorkspace` is a junction to

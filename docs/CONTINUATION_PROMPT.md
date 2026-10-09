@@ -203,10 +203,11 @@ The largest piece, and new. Sketch of the contract, to be agreed before coding:
   every earlier version, the same as every other bump here.
 - It must be useful with no network and no account, like everything else.
 
-Open questions for him before any code: does a task repeat daily? what happens
-to a chunk that was not done — does it move, or does it stay as a record of a
-day? does the scheduler ever notify, given that notifications are opt-in and
-silent by rule?
+**All three questions are answered (2026-10-09)** — see BACKLOG item 29:
+tasks are daily or one-off (a field, not two entities); an undone chunk is
+not moved and stays as a record of that day; moving is manual only; and the
+scheduler **may notify** («Да, можно присылать уведомление») — opt-in and
+silent like everything else here, on its own channel and its own switch.
 
 ### 7. Launcher icon from `brand/surahcycle_logo.svg`
 
