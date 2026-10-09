@@ -586,12 +586,12 @@ final class RecitationReplayService {
     final normalizedEvents = <RotationJournalEvent>[];
     for (final event in suppliedEvents) {
       final normalized = switch (event) {
-        SurahRecitationEvent value => engine.resolveRecitation(snapshot, value),
-        RotationAdjustmentEvent value => engine.resolveAdjustment(
+        final SurahRecitationEvent value => engine.resolveRecitation(snapshot, value),
+        final RotationAdjustmentEvent value => engine.resolveAdjustment(
           snapshot,
           value,
         ),
-        RotationSchemeChangedEvent value => value,
+        final RotationSchemeChangedEvent value => value,
         _ => throw StateError(
           'Unsupported rotation journal event: ${event.runtimeType}.',
         ),

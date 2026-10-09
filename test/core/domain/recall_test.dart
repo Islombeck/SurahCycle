@@ -87,7 +87,7 @@ void main() {
     });
 
     test('a finished range cannot be graded or advanced further', () {
-      var session = sessionOf(start: 1, end: 1).reveal().advance();
+      final session = sessionOf(start: 1, end: 1).reveal().advance();
 
       expect(session.isComplete, isTrue);
       expect(() => gradeOf(session), throwsStateError);

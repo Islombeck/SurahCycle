@@ -83,7 +83,7 @@ void main() {
           'a device that never signs in must do no extra work and store no '
           'extra rows',
     );
-    expect((await repository.getHistory()), hasLength(1));
+    expect(await repository.getHistory(), hasLength(1));
   });
 
   group('once activated', () {

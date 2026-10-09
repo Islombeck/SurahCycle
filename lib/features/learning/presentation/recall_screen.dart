@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/localization_extensions.dart';
+import '../../../core/domain/domain.dart';
 import '../../quran/quran.dart';
 import '../application/recall_controller.dart';
-import '../../../core/domain/domain.dart';
 
 /// The memory-check screen.
 ///

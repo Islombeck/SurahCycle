@@ -81,10 +81,12 @@ final class FilePrayerScheduleCacheStore implements PrayerScheduleCacheStore {
 
   @override
   Future<CachedPrayerMonthSchedule?> read(String cacheKey) async {
-    final file = _fileFor(cacheKey);
-    if (!await file.exists()) return null;
     try {
-      final decoded = jsonDecode(await file.readAsString());
+      // Read and let a missing file fall into the same answer as a corrupt
+      // one. Asking `exists()` first was a second syscall whose answer could
+      // already be stale by the time the read ran, and the catch below has
+      // always had to handle the file disappearing anyway.
+      final decoded = jsonDecode(await _fileFor(cacheKey).readAsString());
       return PrayerScheduleCacheCodec.decode(decoded, expectedKey: cacheKey);
     } on Object {
       // An external cache is disposable. Corruption must not affect user data
@@ -102,9 +104,10 @@ final class FilePrayerScheduleCacheStore implements PrayerScheduleCacheStore {
       jsonEncode(PrayerScheduleCacheCodec.encode(value)),
       flush: true,
     );
-    if (await destination.exists()) {
-      await destination.delete();
-    }
+    // Straight over the top. `rename` replaces an existing file on every
+    // platform Dart supports, so deleting first bought nothing and opened a
+    // window — between the delete and the rename — where the cache did not
+    // exist at all and a concurrent read would answer "no schedule".
     await temporary.rename(destination.path);
   }
 

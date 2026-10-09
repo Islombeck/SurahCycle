@@ -1,28 +1,98 @@
-# This file configures the analyzer, which statically analyzes Dart code to
-# check for errors, warnings, and lints.
+# What the analyzer is allowed to let through.
 #
-# The issues identified by the analyzer are surfaced in the UI of Dart-enabled
-# IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
-# invoked from the command line by running `flutter analyze`.
-
-# The following line activates a set of recommended lints for Flutter apps,
-# packages, and plugins designed to encourage good coding practices.
+# This file used to be the untouched `flutter create` scaffold: the default
+# lint set and nothing else. The default set is a floor, not a standard, and
+# three of the four strict language modes below are off by default — which
+# means an implicit `dynamic` crossing a boundary, an untyped generic and a
+# downcast the compiler inserted for you all pass review in silence. A project
+# whose own rule is "never mark work complete without verification" should not
+# leave its cheapest verifier on its weakest setting.
+#
+# Every rule added here was switched on and the code made to pass; nothing is
+# aspirational and nothing is suppressed project-wide.
 include: package:flutter_lints/flutter.yaml
 
-linter:
-  # The lint rules applied to this project can be customized in the
-  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
-  # included above or to enable additional rules. A list of all available lints
-  # and their documentation is published at https://dart.dev/lints.
-  #
-  # Instead of disabling a lint rule for the entire project in the
-  # section below, it can also be suppressed for a single line of code
-  # or a specific dart file by using the `// ignore: name_of_lint` and
-  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
-  # producing the lint.
-  rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+analyzer:
+  language:
+    # An implicit downcast from `dynamic` is how a JSON payload becomes a
+    # runtime crash two screens away from the file that read it. This app
+    # decodes exactly that — prayer schedules, Quran catalogues, sync
+    # envelopes, widget snapshots — so the cast has to be written down.
+    strict-casts: true
+    # A bare `List` or `Map` is a `List<dynamic>`, which silently opts the
+    # whole expression out of the checking above.
+    strict-raw-types: true
+    # A type argument the analyzer cannot infer becomes `dynamic` rather than
+    # an error. Same hole, reached from the other side.
+    strict-inference: true
+  errors:
+    # Not advice. A missing `await` on a database write loses the write, and
+    # this project has already lost one that way.
+    unawaited_futures: error
+    # Two different `const` zero-argument instances of the same class are the
+    # same object; a non-const one is a new allocation on every rebuild.
+    prefer_const_constructors: warning
+  exclude:
+    # Generated: Drift's companions and the l10n delegates. Holding generated
+    # code to hand-written standards means editing it, and it is rewritten by
+    # a tool on every change.
+    - "**/*.g.dart"
+    - "lib/l10n/app_localizations*.dart"
+    # Written by `drift_dev schema generate`, one file per historical schema
+    # version. They are the migration suite's fixtures and are regenerated
+    # whenever a version is added; editing them by hand is how a migration
+    # test stops testing the schema that actually shipped.
+    - "test/generated_migrations/**"
 
-# Additional information about this file can be found at
-# https://dart.dev/guides/language/analysis-options
+linter:
+  rules:
+    # The religious invariants, the sync ordering rules and the migration
+    # traps in this repository are all carried in comments on the code they
+    # govern. A public member without one is a member whose contract lives
+    # only in whoever wrote it.
+    #
+    # Deliberately not enabled: `public_member_api_docs`. It would demand a
+    # sentence on every getter of every value object, and a repository full of
+    # "/// The id." is worse than silence — it teaches the reader to skip
+    # comments, including the ones that matter.
+
+    # Correctness
+    always_declare_return_types: true
+    avoid_dynamic_calls: true
+    avoid_slow_async_io: true
+    cancel_subscriptions: true
+    close_sinks: true
+    collection_methods_unrelated_type: true
+    literal_only_boolean_expressions: true
+    # Deliberately off: `no_adjacent_strings_in_list`. Every one of its twenty
+    # findings here is a single SQL `CHECK` wrapped across two lines inside
+    # `customConstraints`, and the fix it suggests — add a comma — would turn
+    # one correct constraint into two broken ones. A lint that proposes a
+    # schema bug is worse than no lint.
+    test_types_in_equals: true
+    throw_in_finally: true
+    unnecessary_statements: true
+
+    # Async safety, which is where this app's real defects have lived
+    avoid_void_async: true
+    discarded_futures: false # too noisy on Riverpod's own callbacks
+    unawaited_futures: true
+
+    # Clarity
+    avoid_returning_null_for_void: true
+    avoid_unused_constructor_parameters: true
+    cascade_invocations: false # reads worse than it lints
+    directives_ordering: true
+    eol_at_end_of_file: true
+    join_return_with_assignment: false
+    omit_local_variable_types: false # local types are often the documentation
+    prefer_final_in_for_each: true
+    prefer_final_locals: true
+    unnecessary_await_in_return: true
+    unnecessary_parenthesis: true
+    use_string_buffers: true
+
+    # Flutter
+    use_colored_box: true
+    use_decorated_box: true
+    sized_box_shrink_expand: true

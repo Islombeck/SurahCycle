@@ -67,8 +67,9 @@ void main() {
       localDate: localDate,
     );
     return <String>[
-      for (final progress in session?.parts ?? const <dynamic>[])
-        progress.part.stableKey as String,
+      for (final progress
+          in session?.parts ?? const <PrayerSessionPartProgress>[])
+        progress.part.stableKey,
     ];
   }
 

@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/app_providers.dart';
 import '../../../../core/domain/domain.dart';
-import '../domain/quran_audio_models.dart';
 import '../application/learning_audio_controller.dart';
+import '../domain/quran_audio_models.dart';
 
 final class LearningAudioControls extends ConsumerStatefulWidget {
   const LearningAudioControls({

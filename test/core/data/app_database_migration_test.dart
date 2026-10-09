@@ -1,3 +1,11 @@
+// This file reads a database **as it was at an older schema version**, through
+// Drift's raw `QueryExecutor`, whose rows are untyped by construction: at v4
+// there is no generated row class for a v4 table, and inventing one would be
+// asserting the shape this test exists to discover. So the dynamic access is
+// the subject, not a shortcut.
+//
+// The rule stays on for everything else, and `lib/` has no violations of it.
+// ignore_for_file: avoid_dynamic_calls
 import 'dart:io';
 
 import 'package:drift/native.dart';

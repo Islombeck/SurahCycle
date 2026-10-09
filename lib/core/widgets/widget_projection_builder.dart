@@ -1,5 +1,5 @@
-import '../domain/suggestion.dart';
 import '../application/widget_recitation_action.dart';
+import '../domain/suggestion.dart';
 import 'widget_deep_link.dart';
 import 'widget_snapshot.dart';
 

@@ -222,12 +222,12 @@ void main() {
             'the prayer from the schedule alone and landed on the finished Иша',
       );
       expect(
-        (await fixture.recitations.getHistory(prayerType: PrayerType.witr)),
+        await fixture.recitations.getHistory(prayerType: PrayerType.witr),
         hasLength(1),
         reason: 'the mark belongs to the prayer the screen was showing',
       );
       expect(
-        (await fixture.recitations.getHistory(prayerType: PrayerType.isha)),
+        await fixture.recitations.getHistory(prayerType: PrayerType.isha),
         isEmpty,
         reason: 'and never to the one that is already complete',
       );
@@ -441,7 +441,7 @@ void main() {
       await _pumpFrames(tester, 60);
 
       expect(
-        (await fixture.recitations.getHistory(prayerType: PrayerType.isha)),
+        await fixture.recitations.getHistory(prayerType: PrayerType.isha),
         hasLength(2),
         reason: 'both marks are recorded against Иша',
       );

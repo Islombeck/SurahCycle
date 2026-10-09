@@ -2,8 +2,8 @@ import 'package:flutter/widgets.dart';
 
 import '../core/data/data.dart';
 import '../core/domain/domain.dart';
-import '../core/widgets/widget_projection_builder.dart';
 import '../core/widgets/rotation_widget_projection_factory.dart';
+import '../core/widgets/widget_projection_builder.dart';
 import '../l10n/app_localizations.dart';
 
 final class WidgetLocalization {

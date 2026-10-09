@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/widgets/widgets.dart';
 import '../features/account/presentation/account_screen.dart';
 import '../features/calendar/presentation/prayer_calendar_screen.dart';
 import '../features/history/presentation/history_screen.dart';
@@ -12,9 +13,8 @@ import '../features/home/presentation/home_screen.dart';
 import '../features/learning/presentation/learning_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../features/statistics/presentation/statistics_screen.dart';
-import '../features/surahs/presentation/surahs_screen.dart';
 import '../features/surahs/presentation/surah_detail_screen.dart';
-import '../core/widgets/widgets.dart';
+import '../features/surahs/presentation/surahs_screen.dart';
 import 'localization_extensions.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>(

@@ -1,8 +1,8 @@
-import '../application/recitation_application_service.dart';
-import '../data/repositories/surah_repository.dart';
-import '../data/repositories/recitation_repository.dart';
-import '../domain/domain.dart';
 import '../../app/widget_localization.dart';
+import '../application/recitation_application_service.dart';
+import '../data/repositories/recitation_repository.dart';
+import '../data/repositories/surah_repository.dart';
+import '../domain/domain.dart';
 import 'home_widget_bridge.dart';
 import 'rotation_widget_projection_factory.dart';
 import 'widget_snapshot.dart';
