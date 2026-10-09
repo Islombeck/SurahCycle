@@ -138,8 +138,15 @@ final class _PrayerTimeSettingsCardState
           style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: 8),
+        // Stacked for the same reason as the theme selector: «Автоматически»
+        // and «Ручной режим» each want about 170 logical pixels and half of
+        // this card is 145, so Material broke the words. Found by the sweep
+        // in `layout_at_phone_width_test.dart`, which measures every segment
+        // on this screen in Russian instead of trusting the short English
+        // labels.
         SegmentedButton<PrayerContextSelectionMode>(
           key: const ValueKey<String>('prayer-context-mode'),
+          direction: Axis.vertical,
           segments: <ButtonSegment<PrayerContextSelectionMode>>[
             ButtonSegment<PrayerContextSelectionMode>(
               value: PrayerContextSelectionMode.manual,
@@ -223,8 +230,11 @@ final class _PrayerTimeSettingsCardState
                   },
           ),
           const SizedBox(height: 8),
+          // «Аср: стандартный» is sixteen characters and shares a row with
+          // «Аср: Hanafi». Same arithmetic, same answer.
           SegmentedButton<PrayerAsrSchool>(
             key: const ValueKey<String>('prayer-asr-school'),
+            direction: Axis.vertical,
             segments: <ButtonSegment<PrayerAsrSchool>>[
               ButtonSegment<PrayerAsrSchool>(
                 value: PrayerAsrSchool.hanafi,

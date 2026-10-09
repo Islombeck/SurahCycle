@@ -72,7 +72,27 @@ final class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const SizedBox(height: 12),
+                          // **Stacked, not in a row.** Three segments across a
+                          // phone share about 89 logical pixels of text each —
+                          // six Cyrillic characters — and «Как в системе» is
+                          // thirteen. Material's answer was to break the word,
+                          // which is how his screen came to read «Как в
+                          // систем/е» and «Светла/я».
+                          //
+                          // Taking the icons away was not enough and measuring
+                          // said so: the label still wanted 182 pixels and had
+                          // 89. No arrangement of three words in a row fits
+                          // here in Russian, so the row is what had to go. The
+                          // control, its semantics and its icons are unchanged
+                          // and each option now has the full width of the
+                          // card.
+                          //
+                          // A wrap overflows nothing, so no test saw this; one
+                          // does now, in `layout_at_phone_width_test.dart`,
+                          // and it runs in all three languages because the
+                          // English labels are the short ones.
                           SegmentedButton<AppThemePreference>(
+                            direction: Axis.vertical,
                             segments: <ButtonSegment<AppThemePreference>>[
                               ButtonSegment<AppThemePreference>(
                                 value: AppThemePreference.system,
