@@ -148,32 +148,39 @@ clock, local date, settings, HTTP, uuid) and move the 20 prayer providers to
 them so **no other import changes**. `features/account/application/
 account_providers.dart` is the existing example and its header says why.
 
-### 3. Decide how a widget stays fresh — both platforms at once
+### 3. ~~Decide how a widget stays fresh~~ — **done, 2026-10-09**
 
-`isCurrent`/`isNext` are frozen into the snapshot, so a widget is only as fresh
-as the last time the app wrote one. Nudging the receiver (done) fixes the case
-where the app runs and nothing else. Three options are written up in
-`ARCHITECTURE_REVIEW_2026-10.md` §3; the third — carry the **boundary instants**
-instead of the verdict, so the platform compares rather than judges — is
-probably right and is a schema 7 change. **Ask him before implementing.**
+He said yes to carrying the boundaries instead of the verdict. Widget snapshot
+schema **7**: the prayer projection ships the day as `PrayerWidgetWindow`s —
+two instants and a row index — and the launcher compares its own clock. Dart
+still makes every decision that needs to know something about prayer; the
+platform performs a comparison. Verified on his phone, on his schedule, with
+the gap between Sunrise and Dhuhr correctly showing nothing current.
 
-This blocks items 4 and 5.
+`prayer_widget_info.xml` went from `updatePeriodMillis="0"` to 30 minutes,
+Android's floor, which bounds the remaining lag without an alarm or a
+permission. **If half an hour turns out to matter**, an exact wake-up at each
+boundary is the next step: `PrayerWidgetProjection.windowEndsAt` and the
+Kotlin `windowEndsAt` both exist for exactly that and are unused today.
 
 ### 4. Horizontal prayer-times widget
 
-A wide widget showing all six daily boundaries in a row, with the current one
-marked. The Glance provider already exists (`PrayerWidget.kt`, responsive
-sizes); this is a new size class and layout, plus `prayer_widget_info.xml`
-targeting a wide cell. The projection (`PrayerWidgetProjectionFactory`) is pure
-formatting and already carries everything it needs.
+A wide widget showing the six boundaries in a row with the current one marked.
+The Glance provider already exists (`PrayerWidget.kt`, responsive sizes); this
+is a new size class and layout plus a provider XML targeting a wide cell. The
+projection carries everything needed and, since schema 7, so does the clock
+comparison.
 
-### 5. A widget that shows only the current prayer
+**The reference is on his own home screen**, page one: another app's strip —
+six labels over six times in one row, the current one on a filled pill, a
+countdown and the district name beside it. Take the shape, not the design, and
+build it from this app's own in-app strip (`_PrayerScheduleStrip`), which is
+already that idea. Backlog 27 says the same and adds: do not copy Sajda.
 
-Small, one prayer, large type. Same projection, a different Glance layout and
-a second provider XML. **Confirm with him which he meant**: a compact
-current-prayer widget, or the complaint that the existing one was stuck on
-Asr — item 3 of "where things stand" says the stuck behaviour was real and is
-half-fixed.
+### 5. ~~A widget that shows only the current prayer~~ — **dropped**
+
+His words, 2026-10-09: «Это было жалоба на застревание. Компактный не нужен.»
+The stuck behaviour was real and is now fixed in full.
 
 ### 6. Scheduler
 

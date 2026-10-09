@@ -174,6 +174,11 @@ phone whose owner has not opened the app since Dhuhr**, and it will reappear
 in exactly this form on iOS, where a WidgetKit timeline is likewise built from
 data the app supplied.
 
+**Decided on 2026-10-09, by the owner: option three below.** Schema 7 carries
+the day as windows of real time and the platform compares its clock against
+them. The rest of this section is kept as the reasoning, not as an open
+question.
+
 Two honest options, and this review deliberately does not pick one:
 
 1. **Schedule the rebuild.** An alarm at each prayer boundary wakes a headless
@@ -191,6 +196,26 @@ but make the snapshot carry **the boundaries rather than the verdict** — the
 instants at which each entry becomes current — so the platform performs a
 comparison, not a judgement. That is a schema change (7) and a decision for the
 owner.
+
+**That is what shipped.** `PrayerWidgetWindow` is two instants and a row
+index; the day comes out as seven of them, including the one before Fajr that
+points at the Isha row and the Sunrise-to-Dhuhr one that points at no prayer
+at all. Dart still decides everything that requires knowing something about
+prayer. Kotlin validates the same invariants it is given — ordered,
+contiguous, never naming Sunrise — because a decoder more forgiving than the
+writer renders states the app considers impossible.
+
+The one thing the shape alone does not buy is a redraw: a Glance widget
+recomposes when something tells it to. `updatePeriodMillis` is 30 minutes now
+(Android's floor) rather than zero, which bounds the lag with no alarm and no
+permission. An exact wake-up at each boundary is the remaining step, and both
+sides already expose `windowEndsAt` for it.
+
+**The silent catches are worth their own line.** The widget write path had
+`onError: (_, _) {}` and `.catchError((Object _) {})`, one after the other. A
+launcher failure must never break the app, which is right and is unchanged —
+but saying nothing at all means a widget can stop updating and leave no trace
+on the device or in a log. Both now call `developer.log` under `kDebugMode`.
 
 ---
 

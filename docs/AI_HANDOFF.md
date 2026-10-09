@@ -1,6 +1,55 @@
 # Murajaah AI handoff
 
-## Architecture and clean-code pass, and three new documents — 2026-10-09 (read this first)
+## The prayer widget reads the clock now — 2026-10-09 (read this first)
+
+He answered the three questions. «Это было жалоба на застревание. Компактный
+не нужен.» — so the compact widget is dropped and the stuck highlight is
+closed properly. «Да» to carrying the boundaries instead of the verdict.
+
+**Widget snapshot schema 7.** The prayer projection no longer says "this one
+is current"; it carries the day as `PrayerWidgetWindow`s — two instants and a
+row index — and the launcher compares its own clock. The old shape could not
+be right: `isCurrent` was decided when the snapshot was written, and a
+snapshot is written when the app runs, not when a prayer begins.
+
+It is still not a second resolver. Everything that needs to know something
+about prayer is decided once, in the factory, and arrives as intervals: that
+Sunrise is a boundary and never current (index -1), and that the hours before
+Fajr belong to last night's Isha — which the resolver always knew and the
+widget could never say. Seven windows a day, contiguous and ordered, validated
+on both sides. A snapshot from another day now answers **"I do not know"**
+instead of confidently highlighting a stale row.
+
+`updatePeriodMillis` went from 0 to 30 minutes, Android's floor, which bounds
+the remaining lag with no alarm and no permission. `windowEndsAt` exists on
+both sides for an exact wake-up if that is not good enough.
+
+**Seen working on his phone, on his own schedule.** The widget is on the
+second launcher page. At 10:10 — between Восход 06:27 and Зухр 12:10 — it
+highlights **nothing** as current and shows Зухр in bold as next. Before this,
+that row would have read Аср. The stored snapshot was dumped and decoded: 7
+windows, `00:00→04:55 Isha`, `04:55→06:27 Fajr`, `06:27→12:10 none`,
+`12:10→16:07 Dhuhr`, `16:07→17:51 Asr`, `17:51→19:23 Maghrib`,
+`19:23→00:00 Isha`.
+
+**A thing found on the way and worth remembering.** The widget write path had
+two silent catches in a row — `onError: (_, _) {}` and
+`.catchError((Object _) {})`. Keeping a launcher failure from breaking the app
+is right and is unchanged; saying nothing at all is how a widget stops
+updating with no trace anywhere. Both log through `developer.log` under
+`kDebugMode` now, and that is what made this install verifiable.
+
+Build `759E9C72B686337016A3F920B95732E9C9C05E4787569CDE06CF1F482A9F96DA`,
+installed; `:app:compileDebugKotlin` and `:app:testDebugUnitTest` green; 1337
+Dart tests passed, 11 skipped; analyzer 0/0/0.
+
+**What he wants next is now unambiguous.** The horizontal strip he asked for
+is on page one of his own home screen — another app's widget: six labels over
+six times in one row, current one on a filled pill, a countdown and the
+district beside it. Take the shape, build it from this app's own
+`_PrayerScheduleStrip`, and do not copy anyone's design.
+
+## Architecture and clean-code pass, and three new documents — 2026-10-09
 
 He asked whether the architecture is right, for a clean-code pass, for an iOS
 document kept the way this one is, and for a prompt to continue by.

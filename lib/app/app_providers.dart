@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -885,10 +887,31 @@ final currentRecommendationBatchProvider = StreamProvider.autoDispose
       }());
     });
 
+/// Says out loud that a widget write failed, in debug builds.
+///
+/// Both call sites used to be `catchError((Object _) {})` and
+/// `onError: (_, _) {}` — empty, deliberately, so that a launcher failure
+/// could never break the app. That part is right and is unchanged: nothing
+/// here rethrows. What was wrong is that it said nothing at all, so a widget
+/// that silently stopped updating left no trace anywhere, on the device or in
+/// a log. The prayer widget was wrong for weeks and this is part of why.
+///
+/// Debug-gated and `developer.log`, matching `MurajaahRoutine` elsewhere: a
+/// release build stays silent, and nothing user-visible changes either way.
+void _logWidgetSyncFailure(Object error, [StackTrace? stackTrace]) {
+  if (!kDebugMode) return;
+  developer.log(
+    'Widget snapshot was not written: ${error.runtimeType} — $error',
+    name: 'MurajaahWidget',
+    error: error,
+    stackTrace: stackTrace,
+  );
+}
+
 final widgetSyncCoordinatorProvider = Provider<WidgetSyncCoordinator>((ref) {
   final coordinator = WidgetSyncCoordinator(
     bridge: const HomeWidgetBridge(),
-    onError: (Object _, StackTrace _) {},
+    onError: _logWidgetSyncFailure,
   );
   ref.onDispose(coordinator.dispose);
   return coordinator;
@@ -1879,7 +1902,9 @@ final class _AppWidgetSyncDriver {
               item: snapshot.learning.item,
             );
           })
-          .catchError((Object _) {}),
+          .catchError((Object error, StackTrace stackTrace) {
+            _logWidgetSyncFailure(error, stackTrace);
+          }),
     );
   }
 
