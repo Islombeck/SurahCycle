@@ -239,8 +239,12 @@ for any entity, silent `catch {}` blocks, `print` debugging, dead providers.
 
 ## 5. Order of work
 
-1. Extract `home_registration_controller.dart` — the highest-value change in
-   the repository, because it is where the defects live.
+1. ~~Extract `home_registration_controller.dart`~~ — **done 2026-10-09.**
+   `HomeRegistrationController` holds the token, the day and prayer of a
+   mark, Isha→Witr, the slot write, Undo, the picked prayer, following the
+   imam and the busy sets; it reads providers through an injected `read`
+   and has 16 tests of its own. `home_screen.dart` is 2,325 lines now —
+   the presentational widgets and sheets (step 5) are what is left in it.
 2. Move the `prayer_times` providers out of `app_providers.dart`, barrel left
    in place, as the pattern for the rest.
 3. Decide §3 for both platforms; it blocks three roadmap items.

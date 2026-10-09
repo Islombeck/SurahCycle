@@ -127,7 +127,12 @@ segmented button breaks words at his real width.
 
 ## The work, in order
 
-### 1. Extract the Home registration controller
+### 1. ~~Extract the Home registration controller~~ — **done, 2026-10-09**
+
+`features/home/application/home_registration_controller.dart`, 16 tests of
+its own, existing suite untouched and green. What remains of the
+architecture review's Home split is moving the presentational widgets and
+sheets into files (step 5 there). Original brief:
 
 `home_screen.dart` is 2,567 lines and one `State` with 76 methods, and it is
 where every defect of the last two weeks lived. Pull the mark pipeline —

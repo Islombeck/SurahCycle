@@ -1,5 +1,33 @@
 # Murajaah AI handoff
 
+## Item 2 done — the Home registration controller (2026-10-09, 15:55)
+
+He said to take it next. The mark pipeline's logic — registration token and
+generation, which day and prayer a mark belongs to, Isha→Witr, prayer-time
+settings, the write into the routine slot, Undo, the picked prayer, following
+the imam, the busy sets — is in
+`features/home/application/home_registration_controller.dart`, a plain class
+reading providers through an injected `read` (the shape `WidgetRef` and
+`ProviderContainer` share). Sheets, dialogs and snackbars stay in the screen;
+a write returns a sealed outcome the screen turns into words.
+
+**No behaviour change, shown rather than claimed:** all 1347 existing tests
+pass with none of them edited, and breaking the screen's wiring (the
+pending-date listener not bumping the generation) turns
+`pending_registration_date_test` red. 16 new controller tests; falsified by
+counting the day on the wall clock (after-midnight case red) and by dropping
+the token check before the session is ensured — which first stayed **green**
+because the later check still stopped the write, while
+`ensureCurrentSession` had already created an empty prayer session (the
+8f1b4e4 class of defect). The test now asserts no session is created.
+
+A fixture mistake worth knowing: following the imam is allowed only on a
+**Fard** part (`prayer_routine_repository.dart`, "This prayer part cannot be
+completed with an imam"); a Witr fixture throws. The rule held.
+
+`home_screen.dart` 2,567 → 2,325 lines. Nothing installed for this commit
+alone — it changes no behaviour; it goes on with the next build.
+
 ## The strip on his screen, and what it showed — 2026-10-09, 15:13 (read this first)
 
 He placed the strip (6×1, full width, under the vertical widget on page two)
