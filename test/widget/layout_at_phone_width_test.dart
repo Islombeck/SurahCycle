@@ -28,9 +28,20 @@ import 'package:murajaah/app/murajaah_app.dart';
 import 'package:murajaah/core/data/data.dart';
 import 'package:murajaah/core/domain/domain.dart';
 
-/// Unihertz Jelly Max: 1080×2400 physical at 2.625, so 411×914 logical.
-const Size _phonePhysical = Size(1080, 2400);
-const double _phoneRatio = 2.625;
+/// His Jelly Max as the phone itself reports it — `wm size` 720×1520,
+/// `wm density` 320, so 360×760 logical.
+///
+/// This said 1080×2400 at 2.625 (411×914) until 2026-10-09, copied from a
+/// spec sheet rather than read off the device, so the suite walked every
+/// screen on a phone fifty logical pixels wider than his.
+const Size _phonePhysical = Size(720, 1520);
+const double _phoneRatio = 2.0;
+
+/// An iPad Air in portrait, 820×1180 logical. Nothing here has ever been seen
+/// on an iPad (IOS_HANDOFF §2.5); this at least walks every tab at its width
+/// before anyone claims it works there.
+const Size _tabletPhysical = Size(1640, 2360);
+const double _tabletRatio = 2.0;
 
 void main() {
   late AppDatabase database;
@@ -65,7 +76,122 @@ void main() {
 
       await _disposeWidgetTree(tester);
     });
+
+    testWidgets('$tab fits an iPad from top to bottom', (tester) async {
+      await _pumpPhone(
+        tester,
+        database,
+        quranCache,
+        physicalSize: _tabletPhysical,
+        ratio: _tabletRatio,
+      );
+
+      await tester.tap(find.byKey(ValueKey<String>('primary-tab-$tab')));
+      await tester.pumpAndSettle();
+
+      await _scrollToEnd(tester);
+
+      await _disposeWidgetTree(tester);
+    });
   }
+
+  // What opens over a screen rather than sitting in a tab. A tab walk never
+  // reaches these, and each is a form with long Russian labels side by side.
+  group('the sheets and the calendar day fit his phone', () {
+    testWidgets('the coverage sheet a split mark opens', (tester) async {
+      await _addSurah(database, id: 'surah-36', number: 36, ayahs: 83);
+      await SurahRepository(database).addMastered('surah-36');
+      // A hand-picked prayer, so the tap goes straight to the sheet instead
+      // of asking which prayer first.
+      await PrayerRepository(database).saveSelectedContext(
+        PrayerContext(prayerType: PrayerType.asr),
+        updatedAtUtc: DateTime.utc(2026, 8, 25, 11),
+      );
+      await _pumpPhone(tester, database, quranCache);
+
+      final advanced = find.byKey(
+        const ValueKey<String>('advanced-mark-surah-surah-36'),
+      );
+      await _scrollUntilFound(tester, advanced);
+      await tester.tap(advanced);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BottomSheet), findsOneWidget);
+      await _scrollSheetToEnd(tester);
+
+      await _disposeWidgetTree(tester);
+    });
+
+    testWidgets('the learning plan editor', (tester) async {
+      await _addSurah(database, id: 'surah-89', number: 89, ayahs: 30);
+      await _pumpPhone(tester, database, quranCache);
+      await tester.tap(
+        find.byKey(const ValueKey<String>('primary-tab-learning')),
+      );
+      await tester.pumpAndSettle();
+
+      // The "+" in the app bar opens the surah picker; choosing one opens the
+      // plan editor, which is the sheet with the most controls in the app.
+      await tester.tap(find.byIcon(Icons.add).first);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find
+            .descendant(
+              of: find.byType(BottomSheet),
+              matching: find.byType(ListTile),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BottomSheet), findsOneWidget);
+      await _scrollSheetToEnd(tester);
+
+      await _disposeWidgetTree(tester);
+    });
+
+    testWidgets('the calendar day with a prayer on it', (tester) async {
+      final routines = PrayerRoutineRepository(database);
+      final dhuhr = await routines.getTemplate(PrayerType.dhuhr);
+      await routines.replaceTemplate(
+        prayerType: PrayerType.dhuhr,
+        expectedRevision: dhuhr.revision,
+        displayName: dhuhr.displayName,
+        enabled: true,
+        parts: <PrayerRoutinePartTemplate>[
+          PrayerRoutinePartTemplate(
+            id: 'dhuhr-fard',
+            stableKey: 'fard',
+            orderIndex: 0,
+            kind: PrayerRoutinePartKind.fard,
+            rakaatCount: 4,
+            requiredSurahSlots: 2,
+          ),
+        ],
+      );
+      await routines.ensureCurrentSession(
+        context: PrayerContext(prayerType: PrayerType.dhuhr),
+        localDate: LocalDate(2026, 8, 20),
+        startedAtUtc: DateTime.utc(2026, 8, 20, 8),
+      );
+      await _pumpPhone(tester, database, quranCache);
+
+      await tester.tap(find.byKey(const ValueKey<String>('open-calendar')));
+      await tester.pumpAndSettle();
+      final day = find.byKey(const ValueKey<String>('calendar-day-2026-08-20'));
+      await _scrollUntilFound(tester, day);
+      await tester.tap(day);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey<String>('calendar-day-details')),
+        findsOneWidget,
+      );
+      await _scrollToEnd(tester);
+
+      await _disposeWidgetTree(tester);
+    });
+  });
 
   testWidgets('the settings cards fit a phone once they are open', (
     tester,
@@ -73,7 +199,9 @@ void main() {
     // Collapsed, a card cannot overflow, and the region selector that started
     // this is inside one. Opening them is the case that matters.
     await _pumpPhone(tester, database, quranCache);
-    await tester.tap(find.byKey(const ValueKey<String>('primary-tab-settings')));
+    await tester.tap(
+      find.byKey(const ValueKey<String>('primary-tab-settings')),
+    );
     await tester.pumpAndSettle();
 
     for (final card in const <String>[
@@ -137,7 +265,9 @@ void main() {
     // segment added later is covered without anybody remembering to come
     // back here.
     await _pumpPhone(tester, database, quranCache);
-    await tester.tap(find.byKey(const ValueKey<String>('primary-tab-settings')));
+    await tester.tap(
+      find.byKey(const ValueKey<String>('primary-tab-settings')),
+    );
     await tester.pumpAndSettle();
 
     for (final card in const <String>[
@@ -187,14 +317,47 @@ void _expectParagraphUnwrapped(RenderParagraph paragraph) {
   );
 }
 
+Future<void> _addSurah(
+  AppDatabase database, {
+  required String id,
+  required int number,
+  required int ayahs,
+}) => SurahRepository(database).upsertCatalog(<SurahDescriptor>[
+  SurahDescriptor(
+    id: id,
+    surahNumber: number,
+    officialName: 'Surah $number',
+    ayahCount: ayahs,
+  ),
+]);
+
+/// Walks the open bottom sheet to its end, asking the same two questions as
+/// [_scrollToEnd] at every step. A sheet that does not scroll is checked as
+/// it stands.
+Future<void> _scrollSheetToEnd(WidgetTester tester) async {
+  _expectNoWrappedSegment(tester);
+  final scrollable = find.descendant(
+    of: find.byType(BottomSheet),
+    matching: find.byType(Scrollable),
+  );
+  if (scrollable.evaluate().isEmpty) return;
+  for (var step = 0; step < 12; step += 1) {
+    await tester.drag(scrollable.first, const Offset(0, -300));
+    await tester.pumpAndSettle();
+    _expectNoWrappedSegment(tester);
+  }
+}
+
 Future<void> _pumpPhone(
   WidgetTester tester,
   AppDatabase database,
   QuranCacheDatabase quranCache, {
   String locale = 'ru',
+  Size physicalSize = _phonePhysical,
+  double ratio = _phoneRatio,
 }) async {
-  tester.view.physicalSize = _phonePhysical;
-  tester.view.devicePixelRatio = _phoneRatio;
+  tester.view.physicalSize = physicalSize;
+  tester.view.devicePixelRatio = ratio;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
   // Russian by default, because Russian is what he reads and its labels are
@@ -224,7 +387,11 @@ Future<void> _pumpPhone(
 }
 
 Finder _scrollable() {
-  for (final type in <Type>[CustomScrollView, ListView, SingleChildScrollView]) {
+  for (final type in <Type>[
+    CustomScrollView,
+    ListView,
+    SingleChildScrollView,
+  ]) {
     final finder = find.byType(type);
     if (finder.evaluate().isNotEmpty) return finder.first;
   }

@@ -751,7 +751,12 @@ final class _LearningPlanSheetState extends State<_LearningPlanSheet> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
+              // Stacked, like the selectors in Settings: on his 360-point
+              // screen the two segments get 110 points each and «Классически»
+              // needs 155, so Material broke the word. Found by the
+              // narrow-layout suite once it opened this sheet.
               SegmentedButton<LearningPlanKind>(
+                direction: Axis.vertical,
                 segments: <ButtonSegment<LearningPlanKind>>[
                   ButtonSegment<LearningPlanKind>(
                     value: LearningPlanKind.classicCumulative,
