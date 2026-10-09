@@ -51,6 +51,11 @@ private val HEADED_SIZE = DpSize(240.dp, 50.dp)
 // Wide enough for the times to be read at a glance rather than deciphered.
 private val ROOMY_WIDTH = 320.dp
 
+// The header's text size (prayer_strip_header.xml) and the room one line of
+// it needs: Roboto's line is about 1.17 of the size, the rest is breathing.
+private const val HEADER_TEXT_SP = 12f
+private const val LINE_HEIGHT_FACTOR = 1.4f
+
 private val SURFACE = Color(0xFFEFF3F6)
 private val INK = Color(0xFF22303B)
 private val MUTED = Color(0xFF5A6873)
@@ -141,11 +146,23 @@ class PrayerStripWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error)
         Text(text, style = TextStyle(fontSize = 13.sp, color = ColorProvider(INK)), maxLines = 2)
     }
 
+    /**
+     * The container Glance puts a foreign `RemoteViews` in fills whatever
+     * room it is given unless it is told a size — seen twice on his phone.
+     * Without a width it took the whole row and the region beside it got
+     * none; with only a width it took the whole height and the six times
+     * below it vanished. So both are explicit: the full width, and the height
+     * of one 12sp line at the phone's own font scale.
+     */
     @Composable
     private fun Header(context: Context, prayer: NativePrayerProjection, nowUtcMs: Long) {
+        val fontScale = context.resources.configuration.fontScale
         AndroidRemoteViews(
             header(context, prayer, nowUtcMs),
-            modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 2.dp),
+            modifier =
+                GlanceModifier.fillMaxWidth()
+                    .height((HEADER_TEXT_SP * fontScale * LINE_HEIGHT_FACTOR).dp)
+                    .padding(horizontal = 2.dp),
         )
     }
 

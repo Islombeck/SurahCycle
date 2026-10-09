@@ -239,6 +239,20 @@ void main() {
       expect(header, contains('android:id="@+id/prayer_strip_region"'));
       expect(header, contains('android:ellipsize="end"'));
       expect(header, contains('android:layout_weight="1"'));
+      // Glance's container for a foreign RemoteViews fills any dimension it
+      // is not given: once it ate the region's width, once the times' height.
+      final headerComposable = _between(
+        strip,
+        'private fun Header(',
+        'private fun header(',
+      );
+      expect(headerComposable, contains('GlanceModifier.fillMaxWidth()'));
+      expect(
+        headerComposable,
+        contains(
+          '.height((HEADER_TEXT_SP * fontScale * LINE_HEIGHT_FACTOR).dp)',
+        ),
+      );
     },
   );
 
