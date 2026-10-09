@@ -9,6 +9,14 @@ abstract interface class WidgetBridge {
   Future<void> updateRotationWidget();
 
   Future<void> updateLearningWidget();
+
+  /// The third widget, and the one that was left out.
+  ///
+  /// The snapshot has carried a prayer projection since schema 6; nothing
+  /// ever told the receiver that renders it. Its provider XML sets
+  /// `updatePeriodMillis="0"`, so Android had no schedule of its own either,
+  /// and the launcher kept the frame it drew when the widget was created.
+  Future<void> updatePrayerWidget();
 }
 
 typedef WidgetSyncErrorHandler =
@@ -118,6 +126,7 @@ final class WidgetSyncCoordinator {
         await Future.wait<void>(<Future<void>>[
           _bridge.updateRotationWidget(),
           _bridge.updateLearningWidget(),
+          _bridge.updatePrayerWidget(),
         ]);
         _lastWritten = snapshot;
       } on Object catch (error, stackTrace) {

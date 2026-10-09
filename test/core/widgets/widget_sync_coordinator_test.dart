@@ -25,6 +25,24 @@ void main() {
     coordinator.dispose();
   });
 
+  test('the prayer widget is told too, or it never redraws', () async {
+    // The snapshot has carried a `prayer` projection since schema 6, and the
+    // widget that renders it was never nudged: this drain woke the rotation
+    // and learning receivers and stopped there. `prayer_widget_info.xml` sets
+    // `updatePeriodMillis="0"`, so Android has no schedule of its own either,
+    // and the widget kept whatever it had drawn when the launcher last built
+    // it — the prayer that happened to be current at that moment, highlighted
+    // forever. Reported from his home screen as "the widget only highlights
+    // Asr".
+    final bridge = _RecordingBridge();
+    final coordinator = WidgetSyncCoordinator(bridge: bridge);
+
+    await coordinator.syncNow(_snapshot());
+
+    expect(bridge.prayerUpdates, 1);
+    coordinator.dispose();
+  });
+
   test(
     'same projection is deduplicated despite a new generated time',
     () async {
@@ -137,6 +155,7 @@ final class _RecordingBridge implements WidgetBridge {
   final List<String> savedJson = <String>[];
   int rotationUpdates = 0;
   int learningUpdates = 0;
+  int prayerUpdates = 0;
   WidgetSnapshot? _currentSnapshot;
 
   WidgetSnapshot get currentSnapshot => _currentSnapshot!;
@@ -169,6 +188,11 @@ final class _RecordingBridge implements WidgetBridge {
   @override
   Future<void> updateRotationWidget() async {
     rotationUpdates += 1;
+  }
+
+  @override
+  Future<void> updatePrayerWidget() async {
+    prayerUpdates += 1;
   }
 }
 

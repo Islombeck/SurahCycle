@@ -426,6 +426,7 @@ final class _MemoryWidgetBridge implements WidgetSnapshotBridge {
   final List<String> savedJson = <String>[];
   int rotationUpdates = 0;
   int learningUpdates = 0;
+  int prayerUpdates = 0;
 
   @override
   Future<String?> loadSnapshotJson() async => _currentJson;
@@ -453,6 +454,11 @@ final class _MemoryWidgetBridge implements WidgetSnapshotBridge {
   @override
   Future<void> updateRotationWidget() async {
     rotationUpdates += 1;
+  }
+
+  @override
+  Future<void> updatePrayerWidget() async {
+    prayerUpdates += 1;
   }
 }
 

@@ -64,4 +64,7 @@ final class _Bridge implements WidgetSnapshotBridge {
 
   @override
   Future<void> updateRotationWidget() async {}
+
+  @override
+  Future<void> updatePrayerWidget() async {}
 }

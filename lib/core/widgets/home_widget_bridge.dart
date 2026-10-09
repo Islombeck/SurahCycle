@@ -18,6 +18,8 @@ final class HomeWidgetBridge implements WidgetSnapshotBridge {
       'dev.murajaah.murajaah.widget.RotationWidgetReceiver';
   static const String learningReceiver =
       'dev.murajaah.murajaah.widget.LearningWidgetReceiver';
+  static const String prayerReceiver =
+      'dev.murajaah.murajaah.widget.PrayerWidgetReceiver';
 
   @override
   Future<String?> loadSnapshotJson() =>
@@ -64,6 +66,11 @@ final class HomeWidgetBridge implements WidgetSnapshotBridge {
   @override
   Future<void> updateLearningWidget() async {
     await HomeWidget.updateWidget(qualifiedAndroidName: learningReceiver);
+  }
+
+  @override
+  Future<void> updatePrayerWidget() async {
+    await HomeWidget.updateWidget(qualifiedAndroidName: prayerReceiver);
   }
 
   Future<WidgetDeepLink?> initiallyLaunchedFromWidget() async =>
