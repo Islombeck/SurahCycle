@@ -11,6 +11,7 @@ import '../../../core/data/data.dart';
 import '../../../core/domain/domain.dart';
 import '../../prayer_times/prayer_times.dart';
 import '../../quran/quran.dart';
+import '../application/home_registration_controller.dart';
 import 'widgets/recommendation_rank_badge.dart';
 
 final class HomeScreen extends ConsumerStatefulWidget {
@@ -25,11 +26,20 @@ final class HomeScreen extends ConsumerStatefulWidget {
 final class _HomeScreenState extends ConsumerState<HomeScreen> {
   static const Duration _recitationSnackBarDuration = Duration(seconds: 4);
 
-  final Set<String> _busySurahIds = <String>{};
+  /// The mark pipeline's logic. The screen keeps what needs a context — the
+  /// sheets, the dialogs, the snackbars — and asks this for everything else.
+  late final HomeRegistrationController _registration =
+      HomeRegistrationController(
+        read: ref.read,
+        invalidate: ref.invalidate,
+        isActive: () => mounted,
+        onBusyChanged: () {
+          if (mounted) setState(() {});
+        },
+      );
+
   final Set<String> _pendingMarkRequestSurahIds = <String>{};
   final Set<String> _openCoverageSheetSurahIds = <String>{};
-  final Set<String> _busyRoutinePartIds = <String>{};
-  int _registrationGeneration = 0;
 
   @override
   void initState() {
@@ -84,12 +94,15 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     // refreshes and recommendation writes do not change this generation.
     ref.listen(
       pendingRegistrationDateProvider,
-      (_, _) => _registrationGeneration++,
+      (_, _) => _registration.contextChanged(),
     );
-    ref.listen(selectedPrayerProvider, (_, _) => _registrationGeneration++);
+    ref.listen(
+      selectedPrayerProvider,
+      (_, _) => _registration.contextChanged(),
+    );
     ref.listen(
       prayerContextOverrideProvider,
-      (_, _) => _registrationGeneration++,
+      (_, _) => _registration.contextChanged(),
     );
     ref.listen(
       prayerTimeSettingsProvider.select(
@@ -97,7 +110,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       (previous, next) {
         if (previous != null && next != null && previous != next) {
-          _registrationGeneration++;
+          _registration.contextChanged();
         }
       },
     );
@@ -105,7 +118,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     final learning = ref.watch(activeLearningProvider);
     final catalog = ref.watch(fullCatalogProvider);
     final manualPrayer = ref.watch(selectedPrayerProvider);
-    final prayerResolution = _settledAsyncValue(
+    final prayerResolution = settledAsyncValue(
       ref.watch(homePrayerContextResolutionProvider),
     );
     // Presentation only: neither of these is a family key, so keeping the last
@@ -116,7 +129,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     final prayerSettings = _lastKnownAsyncValue(
       ref.watch(prayerTimeSettingsProvider),
     );
-    final prayerSchedule = _matchingPrayerSchedule(
+    final prayerSchedule = matchingPrayerSchedule(
       ref.watch(prayerTodayScheduleProvider),
       prayerSettings,
     );
@@ -238,7 +251,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                         prayerResolution?.context ?? manualPrayer,
                       ),
                       onJumuahOverride: canOfferJumuahOverride
-                          ? () => _setPrayerContextOverride(
+                          ? () => _registration.setPrayerContextOverride(
                               PrayerContext(prayerType: PrayerType.jumuah),
                             )
                           : null,
@@ -263,7 +276,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 child: _PrayerRoutineCard(
                                   snapshot: routine,
                                   prayerContext: resolvedPrayerContext!,
-                                  busyPartIds: _busyRoutinePartIds,
+                                  busyPartIds: _registration.busyRoutinePartIds,
                                   onFollowedImam: _completeByFollowingImam,
                                   // Only for a hand-picked prayer. An
                                   // automatic one moves on by itself, so a
@@ -317,7 +330,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
                     rotation.when(
                       data: (snapshot) => _RotationContent(
                         snapshot: snapshot,
-                        busyIds: _busySurahIds,
+                        busyIds: _registration.busySurahIds,
                         markingEnabled: routineMarkingEnabled,
                         batch: recommendationBatch,
                         completedSurahIds: completedSurahIds,
@@ -413,38 +426,6 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     return <MasteredSurah>[for (final id in order) ?byId[id]];
   }
 
-  /// The prayer day in force right now, which between midnight and Fajr is
-  /// the day that is ending rather than the one on the clock.
-  LocalDate _currentPrayerLocalDate() =>
-      _settledAsyncValue(
-        ref.read(homePrayerContextResolutionProvider),
-      )?.contextLocalDate ??
-      ref.read(localDateProvider).today();
-
-  /// The past day chosen in the calendar, if one is in force right now.
-  ///
-  /// The current prayer day is never returned as "pending": a record for it is
-  /// the ordinary case and must not take the historical path. Compared against
-  /// the *prayer* day rather than the calendar one, so that after midnight
-  /// choosing the night that is ending still counts as ordinary — and choosing
-  /// the new day is still an explicit instruction and is honoured.
-  LocalDate? _pendingRegistrationDate() {
-    final pending = ref.read(pendingRegistrationDateProvider);
-    if (pending == null) return null;
-    return pending == _currentPrayerLocalDate() ? null : pending;
-  }
-
-  /// What the prayer picker should open on: whatever is actually in effect.
-  ///
-  /// A sticky override never writes the persisted selection, so reading the
-  /// stored value first showed a prayer the user had left behind — Магриб
-  /// ticked while the card read Иша, on video.
-  PrayerContext? _pickerInitialContext() =>
-      _settledAsyncValue(
-        ref.read(homePrayerContextResolutionProvider),
-      )?.context ??
-      ref.read(selectedPrayerProvider);
-
   /// The one UI entry point for marking a surah.
   Future<void> _handleMarkRequest(
     MasteredSurah surah, {
@@ -455,39 +436,10 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!_pendingMarkRequestSurahIds.add(surah.id)) return;
     try {
       await _handleSingleMarkRequest(surah, advanced: advanced);
-    } on _RegistrationContextChanged {
+    } on RegistrationContextChanged {
       _showRegistrationContextChanged();
     } finally {
       _pendingMarkRequestSurahIds.remove(surah.id);
-    }
-  }
-
-  /// The day a mark made right now belongs to: the past day he chose, or the
-  /// current prayer day.
-  ///
-  /// Captured into the token **and** compared against it, from this one
-  /// method. They were two expressions for a while and they disagreed after
-  /// midnight — the capture took the prayer day, the comparison took the wall
-  /// clock — so between midnight and Fajr every mark was abandoned as "the
-  /// context changed" without recording anything. Found by marking on a
-  /// device with the clock at 00:32, not by reading the code.
-  LocalDate _registrationLocalDate() =>
-      _pendingRegistrationDate() ?? _currentPrayerLocalDate();
-
-  _RegistrationContextToken _captureRegistrationContext() =>
-      _RegistrationContextToken(
-        generation: _registrationGeneration,
-        localDate: _registrationLocalDate(),
-      );
-
-  bool _isRegistrationContextCurrent(_RegistrationContextToken token) =>
-      mounted &&
-      token.generation == _registrationGeneration &&
-      token.localDate == _registrationLocalDate();
-
-  void _requireRegistrationContext(_RegistrationContextToken token) {
-    if (!_isRegistrationContextCurrent(token)) {
-      throw const _RegistrationContextChanged();
     }
   }
 
@@ -507,19 +459,19 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     MasteredSurah surah, {
     required bool advanced,
   }) async {
-    var token = _captureRegistrationContext();
+    final registration = _registration;
+    var token = registration.captureToken();
     final actionLocalDate = token.localDate;
-    var actionPrayer = await _resolvePrayerForAction();
+    var actionPrayer = await registration.resolvePrayerForAction();
     if (!mounted) return;
-    _requireRegistrationContext(token);
+    registration.requireCurrent(token);
     if (actionPrayer == null) {
-      final selected = await _showPrayerPicker(_pickerInitialContext());
-      if (selected == null || !mounted) return;
-      token = _captureRegistrationContext();
-      actionPrayer = _ActionPrayerContext(
-        context: selected,
-        isAutomatic: false,
+      final selected = await _showPrayerPicker(
+        registration.pickerInitialContext(),
       );
+      if (selected == null || !mounted) return;
+      token = registration.captureToken();
+      actionPrayer = ActionPrayerContext(context: selected, isAutomatic: false);
     }
     if (!surah.rotationScheme.isSplit && !advanced) {
       return _registerRecitation(
@@ -529,14 +481,14 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
         occurrenceLocalDate: actionLocalDate,
       );
     }
-    if (_busySurahIds.contains(surah.id) ||
+    if (registration.busySurahIds.contains(surah.id) ||
         !_openCoverageSheetSurahIds.add(surah.id)) {
       return;
     }
     try {
-      final prayerSettings = await _loadPrayerTimeSettings();
+      final prayerSettings = await registration.loadPrayerTimeSettings();
       if (!mounted) return;
-      _requireRegistrationContext(token);
+      registration.requireCurrent(token);
       final selection = await showModalBottomSheet<_RecitationSelection>(
         context: context,
         showDragHandle: true,
@@ -552,7 +504,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
               ? prayerSettings.location.utcOffsetMinutes
               : null,
           todaySchedule: prayerSettings.locationConfirmed
-              ? _matchingPrayerSchedule(
+              ? matchingPrayerSchedule(
                   ref.read(prayerTodayScheduleProvider),
                   prayerSettings,
                 )
@@ -563,19 +515,21 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       );
       if (selection == null || !mounted) return;
-      _requireRegistrationContext(token);
+      registration.requireCurrent(token);
       var prayerContext = selection.prayerContext;
       var occurrenceLocalDate = selection.occurrenceLocalDate;
       if (actionPrayer.isAutomatic &&
           selection.shortcut == PrayerRegistrationShortcut.now) {
-        var latest = await _resolvePrayerForAction();
+        var latest = await registration.resolvePrayerForAction();
         if (!mounted) return;
-        _requireRegistrationContext(token);
+        registration.requireCurrent(token);
         if (latest == null) {
-          final selected = await _showPrayerPicker(_pickerInitialContext());
+          final selected = await _showPrayerPicker(
+            registration.pickerInitialContext(),
+          );
           if (selected == null || !mounted) return;
-          token = _captureRegistrationContext();
-          latest = _ActionPrayerContext(context: selected, isAutomatic: false);
+          token = registration.captureToken();
+          latest = ActionPrayerContext(context: selected, isAutomatic: false);
         }
         prayerContext = latest.context;
         occurrenceLocalDate = actionLocalDate;
@@ -600,203 +554,85 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  /// Automatic attribution is resolved at the action boundary. A timer keeps
-  /// Home current for presentation, but a delayed rebuild can never authorize
-  /// a write with an old prayer or an expired schedule.
-  Future<_ActionPrayerContext?> _resolvePrayerForAction() async {
-    final settings = await _loadPrayerTimeSettings();
-    // While a past day is chosen, today's schedule says nothing about which
-    // prayer a mark belongs to. Returning null here opens the picker, so a
-    // historical record always names its prayer explicitly instead of
-    // inheriting whichever one happens to be current.
-    if (_pendingRegistrationDate() != null &&
-        settings.contextSelectionMode != PrayerContextSelectionMode.manual &&
-        ref.read(activePrayerContextOverrideProvider) == null) {
-      return null;
-    }
-    if (settings.contextSelectionMode == PrayerContextSelectionMode.manual) {
-      final selected =
-          ref.read(selectedPrayerProvider) ??
-          await ref.read(prayerRepositoryProvider).getSelectedContext();
-      return selected == null
-          ? null
-          : _ActionPrayerContext(context: selected, isAutomatic: false);
-    }
-
-    final override = ref.read(activePrayerContextOverrideProvider);
-    if (override != null) {
-      return _ActionPrayerContext(context: override, isAutomatic: false);
-    }
-    if (!settings.locationConfirmed) return null;
-    final today = _matchingPrayerSchedule(
-      ref.read(prayerTodayScheduleProvider),
-      settings,
-    );
-    if (today == null) return null;
-    final resolution = today.resolveAutomaticContext(
-      ref.read(timeProviderProvider),
-    );
-    final context = resolution.context;
-    if (context == null) return null;
-    return _ActionPrayerContext(
-      context: await _withIshaToWitrTransition(context),
-      isAutomatic: true,
-    );
-  }
-
-  /// The prayer a mark is recorded against must be the prayer on screen.
-  ///
-  /// The card and the routine card read [homePrayerContextResolutionProvider],
-  /// which applies [applyIshaToWitrTransition]; the tap resolved its prayer
-  /// straight from the schedule and so never learned about the transition.
-  /// After a finished Иша the screen therefore said Витр while the mark went
-  /// to Иша, whose slots were all taken, and the owner was told «Порядок
-  /// намаза завершён» with no way forward but picking Витр by hand.
-  ///
-  /// The routine is read from the repository rather than from the provider on
-  /// purpose: a tap must not depend on whether a stream has settled yet. The
-  /// session it ensures is the same one the provider ensures for the same
-  /// prayer and day, so this adds no state of its own.
-  Future<PrayerContext> _withIshaToWitrTransition(PrayerContext context) async {
-    if (context.prayerType != PrayerType.isha || context.isQada) return context;
-    final repository = ref.read(prayerRoutineRepositoryProvider);
-    final ishaRoutine = await repository.ensureCurrentSession(
-      context: context,
-      // The prayer day, not the calendar one. This call **creates** the
-      // session it reads, so after midnight the wall clock opened an Иша on
-      // the day that had not started — which is what he saw as "it marks it
-      // for yesterday and for today" — and then found it empty, so the move
-      // to Витр never happened and the mark went to an Иша of the wrong day.
-      localDate: _registrationLocalDate(),
-      startedAtUtc: ref.read(timeProviderProvider).nowUtc(),
-    );
-    return applyIshaToWitrTransition(
-          PrayerContextResolution(
-            status: PrayerContextResolutionStatus.automatic,
-            context: context,
-          ),
-          ishaRoutine: ishaRoutine,
-          witrTemplate: await repository.getTemplate(PrayerType.witr),
-        ).context ??
-        context;
-  }
-
-  Future<PrayerTimeSettings> _loadPrayerTimeSettings() async {
-    final state = ref.read(prayerTimeSettingsProvider);
-    final settled = _settledAsyncValue(state);
-    if (settled != null) return settled;
-    final prayerRepository = ref.read(prayerRepositoryProvider);
-    return ref
-        .read(prayerTimeSettingsRepositoryProvider)
-        .load(
-          legacyManualContextExists: () async =>
-              await prayerRepository.getSelectedContext() != null,
-        );
-  }
-
+  /// Records through the controller and says what happened.
   Future<void> _registerRecitation(
     MasteredSurah surah,
     PrayerContext prayer, {
-    required _RegistrationContextToken contextToken,
+    required RegistrationContextToken contextToken,
     Iterable<String>? coveredPartIds,
     int rakaatSpanCount = 1,
     LocalDate? occurrenceLocalDate,
     bool qadaOriginIsUnknown = false,
     LocalDate? qadaFulfilledLocalDate,
   }) async {
-    if (_busySurahIds.contains(surah.id)) return;
-    setState(() => _busySurahIds.add(surah.id));
+    final RecitationRegistrationOutcome outcome;
     try {
-      _requireRegistrationContext(contextToken);
-      final localDate = occurrenceLocalDate ?? contextToken.localDate;
-      final routine = await ref
-          .read(prayerRoutineRepositoryProvider)
-          .ensureCurrentSession(
-            context: prayer,
-            localDate: localDate,
-            startedAtUtc: ref.read(timeProviderProvider).nowUtc(),
-          );
-      _requireRegistrationContext(contextToken);
-      final routinePart = routine?.currentPart;
-      final slotIndex = routinePart?.nextSlotIndex;
-      if (routine != null && slotIndex == null) {
-        if (mounted && _isPrimaryHomeSectionActive) {
-          final messenger = ScaffoldMessenger.of(context);
-          messenger.removeCurrentSnackBar(reason: SnackBarClosedReason.hide);
-          messenger.showSnackBar(
-            SnackBar(
-              key: const ValueKey<String>(
-                'prayer-routine-unavailable-snackbar',
-              ),
-              content: Text(
-                routine.isCompleted
-                    ? context.l10n.prayerRoutineComplete
-                    : context.l10n.prayerRoutineNoAvailableSlot,
-              ),
-            ),
-          );
-        }
-        return;
-      }
-      final registration = await ref
-          .read(appActionsProvider)
-          .registerRecitation(
-            surahId: surah.id,
-            prayerContext: prayer,
-            prayerSessionId: slotIndex == null ? null : routine!.session.id,
-            prayerSessionPartId: slotIndex == null
-                ? null
-                : routinePart!.part.id,
-            slotIndex: slotIndex,
-            coveredPartIds: coveredPartIds,
-            rakaatSpanCount: rakaatSpanCount,
-            occurrenceLocalDate: localDate,
-            qadaOriginIsUnknown: qadaOriginIsUnknown,
-            qadaFulfilledLocalDate: qadaFulfilledLocalDate,
-          );
-      // A manual context deliberately survives this mark: it is cleared only
-      // by the explicit "back to automatic" action or once its local date has
-      // passed. Re-picking Witr or Nafl for every surah was the reported bug.
-      // `mounted` is repeated here although `_isRegistrationContextCurrent`
-      // already checks it: the analyzer cannot follow that through a method
-      // call, and `use_build_context_synchronously` is not a lint worth
-      // silencing on a path that touches `context` after an await.
-      if (!mounted ||
-          !_isRegistrationContextCurrent(contextToken) ||
-          !_isPrimaryHomeSectionActive) {
-        return;
-      }
-      final messenger = ScaffoldMessenger.of(context);
-      // An action makes SnackBar persistent by default in current Flutter.
-      // Remove any older Undo action and opt out of that persistence explicitly.
-      messenger.removeCurrentSnackBar(reason: SnackBarClosedReason.hide);
-      messenger.showSnackBar(
-        SnackBar(
-          key: ValueKey<String>('recitation-snackbar-${registration.event.id}'),
-          duration: _recitationSnackBarDuration,
-          persist: false,
-          content: Text(context.l10n.surahMarked),
-          action: SnackBarAction(
-            key: const ValueKey<String>('undo-recitation'),
-            label: context.l10n.undo,
-            onPressed: () async {
-              await ref
-                  .read(recitationRepositoryProvider)
-                  .undo(registration.undoToken);
-            },
-          ),
-        ),
+      outcome = await _registration.registerRecitation(
+        surahId: surah.id,
+        prayer: prayer,
+        token: contextToken,
+        coveredPartIds: coveredPartIds,
+        rakaatSpanCount: rakaatSpanCount,
+        occurrenceLocalDate: occurrenceLocalDate,
+        qadaOriginIsUnknown: qadaOriginIsUnknown,
+        qadaFulfilledLocalDate: qadaFulfilledLocalDate,
       );
-    } on _RegistrationContextChanged {
-      _showRegistrationContextChanged();
-    } catch (_) {
+    } on Object {
       if (mounted && _isPrimaryHomeSectionActive) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(context.l10n.errorGeneric)));
       }
-    } finally {
-      if (mounted) setState(() => _busySurahIds.remove(surah.id));
+      return;
+    }
+    // `mounted` is spelled out at each use: the analyzer cannot follow it
+    // through a method call, and `use_build_context_synchronously` is not a
+    // lint worth silencing on a path that touches `context` after an await.
+    switch (outcome) {
+      case RecitationAlreadyInFlight():
+        return;
+      case RecitationContextChanged():
+        _showRegistrationContextChanged();
+      case RecitationSlotUnavailable(:final routineCompleted):
+        if (!mounted || !_isPrimaryHomeSectionActive) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.removeCurrentSnackBar(reason: SnackBarClosedReason.hide);
+        messenger.showSnackBar(
+          SnackBar(
+            key: const ValueKey<String>('prayer-routine-unavailable-snackbar'),
+            content: Text(
+              routineCompleted
+                  ? context.l10n.prayerRoutineComplete
+                  : context.l10n.prayerRoutineNoAvailableSlot,
+            ),
+          ),
+        );
+      case RecitationRecorded(:final registration, :final contextStillCurrent):
+        if (!mounted || !contextStillCurrent || !_isPrimaryHomeSectionActive) {
+          return;
+        }
+        final messenger = ScaffoldMessenger.of(context);
+        // An action makes SnackBar persistent by default in current Flutter.
+        // Remove any older Undo action and opt out of that persistence
+        // explicitly.
+        messenger.removeCurrentSnackBar(reason: SnackBarClosedReason.hide);
+        messenger.showSnackBar(
+          SnackBar(
+            key: ValueKey<String>(
+              'recitation-snackbar-${registration.event.id}',
+            ),
+            duration: _recitationSnackBarDuration,
+            persist: false,
+            content: Text(context.l10n.surahMarked),
+            action: SnackBarAction(
+              key: const ValueKey<String>('undo-recitation'),
+              label: context.l10n.undo,
+              onPressed: () async {
+                await _registration.undoRecitation(registration);
+              },
+            ),
+          ),
+        );
     }
   }
 
@@ -804,7 +640,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
     PrayerSessionPartProgress progress,
   ) async {
     final part = progress.part;
-    if (_busyRoutinePartIds.contains(part.id)) return;
+    if (_registration.busyRoutinePartIds.contains(part.id)) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -825,18 +661,9 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    setState(() => _busyRoutinePartIds.add(part.id));
     try {
-      final completion = await ref
-          .read(prayerRoutineRepositoryProvider)
-          .completeByFollowingImam(
-            prayerSessionPartId: part.id,
-            completedAtUtc: ref.read(timeProviderProvider).nowUtc(),
-          );
-      // Same rule as an ordinary mark: following the imam does not end a
-      // manually chosen context.
-      ref.invalidate(currentPrayerRoutineProvider);
-      final undoToken = completion.undoToken;
+      final completion = await _registration.completeByFollowingImam(part.id);
+      final undoToken = completion?.undoToken;
       if (!mounted || undoToken == null) return;
       final messenger = ScaffoldMessenger.of(context);
       messenger.removeCurrentSnackBar(reason: SnackBarClosedReason.hide);
@@ -849,12 +676,7 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
             key: const ValueKey<String>('undo-followed-imam'),
             label: context.l10n.undo,
             onPressed: () async {
-              final undone = await ref
-                  .read(prayerRoutineRepositoryProvider)
-                  .undoFollowedImam(undoToken);
-              if (undone && mounted) {
-                ref.invalidate(currentPrayerRoutineProvider);
-              }
+              await _registration.undoFollowedImam(undoToken);
             },
           ),
         ),
@@ -865,13 +687,11 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(context.l10n.errorGeneric)));
       }
-    } finally {
-      if (mounted) setState(() => _busyRoutinePartIds.remove(part.id));
     }
   }
 
   Future<PrayerContext?> _showPrayerPicker(PrayerContext? current) async {
-    final token = _captureRegistrationContext();
+    final token = _registration.captureToken();
     var prayerType = current?.prayerType;
     var isQada = current?.isQada ?? false;
     final selected = await showModalBottomSheet<PrayerContext>(
@@ -933,35 +753,12 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
-    if (selected != null) {
-      if (!_isRegistrationContextCurrent(token)) {
-        _showRegistrationContextChanged();
-        return null;
-      }
-      final prayerTimeSettings = await _loadPrayerTimeSettings();
-      if (!_isRegistrationContextCurrent(token)) {
-        _showRegistrationContextChanged();
-        return null;
-      }
-      if (prayerTimeSettings.contextSelectionMode ==
-          PrayerContextSelectionMode.manual) {
-        await ref.read(selectedPrayerProvider.notifier).select(selected);
-      } else {
-        _setPrayerContextOverride(selected);
-      }
+    if (selected != null &&
+        !await _registration.applyPickedPrayer(selected, token)) {
+      _showRegistrationContextChanged();
+      return null;
     }
     return selected;
-  }
-
-  /// Scopes the override to the local date it was chosen for, so it can stay
-  /// selected across a series of marks without ever leaking into the next day.
-  void _setPrayerContextOverride(PrayerContext context) {
-    ref
-        .read(prayerContextOverrideProvider.notifier)
-        .state = PrayerContextOverride(
-      context: context,
-      localDate: ref.read(localDateProvider).today(),
-    );
   }
 
   Future<void> _undoLearningRollback(LearningActionOutcome outcome) async {
@@ -977,30 +774,6 @@ final class _HomeScreenState extends ConsumerState<HomeScreen> {
         .undoOutcome(outcome, restoredState: undo.value);
     ref.read(learningRollbackQueueProvider.notifier).remove(event.id);
   }
-}
-
-final class _ActionPrayerContext {
-  const _ActionPrayerContext({
-    required this.context,
-    required this.isAutomatic,
-  });
-
-  final PrayerContext context;
-  final bool isAutomatic;
-}
-
-final class _RegistrationContextToken {
-  const _RegistrationContextToken({
-    required this.generation,
-    required this.localDate,
-  });
-
-  final int generation;
-  final LocalDate localDate;
-}
-
-final class _RegistrationContextChanged implements Exception {
-  const _RegistrationContextChanged();
 }
 
 final class _PrayerRoutineCard extends StatelessWidget {
@@ -1825,39 +1598,6 @@ LocalDate _shiftLocalDate(LocalDate date, int days) {
   ).add(Duration(days: days));
   return LocalDate.fromLocalDateTime(shifted);
 }
-
-/// The schedule to draw, or null when there is genuinely nothing to draw.
-///
-/// A reloading schedule still holds the one it last produced, and
-/// [PrayerTodaySchedule.matchesSettings] already decides whether that value is
-/// about the settings in force — a far better test than "is this provider busy
-/// this frame". Hiding the strip on every loading tick is visible jank, and the
-/// value is presentational: it keys nothing.
-PrayerTodaySchedule? _matchingPrayerSchedule(
-  AsyncValue<PrayerTodaySchedule> state,
-  PrayerTimeSettings? settings,
-) {
-  final value = state.valueOrNull;
-  if (settings == null ||
-      !settings.locationConfirmed ||
-      value == null ||
-      !value.matchesSettings(settings)) {
-    return null;
-  }
-  return value;
-}
-
-/// A value only while the provider is idle.
-///
-/// Used for the resolved context, and deliberately so. That context is a
-/// **family key** here — the routine, the batch and the occurrence are all
-/// watched as `family((context: ..., localDate: ...))`. Feeding a stale
-/// context back in makes the screen alternate between two family instances,
-/// each disposing the other's element and invalidating the provider that
-/// produced it: a rebuild loop that hangs the app. Presentation reads
-/// [_lastKnownAsyncValue] instead.
-T? _settledAsyncValue<T>(AsyncValue<T> state) =>
-    state.isLoading || state.hasError ? null : state.valueOrNull;
 
 /// The last value a provider produced, kept across a reload.
 ///
