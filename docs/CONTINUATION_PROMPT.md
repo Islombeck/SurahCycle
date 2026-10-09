@@ -163,7 +163,12 @@ permission. **If half an hour turns out to matter**, an exact wake-up at each
 boundary is the next step: `PrayerWidgetProjection.windowEndsAt` and the
 Kotlin `windowEndsAt` both exist for exactly that and are unused today.
 
-### 4. Horizontal prayer-times widget
+### 4. ~~Horizontal prayer-times widget~~ — **built, 2026-10-09**
+
+`PrayerStripWidget`, a separate picker entry; see `PRAYER_WIDGET.md` and the
+handoff for what was and was not seen on his phone. It also brought the
+boundary redraw (§3's "exact wake-up"), done as an inexact non-waking alarm
+because the countdown made half an hour matter. Original brief:
 
 A wide widget showing the six boundaries in a row with the current one marked.
 The Glance provider already exists (`PrayerWidget.kt`, responsive sizes); this
@@ -208,6 +213,10 @@ silent by rule?
 Mipmaps and the adaptive icon. Small, long overdue.
 
 ### 8. Widen the narrow-layout suite
+
+**Correction, 2026-10-09:** his Jelly Max is **360×760 dp** (`wm size`
+720×1520, `wm density` 320), not 411×914 — the suite has been testing a phone
+wider than his. Move it to 360 first; that alone may surface something.
 
 `test/widget/layout_at_phone_width_test.dart` walks five tabs at 411×914. Add
 the sheets — learning plan editor, coverage sheet, calendar day detail — and an

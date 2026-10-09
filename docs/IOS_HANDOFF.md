@@ -176,6 +176,31 @@ of this repository.
 
 ### 4.1 The prayer widget's highlight cannot be correct without a scheduled refresh
 
+**Decided and shipped on Android, 2026-10-09 — read this first, the history
+below is kept for the reasoning.** Snapshot schema **7**: the prayer
+projection carries the day as `PrayerWidgetWindow`s (two UTC instants and a
+row index, seven a day, contiguous; `-1` for Sunrise→Dhuhr, when no prayer is
+current; the hours before Fajr point at last night's Isha). The platform
+compares its clock with them and decides nothing else. What Swift needs from
+this:
+
+- **The windows map directly onto a WidgetKit timeline.** One entry at each
+  window's start is exactly the redraw Android has to approximate with an
+  alarm. Android's alarm is inexact (lands up to ten minutes late); a
+  timeline has no such cost, so iOS can be *more* correct here, not less.
+- **The strip's countdown** is `nextBoundaryAt` — the start of the next
+  window, which is **not** the end of the current one after Isha begins
+  (Isha's window ends at midnight only because a snapshot covers one day).
+  After Isha there is no countdown; the date shows. SwiftUI's
+  `Text(date, style: .timer)` is the counterpart of Android's `Chronometer`,
+  and like it, does not stop at zero — the timeline entry at the boundary is
+  what replaces it.
+- The Kotlin tests of these comparisons are in
+  `android/app/src/test/kotlin/dev/murajaah/murajaah/widget/PrayerBoundaryTest.kt`,
+  on his real day. A Swift port should pass the same cases.
+
+The original finding:
+
 Found and half-fixed on 2026-10-09. The snapshot has carried a prayer
 projection since schema 6, and `WidgetSyncCoordinator` nudged the rotation and
 learning receivers only — the prayer receiver was never told, and
@@ -229,6 +254,14 @@ Whoever decides it should decide it for both platforms at once.
 Append here. Newest first, one entry per checkpoint, each saying what was
 verified and how.
 
+- **2026-10-09, later** — Android gained a second prayer widget, the
+  horizontal strip, and both prayer widgets now book a redraw at each window
+  boundary. §4.1 updated with what a WidgetKit port takes from it (timeline
+  entries at window starts; the countdown target is the next window's start,
+  not the current window's end). Nothing under `ios/` changed; nothing built
+  or run on Apple hardware. §2.3's "schema 6" and "more than one current
+  entry" are out of date in the same way `IOS_WIDGET.md` is: the snapshot is
+  schema 7 and carries no current flag at all.
 - **2026-10-09** — file created. Nothing built, nothing run on Apple hardware.
   Findings above are from the repository: `ios/` inventory, `Info.plist` keys,
   every `defaultTargetPlatform` branch in `lib/`, the Android manifest and the

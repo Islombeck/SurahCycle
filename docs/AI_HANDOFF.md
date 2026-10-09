@@ -1,6 +1,72 @@
 # Murajaah AI handoff
 
-## The prayer widget reads the clock now — 2026-10-09 (read this first)
+## The horizontal prayer strip — 2026-10-09, afternoon (read this first)
+
+Session started from the 9 October brief. Reconciled: HEAD `85c44b2`, tree
+clean apart from his untracked files; `D:\MurajaahWorkspace` is a junction to
+this folder and `M:` is mapped. The brief's order puts the horizontal widget
+first, ahead of the controller extraction in `CONTINUATION_PROMPT.md`.
+
+**The reference, seen on his phone** (he unlocked it): Sajde's
+`HorizontalSixWidgetProvider`, min 294×40 dp, placed 4×1 tiles in SquareHome
+(≈240×60 dp). Countdown `mm:ss` to the next boundary, date and district on
+the top line; six labels over six times below; current boundary on a filled
+pill — and Sajde treats Sunrise as current, which this app deliberately does
+not (Sunrise→Dhuhr has no current prayer). Shape taken, rule kept.
+
+**A geometry fact the journal had wrong:** `wm size` reads 720×1520 at
+density 320, so the Jelly Max is **360×760 dp**, not 411×914. The
+narrow-layout suite pins 411 and is therefore wider than his real phone.
+
+Plan: a separate picker entry (`PrayerStripWidget` + receiver + provider XML
+4×1), the existing vertical widget untouched; the Dart bridge nudges both
+receivers from `updatePrayerWidget()`; a live countdown through a
+`Chronometer`, with a boundary refresh so it never runs past zero for long.
+
+**Checkpoint: committed as `7164814`**, 1341 passed / 11 skipped, analyzer
+0, `:app:compileDebugKotlin` + `:app:testDebugUnitTest` green (8 new JVM
+tests, the first JVM tests in this repository).
+
+**What was built.** `PrayerStripWidget`, a separate picker entry («Время
+намаза SurahCycle — строка», 4×1, min 240×40 dp): six names over six times,
+current prayer on a filled pill, and when the cell is at least 50 dp tall a
+line above with a live countdown and the region. The countdown counts to
+`nextBoundaryAt` — the start of the next window — so during Fajr it runs to
+Sunrise and after Isha begins it is replaced by the date (the next boundary
+is tomorrow's Fajr, which the snapshot does not carry). Both prayer receivers
+now book an inexact, non-waking alarm at the end of the current window
+(`PrayerWidgetRefresh`), because a counting-down `Chronometer` does not stop
+at zero. The bridge's `updatePrayerWidget()` wakes both receivers.
+
+**A falsification that caught my own test.** The first break I tried — drop
+the "different row" filter — left all eight JVM tests green. Not luck: on the
+windows Dart builds that filter can never fire, because Isha's evening window
+is the last one in the snapshot. The real distinction is next-window-start
+versus current-window-end; breaking *that* goes red on the after-Isha case,
+and dropping the Sunrise row goes red on the during-Fajr case. The useless
+guard was removed and the comment that justified it corrected.
+
+**On his phone, Jelly Max, 2026-10-09 14:58.** Backup
+`jelly_backup_20261009c.sqlite` (session scratchpad), 2,084,864 bytes,
+SHA-256 `6B486807A94E3EF9B0BB79BB3E76E3BA31B811C7C9D540CDA16EBE64B495AFDA`,
+equal to `sha256sum` of the file on the phone; v11, `integrity_check` ok,
+0 FK violations, journal mode `delete`; 1225 recitations, 1227 coverage rows,
+179 sessions, 317 parts, outbox empty. Build
+`F3CE91987ACADEB03795014B5C91C8C9126063EE9CFB543506BF09A140F88314`,
+230,365,088 bytes; Dart kernel checked: the only Appwrite-shaped id is his
+own, no "acceptance", and the one e-mail-shaped string is the copyright line
+of `universal_io`. `adb install -r` → `Success`. After launch: the id
+comparison reads **"Identical on every compared table"**, integrity ok,
+`sha256sum` of `base.apk` on the phone `f3ce9198…f88314`.
+
+**Seen on the device, not inferred:** `dumpsys alarm` shows the vertical
+widget's redraw booked — `RTC`, `origWhen 2026-10-09 16:07:00` (his Asr),
+`window=+10m`, tagged `APPWIDGET_UPDATE`. That is the update after install
+running the new `onUpdate`. **Not yet seen:** the strip itself, because it
+is not on his home screen — placing it is a change to his launcher layout,
+and that is his to place.
+
+## The prayer widget reads the clock now — 2026-10-09
 
 He answered the three questions. «Это было жалоба на застревание. Компактный
 не нужен.» — so the compact widget is dropped and the stuck highlight is
